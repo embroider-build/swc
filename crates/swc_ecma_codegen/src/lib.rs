@@ -1553,6 +1553,11 @@ where
             emit!(dec)
         }
 
+        if n.declare {
+            keyword!("declare");
+            space!();
+        }
+
         if n.accessibility != Some(Accessibility::Public) {
             self.emit_accessibility(n.accessibility)?;
         }

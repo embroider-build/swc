@@ -1,5 +1,4 @@
 #![deny(clippy::all)]
-#![deny(unused)]
 #![allow(clippy::needless_lifetimes)]
 #![allow(clippy::vec_box)]
 
