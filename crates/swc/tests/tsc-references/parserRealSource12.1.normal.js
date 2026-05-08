@@ -1,8 +1,8 @@
 //// [parserRealSource12.ts]
+import { _ as _class_call_check } from "@swc/helpers/_/_class_call_check";
 // Copyright (c) Microsoft. All rights reserved. Licensed under the Apache License, Version 2.0. 
 // See LICENSE.txt in the project root for complete license information.
 ///<reference path='typescript.ts' />
-import { _ as _class_call_check } from "@swc/helpers/_/_class_call_check";
 (function(TypeScript) {
     var AstWalkOptions = /*#__PURE__*/ function() {
         "use strict";
@@ -10,8 +10,7 @@ import { _ as _class_call_check } from "@swc/helpers/_/_class_call_check";
             _class_call_check(this, AstWalkOptions);
             this.goChildren = true;
             this.goNextSibling = true;
-            this.reverseSiblings = false // visit siblings in reverse execution order
-            ;
+            this.reverseSiblings = false; // visit siblings in reverse execution order
         }
         var _proto = AstWalkOptions.prototype;
         _proto.stopWalk = function stopWalk() {

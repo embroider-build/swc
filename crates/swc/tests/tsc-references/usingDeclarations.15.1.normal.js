@@ -7,10 +7,9 @@ const env = {
     hasError: false
 };
 try {
-    const _ = _ts_add_disposable_resource(env, {
+    var _ = _ts_add_disposable_resource(env, {
         [Symbol.dispose] () {}
     }, false);
-    ;
 } catch (e) {
     env.error = e;
     env.hasError = true;

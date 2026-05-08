@@ -71,7 +71,7 @@
      * @returns {string}
      */ prototype.toString = function() {
             var i, key, name, value, dict = this[__URLSearchParams__], query = [];
-            for(key in dict)for(i = 0, name = encode(key), value = dict[key]; i < value.length; i++)query.push(name + "=" + encode(value[i]));
+            for(key in dict)for(name = encode(key), i = 0, value = dict[key]; i < value.length; i++)query.push(name + "=" + encode(value[i]));
             return query.join("&");
         }, decodesPlusesCorrectly && nativeURLSearchParams && !isSupportObjectConstructor && self.Proxy ? // Chrome <=60 .toString() on a function proxy got error "Function.prototype.toString is not generic"
         // Safari 10.0 doesn't support Proxy, so it won't extend URLSearchParams on safari 10.0
@@ -184,15 +184,14 @@
     }
     function parseToDict(search) {
         var dict = {};
-        if ("object" == typeof search) {
-            // if `search` is an array, treat it as a sequence
-            if (isArray(search)) for(var i = 0; i < search.length; i++){
-                var item = search[i];
-                if (isArray(item) && 2 === item.length) appendTo(dict, item[0], item[1]);
-                else throw TypeError("Failed to construct 'URLSearchParams': Sequence initializer must only contain pair elements");
-            }
-            else for(var key in search)search.hasOwnProperty(key) && appendTo(dict, key, search[key]);
-        } else {
+        if ("object" == typeof search) // if `search` is an array, treat it as a sequence
+        if (isArray(search)) for(var i = 0; i < search.length; i++){
+            var item = search[i];
+            if (isArray(item) && 2 === item.length) appendTo(dict, item[0], item[1]);
+            else throw TypeError("Failed to construct 'URLSearchParams': Sequence initializer must only contain pair elements");
+        }
+        else for(var key in search)search.hasOwnProperty(key) && appendTo(dict, key, search[key]);
+        else {
             // remove first '?'
             0 === search.indexOf("?") && (search = search.slice(1));
             for(var pairs = search.split("&"), j = 0; j < pairs.length; j++){
@@ -215,4 +214,4 @@
     function hasOwnProperty(obj, prop) {
         return Object.prototype.hasOwnProperty.call(obj, prop);
     }
-}("undefined" != typeof global ? global : "undefined" != typeof window ? window : this);
+}("u" > typeof global ? global : "u" > typeof window ? window : this);

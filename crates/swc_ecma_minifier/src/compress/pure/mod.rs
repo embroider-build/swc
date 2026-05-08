@@ -1,28 +1,27 @@
 #![allow(clippy::needless_update)]
 
-#[cfg(feature = "concurrent")]
-use rayon::prelude::*;
-use swc_common::{pass::Repeated, util::take::Take, SyntaxContext, DUMMY_SP, GLOBALS};
+use swc_common::{pass::Repeated, util::take::Take, SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::*;
-use swc_ecma_transforms_optimization::debug_assert_valid;
-use swc_ecma_usage_analyzer::marks::Marks;
-use swc_ecma_utils::ExprCtx;
+use swc_ecma_transforms_optimization::{debug_assert_valid, simplify};
+use swc_ecma_utils::{
+    parallel::{cpu_count, Parallel, ParallelExt},
+    ExprCtx,
+};
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut, VisitMutWith, VisitWith};
 #[cfg(feature = "debug")]
-use tracing::{debug, span, Level};
+use tracing::Level;
 
 use self::{ctx::Ctx, misc::DropOpts};
-use super::util::is_pure_undefined_or_null;
-#[cfg(feature = "debug")]
-use crate::debug::dump;
-use crate::{debug::AssertValid, maybe_par, option::CompressOptions, util::ModuleItemExt};
+use crate::{
+    debug::AssertValid, maybe_par, option::CompressOptions, usage_analyzer::marks::Marks,
+    util::ModuleItemExt,
+};
 
 mod arrows;
 mod bools;
 mod conds;
 mod ctx;
 mod dead_code;
-mod drop_console;
 mod evaluate;
 mod if_return;
 mod loops;
@@ -32,18 +31,13 @@ mod numbers;
 mod properties;
 mod sequences;
 mod strings;
-mod unsafes;
+mod switches;
 mod vars;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct PureOptimizerConfig {
     /// pass > 1
     pub enable_join_vars: bool,
-
-    pub force_str_for_tpl: bool,
-
-    #[cfg(feature = "debug")]
-    pub debug_infinite_loop: bool,
 }
 
 #[allow(clippy::needless_lifetimes)]
@@ -60,6 +54,7 @@ pub(crate) fn pure_optimizer<'a>(
             unresolved_ctxt: SyntaxContext::empty().apply_mark(marks.unresolved_mark),
             is_unresolved_ref_safe: false,
             in_strict: options.module,
+            remaining_depth: 6,
         },
         ctx: Default::default(),
         changed: Default::default(),
@@ -74,6 +69,18 @@ struct Pure<'a> {
 
     ctx: Ctx,
     changed: bool,
+}
+
+impl Parallel for Pure<'_> {
+    fn create(&self) -> Self {
+        Self { ..*self }
+    }
+
+    fn merge(&mut self, other: Self) {
+        if other.changed {
+            self.changed = true;
+        }
+    }
 }
 
 impl Repeated for Pure<'_> {
@@ -96,7 +103,7 @@ impl Pure<'_> {
             + VisitMutWith<self::vars::VarMover>
             + VisitWith<AssertValid>,
     {
-        self.remove_dead_branch(stmts);
+        self.optimize_const_if(stmts);
 
         #[cfg(debug_assertions)]
         {
@@ -134,11 +141,12 @@ impl Pure<'_> {
         if self.config.enable_join_vars {
             self.join_vars(stmts);
 
-            #[cfg(debug_assertions)]
-            {
-                stmts.visit_with(&mut AssertValid);
-            }
+            debug_assert_valid(stmts);
         }
+
+        self.break_assignments_in_seqs(stmts);
+
+        debug_assert_valid(stmts);
 
         stmts.retain(|s| !matches!(s.as_stmt(), Some(Stmt::Empty(..))));
     }
@@ -164,102 +172,54 @@ impl Pure<'_> {
     }
 
     /// Visit `nodes`, maybe in parallel.
-    fn visit_par<N>(&mut self, nodes: &mut Vec<N>)
+    fn visit_par<N>(&mut self, threshold_multiplier: usize, nodes: &mut Vec<N>)
     where
         N: for<'aa> VisitMutWith<Pure<'aa>> + Send + Sync,
     {
-        let mut changed = false;
-        if !cfg!(target_arch = "wasm32")
-            && (!cfg!(feature = "debug") || !cfg!(debug_assertions))
-            && nodes.len() >= *crate::HEAVY_TASK_PARALLELS
-        {
-            #[cfg(feature = "concurrent")]
-            {
-                GLOBALS.with(|globals| {
-                    changed = nodes
-                        .par_iter_mut()
-                        .map(|node| {
-                            GLOBALS.set(globals, || {
-                                let mut v = Pure {
-                                    expr_ctx: self.expr_ctx.clone(),
-                                    ctx: Ctx {
-                                        par_depth: self.ctx.par_depth + 1,
-                                        ..self.ctx
-                                    },
-                                    changed: false,
-                                    ..*self
-                                };
-                                node.visit_mut_with(&mut v);
+        self.maybe_par(cpu_count() * threshold_multiplier, nodes, |v, node| {
+            node.visit_mut_with(v);
+        });
+    }
 
-                                v.changed
-                            })
-                        })
-                        .reduce(|| false, |a, b| a || b);
-                })
-            }
-
-            #[cfg(not(feature = "concurrent"))]
-            {
-                GLOBALS.with(|globals| {
-                    changed = nodes
-                        .iter_mut()
-                        .map(|node| {
-                            GLOBALS.set(globals, || {
-                                let mut v = Pure {
-                                    expr_ctx: self.expr_ctx.clone(),
-                                    ctx: Ctx {
-                                        par_depth: self.ctx.par_depth + 1,
-                                        ..self.ctx
-                                    },
-                                    changed: false,
-                                    ..*self
-                                };
-                                node.visit_mut_with(&mut v);
-
-                                v.changed
-                            })
-                        })
-                        .reduce(|a, b| a || b)
-                        .unwrap_or(false);
-                })
-            }
-        } else {
-            changed = nodes
-                .iter_mut()
-                .map(|node| {
-                    let mut v = Pure {
-                        expr_ctx: self.expr_ctx.clone(),
-                        ctx: Ctx {
-                            par_depth: self.ctx.par_depth,
-                            ..self.ctx
-                        },
-                        changed: false,
-                        ..*self
-                    };
-                    node.visit_mut_with(&mut v);
-
-                    v.changed
-                })
-                .reduce(|a, b| a || b)
-                .unwrap_or(false);
-        }
-        self.changed |= changed;
+    fn visit_par_ref<N>(&mut self, nodes: &mut [&mut N])
+    where
+        N: for<'aa> VisitMutWith<Pure<'aa>> + Send + Sync,
+    {
+        self.maybe_par(0, nodes, |v, node| {
+            node.visit_mut_with(v);
+        });
     }
 }
 
 impl VisitMut for Pure<'_> {
-    noop_visit_mut_type!();
+    noop_visit_mut_type!(fail);
 
     fn visit_mut_assign_expr(&mut self, e: &mut AssignExpr) {
-        {
-            let ctx = Ctx {
-                is_lhs_of_assign: true,
-                ..self.ctx
-            };
-            e.left.visit_mut_children_with(&mut *self.with_ctx(ctx));
-        }
+        self.do_inside_of_context(Ctx::IS_LHS_OF_ASSIGN, |this| {
+            e.left.visit_mut_children_with(this);
+        });
 
         e.right.visit_mut_with(self);
+
+        self.compress_bin_assignment_to_left(e);
+        self.compress_bin_assignment_to_right(e);
+
+        if matches!(
+            e.op,
+            op!("-=")
+                | op!("*=")
+                | op!("/=")
+                | op!("%=")
+                | op!("**=")
+                | op!("&=")
+                | op!("|=")
+                | op!("^=")
+                | op!("<<=")
+                | op!(">>=")
+                | op!(">>>=")
+        ) {
+            self.optimize_expr_in_num_ctx(&mut e.right);
+        }
     }
 
     fn visit_mut_bin_expr(&mut self, e: &mut BinExpr) {
@@ -271,6 +231,24 @@ impl VisitMut for Pure<'_> {
         if e.op == op!(bin, "+") {
             self.concat_tpl(&mut e.left, &mut e.right);
         }
+
+        if matches!(
+            e.op,
+            op!(bin, "-")
+                | op!("*")
+                | op!("/")
+                | op!("%")
+                | op!("**")
+                | op!("&")
+                | op!("|")
+                | op!("^")
+                | op!("<<")
+                | op!(">>")
+                | op!(">>>")
+        ) {
+            self.optimize_expr_in_num_ctx(&mut e.left);
+            self.optimize_expr_in_num_ctx(&mut e.right);
+        }
     }
 
     fn visit_mut_block_stmt_or_expr(&mut self, body: &mut BlockStmtOrExpr) {
@@ -279,39 +257,27 @@ impl VisitMut for Pure<'_> {
         match body {
             BlockStmtOrExpr::BlockStmt(b) => self.optimize_fn_stmts(&mut b.stmts),
             BlockStmtOrExpr::Expr(_) => {}
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         }
 
         self.optimize_arrow_body(body);
+
+        if let BlockStmtOrExpr::Expr(e) = body {
+            self.make_bool_short(e, false, false);
+        }
     }
 
     fn visit_mut_call_expr(&mut self, e: &mut CallExpr) {
-        {
-            let ctx = Ctx {
-                is_callee: true,
-                ..self.ctx
-            };
-            e.callee.visit_mut_with(&mut *self.with_ctx(ctx));
-        }
+        self.do_inside_of_context(Ctx::IS_CALLEE, |this| {
+            e.callee.visit_mut_with(this);
+        });
 
-        e.args.visit_mut_with(self);
+        self.do_outside_of_context(Ctx::IS_CALLEE, |this| {
+            e.args.visit_mut_with(this);
+        });
 
-        self.eval_spread_array(&mut e.args);
-
-        self.drop_arguments_of_symbol_call(e);
-    }
-
-    fn visit_mut_opt_call(&mut self, opt_call: &mut OptCall) {
-        {
-            let ctx = Ctx {
-                is_callee: true,
-                ..self.ctx
-            };
-            opt_call.callee.visit_mut_with(&mut *self.with_ctx(ctx));
-        }
-
-        opt_call.args.visit_mut_with(self);
-
-        self.eval_spread_array(&mut opt_call.args);
+        self.eval_spread_array_in_args(&mut e.args);
     }
 
     fn visit_mut_class_member(&mut self, m: &mut ClassMember) {
@@ -325,7 +291,7 @@ impl VisitMut for Pure<'_> {
     }
 
     fn visit_mut_class_members(&mut self, m: &mut Vec<ClassMember>) {
-        m.visit_mut_children_with(self);
+        self.visit_par(2, m);
 
         m.retain(|m| {
             if let ClassMember::Empty(..) = m {
@@ -340,32 +306,85 @@ impl VisitMut for Pure<'_> {
         e.visit_mut_children_with(self);
 
         self.optimize_expr_in_bool_ctx(&mut e.test, false);
+    }
 
-        self.negate_cond_expr(e);
+    fn visit_mut_do_while_stmt(&mut self, s: &mut DoWhileStmt) {
+        s.test.visit_mut_with(self);
+
+        self.do_inside_of_context(Ctx::PRESERVE_BLOCK, |this| {
+            s.body.visit_mut_with(this);
+        });
+
+        self.make_bool_short(&mut s.test, true, false);
     }
 
     fn visit_mut_expr(&mut self, e: &mut Expr) {
-        {
-            let ctx = Ctx {
-                in_first_expr: false,
-                ..self.ctx
-            };
-            e.visit_mut_children_with(&mut *self.with_ctx(ctx));
+        self.handle_known_delete(e);
+
+        e.visit_mut_children_with(self);
+
+        // Expression simplifier
+        match e {
+            Expr::Member(..)
+                if !self.ctx.intersects(
+                    Ctx::IN_DELETE
+                        .union(Ctx::IS_UPDATE_ARG)
+                        .union(Ctx::IS_LHS_OF_ASSIGN)
+                        .union(Ctx::IN_OPT_CHAIN),
+                ) =>
+            {
+                let mut changed = false;
+                simplify::expr::optimize_member_expr(
+                    self.expr_ctx,
+                    e,
+                    self.ctx.contains(Ctx::IS_CALLEE),
+                    &mut changed,
+                );
+
+                if changed {
+                    report_change!("expression simplifier simplified a member expression");
+                }
+            }
+            Expr::Member(..) => {}
+
+            Expr::Unary(..) => {
+                let mut changed = false;
+                simplify::expr::optimize_unary_expr(self.expr_ctx, e, &mut changed);
+
+                if changed {
+                    report_change!("expression simplifier simplified a unary expression");
+                    self.changed = true;
+                }
+            }
+
+            Expr::Bin(..) => {
+                let mut changed = false;
+                simplify::expr::optimize_bin_expr(self.expr_ctx, e, &mut changed);
+
+                if changed {
+                    report_change!("expression simplifier simplified a binary expression");
+                    self.changed = true;
+                }
+            }
+
+            _ => {}
         }
 
         match e {
-            Expr::Seq(seq) => {
-                if seq.exprs.len() == 1 {
-                    *e = *seq.exprs.pop().unwrap();
-                }
+            Expr::Seq(seq) if seq.exprs.len() == 1 => {
+                *e = *seq.exprs.pop().unwrap();
             }
+            Expr::Seq(..) => {}
             Expr::Invalid(..) | Expr::Lit(..) => return,
+
             _ => {}
         }
 
         if e.is_seq() {
             debug_assert_valid(e);
         }
+
+        self.simplify_assign_expr(e);
 
         if self.options.unused {
             if let Expr::Unary(UnaryExpr {
@@ -377,11 +396,9 @@ impl VisitMut for Pure<'_> {
                 if !arg.is_lit() {
                     self.ignore_return_value(
                         arg,
-                        DropOpts {
-                            drop_global_refs_if_unused: true,
-                            drop_zero: true,
-                            drop_str_lit: true,
-                        },
+                        DropOpts::DROP_GLOBAL_REFS_IF_UNUSED
+                            .union(DropOpts::DROP_NUMBER)
+                            .union(DropOpts::DROP_STR_LIT),
                     );
                     if arg.is_invalid() {
                         *e = *Expr::undefined(*span);
@@ -389,6 +406,19 @@ impl VisitMut for Pure<'_> {
                     }
                 }
             }
+        }
+
+        if let Expr::Bin(bin) = e {
+            let expr = self.optimize_lit_cmp(bin);
+            if let Some(expr) = expr {
+                report_change!("Optimizing: Literal comparison");
+                self.changed = true;
+                *e = expr;
+            }
+        }
+
+        if e.is_seq() {
+            debug_assert_valid(e);
         }
 
         self.eval_nested_tpl(e);
@@ -405,11 +435,9 @@ impl VisitMut for Pure<'_> {
 
         self.eval_str_addition(e);
 
-        self.remove_invalid(e);
-
-        self.drop_console(e);
-
-        self.remove_invalid(e);
+        if self.changed {
+            self.remove_invalid(e);
+        }
 
         if let Expr::Seq(seq) = e {
             if seq.exprs.is_empty() {
@@ -421,6 +449,8 @@ impl VisitMut for Pure<'_> {
                 *e = *seq.exprs.take().into_iter().next().unwrap();
             }
         }
+
+        self.eval_array_spread(e);
 
         self.compress_array_join(e);
 
@@ -464,19 +494,16 @@ impl VisitMut for Pure<'_> {
             debug_assert_valid(e);
         }
 
-        self.optimize_bools(e);
-
-        if e.is_seq() {
-            debug_assert_valid(e);
-        }
-
         self.drop_logical_operands(e);
 
         if e.is_seq() {
             debug_assert_valid(e);
         }
 
+        self.optimize_negate_eq(e);
+
         self.lift_minus(e);
+        self.optimize_to_number(e);
 
         if e.is_seq() {
             debug_assert_valid(e);
@@ -534,6 +561,8 @@ impl VisitMut for Pure<'_> {
             debug_assert_valid(e);
         }
 
+        self.optimize_const_cond(e);
+
         self.compress_conds_as_logical(e);
 
         if e.is_seq() {
@@ -541,6 +570,14 @@ impl VisitMut for Pure<'_> {
         }
 
         self.compress_cond_with_logical_as_logical(e);
+
+        if e.is_seq() {
+            debug_assert_valid(e);
+        }
+
+        self.compress_conds_as_arithmetic(e);
+
+        self.eval_logical_expr(e);
 
         if e.is_seq() {
             debug_assert_valid(e);
@@ -589,10 +626,12 @@ impl VisitMut for Pure<'_> {
         }
 
         self.eval_member_expr(e);
+
+        self.optimize_to_int(e);
     }
 
     fn visit_mut_expr_or_spreads(&mut self, nodes: &mut Vec<ExprOrSpread>) {
-        self.visit_par(nodes);
+        self.visit_par(8, nodes);
     }
 
     fn visit_mut_expr_stmt(&mut self, s: &mut ExprStmt) {
@@ -604,20 +643,20 @@ impl VisitMut for Pure<'_> {
 
         self.ignore_return_value(
             &mut s.expr,
-            DropOpts {
-                drop_zero: true,
-                drop_global_refs_if_unused: true,
-                drop_str_lit: false,
-            },
+            DropOpts::DROP_NUMBER.union(DropOpts::DROP_GLOBAL_REFS_IF_UNUSED),
         );
 
-        if s.expr.is_seq() {
-            debug_assert_valid(&s.expr);
+        if s.expr.is_invalid() {
+            return;
         }
+
+        debug_assert_valid(&s.expr);
+
+        self.make_bool_short(&mut s.expr, false, true);
     }
 
     fn visit_mut_exprs(&mut self, nodes: &mut Vec<Box<Expr>>) {
-        self.visit_par(nodes);
+        self.visit_par(16, nodes);
     }
 
     fn visit_mut_fn_decl(&mut self, n: &mut FnDecl) {
@@ -632,6 +671,12 @@ impl VisitMut for Pure<'_> {
         n.visit_mut_children_with(self);
     }
 
+    fn visit_mut_for_head(&mut self, head: &mut ForHead) {
+        self.do_inside_of_context(Ctx::IS_UPDATE_ARG, |this| {
+            head.visit_mut_children_with(this)
+        });
+    }
+
     fn visit_mut_for_in_stmt(&mut self, n: &mut ForInStmt) {
         n.right.visit_mut_with(self);
 
@@ -642,6 +687,8 @@ impl VisitMut for Pure<'_> {
         if let Stmt::Block(body) = &mut *n.body {
             self.negate_if_terminate(&mut body.stmts, false, true);
         }
+
+        self.make_bool_short(&mut n.right, false, false);
     }
 
     fn visit_mut_for_of_stmt(&mut self, n: &mut ForOfStmt) {
@@ -654,10 +701,16 @@ impl VisitMut for Pure<'_> {
         if let Stmt::Block(body) = &mut *n.body {
             self.negate_if_terminate(&mut body.stmts, false, true);
         }
+
+        self.make_bool_short(&mut n.right, false, false);
     }
 
     fn visit_mut_for_stmt(&mut self, s: &mut ForStmt) {
         s.visit_mut_children_with(self);
+
+        self.optimize_for_init(&mut s.init);
+
+        self.optimize_for_update(&mut s.update);
 
         self.optimize_for_if_break(s);
 
@@ -673,13 +726,7 @@ impl VisitMut for Pure<'_> {
     }
 
     fn visit_mut_function(&mut self, f: &mut Function) {
-        {
-            let ctx = Ctx {
-                _in_try_block: false,
-                ..self.ctx
-            };
-            f.visit_mut_children_with(&mut *self.with_ctx(ctx));
-        }
+        self.do_outside_of_context(Ctx::IN_TRY_BLOCK, |this| f.visit_mut_children_with(this));
 
         if let Some(body) = &mut f.body {
             self.optimize_fn_stmts(&mut body.stmts)
@@ -687,18 +734,56 @@ impl VisitMut for Pure<'_> {
     }
 
     fn visit_mut_if_stmt(&mut self, s: &mut IfStmt) {
-        s.visit_mut_children_with(self);
+        s.test.visit_mut_with(self);
+
+        match &mut s.alt {
+            Some(alt) => {
+                self.do_outside_of_context(Ctx::PRESERVE_BLOCK, |this| {
+                    this.visit_par_ref(&mut [&mut *s.cons, &mut **alt]);
+                });
+            }
+            None => {
+                self.do_outside_of_context(Ctx::PRESERVE_BLOCK, |this| {
+                    s.cons.visit_mut_with(this);
+                });
+            }
+        }
 
         self.optimize_expr_in_bool_ctx(&mut s.test, false);
 
+        self.merge_nested_if(s);
+
         self.merge_else_if(s);
+
+        self.make_bool_short(&mut s.test, true, false);
+    }
+
+    fn visit_mut_key_value_prop(&mut self, p: &mut KeyValueProp) {
+        p.visit_mut_children_with(self);
+
+        self.make_bool_short(&mut p.value, false, false);
+    }
+
+    fn visit_mut_labeled_stmt(&mut self, s: &mut LabeledStmt) {
+        self.do_inside_of_context(Ctx::IS_LABEL_BODY, |this| {
+            s.body.visit_mut_with(this);
+        });
     }
 
     fn visit_mut_member_expr(&mut self, e: &mut MemberExpr) {
-        e.obj.visit_mut_with(self);
+        self.do_outside_of_context(Ctx::IS_CALLEE.union(Ctx::IS_UPDATE_ARG), |this| {
+            e.obj.visit_mut_with(this);
+        });
 
         if let MemberProp::Computed(c) = &mut e.prop {
-            c.visit_mut_with(self);
+            self.do_outside_of_context(
+                Ctx::IS_CALLEE
+                    .union(Ctx::IS_UPDATE_ARG)
+                    .union(Ctx::IS_LHS_OF_ASSIGN),
+                |this| {
+                    c.visit_mut_with(this);
+                },
+            );
 
             // TODO: unify these two
             if let Some(ident) = self.optimize_property_of_member_expr(Some(&e.obj), c) {
@@ -713,21 +798,45 @@ impl VisitMut for Pure<'_> {
     }
 
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
-        self.visit_par(items);
+        self.visit_par(1, items);
 
         self.handle_stmt_likes(items);
     }
 
     fn visit_mut_new_expr(&mut self, e: &mut NewExpr) {
-        {
-            let ctx = Ctx {
-                is_callee: true,
-                ..self.ctx
-            };
-            e.callee.visit_mut_with(&mut *self.with_ctx(ctx));
-        }
+        self.do_inside_of_context(Ctx::IS_CALLEE, |this| {
+            e.callee.visit_mut_with(this);
+        });
 
-        e.args.visit_mut_with(self);
+        self.do_outside_of_context(Ctx::IS_CALLEE, |this| {
+            e.args.visit_mut_with(this);
+        });
+    }
+
+    fn visit_mut_object_lit(&mut self, e: &mut ObjectLit) {
+        e.visit_mut_children_with(self);
+
+        self.eval_spread_object(e);
+    }
+
+    fn visit_mut_object_pat(&mut self, p: &mut ObjectPat) {
+        p.visit_mut_children_with(self);
+    }
+
+    fn visit_mut_opt_call(&mut self, opt_call: &mut OptCall) {
+        self.do_inside_of_context(Ctx::IS_CALLEE, |this| {
+            opt_call.callee.visit_mut_with(this);
+        });
+
+        opt_call.args.visit_mut_with(self);
+
+        self.eval_spread_array_in_args(&mut opt_call.args);
+    }
+
+    fn visit_mut_opt_chain_expr(&mut self, e: &mut OptChainExpr) {
+        self.do_inside_of_context(Ctx::IN_OPT_CHAIN, |this| {
+            e.visit_mut_children_with(this);
+        });
     }
 
     fn visit_mut_opt_var_decl_or_expr(&mut self, n: &mut Option<VarDeclOrExpr>) {
@@ -737,22 +846,33 @@ impl VisitMut for Pure<'_> {
             if let Some(VarDeclOrExpr::Expr(e)) = n {
                 self.ignore_return_value(
                     e,
-                    DropOpts {
-                        drop_zero: true,
-                        drop_global_refs_if_unused: true,
-                        drop_str_lit: true,
-                        ..Default::default()
-                    },
+                    DropOpts::DROP_GLOBAL_REFS_IF_UNUSED
+                        .union(DropOpts::DROP_NUMBER)
+                        .union(DropOpts::DROP_STR_LIT),
                 );
                 if e.is_invalid() {
                     *n = None;
                 }
             }
         }
+
+        if let Some(VarDeclOrExpr::Expr(e)) = n {
+            if e.is_invalid() {
+                *n = None;
+            }
+        }
     }
 
     fn visit_mut_opt_vec_expr_or_spreads(&mut self, nodes: &mut Vec<Option<ExprOrSpread>>) {
-        self.visit_par(nodes);
+        self.visit_par(4, nodes);
+
+        self.eval_spread_array_in_array(nodes);
+    }
+
+    fn visit_mut_pat(&mut self, p: &mut Pat) {
+        p.visit_mut_children_with(self);
+
+        self.drop_neeedless_pat(p);
     }
 
     fn visit_mut_prop(&mut self, p: &mut Prop) {
@@ -774,27 +894,26 @@ impl VisitMut for Pure<'_> {
     }
 
     fn visit_mut_prop_or_spreads(&mut self, exprs: &mut Vec<PropOrSpread>) {
-        self.visit_par(exprs);
-
-        exprs.retain(|e| {
-            if let PropOrSpread::Spread(spread) = e {
-                if is_pure_undefined_or_null(&self.expr_ctx, &spread.expr) {
-                    return false;
-                }
-            }
-
-            true
-        })
+        // Many bundlers use this pattern
+        self.visit_par(2, exprs);
     }
 
     fn visit_mut_return_stmt(&mut self, s: &mut ReturnStmt) {
         s.visit_mut_children_with(self);
 
         self.drop_undefined_from_return_arg(s);
+
+        if let Some(e) = &mut s.arg {
+            self.make_bool_short(e, false, false);
+        }
     }
 
     fn visit_mut_seq_expr(&mut self, e: &mut SeqExpr) {
-        e.visit_mut_children_with(self);
+        e.exprs.visit_mut_with(self);
+
+        self.shift_void(e);
+
+        self.shift_assignment(e);
 
         let exprs = &e.exprs;
         if maybe_par!(
@@ -832,25 +951,23 @@ impl VisitMut for Pure<'_> {
 
         self.merge_seq_call(e);
 
-        let can_drop_zero = matches!(&**e.exprs.last().unwrap(), Expr::Arrow(..));
+        let can_change_this =
+            !self.ctx.contains(Ctx::IS_CALLEE) || !e.exprs.last().unwrap().directness_matters();
 
         let len = e.exprs.len();
         for (idx, e) in e.exprs.iter_mut().enumerate() {
             let is_last = idx == len - 1;
 
             if !is_last {
-                self.ignore_return_value(
-                    e,
-                    DropOpts {
-                        drop_zero: can_drop_zero,
-                        drop_global_refs_if_unused: false,
-                        drop_str_lit: true,
-                    },
-                );
+                self.ignore_return_value(e, DropOpts::DROP_NUMBER.union(DropOpts::DROP_STR_LIT));
             }
         }
 
         e.exprs.retain(|e| !e.is_invalid());
+
+        if !can_change_this && e.exprs.len() == 1 {
+            e.exprs.insert(0, 0.into());
+        }
 
         #[cfg(debug_assertions)]
         {
@@ -859,48 +976,45 @@ impl VisitMut for Pure<'_> {
     }
 
     fn visit_mut_stmt(&mut self, s: &mut Stmt) {
-        #[cfg(feature = "debug")]
-        let _tracing = if self.config.debug_infinite_loop {
-            let text = dump(&*s, false);
-
-            if text.lines().count() < 10 {
-                Some(span!(Level::ERROR, "visit_mut_stmt", "start" = &*text).entered())
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
-        {
-            let ctx = Ctx {
-                is_update_arg: false,
-                is_callee: false,
-                in_delete: false,
-                in_first_expr: true,
-                ..self.ctx
-            };
-            s.visit_mut_children_with(&mut *self.with_ctx(ctx));
-        }
+        self.do_outside_of_context(
+            Ctx::IS_UPDATE_ARG
+                .union(Ctx::IS_CALLEE)
+                .union(Ctx::IN_DELETE)
+                .union(Ctx::PRESERVE_BLOCK)
+                .union(Ctx::IS_LABEL_BODY),
+            |this| {
+                s.visit_mut_children_with(this);
+            },
+        );
 
         match s {
-            Stmt::Expr(ExprStmt { expr, .. }) if expr.is_invalid() => {
-                *s = EmptyStmt { span: DUMMY_SP }.into();
+            Stmt::Expr(ExprStmt { expr, .. }) => {
+                if expr.is_invalid() {
+                    *s = Stmt::dummy();
+                    return;
+                }
+
+                self.ignore_return_value(expr, DropOpts::DROP_NUMBER);
+
+                if expr.is_invalid() {
+                    *s = Stmt::dummy();
+                    self.changed = true;
+                    report_change!("Dropping an invalid expression statement");
+                    return;
+                }
+            }
+
+            Stmt::Block(bs) if bs.stmts.is_empty() => {
+                *s = Stmt::dummy();
+                self.changed = true;
+                report_change!("Dropping an empty block statement");
                 return;
             }
+            Stmt::Block(..) => {}
             _ => {}
         }
 
         debug_assert_valid(s);
-
-        #[cfg(feature = "debug")]
-        if self.config.debug_infinite_loop {
-            let text = dump(&*s, false);
-
-            if text.lines().count() < 10 {
-                debug!("after: visit_mut_children_with: {}", text);
-            }
-        }
 
         if self.options.drop_debugger {
             if let Stmt::Debugger(..) = s {
@@ -911,11 +1025,29 @@ impl VisitMut for Pure<'_> {
             }
         }
 
+        if !self.ctx.contains(Ctx::PRESERVE_BLOCK) {
+            self.drop_needless_block(s);
+
+            debug_assert_valid(s);
+        }
+
+        self.optimize_empty_try_stmt(s);
+
+        debug_assert_valid(s);
+
+        self.optimize_meaningless_try(s);
+
+        debug_assert_valid(s);
+
+        self.optimize_loops_with_constant_condition(s);
+
+        debug_assert_valid(s);
+
         self.loop_to_for_stmt(s);
 
         debug_assert_valid(s);
 
-        self.drop_instant_break(s);
+        self.handle_instant_break(s);
 
         debug_assert_valid(s);
 
@@ -927,6 +1059,18 @@ impl VisitMut for Pure<'_> {
 
         debug_assert_valid(s);
 
+        self.optimize_body_of_loop_stmt(s);
+
+        debug_assert_valid(s);
+
+        self.optimize_switch_stmt(s);
+
+        debug_assert_valid(s);
+
+        self.compress_if_stmt_as_expr(s);
+
+        debug_assert_valid(s);
+
         if let Stmt::Expr(es) = s {
             if es.expr.is_invalid() {
                 *s = EmptyStmt { span: DUMMY_SP }.into();
@@ -934,12 +1078,27 @@ impl VisitMut for Pure<'_> {
             }
         }
 
-        #[cfg(feature = "debug")]
-        if self.config.debug_infinite_loop {
-            let text = dump(&*s, false);
+        if let Stmt::Block(block) = s {
+            let span = block.span;
+            if let [Stmt::Expr(e), Stmt::Return(ReturnStmt { arg: None, .. })] =
+                &mut block.stmts[..]
+            {
+                // binary expression would need an extra paren
+                if !(e.expr.is_bin() || e.expr.is_assign() || e.expr.is_seq()) {
+                    self.changed = true;
+                    report_change!("sequences: Merge expression with return");
 
-            if text.lines().count() < 10 {
-                debug!("after: visit_mut_stmt: {}", text);
+                    let e = e.expr.take();
+
+                    *s = Stmt::Return(ReturnStmt {
+                        span,
+                        arg: Some(Box::new(Expr::Unary(UnaryExpr {
+                            span: DUMMY_SP,
+                            op: op!("void"),
+                            arg: e,
+                        }))),
+                    })
+                }
             }
         }
 
@@ -957,11 +1116,9 @@ impl VisitMut for Pure<'_> {
             }
         }
 
-        self.visit_par(items);
+        self.visit_par(1, items);
 
         self.handle_stmt_likes(items);
-
-        items.retain(|s| !matches!(s, Stmt::Empty(..)));
 
         #[cfg(debug_assertions)]
         {
@@ -984,14 +1141,33 @@ impl VisitMut for Pure<'_> {
         }
     }
 
-    fn visit_mut_tagged_tpl(&mut self, n: &mut TaggedTpl) {
-        n.tag.visit_mut_with(self);
+    fn visit_mut_switch_cases(&mut self, n: &mut Vec<SwitchCase>) {
+        self.visit_par(4, n);
 
-        n.tpl.exprs.visit_mut_with(self);
+        self.optimize_switch_cases(n);
+    }
+
+    fn visit_mut_tagged_tpl(&mut self, n: &mut TaggedTpl) {
+        self.do_inside_of_context(Ctx::IS_CALLEE, |this| {
+            n.tag.visit_mut_with(this);
+        });
+
+        self.do_outside_of_context(Ctx::IS_CALLEE, |this| {
+            n.tpl.exprs.visit_mut_with(this);
+        });
+    }
+
+    fn visit_mut_throw_stmt(&mut self, s: &mut ThrowStmt) {
+        s.visit_mut_children_with(self);
+
+        self.make_bool_short(&mut s.arg, false, false);
     }
 
     fn visit_mut_tpl(&mut self, n: &mut Tpl) {
-        n.visit_mut_children_with(self);
+        self.do_outside_of_context(Ctx::IS_CALLEE, |this| {
+            n.visit_mut_children_with(this);
+        });
+
         debug_assert_eq!(n.exprs.len() + 1, n.quasis.len());
 
         self.compress_tpl(n);
@@ -1004,11 +1180,9 @@ impl VisitMut for Pure<'_> {
     }
 
     fn visit_mut_try_stmt(&mut self, n: &mut TryStmt) {
-        let ctx = Ctx {
-            _in_try_block: true,
-            ..self.ctx
-        };
-        n.block.visit_mut_with(&mut *self.with_ctx(ctx));
+        self.do_inside_of_context(Ctx::IN_TRY_BLOCK, |this| {
+            n.block.visit_mut_with(this);
+        });
 
         n.handler.visit_mut_with(self);
 
@@ -1016,12 +1190,14 @@ impl VisitMut for Pure<'_> {
     }
 
     fn visit_mut_unary_expr(&mut self, e: &mut UnaryExpr) {
-        {
-            let ctx = Ctx {
-                in_delete: e.op == op!("delete"),
-                ..self.ctx
-            };
-            e.visit_mut_children_with(&mut *self.with_ctx(ctx));
+        if e.op == op!("delete") {
+            self.do_inside_of_context(Ctx::IN_DELETE, |this| {
+                e.visit_mut_children_with(this);
+            })
+        } else {
+            self.do_outside_of_context(Ctx::IN_DELETE, |this| {
+                e.visit_mut_children_with(this);
+            })
         }
 
         match e.op {
@@ -1029,7 +1205,7 @@ impl VisitMut for Pure<'_> {
                 self.optimize_expr_in_bool_ctx(&mut e.arg, false);
             }
 
-            op!(unary, "+") | op!(unary, "-") => {
+            op!(unary, "+") | op!(unary, "-") | op!("~") => {
                 self.optimize_expr_in_num_ctx(&mut e.arg);
             }
             _ => {}
@@ -1037,12 +1213,9 @@ impl VisitMut for Pure<'_> {
     }
 
     fn visit_mut_update_expr(&mut self, e: &mut UpdateExpr) {
-        let ctx = Ctx {
-            is_update_arg: true,
-            ..self.ctx
-        };
-
-        e.visit_mut_children_with(&mut *self.with_ctx(ctx));
+        self.do_inside_of_context(Ctx::IS_UPDATE_ARG, |this| {
+            e.visit_mut_children_with(this);
+        });
     }
 
     fn visit_mut_var_decl(&mut self, v: &mut VarDecl) {
@@ -1053,13 +1226,26 @@ impl VisitMut for Pure<'_> {
         }
     }
 
+    fn visit_mut_var_declarator(&mut self, v: &mut VarDeclarator) {
+        v.visit_mut_children_with(self);
+
+        if let Some(init) = &mut v.init {
+            self.make_bool_short(init, false, false);
+        }
+    }
+
     fn visit_mut_var_declarators(&mut self, nodes: &mut Vec<VarDeclarator>) {
-        self.visit_par(nodes);
+        self.visit_par(8, nodes);
     }
 
     fn visit_mut_while_stmt(&mut self, s: &mut WhileStmt) {
         s.visit_mut_children_with(self);
 
         self.optimize_expr_in_bool_ctx(&mut s.test, false);
+
+        self.make_bool_short(&mut s.test, true, false);
     }
+
+    /// Noop.
+    fn visit_mut_with_stmt(&mut self, _: &mut WithStmt) {}
 }

@@ -1,25 +1,30 @@
 use std::mem;
 
-use swc_common::{
-    collections::AHashSet, comments::Comments, sync::Lrc, util::take::Take, Mark, SourceMap, Span,
-    Spanned,
-};
+use rustc_hash::FxHashSet;
+use swc_atoms::atom;
+use swc_common::{comments::Comments, sync::Lrc, util::take::Take, Mark, SourceMap, Span, Spanned};
 use swc_ecma_ast::*;
 use swc_ecma_transforms_react::{parse_expr_for_jsx, JsxDirectives};
 use swc_ecma_visit::{visit_mut_pass, VisitMut, VisitMutWith};
 
 pub use crate::config::*;
-use crate::{strip_import_export::StripImportExport, strip_type::StripType, transform::transform};
+use crate::{semantic::analyze_program, transform::transform};
+
+macro_rules! static_str {
+    ($s:expr) => {
+        $s.into()
+    };
+}
 
 pub fn typescript(config: Config, unresolved_mark: Mark, top_level_mark: Mark) -> impl Pass {
     debug_assert_ne!(unresolved_mark, top_level_mark);
 
-    visit_mut_pass(TypeScript {
+    TypeScript {
         config,
         unresolved_mark,
         top_level_mark,
         id_usage: Default::default(),
-    })
+    }
 }
 
 pub fn strip(unresolved_mark: Mark, top_level_mark: Mark) -> impl Pass {
@@ -31,50 +36,40 @@ pub(crate) struct TypeScript {
     pub unresolved_mark: Mark,
     pub top_level_mark: Mark,
 
-    id_usage: AHashSet<Id>,
+    id_usage: FxHashSet<Id>,
 }
 
-impl VisitMut for TypeScript {
-    fn visit_mut_program(&mut self, n: &mut Program) {
-        let was_module = n.as_module().and_then(|m| self.get_last_module_span(m));
+impl Pass for TypeScript {
+    fn process(&mut self, n: &mut Program) {
+        let last_module_span = n
+            .as_module()
+            // Flow does not need to restore module context
+            .filter(|_| !self.config.flow_syntax)
+            .and_then(|m| self.get_last_module_span(m));
 
-        if !self.config.verbatim_module_syntax {
-            n.visit_mut_with(&mut StripImportExport {
-                import_not_used_as_values: self.config.import_not_used_as_values,
-                usage_info: mem::take(&mut self.id_usage).into(),
-                ..Default::default()
-            });
-        }
-
-        n.visit_mut_with(&mut StripType::default());
+        let semantic = analyze_program(
+            n,
+            self.unresolved_mark,
+            mem::take(&mut self.id_usage),
+            self.config.flow_syntax,
+        );
 
         n.mutate(transform(
             self.unresolved_mark,
             self.top_level_mark,
+            semantic,
+            self.config.import_not_used_as_values,
             self.config.import_export_assign_config,
             self.config.ts_enum_is_mutable,
             self.config.verbatim_module_syntax,
             self.config.native_class_properties,
+            self.config.flow_syntax,
         ));
 
-        if let Some(span) = was_module {
+        if let Some(span) = last_module_span {
             let module = n.as_mut_module().unwrap();
             Self::restore_esm_ctx(module, span);
         }
-    }
-
-    fn visit_mut_script(&mut self, _: &mut Script) {
-        #[cfg(debug_assertions)]
-        unreachable!("Use Program as entry");
-        #[cfg(not(debug_assertions))]
-        unreachable!();
-    }
-
-    fn visit_mut_module(&mut self, _: &mut Module) {
-        #[cfg(debug_assertions)]
-        unreachable!("Use Program as entry");
-        #[cfg(not(debug_assertions))]
-        unreachable!();
     }
 }
 
@@ -125,6 +120,8 @@ impl EsModuleDecl for ModuleDecl {
             ModuleDecl::TsImportEquals(..)
             | ModuleDecl::TsExportAssignment(..)
             | ModuleDecl::TsNamespaceExport(..) => false,
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         }
     }
 }
@@ -132,7 +129,7 @@ impl EsModuleDecl for ModuleDecl {
 impl EsModuleDecl for ModuleItem {
     fn is_es_module_decl(&self) -> bool {
         self.as_module_decl()
-            .map_or(false, ModuleDecl::is_es_module_decl)
+            .is_some_and(ModuleDecl::is_es_module_decl)
     }
 }
 
@@ -165,7 +162,7 @@ fn id_for_jsx(e: &Expr) -> Option<Id> {
     match e {
         Expr::Ident(i) => Some(i.to_id()),
         Expr::Member(MemberExpr { obj, .. }) => Some(id_for_jsx(obj)).flatten(),
-        Expr::Lit(Lit::Null(..)) => Some(("null".into(), Default::default())),
+        Expr::Lit(Lit::Null(..)) => Some((atom!("null"), Default::default())),
         _ => None,
     }
 }
@@ -176,7 +173,7 @@ where
 {
     config: Config,
     tsx_config: TsxConfig,
-    id_usage: AHashSet<Id>,
+    id_usage: FxHashSet<Id>,
     comments: C,
     cm: Lrc<SourceMap>,
     top_level_mark: Mark,
@@ -199,7 +196,7 @@ where
                 self.tsx_config
                     .pragma
                     .clone()
-                    .unwrap_or_else(|| "React.createElement".to_string()),
+                    .unwrap_or_else(|| static_str!("React.createElement")),
                 self.top_level_mark,
             );
 
@@ -209,7 +206,7 @@ where
                 self.tsx_config
                     .pragma_frag
                     .clone()
-                    .unwrap_or_else(|| "React.Fragment".to_string()),
+                    .unwrap_or_else(|| static_str!("React.Fragment")),
                 self.top_level_mark,
             );
 
@@ -257,7 +254,7 @@ where
     fn visit_mut_program(&mut self, n: &mut Program) {
         n.visit_mut_children_with(self);
 
-        n.visit_mut_with(&mut TypeScript {
+        n.mutate(&mut TypeScript {
             config: mem::take(&mut self.config),
             unresolved_mark: self.unresolved_mark,
             top_level_mark: self.top_level_mark,

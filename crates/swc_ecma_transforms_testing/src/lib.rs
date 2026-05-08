@@ -1,5 +1,4 @@
 #![deny(clippy::all)]
-#![deny(clippy::all)]
 #![deny(unused)]
 #![allow(clippy::result_unit_err)]
 
@@ -27,7 +26,7 @@ use swc_common::{
     FileName, Mark, SourceMap, DUMMY_SP,
 };
 use swc_ecma_ast::*;
-use swc_ecma_codegen::to_code_default;
+use swc_ecma_codegen::{to_code_default, Emitter};
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput, Syntax};
 use swc_ecma_testing::{exec_node_js, JsExecOptions};
 use swc_ecma_transforms_base::{
@@ -84,7 +83,7 @@ impl Tester<'_> {
 
         match out {
             Ok(ret) => ret,
-            Err(stderr) => panic!("Stderr:\n{}", stderr),
+            Err(stderr) => panic!("Stderr:\n{stderr}"),
         }
     }
 
@@ -129,7 +128,7 @@ impl Tester<'_> {
     {
         let fm = self
             .cm
-            .new_source_file(FileName::Real(file_name.into()).into(), src.into());
+            .new_source_file(FileName::Real(file_name.into()).into(), src.to_string());
 
         let mut p = Parser::new(syntax, StringInput::from(&*fm), Some(&self.comments));
         let res = op(&mut p).map_err(|e| e.into_diagnostic(self.handler).emit());
@@ -268,7 +267,7 @@ pub fn test_transform<F, P>(
                     &actual.clone().fold_with(&mut HygieneVisualizer),
                     &tester.comments.clone(),
                 );
-                println!("----- Hygiene -----\n{}", hygiene_src);
+                println!("----- Hygiene -----\n{hygiene_src}");
             }
             _ => {}
         }
@@ -279,7 +278,7 @@ pub fn test_transform<F, P>(
             .apply(fixer::fixer(Some(&tester.comments)));
 
         println!("{:?}", tester.comments);
-        println!("{:?}", expected_comments);
+        println!("{expected_comments:?}");
 
         {
             let (actual_leading, actual_trailing) = tester.comments.borrow_all();
@@ -546,7 +545,7 @@ where
                     &program.clone().fold_with(&mut HygieneVisualizer),
                     &tester.comments.clone(),
                 );
-                println!("----- Hygiene -----\n{}", hygiene_src);
+                println!("----- Hygiene -----\n{hygiene_src}");
             }
             _ => {}
         }
@@ -560,14 +559,11 @@ where
 
         let transformed_src = tester.print(&program, &tester.comments.clone());
 
-        println!(
-            "\t>>>>> Orig <<<<<\n{}\n\t>>>>> Code <<<<<\n{}",
-            input, src_without_helpers
-        );
+        println!("\t>>>>> Orig <<<<<\n{input}\n\t>>>>> Code <<<<<\n{src_without_helpers}");
 
         let expected = stdout_of(input).unwrap();
 
-        println!("\t>>>>> Expected stdout <<<<<\n{}", expected);
+        println!("\t>>>>> Expected stdout <<<<<\n{expected}");
 
         let actual = stdout_of(&transformed_src).unwrap();
 
@@ -593,9 +589,8 @@ where
             Some(true),
             &format!(
                 "it('should work', async function () {{
-                    {}
-                }})",
-                input
+                    {input}
+                }})"
             ),
         )?;
         match ::std::env::var("PRINT_HYGIENE") {
@@ -604,7 +599,7 @@ where
                     &program.clone().fold_with(&mut HygieneVisualizer),
                     &tester.comments.clone(),
                 );
-                println!("----- Hygiene -----\n{}", hygiene_src);
+                println!("----- Hygiene -----\n{hygiene_src}");
             }
             _ => {}
         }
@@ -644,7 +639,7 @@ fn exec_with_node_test_runner(src: &str) -> Result<(), ()> {
     create_dir_all(&root).expect("failed to create parent directory for temp directory");
 
     let hash = calc_hash(src);
-    let success_cache = root.join(format!("{}.success", hash));
+    let success_cache = root.join(format!("{hash}.success"));
 
     if env::var("SWC_CACHE_TEST").unwrap_or_default() == "1" {
         println!("Trying cache as `SWC_CACHE_TEST` is `1`");
@@ -658,7 +653,7 @@ fn exec_with_node_test_runner(src: &str) -> Result<(), ()> {
     let tmp_dir = tempdir_in(&root).expect("failed to create a temp directory");
     create_dir_all(&tmp_dir).unwrap();
 
-    let path = tmp_dir.path().join(format!("{}.test.js", hash));
+    let path = tmp_dir.path().join(format!("{hash}.test.js"));
 
     let mut tmp = OpenOptions::new()
         .create(true)
@@ -666,7 +661,7 @@ fn exec_with_node_test_runner(src: &str) -> Result<(), ()> {
         .write(true)
         .open(&path)
         .expect("failed to create a temp file");
-    write!(tmp, "{}", src).expect("failed to write to temp file");
+    write!(tmp, "{src}").expect("failed to write to temp file");
     tmp.flush().unwrap();
 
     let test_runner_path = find_executable("mocha").expect("failed to find `mocha` from path");
@@ -800,9 +795,10 @@ where
             eprintln!("Using options.json at {}", file.display());
             eprintln!("----- {} -----\n{}", Color::Green.paint("Options"), v);
 
-            return Some(serde_json::from_str(&v).unwrap_or_else(|err| {
-                panic!("failed to deserialize options.json: {}\n{}", err, v)
-            }));
+            return Some(
+                serde_json::from_str(&v)
+                    .unwrap_or_else(|err| panic!("failed to deserialize options.json: {err}\n{v}")),
+            );
         }
 
         None
@@ -823,7 +819,7 @@ where
     }
 
     serde_json::from_value(serde_json::Value::Object(value.clone()))
-        .unwrap_or_else(|err| panic!("failed to deserialize options.json: {}\n{:?}", err, value))
+        .unwrap_or_else(|err| panic!("failed to deserialize options.json: {err}\n{value:?}"))
 }
 
 /// Config for [test_fixture]. See [test_fixture] for documentation.
@@ -880,24 +876,74 @@ fn test_fixture_inner<'a>(
 ) {
     let _logger = testing::init();
 
+    let update = env::var("UPDATE").unwrap_or_default() == "1";
+
     let expected = read_to_string(output);
-    let _is_really_expected = expected.is_ok();
+    let is_really_expected = expected.is_ok();
     let expected = expected.unwrap_or_default();
 
-    let expected_src = Tester::run(|tester| {
-        let expected_program =
-            tester.apply_transform(noop_pass(), "expected.js", syntax, config.module, &expected)?;
+    // When UPDATE=1 is set and the expected output file contains invalid code,
+    // we should not update the file. Use run_captured to handle parse errors
+    // gracefully.
+    let (expected_src, expected_valid) = if update && is_really_expected && !expected.is_empty() {
+        let (result, _stderr) = Tester::run_captured(|tester| {
+            let expected_program = tester.apply_transform(
+                noop_pass(),
+                "expected.js",
+                syntax,
+                config.module,
+                &expected,
+            )?;
 
-        let expected_src = tester.print(&expected_program, &tester.comments.clone());
+            let expected_src = tester.print(&expected_program, &tester.comments.clone());
 
-        println!(
-            "----- {} -----\n{}",
-            Color::Green.paint("Expected"),
-            expected_src
-        );
+            println!(
+                "----- {} -----\n{}",
+                Color::Green.paint("Expected"),
+                expected_src
+            );
 
-        Ok(expected_src)
-    });
+            Ok(expected_src)
+        });
+
+        match result {
+            Some(src) => (src, true),
+            None => {
+                // Expected file contains invalid code. When UPDATE=1, we should not
+                // update the file. Print a warning and skip the comparison.
+                eprintln!(
+                    "----- {} -----",
+                    Color::Red.paint("Warning: expected output file contains invalid code")
+                );
+                eprintln!(
+                    "Skipping update for {} because it contains invalid code.",
+                    output.display()
+                );
+                (String::new(), false)
+            }
+        }
+    } else {
+        let expected_src = Tester::run(|tester| {
+            let expected_program = tester.apply_transform(
+                noop_pass(),
+                "expected.js",
+                syntax,
+                config.module,
+                &expected,
+            )?;
+
+            let expected_src = tester.print(&expected_program, &tester.comments.clone());
+
+            println!(
+                "----- {} -----\n{}",
+                Color::Green.paint("Expected"),
+                expected_src
+            );
+
+            Ok(expected_src)
+        });
+        (expected_src, true)
+    };
 
     let mut src_map = if config.sourcemap {
         Some(Vec::new())
@@ -942,15 +988,33 @@ fn test_fixture_inner<'a>(
             let module = &actual;
             let comments: &Rc<SingleThreadedComments> = &tester.comments.clone();
 
-            if let Some(src_map) = &mut src_map {
-                sourcemap = Some(tester.cm.build_source_map_with_config(
-                    src_map,
-                    None,
-                    SourceMapConfigImpl,
-                ));
+            let mut buf = vec![];
+            {
+                let mut emitter = Emitter {
+                    cfg: Default::default(),
+                    cm: tester.cm.clone(),
+                    wr: Box::new(swc_ecma_codegen::text_writer::JsWriter::new(
+                        tester.cm.clone(),
+                        "\n",
+                        &mut buf,
+                        src_map.as_mut(),
+                    )),
+                    comments: Some(comments),
+                };
+
+                // println!("Emitting: {:?}", module);
+                emitter.emit_program(module).unwrap();
             }
 
-            to_code_default(tester.cm.clone(), Some(comments), module)
+            if let Some(src_map) = &mut src_map {
+                sourcemap = Some(
+                    tester
+                        .cm
+                        .build_source_map(src_map, None, SourceMapConfigImpl),
+                );
+            }
+
+            String::from_utf8(buf).expect("codegen generated non-utf8 output")
         };
 
         Ok(actual_src)
@@ -961,18 +1025,20 @@ fn test_fixture_inner<'a>(
             .compare_to_file(output.with_extension("stderr"))
             .unwrap();
     } else if !stderr.is_empty() {
-        panic!("stderr: {}", stderr);
+        panic!("stderr: {stderr}");
     }
 
     if let Some(actual_src) = actual_src {
-        eprintln!("{}", actual_src);
+        eprintln!("{actual_src}");
 
         if let Some(sourcemap) = &sourcemap {
             eprintln!("----- ----- ----- ----- -----");
             eprintln!("SourceMap: {}", visualizer_url(&actual_src, sourcemap));
         }
 
-        if actual_src != expected_src {
+        // Skip comparison/update if the expected file contains invalid code
+        // and UPDATE=1 is set
+        if expected_valid && actual_src != expected_src {
             NormalizedOutput::from(actual_src)
                 .compare_to_file(output)
                 .unwrap();
@@ -992,7 +1058,7 @@ fn test_fixture_inner<'a>(
 }
 
 /// Creates a url for https://evanw.github.io/source-map-visualization/
-fn visualizer_url(code: &str, map: &sourcemap::SourceMap) -> String {
+fn visualizer_url(code: &str, map: &swc_sourcemap::SourceMap) -> String {
     let map = {
         let mut buf = Vec::new();
         map.to_writer(&mut buf).unwrap();
@@ -1001,9 +1067,9 @@ fn visualizer_url(code: &str, map: &sourcemap::SourceMap) -> String {
 
     let code_len = format!("{}\0", code.len());
     let map_len = format!("{}\0", map.len());
-    let hash = BASE64_STANDARD.encode(format!("{}{}{}{}", code_len, code, map_len, map));
+    let hash = BASE64_STANDARD.encode(format!("{code_len}{code}{map_len}{map}"));
 
-    format!("https://evanw.github.io/source-map-visualization/#{}", hash)
+    format!("https://evanw.github.io/source-map-visualization/#{hash}")
 }
 
 struct SourceMapConfigImpl;

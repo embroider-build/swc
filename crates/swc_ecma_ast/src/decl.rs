@@ -14,6 +14,7 @@ use crate::{
 #[ast_node]
 #[derive(Eq, Hash, Is, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum Decl {
     #[tag("ClassDeclaration")]
     Class(ClassDecl),
@@ -96,6 +97,7 @@ impl Take for Decl {
 #[ast_node("FunctionDeclaration")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct FnDecl {
     #[cfg_attr(feature = "serde-impl", serde(rename = "identifier"))]
     pub ident: Ident,
@@ -121,6 +123,7 @@ impl Take for FnDecl {
 #[ast_node("ClassDeclaration")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ClassDecl {
     #[cfg_attr(feature = "serde-impl", serde(rename = "identifier"))]
     pub ident: Ident,
@@ -146,6 +149,7 @@ impl Take for ClassDecl {
 #[ast_node("VariableDeclaration")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct VarDecl {
     pub span: Span,
 
@@ -172,8 +176,14 @@ impl Take for VarDecl {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(u32)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(u32))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::swc_common::Encode, ::swc_common::Decode)
+)]
+#[cfg_attr(swc_ast_unknown, non_exhaustive)]
 pub enum VarDeclKind {
     /// `var`
     #[default]
@@ -187,6 +197,7 @@ pub enum VarDeclKind {
 #[ast_node("VariableDeclarator")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct VarDeclarator {
     pub span: Span,
     #[cfg_attr(feature = "serde-impl", serde(rename = "id"))]
@@ -194,6 +205,10 @@ pub struct VarDeclarator {
 
     /// Initialization expression.
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub init: Option<Box<Expr>>,
 
     /// Typescript only
@@ -215,6 +230,7 @@ impl Take for VarDeclarator {
 #[ast_node("UsingDeclaration")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct UsingDecl {
     #[cfg_attr(feature = "serde-impl", serde(default))]
     pub span: Span,

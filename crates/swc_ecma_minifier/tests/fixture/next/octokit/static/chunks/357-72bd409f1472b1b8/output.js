@@ -1,18 +1,14 @@
 export default function(module, __unused_webpack_exports, __webpack_require__) {
-    var factory;
-    factory = function() {
+    module.exports = function() {
         'use strict';
-        var commonjsGlobal = 'undefined' != typeof globalThis ? globalThis : 'undefined' != typeof window ? window : void 0 !== __webpack_require__.g ? __webpack_require__.g : 'undefined' != typeof self ? self : {}, parser = {
-            load: function(received, defaults, onto = {}) {
-                var k, ref, v;
-                for(k in defaults)v = defaults[k], onto[k] = null != (ref = received[k]) ? ref : v;
-                return onto;
-            },
-            overwrite: function(received, defaults, onto = {}) {
-                var k, v;
-                for(k in received)v = received[k], void 0 !== defaults[k] && (onto[k] = v);
-                return onto;
-            }
+        var commonjsGlobal = "u" > typeof globalThis ? globalThis : "u" > typeof window ? window : void 0 !== __webpack_require__.g ? __webpack_require__.g : "u" > typeof self ? self : {}, parser_load = function(received, defaults, onto = {}) {
+            var k, ref, v;
+            for(k in defaults)v = defaults[k], onto[k] = null != (ref = received[k]) ? ref : v;
+            return onto;
+        }, parser_overwrite = function(received, defaults, onto = {}) {
+            var k, v;
+            for(k in received)v = received[k], void 0 !== defaults[k] && (onto[k] = v);
+            return onto;
         };
         DLList = class {
             constructor(incr, decr){
@@ -123,10 +119,12 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
             shiftLastFrom(priority) {
                 return this.getFirst(this._lists.slice(priority).reverse()).shift();
             }
-        }, BottleneckError = class extends Error {
-        }, Job = class {
+        };
+        var BottleneckError_1 = class extends Error {
+        };
+        Job = class {
             constructor(task, args, options, jobDefaults, rejectOnDrop, Events, _states, Promise1){
-                this.task = task, this.args = args, this.rejectOnDrop = rejectOnDrop, this.Events = Events, this._states = _states, this.Promise = Promise1, this.options = parser.load(options, jobDefaults), this.options.priority = this._sanitizePriority(this.options.priority), this.options.id === jobDefaults.id && (this.options.id = `${this.options.id}-${this._randomIndex()}`), this.promise = new this.Promise((_resolve, _reject)=>{
+                this.task = task, this.args = args, this.rejectOnDrop = rejectOnDrop, this.Events = Events, this._states = _states, this.Promise = Promise1, this.options = parser_load(options, jobDefaults), this.options.priority = this._sanitizePriority(this.options.priority), this.options.id === jobDefaults.id && (this.options.id = `${this.options.id}-${this._randomIndex()}`), this.promise = new this.Promise((_resolve, _reject)=>{
                     this._resolve = _resolve, this._reject = _reject;
                 }), this.retryCount = 0;
             }
@@ -138,7 +136,7 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
                 return Math.random().toString(36).slice(2);
             }
             doDrop({ error, message = "This job has been dropped by Bottleneck" } = {}) {
-                return !!this._states.remove(this.options.id) && (this.rejectOnDrop && this._reject(null != error ? error : new BottleneckError(message)), this.Events.trigger("dropped", {
+                return !!this._states.remove(this.options.id) && (this.rejectOnDrop && this._reject(null != error ? error : new BottleneckError_1(message)), this.Events.trigger("dropped", {
                     args: this.args,
                     options: this.options,
                     task: this.task,
@@ -147,7 +145,7 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
             }
             _assertStatus(expected) {
                 var status;
-                if (!((status = this._states.jobStatus(this.options.id)) === expected || "DONE" === expected && null === status)) throw new BottleneckError(`Invalid job status ${status}, expected ${expected}. Please open an issue at https://github.com/SGrondin/bottleneck/issues`);
+                if ((status = this._states.jobStatus(this.options.id)) !== expected && ("DONE" !== expected || null !== status)) throw new BottleneckError_1(`Invalid job status ${status}, expected ${expected}. Please open an issue at https://github.com/SGrondin/bottleneck/issues`);
             }
             doReceive() {
                 return this._states.start(this.options.id), this.Events.trigger("received", {
@@ -188,7 +186,7 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
                     args: this.args,
                     options: this.options,
                     retryCount: this.retryCount
-                }, error = new BottleneckError(`This job timed out after ${this.options.expiration} ms.`), this._onFailure(error, eventInfo, clearGlobalState, run, free);
+                }, error = new BottleneckError_1(`This job timed out after ${this.options.expiration} ms.`), this._onFailure(error, eventInfo, clearGlobalState, run, free);
             }
             async _onFailure(error, eventInfo, clearGlobalState, run, free) {
                 var retry, retryAfter;
@@ -199,7 +197,7 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
             }
         }, LocalDatastore = class {
             constructor(instance, storeOptions, storeInstanceOptions){
-                this.instance = instance, this.storeOptions = storeOptions, this.clientId = this.instance._randomIndex(), parser.load(storeInstanceOptions, storeInstanceOptions, this), this._nextRequest = this._lastReservoirRefresh = this._lastReservoirIncrease = Date.now(), this._running = 0, this._done = 0, this._unblockTime = 0, this.ready = this.Promise.resolve(), this.clients = {}, this._startHeartbeat();
+                this.instance = instance, this.storeOptions = storeOptions, this.clientId = this.instance._randomIndex(), parser_load(storeInstanceOptions, storeInstanceOptions, this), this._nextRequest = this._lastReservoirRefresh = this._lastReservoirIncrease = Date.now(), this._running = 0, this._done = 0, this._unblockTime = 0, this.ready = this.Promise.resolve(), this.clients = {}, this._startHeartbeat();
             }
             _startHeartbeat() {
                 var base;
@@ -224,7 +222,7 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
                 return null != (ref = this.storeOptions.penalty) ? ref : 15 * this.storeOptions.minTime || 5000;
             }
             async __updateSettings__(options) {
-                return await this.yieldLoop(), parser.overwrite(options, options, this.storeOptions), this._startHeartbeat(), this.instance._drainAll(this.computeCapacity()), !0;
+                return await this.yieldLoop(), parser_overwrite(options, options, this.storeOptions), this._startHeartbeat(), this.instance._drainAll(this.computeCapacity()), !0;
             }
             async __running__() {
                 return await this.yieldLoop(), this._running;
@@ -278,7 +276,7 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
             }
             async __submit__(queueLength, weight) {
                 var blocked, now, reachedHWM;
-                if (await this.yieldLoop(), null != this.storeOptions.maxConcurrent && weight > this.storeOptions.maxConcurrent) throw new BottleneckError(`Impossible to add a job having a weight of ${weight} to a limiter having a maxConcurrent setting of ${this.storeOptions.maxConcurrent}`);
+                if (await this.yieldLoop(), null != this.storeOptions.maxConcurrent && weight > this.storeOptions.maxConcurrent) throw new BottleneckError_1(`Impossible to add a job having a weight of ${weight} to a limiter having a maxConcurrent setting of ${this.storeOptions.maxConcurrent}`);
                 return now = Date.now(), reachedHWM = null != this.storeOptions.highWater && queueLength === this.storeOptions.highWater && !this.check(weight, now), (blocked = this.strategyIsBlock() && (reachedHWM || this.isBlocked(now))) && (this._unblockTime = now + this.computePenalty(), this._nextRequest = this._unblockTime + this.storeOptions.minTime, this.instance._dropAllQueued()), {
                     reachedHWM,
                     blocked,
@@ -314,7 +312,7 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
             statusJobs(status) {
                 var k, pos, ref, results;
                 if (null == status) return Object.keys(this._jobs);
-                if ((pos = this.status.indexOf(status)) < 0) throw new BottleneckError(`status must be one of ${this.status.join(', ')}`);
+                if ((pos = this.status.indexOf(status)) < 0) throw new BottleneckError_1(`status must be one of ${this.status.join(', ')}`);
                 for(k in ref = this._jobs, results = [], ref)ref[k] === pos && results.push(k);
                 return results;
             }
@@ -363,22 +361,19 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
         Scripts$1 = ()=>console.log('You must import the full version of Bottleneck in order to use this feature.'), Group = (function() {
             class Group {
                 constructor(limiterOptions = {}){
-                    this.deleteKey = this.deleteKey.bind(this), this.limiterOptions = limiterOptions, parser.load(this.limiterOptions, this.defaults, this), this.Events = new Events(this), this.instances = {}, this.Bottleneck = Bottleneck_1, this._startAutoCleanup(), this.sharedConnection = null != this.connection, null == this.connection && ("redis" === this.limiterOptions.datastore ? this.connection = new require$$2(Object.assign({}, this.limiterOptions, {
+                    this.deleteKey = this.deleteKey.bind(this), this.limiterOptions = limiterOptions, parser_load(this.limiterOptions, this.defaults, this), this.Events = new Events(this), this.instances = {}, this.Bottleneck = Bottleneck_1, this._startAutoCleanup(), this.sharedConnection = null != this.connection, null == this.connection && ("redis" === this.limiterOptions.datastore ? this.connection = new require$$2(Object.assign({}, this.limiterOptions, {
                         Events: this.Events
                     })) : "ioredis" === this.limiterOptions.datastore && (this.connection = new require$$3(Object.assign({}, this.limiterOptions, {
                         Events: this.Events
                     }))));
                 }
                 key(key = "") {
-                    var ref;
-                    return null != (ref = this.instances[key]) ? ref : (()=>{
-                        var limiter;
-                        return limiter = this.instances[key] = new this.Bottleneck(Object.assign(this.limiterOptions, {
-                            id: `${this.id}-${key}`,
-                            timeout: this.timeout,
-                            connection: this.connection
-                        })), this.Events.trigger("created", limiter, key), limiter;
-                    })();
+                    var ref, limiter;
+                    return null != (ref = this.instances[key]) ? ref : (limiter = this.instances[key] = new this.Bottleneck(Object.assign(this.limiterOptions, {
+                        id: `${this.id}-${key}`,
+                        timeout: this.timeout,
+                        connection: this.connection
+                    })), this.Events.trigger("created", limiter, key), limiter);
                 }
                 async deleteKey(key = "") {
                     var deleted, instance;
@@ -401,14 +396,14 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
                 async clusterKeys() {
                     var cursor, found, i, k, keys, len, next, start;
                     if (null == this.connection) return this.Promise.resolve(this.keys());
-                    for(keys = [], cursor = null, start = `b_${this.id}-`.length; 0 !== cursor;)for(i = 0, [next, found] = await this.connection.__runCommand__([
+                    for(keys = [], cursor = null, start = `b_${this.id}-`.length; 0 !== cursor;)for([next, found] = await this.connection.__runCommand__([
                         "scan",
                         null != cursor ? cursor : 0,
                         "match",
                         `b_${this.id}-*_settings`,
                         "count",
                         10000
-                    ]), cursor = ~~next, len = found.length; i < len; i++)k = found[i], keys.push(k.slice(start, -9));
+                    ]), cursor = ~~next, i = 0, len = found.length; i < len; i++)k = found[i], keys.push(k.slice(start, -9));
                     return keys;
                 }
                 _startAutoCleanup() {
@@ -427,7 +422,7 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
                     }, this.timeout / 2)).unref ? base.unref() : void 0;
                 }
                 updateSettings(options = {}) {
-                    if (parser.overwrite(options, this.defaults, this), parser.overwrite(options, options, this.limiterOptions), null != options.timeout) return this._startAutoCleanup();
+                    if (parser_overwrite(options, this.defaults, this), parser_overwrite(options, options, this.limiterOptions), null != options.timeout) return this._startAutoCleanup();
                 }
                 disconnect(flush = !0) {
                     var ref;
@@ -443,7 +438,7 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
         }).call(commonjsGlobal), Batcher = (function() {
             class Batcher {
                 constructor(options = {}){
-                    this.options = options, parser.load(this.options, this.defaults, this), this.Events = new Events(this), this._arr = [], this._resetPromise(), this._lastFlush = Date.now();
+                    this.options = options, parser_load(this.options, this.defaults, this), this.Events = new Events(this), this._arr = [], this._resetPromise(), this._lastFlush = Date.now();
                 }
                 _resetPromise() {
                     return this._promise = new this.Promise((res, rej)=>this._resolve = res);
@@ -462,22 +457,22 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
                 Promise: Promise
             }, Batcher;
         }).call(commonjsGlobal);
-        var DLList, Events, Queues, BottleneckError, Job, LocalDatastore, States, Sync, Group, Scripts$1, Batcher, RedisDatastore$1, require$$8 = version$2 && version$2.default || version$2, splice = [].splice;
+        var DLList, Events, Queues, Job, LocalDatastore, States, Sync, Group, Scripts$1, Batcher, RedisDatastore$1, require$$8 = version$2 && version$2.default || version$2, splice = [].splice;
         RedisDatastore$1 = ()=>console.log('You must import the full version of Bottleneck in order to use this feature.');
         var Bottleneck_1 = (function() {
             class Bottleneck {
                 constructor(options = {}, ...invalid){
                     var storeOptions;
-                    this._addToQueue = this._addToQueue.bind(this), this._validateOptions(options, invalid), parser.load(options, this.instanceDefaults, this), this._queues = new Queues(10), this._scheduled = {}, this._states = new States([
+                    this._addToQueue = this._addToQueue.bind(this), this._validateOptions(options, invalid), parser_load(options, this.instanceDefaults, this), this._queues = new Queues(10), this._scheduled = {}, this._states = new States([
                         "RECEIVED",
                         "QUEUED",
                         "RUNNING",
                         "EXECUTING"
                     ].concat(this.trackDoneStatus ? [
                         "DONE"
-                    ] : [])), this._limiter = null, this.Events = new Events(this), this._submitLock = new Sync("submit", this.Promise), this._registerLock = new Sync("register", this.Promise), storeOptions = parser.load(options, this.storeDefaults, {}), this._store = (function() {
-                        if ("redis" === this.datastore || "ioredis" === this.datastore || null != this.connection) return new RedisDatastore$1(this, storeOptions, parser.load(options, this.redisStoreDefaults, {}));
-                        if ("local" === this.datastore) return new LocalDatastore(this, storeOptions, parser.load(options, this.localStoreDefaults, {}));
+                    ] : [])), this._limiter = null, this.Events = new Events(this), this._submitLock = new Sync("submit", this.Promise), this._registerLock = new Sync("register", this.Promise), storeOptions = parser_load(options, this.storeDefaults, {}), this._store = (function() {
+                        if ("redis" === this.datastore || "ioredis" === this.datastore || null != this.connection) return new RedisDatastore$1(this, storeOptions, parser_load(options, this.redisStoreDefaults, {}));
+                        if ("local" === this.datastore) return new LocalDatastore(this, storeOptions, parser_load(options, this.localStoreDefaults, {}));
                         throw new Bottleneck.prototype.BottleneckError(`Invalid datastore type: ${this.datastore}`);
                     }).call(this), this._queues.on("leftzero", ()=>{
                         var ref;
@@ -488,7 +483,7 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
                     });
                 }
                 _validateOptions(options, invalid) {
-                    if (!(null != options && "object" == typeof options && 0 === invalid.length)) throw new Bottleneck.prototype.BottleneckError("Bottleneck v2 takes a single object argument. Refer to https://github.com/SGrondin/bottleneck#upgrading-to-v2 if you're upgrading from Bottleneck v1.");
+                    if (null == options || "object" != typeof options || 0 !== invalid.length) throw new Bottleneck.prototype.BottleneckError("Bottleneck v2 takes a single object argument. Refer to https://github.com/SGrondin/bottleneck#upgrading-to-v2 if you're upgrading from Bottleneck v1.");
                 }
                 ready() {
                     return this._store.ready;
@@ -565,7 +560,7 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
                 _drainOne(capacity) {
                     return this._registerLock.schedule(()=>{
                         var args, index, next, options, queue;
-                        return 0 === this.queued() ? this.Promise.resolve(null) : (queue = this._queues.getFirst(), { options, args } = next = queue.first(), null != capacity && options.weight > capacity) ? this.Promise.resolve(null) : (this.Events.trigger("debug", `Draining ${options.id}`, {
+                        return 0 === this.queued() || (queue = this._queues.getFirst(), { options, args } = next = queue.first(), null != capacity && options.weight > capacity) ? this.Promise.resolve(null) : (this.Events.trigger("debug", `Draining ${options.id}`, {
                             args,
                             options
                         }), index = this._randomIndex(), this._store.__register__(index, options.weight, options.expiration).then(({ success, wait, reservoir })=>{
@@ -579,10 +574,7 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
                     });
                 }
                 _drainAll(capacity, total = 0) {
-                    return this._drainOne(capacity).then((drained)=>{
-                        var newCapacity;
-                        return null != drained ? (newCapacity = null != capacity ? capacity - drained : capacity, this._drainAll(newCapacity, total + drained)) : this.Promise.resolve(total);
-                    }).catch((e)=>this.Events.trigger("error", e));
+                    return this._drainOne(capacity).then((drained)=>null != drained ? this._drainAll(null != capacity ? capacity - drained : capacity, total + drained) : this.Promise.resolve(total)).catch((e)=>this.Events.trigger("error", e));
                 }
                 _dropAllQueued(message) {
                     return this._queues.shiftAll(function(job) {
@@ -593,7 +585,7 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
                 }
                 stop(options = {}) {
                     var done, waitForExecuting;
-                    return options = parser.load(options, this.stopDefaults), waitForExecuting = (at)=>{
+                    return options = parser_load(options, this.stopDefaults), waitForExecuting = (at)=>{
                         var finished;
                         return finished = ()=>{
                             var counts;
@@ -639,7 +631,7 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
                 }
                 submit(...args) {
                     var cb, fn, job, options, ref, ref1;
-                    return "function" == typeof args[0] ? (ref = args, [fn, ...args] = ref, [cb] = splice.call(args, -1), options = parser.load({}, this.jobDefaults)) : (ref1 = args, [options, fn, ...args] = ref1, [cb] = splice.call(args, -1), options = parser.load(options, this.jobDefaults)), (job = new Job((...args)=>new this.Promise(function(resolve, reject) {
+                    return "function" == typeof args[0] ? (ref = args, [fn, ...args] = ref, [cb] = splice.call(args, -1), options = parser_load({}, this.jobDefaults)) : (ref1 = args, [options, fn, ...args] = ref1, [cb] = splice.call(args, -1), options = parser_load(options, this.jobDefaults)), (job = new Job((...args)=>new this.Promise(function(resolve, reject) {
                             return fn(...args, function(...args) {
                                 return (null != args[0] ? reject : resolve)(args);
                             });
@@ -662,7 +654,7 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
                     }, wrapped;
                 }
                 async updateSettings(options = {}) {
-                    return await this._store.__updateSettings__(parser.overwrite(options, this.storeDefaults)), parser.overwrite(options, this.instanceDefaults, this), this;
+                    return await this._store.__updateSettings__(parser_overwrite(options, this.storeDefaults)), parser_overwrite(options, this.instanceDefaults, this), this;
                 }
                 currentReservoir() {
                     return this._store.__currentReservoir__();
@@ -676,7 +668,7 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
                 OVERFLOW: 2,
                 OVERFLOW_PRIORITY: 4,
                 BLOCK: 3
-            }, Bottleneck.BottleneckError = Bottleneck.prototype.BottleneckError = BottleneckError, Bottleneck.Group = Bottleneck.prototype.Group = Group, Bottleneck.RedisConnection = Bottleneck.prototype.RedisConnection = require$$2, Bottleneck.IORedisConnection = Bottleneck.prototype.IORedisConnection = require$$3, Bottleneck.Batcher = Bottleneck.prototype.Batcher = Batcher, Bottleneck.prototype.jobDefaults = {
+            }, Bottleneck.BottleneckError = Bottleneck.prototype.BottleneckError = BottleneckError_1, Bottleneck.Group = Bottleneck.prototype.Group = Group, Bottleneck.RedisConnection = Bottleneck.prototype.RedisConnection = require$$2, Bottleneck.IORedisConnection = Bottleneck.prototype.IORedisConnection = require$$3, Bottleneck.Batcher = Bottleneck.prototype.Batcher = Batcher, Bottleneck.prototype.jobDefaults = {
                 priority: 5,
                 weight: 1,
                 expiration: null,
@@ -721,5 +713,5 @@ export default function(module, __unused_webpack_exports, __webpack_require__) {
             }, Bottleneck;
         }).call(commonjsGlobal);
         return Bottleneck_1;
-    }, module.exports = factory();
-/***/ }
+    }();
+/***/ };

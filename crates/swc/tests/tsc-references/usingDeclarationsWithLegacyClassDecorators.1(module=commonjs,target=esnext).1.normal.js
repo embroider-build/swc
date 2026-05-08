@@ -12,10 +12,9 @@ const env = {
     hasError: false
 };
 try {
-    const before = _ts_add_disposable_resource._(env, null, false);
-    ;
-    class C {
-    }
+    var before = _ts_add_disposable_resource._(env, null, false);
+    var C = class C {
+    };
     C = _ts_decorate._([
         dec
     ], C);

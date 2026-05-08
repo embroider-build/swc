@@ -158,7 +158,7 @@ impl<'de> Deserialize<'de> for Version {
     }
 }
 
-pub fn should_enable(target: Versions, feature: Versions, default: bool) -> bool {
+pub fn should_enable(target: &Versions, feature: &Versions, default: bool) -> bool {
     if target
         .iter()
         .zip(feature.iter())
@@ -169,7 +169,7 @@ pub fn should_enable(target: Versions, feature: Versions, default: bool) -> bool
 
     target.iter().zip(feature.iter()).any(
         |((target_name, maybe_target_version), (_, maybe_feature_version))| {
-            maybe_target_version.map_or(false, |target_version| {
+            maybe_target_version.is_some_and(|target_version| {
                 let feature_or_fallback_version =
                     maybe_feature_version.or_else(|| match target_name {
                         // Fall back to Chrome versions if Android browser data
@@ -193,11 +193,11 @@ mod tests {
     #[test]
     fn should_enable_android_falls_back_to_chrome() {
         assert!(!should_enable(
-            BrowserData {
+            &BrowserData {
                 android: Some("51.0.0".parse().unwrap()),
                 ..Default::default()
             },
-            BrowserData {
+            &BrowserData {
                 chrome: Some("51.0.0".parse().unwrap()),
                 ..Default::default()
             },

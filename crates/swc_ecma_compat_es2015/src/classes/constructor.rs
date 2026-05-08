@@ -1,10 +1,10 @@
 use std::mem;
 
-use swc_common::{util::take::Take, Spanned, SyntaxContext, DUMMY_SP};
+use swc_common::{util::take::Take, Span, Spanned, SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_transforms_base::{helper, helper_expr};
 use swc_ecma_transforms_classes::super_field::SuperFieldAccessFolder;
-use swc_ecma_utils::{default_constructor, private_ident, quote_ident, ExprFactory};
+use swc_ecma_utils::{default_constructor_with_span, private_ident, quote_ident, ExprFactory};
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
 use swc_trace_macro::swc_trace;
 use tracing::debug;
@@ -12,13 +12,15 @@ use tracing::debug;
 use super::Config;
 
 pub(super) fn fold_constructor(
+    class_span: Span,
     constructor: Option<Constructor>,
     class_name: &Ident,
     class_super_name: &Option<Ident>,
     config: Config,
 ) -> FnDecl {
     let is_derived = class_super_name.is_some();
-    let mut constructor = constructor.unwrap_or_else(|| default_constructor(is_derived));
+    let mut constructor =
+        constructor.unwrap_or_else(|| default_constructor_with_span(is_derived, class_span));
 
     // Black magic to detect injected constructor.
     let is_constructor_default = constructor.span.is_dummy();
@@ -58,7 +60,7 @@ pub(super) fn fold_constructor(
     let mut body = constructor.body.take().unwrap();
     if let Some(class_super_name) = class_super_name {
         let is_last_super = (&*body.stmts).is_super_last_call();
-        let is_last_return = body.stmts.last().map_or(false, Stmt::is_return_stmt);
+        let is_last_return = body.stmts.last().is_some_and(Stmt::is_return_stmt);
 
         let mut constructor_folder = ConstructorFolder {
             class_key_init: vec![],
@@ -537,7 +539,7 @@ impl SuperLastCall for &[Stmt] {
         self.iter()
             .rev()
             .find(|s| !s.is_empty())
-            .map_or(false, |s| s.is_super_last_call())
+            .is_some_and(|s| s.is_super_last_call())
     }
 }
 
@@ -560,7 +562,7 @@ impl SuperLastCall for &Expr {
             }) => true,
             Expr::Paren(ParenExpr { expr, .. }) => (&**expr).is_super_last_call(),
             Expr::Seq(SeqExpr { exprs, .. }) => {
-                exprs.last().map_or(false, |e| (&**e).is_super_last_call())
+                exprs.last().is_some_and(|e| (&**e).is_super_last_call())
             }
             _ => false,
         }

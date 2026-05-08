@@ -1,30 +1,32 @@
-#[cfg(feature = "debug")]
-use std::fmt::{self, Debug, Display, Formatter};
+use std::borrow::Cow;
 #[cfg(feature = "debug")]
 use std::thread;
-use std::{borrow::Cow, fmt::Write, time::Instant};
 
 #[cfg(feature = "pretty_assertions")]
 use pretty_assertions::assert_eq;
-use swc_common::pass::{CompilerPass, Optional, Repeated};
+use swc_common::pass::{CompilerPass, Repeated};
 use swc_ecma_ast::*;
-use swc_ecma_transforms_optimization::simplify::{
-    dead_branch_remover, expr_simplifier, ExprSimplifierConfig,
-};
-use swc_ecma_usage_analyzer::{analyzer::UsageAnalyzer, marks::Marks};
-use swc_ecma_visit::{noop_visit_mut_type, visit_mut_pass, VisitMut, VisitMutWith, VisitWith};
+use swc_ecma_visit::VisitMutWith;
+#[cfg(debug_assertions)]
+use swc_ecma_visit::VisitWith;
 use swc_timer::timer;
-use tracing::{debug, error};
+use tracing::debug;
 
 pub(crate) use self::pure::{pure_optimizer, PureOptimizerConfig};
-use self::{hoist_decls::DeclHoisterConfig, optimize::optimizer};
+use self::{
+    hoist_decls::DeclHoisterConfig,
+    optimize::{optimizer, StaticAliasState},
+};
+#[cfg(debug_assertions)]
+use crate::debug::AssertValid;
 use crate::{
     compress::hoist_decls::decl_hoister,
-    debug::{dump, AssertValid},
+    debug::dump,
     mode::Mode,
     option::{CompressOptions, MangleOptions},
-    program_data::{analyze, ProgramData},
-    util::{now, unit::CompileUnit},
+    program_data::analyze,
+    usage_analyzer::marks::Marks,
+    util::force_dump_program,
 };
 
 mod hoist_decls;
@@ -37,30 +39,19 @@ pub(crate) fn compressor<'a, M>(
     options: &'a CompressOptions,
     mangle_options: Option<&'a MangleOptions>,
     mode: &'a M,
-) -> impl 'a + VisitMut
+) -> impl 'a + Pass
 where
     M: Mode,
 {
-    let compressor = Compressor {
+    Compressor {
         marks,
         options,
         mangle_options,
         changed: false,
         pass: 1,
-        dump_for_infinite_loop: Default::default(),
         mode,
-    };
-
-    (
-        visit_mut_pass(compressor),
-        Optional {
-            enabled: options.evaluate || options.side_effects,
-            visitor: visit_mut_pass(expr_simplifier(
-                marks.unresolved_mark,
-                ExprSimplifierConfig {},
-            )),
-        },
-    )
+        static_alias_state: Default::default(),
+    }
 }
 
 struct Compressor<'a> {
@@ -70,9 +61,10 @@ struct Compressor<'a> {
     changed: bool,
     pass: usize,
 
-    dump_for_infinite_loop: Vec<String>,
-
     mode: &'a dyn Mode,
+
+    /// State for static alias optimization, shared across passes.
+    static_alias_state: StaticAliasState,
 }
 
 impl CompilerPass for Compressor<'_> {
@@ -81,21 +73,21 @@ impl CompilerPass for Compressor<'_> {
     }
 }
 
+impl Pass for Compressor<'_> {
+    fn process(&mut self, program: &mut Program) {
+        self.optimize_unit_repeatedly(program);
+    }
+}
+
 impl Compressor<'_> {
-    fn optimize_unit_repeatedly<N>(&mut self, n: &mut N)
-    where
-        N: CompileUnit
-            + VisitWith<UsageAnalyzer<ProgramData>>
-            + for<'aa> VisitMutWith<Compressor<'aa>>
-            + VisitWith<AssertValid>,
-    {
+    fn optimize_unit_repeatedly(&mut self, n: &mut Program) {
         trace_op!(
             "Optimizing a compile unit within `{:?}`",
             thread::current().name()
         );
 
         if self.options.hoist_vars || self.options.hoist_fns {
-            let data = analyze(&*n, Some(self.marks));
+            let data = analyze(&*n, Some(self.marks), false);
 
             let mut v = decl_hoister(
                 DeclHoisterConfig {
@@ -105,7 +97,7 @@ impl Compressor<'_> {
                 },
                 &data,
             );
-            n.apply(&mut v);
+            n.visit_mut_with(&mut v);
             self.changed |= v.changed();
         }
 
@@ -129,13 +121,7 @@ impl Compressor<'_> {
     }
 
     /// Optimize a module. `N` can be [Module] or [FnExpr].
-    fn optimize_unit<N>(&mut self, n: &mut N)
-    where
-        N: CompileUnit
-            + VisitWith<UsageAnalyzer<ProgramData>>
-            + for<'aa> VisitMutWith<Compressor<'aa>>
-            + VisitWith<AssertValid>,
-    {
+    fn optimize_unit(&mut self, n: &mut Program) {
         let _timer = timer!("optimize", pass = self.pass);
 
         if self.options.passes != 0 && self.options.passes < self.pass {
@@ -146,86 +132,20 @@ impl Compressor<'_> {
 
         // This exists to prevent hanging.
         if self.pass > 200 {
-            if self.dump_for_infinite_loop.is_empty() {
-                error!("Seems like there's an infinite loop");
-            }
+            let code = force_dump_program(n);
 
-            let code = n.force_dump();
-
-            if self.dump_for_infinite_loop.contains(&code) {
-                let mut msg = String::new();
-
-                for (i, code) in self.dump_for_infinite_loop.iter().enumerate() {
-                    let _ = write!(msg, "Code {:>4}:\n\n\n\n\n\n\n\n\n\n{}\n", i, code);
-
-                    // std::fs::write(&format!("pass_{}.js", i), code).unwrap();
-                }
-
-                panic!(
-                    "Infinite loop detected (current pass = {})\n{}",
-                    self.pass, msg
-                )
-            } else {
-                self.dump_for_infinite_loop.push(code);
-            }
+            panic!(
+                "Infinite loop detected (current pass = {})\n{}",
+                self.pass, code
+            );
         }
 
         #[cfg(feature = "debug")]
         let start = {
-            let start = n.dump();
+            let start = force_dump_program(n);
             debug!("===== Start =====\n{}", start);
             start
         };
-
-        {
-            tracing::info!(
-                "compress: Running expression simplifier (pass = {})",
-                self.pass
-            );
-
-            let start_time = now();
-
-            #[cfg(feature = "debug")]
-            let start = n.dump();
-
-            let mut visitor = expr_simplifier(self.marks.unresolved_mark, ExprSimplifierConfig {});
-            n.apply(&mut visitor);
-
-            self.changed |= visitor.changed();
-            if visitor.changed() {
-                debug!("compressor: Simplified expressions");
-                #[cfg(feature = "debug")]
-                {
-                    debug!(
-                        "===== Simplified =====\n{start}===== ===== ===== =====\n{}",
-                        n.dump()
-                    );
-                }
-            }
-
-            if let Some(start_time) = start_time {
-                let end_time = Instant::now();
-
-                tracing::info!(
-                    "compress: expr_simplifier took {:?} (pass = {})",
-                    end_time - start_time,
-                    self.pass
-                );
-            }
-
-            #[cfg(feature = "debug")]
-            if !visitor.changed() {
-                let simplified = n.dump();
-                if start != simplified {
-                    assert_eq!(
-                        DebugUsingDisplay(&start),
-                        DebugUsingDisplay(&simplified),
-                        "Invalid state: expr_simplifier: The code is changed but changed is not \
-                         setted to true",
-                    )
-                }
-            }
-        }
 
         {
             let _timer = timer!("apply pure optimizer");
@@ -235,18 +155,15 @@ impl Compressor<'_> {
                 self.marks,
                 PureOptimizerConfig {
                     enable_join_vars: self.pass > 1,
-                    force_str_for_tpl: self.mode.force_str_for_tpl(),
-                    #[cfg(feature = "debug")]
-                    debug_infinite_loop: self.pass >= 20,
                 },
             );
-            n.apply(&mut visitor);
+            n.visit_mut_with(&mut visitor);
 
             self.changed |= visitor.changed();
 
             #[cfg(feature = "debug")]
             if visitor.changed() {
-                let src = n.dump();
+                let src = force_dump_program(n);
                 debug!(
                     "===== Before pure =====\n{}\n===== After pure =====\n{}",
                     start, src
@@ -262,7 +179,7 @@ impl Compressor<'_> {
         {
             let _timer = timer!("apply full optimizer");
 
-            let mut data = analyze(&*n, Some(self.marks));
+            let mut data = analyze(&*n, Some(self.marks), false);
 
             // TODO: reset_opt_flags
             //
@@ -274,95 +191,14 @@ impl Compressor<'_> {
                 self.mangle_options,
                 &mut data,
                 self.mode,
-                !self.dump_for_infinite_loop.is_empty(),
+                &mut self.static_alias_state,
             );
-            n.apply(&mut visitor);
+            n.visit_mut_with(&mut visitor);
 
             self.changed |= visitor.changed();
 
             // let done = dump(&*n);
             // debug!("===== Result =====\n{}", done);
         }
-
-        if self.options.conditionals || self.options.dead_code {
-            #[cfg(feature = "debug")]
-            let start = dump(&*n, false);
-
-            let start_time = now();
-
-            let mut v = dead_branch_remover(self.marks.unresolved_mark);
-            n.apply(&mut v);
-
-            if let Some(start_time) = start_time {
-                let end_time = Instant::now();
-
-                tracing::info!(
-                    "compress: dead_branch_remover took {:?} (pass = {})",
-                    end_time - start_time,
-                    self.pass
-                );
-            }
-
-            #[cfg(feature = "debug")]
-            {
-                let simplified = dump(&*n, false);
-
-                if start != simplified {
-                    debug!(
-                        "===== Removed dead branches =====\n{}\n==== ===== ===== ===== ======\n{}",
-                        start, simplified
-                    );
-                }
-            }
-
-            self.changed |= v.changed();
-        }
-    }
-}
-
-impl VisitMut for Compressor<'_> {
-    noop_visit_mut_type!();
-
-    fn visit_mut_script(&mut self, n: &mut Script) {
-        self.optimize_unit_repeatedly(n);
-    }
-
-    fn visit_mut_module(&mut self, n: &mut Module) {
-        self.optimize_unit_repeatedly(n);
-    }
-
-    fn visit_mut_module_items(&mut self, stmts: &mut Vec<ModuleItem>) {
-        stmts.retain(|stmt| match stmt {
-            ModuleItem::Stmt(Stmt::Empty(..)) => false,
-            ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl {
-                decl: Decl::Var(v),
-                ..
-            }))
-            | ModuleItem::Stmt(Stmt::Decl(Decl::Var(v)))
-                if v.decls.is_empty() =>
-            {
-                false
-            }
-            _ => true,
-        });
-    }
-
-    fn visit_mut_stmts(&mut self, stmts: &mut Vec<Stmt>) {
-        stmts.retain(|stmt| match stmt {
-            Stmt::Empty(..) => false,
-            Stmt::Decl(Decl::Var(v)) if v.decls.is_empty() => false,
-            _ => true,
-        });
-    }
-}
-
-#[cfg(feature = "debug")]
-#[derive(PartialEq, Eq)]
-struct DebugUsingDisplay<'a>(pub &'a str);
-
-#[cfg(feature = "debug")]
-impl Debug for DebugUsingDisplay<'_> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        Display::fmt(self.0, f)
     }
 }

@@ -1,24 +1,4 @@
 {
-  "253": [
-    {
-      "kind": "Block",
-      "span": {
-        "start": 224,
-        "end": 253
-      },
-      "text": "/* codepoint range */"
-    }
-  ],
-  "455": [
-    {
-      "kind": "Block",
-      "span": {
-        "start": 433,
-        "end": 455
-      },
-      "text": "/* multiple values */"
-    }
-  ],
   "140": [
     {
       "kind": "Block",
@@ -47,6 +27,26 @@
         "end": 374
       },
       "text": "/* multiple values */"
+    }
+  ],
+  "455": [
+    {
+      "kind": "Block",
+      "span": {
+        "start": 433,
+        "end": 455
+      },
+      "text": "/* multiple values */"
+    }
+  ],
+  "253": [
+    {
+      "kind": "Block",
+      "span": {
+        "start": 224,
+        "end": 253
+      },
+      "text": "/* codepoint range */"
     }
   ]
 }

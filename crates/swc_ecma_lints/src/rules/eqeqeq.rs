@@ -8,17 +8,12 @@ use crate::{
     rule::{visitor_rule, Rule},
 };
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 enum EqEqEqMode {
+    #[default]
     Always,
     Never,
-}
-
-impl Default for EqEqEqMode {
-    fn default() -> Self {
-        Self::Always
-    }
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -49,7 +44,7 @@ impl Eqeqeq {
     }
 
     fn emit_report(&self, span: Span, actual: &str, expected: &str) {
-        let message = format!("Use '{}' instead of '{}'", expected, actual);
+        let message = format!("Use '{expected}' instead of '{actual}'");
 
         HANDLER.with(|handler| match self.expected_reaction {
             LintRuleReaction::Error => {

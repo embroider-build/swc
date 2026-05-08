@@ -24,8 +24,8 @@ System.register([
                 hasError: !1
             };
             try {
-                class C {
-                }
+                var C = class {
+                };
                 _export("C", C = _ts_decorate([
                     dec
                 ], C)), _ts_add_disposable_resource(env, null, !1);

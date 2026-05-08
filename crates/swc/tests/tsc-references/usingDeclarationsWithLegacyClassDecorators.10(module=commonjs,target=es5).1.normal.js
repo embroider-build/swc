@@ -19,18 +19,17 @@ var env = {
     hasError: false
 };
 try {
+    var _class = function _class() {
+        "use strict";
+        _class_call_check._(this, _class);
+    };
     _class = _ts_decorate._([
         dec
     ], _class);
     var after = _ts_add_disposable_resource._(env, null, false);
-    ;
 } catch (e) {
     env.error = e;
     env.hasError = true;
 } finally{
     _ts_dispose_resources._(env);
 }
-var _class = function _class() {
-    "use strict";
-    _class_call_check._(this, _class);
-};

@@ -1,11 +1,11 @@
 use anyhow::Context;
-use swc_atoms::JsWord;
+use swc_atoms::Atom;
 use swc_common::{
     source_map::PURE_SP, sync::Lrc, util::take::Take, Mark, SourceMap, Span, SyntaxContext,
     DUMMY_SP,
 };
 use swc_ecma_ast::*;
-use swc_ecma_transforms_base::{feature::FeatureFlag, helper_expr};
+use swc_ecma_transforms_base::helper_expr;
 use swc_ecma_utils::{
     is_valid_prop_ident, private_ident, quote_ident, quote_str, ExprFactory, IsDirective,
 };
@@ -19,13 +19,18 @@ use crate::{
     path::Resolver,
     top_level_this::top_level_this,
     util::{
-        define_es_module, emit_export_stmts, local_name_for_src, use_strict, ImportInterop,
-        VecStmtLike,
+        define_es_module, emit_export_stmts, local_name_for_src, sort_export_obj_prop_list,
+        use_strict, ImportInterop, VecStmtLike,
     },
     SpanCtx,
 };
 
 mod config;
+
+#[derive(Default)]
+pub struct FeatureFlag {
+    pub support_block_scoping: bool,
+}
 
 pub fn umd(
     cm: Lrc<SourceMap>,
@@ -40,7 +45,7 @@ pub fn umd(
         cm,
         resolver,
 
-        const_var_kind: if caniuse!(available_features.BlockScoping) {
+        const_var_kind: if available_features.support_block_scoping {
             VarDeclKind::Const
         } else {
             VarDeclKind::Var
@@ -60,7 +65,7 @@ pub struct Umd {
 
     const_var_kind: VarDeclKind,
 
-    dep_list: Vec<(Ident, JsWord, SpanCtx)>,
+    dep_list: Vec<(Ident, Atom, SpanCtx)>,
 
     exports: Option<Ident>,
 }
@@ -112,10 +117,7 @@ impl VisitMut for Umd {
 
         let mut import_map = Default::default();
 
-        stmts.extend(
-            self.handle_import_export(&mut import_map, link, export, is_export_assign)
-                .map(From::from),
-        );
+        stmts.extend(self.handle_import_export(&mut import_map, link, export, is_export_assign));
 
         stmts.extend(module_items.take().into_iter().filter_map(|i| match i {
             ModuleItem::Stmt(stmt) if !stmt.is_empty() => Some(stmt),
@@ -259,7 +261,7 @@ impl Umd {
         let mut export_stmts = Default::default();
 
         if !export_obj_prop_list.is_empty() && !is_export_assign {
-            export_obj_prop_list.sort_by_cached_key(|(key, ..)| key.clone());
+            sort_export_obj_prop_list(&mut export_obj_prop_list);
 
             let exports = self.exports();
 
@@ -386,7 +388,7 @@ impl Umd {
                 let src_path = match &self.resolver {
                     Resolver::Real { resolver, base } => resolver
                         .resolve_import(base, &src_path)
-                        .with_context(|| format!("failed to resolve `{}`", src_path))
+                        .with_context(|| format!("failed to resolve `{src_path}`"))
                         .unwrap(),
                     Resolver::Default => src_path,
                 };

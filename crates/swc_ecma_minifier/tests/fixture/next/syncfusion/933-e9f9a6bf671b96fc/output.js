@@ -221,7 +221,7 @@
             }
             /**
  *@private
- */ var containerObject = "undefined" != typeof window ? window : {};
+ */ var containerObject = "u" > typeof window ? window : {};
             /**
  * Check weather the given argument is only object.
  *
@@ -2523,7 +2523,7 @@
                     }, resPattern = option.format || intl_base_IntlBase.getResultantPattern(option.skeleton, dependable.dateObject, option.type, !1, '');
                     if (formatOptions.dateSeperator = intl_base_IntlBase.getDateSeparator(dependable.dateObject), util_isUndefined(resPattern)) throwError('Format options or type given must be invalid');
                     else {
-                        resPattern = intl_base_IntlBase.ConvertDateToWeekFormat(resPattern), formatOptions.pattern = resPattern, formatOptions.numMapper = ParserBase.getNumberMapper(dependable.parserObject, ParserBase.getNumberingSystem(cldr));
+                        formatOptions.pattern = resPattern = intl_base_IntlBase.ConvertDateToWeekFormat(resPattern), formatOptions.numMapper = ParserBase.getNumberMapper(dependable.parserObject, ParserBase.getNumberingSystem(cldr));
                         for(var patternMatch = resPattern.match(abbreviateRegexGlobal) || [], _i = 0; _i < patternMatch.length; _i++){
                             var str = patternMatch[_i], len = str.length, char = str[0];
                             switch('K' === char && (char = 'h'), char){
@@ -2541,9 +2541,7 @@
                                     formatOptions.designator = util_getValue('dayPeriods.format.wide', dateObject);
                                     break;
                                 case 'G':
-                                    // eslint-disable-next-line
-                                    var eText = len <= 3 ? 'eraAbbr' : 4 === len ? 'eraNames' : 'eraNarrow';
-                                    formatOptions.era = util_getValue('eras.' + eText, dependable.dateObject);
+                                    formatOptions.era = util_getValue('eras.' + (len <= 3 ? 'eraAbbr' : 4 === len ? 'eraNames' : 'eraNarrow'), dependable.dateObject);
                                     break;
                                 case 'z':
                                     formatOptions.timeZone = util_getValue('dates.timeZoneNames', dependable.parserObject);
@@ -2608,7 +2606,7 @@
                                 // eslint-disable-next-line
                                 var dec = 0 > value.getFullYear() ? 0 : 1, retu = options.era[dec];
                                 util_isNullOrUndefined(retu) && // eslint-disable-next-line
-                                (retu = options.era[dec ? 0 : 1]), ret += retu || '';
+                                (retu = options.era[+!dec]), ret += retu || '';
                                 break;
                             case '\'':
                                 ret += '\'\'' === match ? '\'' : match.replace(/'/g, '');
@@ -2657,7 +2655,7 @@
      * @returns {string} ?
      * @private
      */ DateFormat.getTimeZoneValue = function(tVal, pattern) {
-                    var _this = this, curPattern = pattern.split(';')[tVal > 0 ? 1 : 0], no = Math.abs(tVal);
+                    var _this = this, curPattern = pattern.split(';')[+(tVal > 0)], no = Math.abs(tVal);
                     return curPattern.replace(/HH?|mm/g, function(str) {
                         var len = str.length, ishour = -1 !== str.indexOf('H');
                         return _this.checkTwodigitNumber(Math.floor(ishour ? no / 60 : no % 60), len);
@@ -2705,8 +2703,7 @@
                     if (match && match[4]) {
                         var pattern_1 = match[4], p = pattern_1.lastIndexOf(',');
                         if (-1 !== p) {
-                            var temp = pattern_1.split('.')[0];
-                            ret.primary = temp.length - p - 1;
+                            ret.primary = pattern_1.split('.')[0].length - p - 1;
                             var s = pattern_1.lastIndexOf(',', p - 1);
                             -1 !== s && (ret.secondary = p - 1 - s);
                         }
@@ -2722,10 +2719,9 @@
      * @returns {boolean} ?
      */ NumberFormat.checkValueRange = function(val1, val2, checkbothExist, isFraction) {
                     var decide = isFraction ? 'f' : 's', dint = 0, str1 = errorText['l' + decide], str2 = errorText['m' + decide];
-                    if (!util_isUndefined(val1) && (this.checkRange(val1, str1, isFraction), dint++), !util_isUndefined(val2) && (this.checkRange(val2, str2, isFraction), dint++), 2 === dint) {
-                        if (!(val1 < val2)) return !0;
-                        throwError(str2 + 'specified must be less than the' + str1);
-                    } else checkbothExist && 1 === dint && throwError('Both' + str2 + 'and' + str2 + 'must be present');
+                    if (!util_isUndefined(val1) && (this.checkRange(val1, str1, isFraction), dint++), !util_isUndefined(val2) && (this.checkRange(val2, str2, isFraction), dint++), 2 === dint) if (!(val1 < val2)) return !0;
+                    else throwError(str2 + 'specified must be less than the' + str1);
+                    else checkbothExist && 1 === dint && throwError('Both' + str2 + 'and' + str2 + 'must be present');
                     return !1;
                 }, /**
      * Check if the provided fraction range is valid
@@ -2943,27 +2939,25 @@
                         'day'
                     ]; _i < tKeys_1.length; _i++){
                         var key = tKeys_1[_i], tValue = options[key];
-                        if (util_isUndefined(tValue) && 'day' === key && res.setDate(1), !util_isUndefined(tValue)) {
-                            if ('month' === key) {
-                                if ((tValue -= 1) < 0 || tValue > 11) return new Date('invalid');
-                                var pDate = res.getDate();
-                                res.setDate(1), // eslint-disable-next-line
-                                res[date_parser_timeSetter[key]](tValue);
-                                var lDate = new Date(res.getFullYear(), tValue + 1, 0).getDate();
-                                res.setDate(pDate < lDate ? pDate : lDate);
-                            } else {
-                                if ('day' === key) {
-                                    var lastDay = new Date(res.getFullYear(), res.getMonth() + 1, 0).getDate();
-                                    if (tValue < 1 || tValue > lastDay) return null;
-                                }
-                                // eslint-disable-next-line
-                                res[date_parser_timeSetter[key]](tValue);
+                        if (util_isUndefined(tValue) && 'day' === key && res.setDate(1), !util_isUndefined(tValue)) if ('month' === key) {
+                            if ((tValue -= 1) < 0 || tValue > 11) return new Date('invalid');
+                            var pDate = res.getDate();
+                            res.setDate(1), // eslint-disable-next-line
+                            res[date_parser_timeSetter[key]](tValue);
+                            var lDate = new Date(res.getFullYear(), tValue + 1, 0).getDate();
+                            res.setDate(pDate < lDate ? pDate : lDate);
+                        } else {
+                            if ('day' === key) {
+                                var lastDay = new Date(res.getFullYear(), res.getMonth() + 1, 0).getDate();
+                                if (tValue < 1 || tValue > lastDay) return null;
                             }
+                            // eslint-disable-next-line
+                            res[date_parser_timeSetter[key]](tValue);
                         }
                     }
                     if (!util_isUndefined(desig)) {
                         var hour = res.getHours();
-                        'pm' === desig ? res.setHours(hour + (12 === hour ? 0 : 12)) : 12 === hour && res.setHours(0);
+                        'pm' === desig ? res.setHours(hour + 12 * (12 !== hour)) : 12 === hour && res.setHours(0);
                     }
                     if (!util_isUndefined(tzone)) {
                         var tzValue = tzone - res.getTimezoneOffset();
@@ -3444,7 +3438,7 @@
      * @returns {DateFormatOptions} ?
      */ function compareBlazorDateFormats(formatOptions, culture) {
                     var format = formatOptions.format || formatOptions.skeleton, curFormatMapper = util_getValue((culture || 'en-US') + '.' + format, blazorCultureFormats);
-                    return curFormatMapper || (curFormatMapper = util_getValue('en-US.' + format, blazorCultureFormats)), curFormatMapper && (curFormatMapper = ConvertDateToWeekFormat(curFormatMapper), formatOptions.format = curFormatMapper.replace(/tt/, 'a')), formatOptions;
+                    return curFormatMapper || (curFormatMapper = util_getValue('en-US.' + format, blazorCultureFormats)), curFormatMapper && (formatOptions.format = (curFormatMapper = ConvertDateToWeekFormat(curFormatMapper)).replace(/tt/, 'a')), formatOptions;
                 }
                 /**
      * Returns proper numeric skeleton
@@ -4229,9 +4223,9 @@
                         curObj.hasNegativePattern = split.length > 1, curObj.nData = getFormatData(split[1] || '-' + split[0], !0, curCode), curObj.pData = getFormatData(split[0], !1, curCode), curMatch[2] || options.minimumFractionDigits || options.maximumFractionDigits || (minFrac = getFormatData(symbolPattern.split(';')[0], !0, '', !0).minimumFraction);
                     }
                     if (IntlBase.formatRegex.test(options.format) || !options.format) {
-                        if (util_extend(parseOptions, getProperNumericSkeleton(options.format || 'N')), parseOptions.custom = !1, actualPattern = '###0', (parseOptions.fractionDigits || options.minimumFractionDigits || options.maximumFractionDigits || minFrac) && (parseOptions.fractionDigits && (options.minimumFractionDigits = options.maximumFractionDigits = parseOptions.fractionDigits), actualPattern = fractionDigitsPattern(actualPattern, minFrac || parseOptions.fractionDigits || options.minimumFractionDigits || 0, options.maximumFractionDigits || 0)), options.minimumIntegerDigits && (actualPattern = minimumIntegerPattern(actualPattern, options.minimumIntegerDigits)), options.useGrouping && (actualPattern = groupingPattern(actualPattern)), 'currency' === parseOptions.type || (parseOptions.type, 0)) {
+                        if (util_extend(parseOptions, getProperNumericSkeleton(options.format || 'N')), parseOptions.custom = !1, actualPattern = '###0', (parseOptions.fractionDigits || options.minimumFractionDigits || options.maximumFractionDigits || minFrac) && (parseOptions.fractionDigits && (options.minimumFractionDigits = options.maximumFractionDigits = parseOptions.fractionDigits), actualPattern = fractionDigitsPattern(actualPattern, minFrac || parseOptions.fractionDigits || options.minimumFractionDigits || 0, options.maximumFractionDigits || 0)), options.minimumIntegerDigits && (actualPattern = minimumIntegerPattern(actualPattern, options.minimumIntegerDigits)), options.useGrouping && (actualPattern = groupingPattern(actualPattern)), 'currency' === parseOptions.type || parseOptions.type && 0) {
                             var cPattern = actualPattern;
-                            actualPattern = curObj.pData.nlead + cPattern + curObj.pData.nend, curObj.hasNegativePattern && (actualPattern += ';' + curObj.nData.nlead + cPattern + curObj.nData.nend);
+                            actualPattern = curObj.pData.nlead + cPattern + curObj.pData.nend, (curObj.hasNegativePattern || 0) && (actualPattern += ';' + curObj.nData.nlead + cPattern + curObj.nData.nend);
                         }
                         'percent' === parseOptions.type && (actualPattern += ' %');
                     } else actualPattern = options.format.replace(/'/g, '"');
@@ -4330,13 +4324,11 @@
                     return this.onFailure && this.onFailure(this.httpRequest), reason;
                 }, Ajax.prototype.stateChange = function(resolve, reject) {
                     var data = this.httpRequest.responseText;
-                    if (this.dataType && 'json' === this.dataType.toLowerCase()) {
-                        if ('' === data) data = void 0;
-                        else try {
-                            data = JSON.parse(data);
-                        } catch (error) {
-                        // no exception handle
-                        }
+                    if (this.dataType && 'json' === this.dataType.toLowerCase()) if ('' === data) data = void 0;
+                    else try {
+                        data = JSON.parse(data);
+                    } catch (error) {
+                    // no exception handle
                     }
                     4 === this.httpRequest.readyState && (this.httpRequest.status >= 200 && this.httpRequest.status <= 299 || 304 === this.httpRequest.status ? resolve(this.successHandler(data)) : this.emitError ? reject(Error(this.failureHandler(this.httpRequest.statusText))) : resolve());
                 }, /**
@@ -4345,9 +4337,7 @@
      * @param  {string} key Key to search in the response header
      * @returns {string} ?
      */ Ajax.prototype.getResponseHeader = function(key) {
-                    // eslint-disable-next-line
-                    responseHeaders = {};
-                    for(var responseHeaders, header, headers = headerRegex.exec(this.httpRequest.getAllResponseHeaders()); headers;)responseHeaders[headers[1].toLowerCase()] = headers[2], headers = headerRegex.exec(this.httpRequest.getAllResponseHeaders());
+                    for(var header, responseHeaders = {}, headers = headerRegex.exec(this.httpRequest.getAllResponseHeaders()); headers;)responseHeaders[headers[1].toLowerCase()] = headers[2], headers = headerRegex.exec(this.httpRequest.getAllResponseHeaders());
                     return util_isNullOrUndefined(// eslint-disable-next-line
                     header = responseHeaders[key.toLowerCase()]) ? null : header;
                 }, Ajax);
@@ -4361,7 +4351,7 @@
                 MSIE: /(msie|trident) ([\w.]+)/i,
                 MOZILLA: /(mozilla)(?:.*? rv:([\w.]+)|)/i
             };
-            'undefined' != typeof window && (window.browserDetails = window.browserDetails || {});
+            "u" > typeof window && (window.browserDetails = window.browserDetails || {});
             /**
  * Get configuration details for Browser
  *
@@ -4614,7 +4604,7 @@
                     },
                     enumerable: !0,
                     configurable: !0
-                }), /* istanbul ignore next */ Browser.uA = 'undefined' != typeof navigator ? navigator.userAgent : '', Browser;
+                }), /* istanbul ignore next */ Browser.uA = "u" > typeof navigator ? navigator.userAgent : '', Browser;
             }(), EventHandler = /** @class */ function() {
                 function EventHandler() {}
                 return(// to get the event data based on element
@@ -4942,7 +4932,7 @@
      * @param {string} element ?
      */ function Base(options, element) {
                     this.isRendered = !1, this.isComplexArraySetter = !1, this.isServerRendered = !1, this.allowServerDataBinding = !0, this.isProtectedOnChange = !0, this.properties = {}, this.changedProperties = {}, this.oldProperties = {}, this.bulkChanges = {}, this.refreshing = !1, this.ignoreCollectionWatch = !1, // eslint-disable-next-line
-                    this.finalUpdate = function() {}, this.childChangedProperties = {}, this.modelObserver = new Observer(this), util_isUndefined(element) || ('string' == typeof element ? this.element = document.querySelector(element) : this.element = element, util_isNullOrUndefined(this.element) || (this.isProtectedOnChange = !1, this.addInstance())), util_isUndefined(options) || this.setProperties(options, !0), this.isDestroyed = !1;
+                    this.finalUpdate = function() {}, this.childChangedProperties = {}, this.modelObserver = new Observer(this), !util_isUndefined(element) && ('string' == typeof element ? this.element = document.querySelector(element) : this.element = element, util_isNullOrUndefined(this.element) || (this.isProtectedOnChange = !1, this.addInstance())), util_isUndefined(options) || this.setProperties(options, !0), this.isDestroyed = !1;
                 }
                 return(/** Property base section */ /**
      * Function used to set bunch of property at a time.
@@ -5029,16 +5019,15 @@
                         var data = this.modelObserver.notify(eventName, eventProp, successHandler, errorHandler);
                         if (isColEName.test(eventName)) {
                             var handler = util_getValue(eventName, this);
-                            if (handler) {
-                                if (window.Blazor) {
-                                    var promise = handler.call(this, eventProp);
-                                    promise && 'function' == typeof promise.then ? successHandler ? promise.then(function(data) {
-                                        successHandler && (data = 'string' == typeof data && _this.modelObserver.isJson(data) ? JSON.parse(data) : data, successHandler.call(_this, data));
-                                    }).catch(function(data) {
-                                        errorHandler && (data = 'string' == typeof data && _this.modelObserver.isJson(data) ? JSON.parse(data) : data, errorHandler.call(_this, data));
-                                    }) : data = promise : successHandler && successHandler.call(this, eventProp);
-                                } else handler.call(this, eventProp), successHandler && successHandler.call(this, eventProp);
-                            } else successHandler && successHandler.call(this, eventProp);
+                            if (handler) if (window.Blazor) {
+                                var promise = handler.call(this, eventProp);
+                                promise && 'function' == typeof promise.then ? successHandler ? promise.then(function(data) {
+                                    successHandler && (data = 'string' == typeof data && _this.modelObserver.isJson(data) ? JSON.parse(data) : data, successHandler.call(_this, data));
+                                }).catch(function(data) {
+                                    errorHandler && (data = 'string' == typeof data && _this.modelObserver.isJson(data) ? JSON.parse(data) : data, errorHandler.call(_this, data));
+                                }) : data = promise : successHandler && successHandler.call(this, eventProp);
+                            } else handler.call(this, eventProp), successHandler && successHandler.call(this, eventProp);
+                            else successHandler && successHandler.call(this, eventProp);
                         }
                         return this.isProtectedOnChange = prevDetection, data;
                     }
@@ -5421,10 +5410,7 @@
      */ Animation.prototype.animate = function(element, options) {
                     options = options || {};
                     var model = this.getModel(options);
-                    if ('string' == typeof element) for(var elements = Array.prototype.slice.call(selectAll(element, document)), _i = 0; _i < elements.length; _i++){
-                        var element_1 = elements[_i];
-                        model.element = element_1, Animation_1.delayAnimation(model);
-                    }
+                    if ('string' == typeof element) for(var elements = Array.prototype.slice.call(selectAll(element, document)), _i = 0; _i < elements.length; _i++)model.element = elements[_i], Animation_1.delayAnimation(model);
                     else model.element = element, Animation_1.delayAnimation(model);
                 }, /**
      * Stop the animation effect on animated element.
@@ -5636,10 +5622,7 @@
      * @param {Function[]} moduleList - Array of modules to be injected from sample side
      */ ModuleLoader.prototype.inject = function(requiredModules, moduleList) {
                     var reqLength = requiredModules.length;
-                    if (0 === reqLength) {
-                        this.clean();
-                        return;
-                    }
+                    if (0 === reqLength) return void this.clean();
                     this.loadedModules.length && this.clearUnusedModule(requiredModules);
                     for(var i = 0; i < reqLength; i++)for(var modl = requiredModules[i], _i = 0; _i < moduleList.length; _i++){
                         var module = moduleList[_i], modName = modl.member;
@@ -5828,7 +5811,7 @@
                             }
                             else validateMsg = this.errors.invalidKey;
                         } else validateMsg = this.errors.noLicense;
-                        if (validateMsg && 'undefined' != typeof document && !util_isNullOrUndefined(document)) {
+                        if (validateMsg && "u" > typeof document && !util_isNullOrUndefined(document)) {
                             var errorDiv = createElement('div', {
                                 innerHTML: validateMsg + '<span id="license-banner-error" class=".e-license-banner"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><line x1="5" y1="5" x2="15" y2="15" stroke="yellow" stroke-width="2.5" stroke-miterlimit="10" stroke-linecap="round"></line><line x1="15" y1="5" x2="5" y2="15" stroke="yellow" stroke-width="2.5" stroke-linecap="round" stroke-miterlimit="10"></line></svg></span>',
                                 styles: 'position:fixed;top:0;left:0;right:0;font-family:"Segoe UI";font-size:16px;background:repeating-linear-gradient(45deg,#d70f0f,#d70f0f 10px,#e12121 10px,#e12121 17px);color:#ffffff;z-index:999999999;text-align:center;padding:10px 50px 10px 25px;'
@@ -5943,7 +5926,7 @@
  * @private
  */ // eslint-disable-next-line
                     function() {
-                        if ('undefined' != typeof window) {
+                        if ("u" > typeof window) {
                             // eslint-disable-next-line
                             var num = new Uint16Array(5);
                             return (window.msCrypto || window.crypto).getRandomValues(num);
@@ -5966,7 +5949,7 @@
      *
      * @returns {void} ?
      */ Component.prototype.destroy = function() {
-                    !this.isDestroyed && (this.enablePersistence && this.setPersistData(), this.localObserver.destroy(), this.refreshing || (removeClass([
+                    this.isDestroyed || (this.enablePersistence && this.setPersistData(), this.localObserver.destroy(), this.refreshing || (removeClass([
                         this.element
                     ], [
                         'e-control'
@@ -6168,7 +6151,7 @@
                     NotifyPropertyChanges
                 ], Component);
             }(Base);
-            'undefined' != typeof window && window.addEventListener('popstate', /* istanbul ignore next */ function() {
+            "u" > typeof window && window.addEventListener('popstate', /* istanbul ignore next */ function() {
                 componentCount = 0;
             });
             var draggable_extends = (extendStatics2 = function(d, b) {
@@ -6377,12 +6360,10 @@
                         this.dragProcessStarted && (util_isNullOrUndefined(top1) && (top1 = this.prevTop), util_isNullOrUndefined(left) && (left = this.prevLeft)), this.dragArea ? (this.dragLimit.top = this.clone ? this.dragLimit.top : 0, draEleTop = top1 - iTop < 0 ? this.dragLimit.top : top1 - iTop, draEleLeft = left - iLeft < 0 ? this.dragElePosition.left : left - iLeft) : (draEleTop = top1 - iTop, draEleLeft = left - iLeft);
                         var marginTop = parseFloat(getComputedStyle(this.element).marginTop);
                         // when drag-element has margin-top
-                        /* istanbul ignore next */ if (marginTop > 0 && (this.clone && (draEleTop += marginTop, dTop < 0 && (marginTop + dTop >= 0 ? draEleTop = marginTop + dTop : draEleTop -= marginTop), draEleTop = this.dragLimit.bottom < draEleTop ? this.dragLimit.bottom : draEleTop), top1 - iTop < 0)) {
-                            if (dTop + marginTop + (helperElement.offsetHeight - iTop) >= 0) {
-                                var tempDraEleTop = this.dragLimit.top + dTop - iTop;
-                                tempDraEleTop + marginTop + iTop < 0 ? draEleTop -= marginTop + iTop : draEleTop = tempDraEleTop;
-                            } else draEleTop -= marginTop + iTop;
-                        }
+                        /* istanbul ignore next */ if (marginTop > 0 && (this.clone && (draEleTop += marginTop, dTop < 0 && (marginTop + dTop >= 0 ? draEleTop = marginTop + dTop : draEleTop -= marginTop), draEleTop = this.dragLimit.bottom < draEleTop ? this.dragLimit.bottom : draEleTop), top1 - iTop < 0)) if (dTop + marginTop + (helperElement.offsetHeight - iTop) >= 0) {
+                            var tempDraEleTop = this.dragLimit.top + dTop - iTop;
+                            tempDraEleTop + marginTop + iTop < 0 ? draEleTop -= marginTop + iTop : draEleTop = tempDraEleTop;
+                        } else draEleTop -= marginTop + iTop;
                         this.enableScrollHandler && !this.clone && (draEleTop -= this.parentScrollY, draEleLeft -= this.parentScrollX);
                         var dragValue = this.getProcessedPositionValue({
                             top: draEleTop + 'px',
@@ -6581,73 +6562,71 @@
                 else for(var i = decorators.length - 1; i >= 0; i--)(d = decorators[i]) && (r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r);
                 return c > 3 && r && Object.defineProperty(target, key, r), r;
             };
-            !/** @class */ function(_super) {
-                function Droppable(element, options) {
-                    var _this = _super.call(this, options, element) || this;
-                    return _this.mouseOver = !1, _this.dragData = {}, _this.dragStopCalled = !1, _this.bind(), _this;
+            function Droppable(element, options) {
+                var _this = Base.call(this, options, element) || this;
+                return _this.mouseOver = !1, _this.dragData = {}, _this.dragStopCalled = !1, _this.bind(), _this;
+            }
+            droppable_extends(Droppable, Base), Droppable.prototype.bind = function() {
+                this.wireEvents();
+            }, Droppable.prototype.wireEvents = function() {
+                EventHandler.add(this.element, Browser.touchEndEvent, this.intDrop, this);
+            }, // triggers when property changed
+            // eslint-disable-next-line
+            Droppable.prototype.onPropertyChanged = function(newProp, oldProp) {
+            //No Code to handle
+            }, Droppable.prototype.getModuleName = function() {
+                return 'droppable';
+            }, Droppable.prototype.intOver = function(event, element) {
+                if (!this.mouseOver) {
+                    var drag = this.dragData[this.scope];
+                    this.trigger('over', {
+                        event: event,
+                        target: element,
+                        dragData: drag
+                    }), this.mouseOver = !0;
                 }
-                droppable_extends(Droppable, _super), Droppable.prototype.bind = function() {
-                    this.wireEvents();
-                }, Droppable.prototype.wireEvents = function() {
-                    EventHandler.add(this.element, Browser.touchEndEvent, this.intDrop, this);
-                }, // triggers when property changed
-                // eslint-disable-next-line
-                Droppable.prototype.onPropertyChanged = function(newProp, oldProp) {
-                //No Code to handle
-                }, Droppable.prototype.getModuleName = function() {
-                    return 'droppable';
-                }, Droppable.prototype.intOver = function(event, element) {
-                    if (!this.mouseOver) {
-                        var drag = this.dragData[this.scope];
-                        this.trigger('over', {
-                            event: event,
-                            target: element,
-                            dragData: drag
-                        }), this.mouseOver = !0;
-                    }
-                }, Droppable.prototype.intOut = function(event, element) {
-                    this.mouseOver && (this.trigger('out', {
-                        evt: event,
-                        target: element
-                    }), this.mouseOver = !1);
-                }, Droppable.prototype.intDrop = function(evt, element) {
-                    if (this.dragStopCalled) {
-                        this.dragStopCalled = !1;
-                        var area, accept = !0, drag = this.dragData[this.scope], isDrag = !!drag && drag.helper && isVisible(drag.helper);
-                        isDrag && (area = this.isDropArea(evt, drag.helper, element), this.accept && (accept = matches(drag.helper, this.accept))), isDrag && this.drop && area.canDrop && accept && this.trigger('drop', {
-                            event: evt,
-                            target: area.target,
-                            droppedElement: drag.helper,
-                            dragData: drag
-                        }), this.mouseOver = !1;
-                    }
-                }, Droppable.prototype.isDropArea = function(evt, helper, element) {
-                    var area = {
-                        canDrop: !0,
-                        target: element || evt.target
-                    }, isTouch = 'touchend' === evt.type;
-                    if (isTouch || area.target === helper) {
-                        helper.style.display = 'none';
-                        var coord = isTouch ? evt.changedTouches[0] : evt, ele = document.elementFromPoint(coord.clientX, coord.clientY);
-                        area.canDrop = !1, area.canDrop = compareElementParent(ele, this.element), area.canDrop && (area.target = ele), helper.style.display = '';
-                    }
-                    return area;
-                }, Droppable.prototype.destroy = function() {
-                    EventHandler.remove(this.element, Browser.touchEndEvent, this.intDrop), _super.prototype.destroy.call(this);
-                }, droppable_decorate([
-                    Property()
-                ], Droppable.prototype, "accept", void 0), droppable_decorate([
-                    Property('default')
-                ], Droppable.prototype, "scope", void 0), droppable_decorate([
-                    notify_property_change_Event()
-                ], Droppable.prototype, "drop", void 0), droppable_decorate([
-                    notify_property_change_Event()
-                ], Droppable.prototype, "over", void 0), droppable_decorate([
-                    notify_property_change_Event()
-                ], Droppable.prototype, "out", void 0), Droppable = droppable_decorate([
-                    NotifyPropertyChanges
-                ], Droppable);
-            }(Base);
+            }, Droppable.prototype.intOut = function(event, element) {
+                this.mouseOver && (this.trigger('out', {
+                    evt: event,
+                    target: element
+                }), this.mouseOver = !1);
+            }, Droppable.prototype.intDrop = function(evt, element) {
+                if (this.dragStopCalled) {
+                    this.dragStopCalled = !1;
+                    var area, accept = !0, drag = this.dragData[this.scope], isDrag = !!drag && drag.helper && isVisible(drag.helper);
+                    isDrag && (area = this.isDropArea(evt, drag.helper, element), this.accept && (accept = matches(drag.helper, this.accept))), isDrag && this.drop && area.canDrop && accept && this.trigger('drop', {
+                        event: evt,
+                        target: area.target,
+                        droppedElement: drag.helper,
+                        dragData: drag
+                    }), this.mouseOver = !1;
+                }
+            }, Droppable.prototype.isDropArea = function(evt, helper, element) {
+                var area = {
+                    canDrop: !0,
+                    target: element || evt.target
+                }, isTouch = 'touchend' === evt.type;
+                if (isTouch || area.target === helper) {
+                    helper.style.display = 'none';
+                    var coord = isTouch ? evt.changedTouches[0] : evt, ele = document.elementFromPoint(coord.clientX, coord.clientY);
+                    area.canDrop = !1, area.canDrop = compareElementParent(ele, this.element), area.canDrop && (area.target = ele), helper.style.display = '';
+                }
+                return area;
+            }, Droppable.prototype.destroy = function() {
+                EventHandler.remove(this.element, Browser.touchEndEvent, this.intDrop), Base.prototype.destroy.call(this);
+            }, droppable_decorate([
+                Property()
+            ], Droppable.prototype, "accept", void 0), droppable_decorate([
+                Property('default')
+            ], Droppable.prototype, "scope", void 0), droppable_decorate([
+                notify_property_change_Event()
+            ], Droppable.prototype, "drop", void 0), droppable_decorate([
+                notify_property_change_Event()
+            ], Droppable.prototype, "over", void 0), droppable_decorate([
+                notify_property_change_Event()
+            ], Droppable.prototype, "out", void 0), Droppable = droppable_decorate([
+                NotifyPropertyChanges
+            ], Droppable);
             var keyboard_extends = (extendStatics4 = function(d, b) {
                 return (extendStatics4 = Object.setPrototypeOf || ({
                     __proto__: []
@@ -6886,7 +6865,7 @@
          * @returns {void} ?
          */ _this.moveEvent = function(evt) {
                         var point = _this.updateChangeTouches(evt);
-                        _this.movedPoint = point, _this.isTouchMoved = !(point.clientX === _this.startPoint.clientX && point.clientY === _this.startPoint.clientY);
+                        _this.movedPoint = point, _this.isTouchMoved = point.clientX !== _this.startPoint.clientX || point.clientY !== _this.startPoint.clientY;
                         var eScrollArgs = {};
                         _this.isTouchMoved && (clearTimeout(_this.timeOutTapHold), _this.calcScrollPoints(evt), eScrollArgs = util_extend(eScrollArgs, {}, {
                             startEvents: _this.startEventData,
@@ -6947,7 +6926,7 @@
                     }, _this.modeclear = function() {
                         _this.modeClear = setTimeout(function() {
                             _this.touchAction = !0;
-                        }, 'function' != typeof _this.tap ? 0 : 20), _this.lastTapTime = new Date().getTime(), EventHandler.remove(_this.element, Browser.touchMoveEvent, _this.moveEvent), EventHandler.remove(_this.element, Browser.touchEndEvent, _this.endEvent), EventHandler.remove(_this.element, Browser.touchCancelEvent, _this.cancelEvent);
+                        }, 20 * ('function' == typeof _this.tap)), _this.lastTapTime = new Date().getTime(), EventHandler.remove(_this.element, Browser.touchMoveEvent, _this.moveEvent), EventHandler.remove(_this.element, Browser.touchEndEvent, _this.endEvent), EventHandler.remove(_this.element, Browser.touchCancelEvent, _this.cancelEvent);
                     }, _this.bind(), _this;
                 }
                 return touch_extends(Touch, _super), // triggers when property changed
@@ -6993,11 +6972,9 @@
      * @param {MouseEventArgs | TouchEventArgs} evt ?
      * @returns {void} ?
      */ Touch.prototype.tapHoldEvent = function(evt) {
-                    var eTapArgs;
-                    this.tapCount = 0, this.touchAction = !0, EventHandler.remove(this.element, Browser.touchMoveEvent, this.moveEvent), EventHandler.remove(this.element, Browser.touchEndEvent, this.endEvent), // eslint-disable-next-line
-                    eTapArgs = {
+                    this.tapCount = 0, this.touchAction = !0, EventHandler.remove(this.element, Browser.touchMoveEvent, this.moveEvent), EventHandler.remove(this.element, Browser.touchEndEvent, this.endEvent), this.trigger('tapHold', {
                         originalEvent: evt
-                    }, this.trigger('tapHold', eTapArgs), EventHandler.remove(this.element, Browser.touchCancelEvent, this.cancelEvent);
+                    }), EventHandler.remove(this.element, Browser.touchCancelEvent, this.cancelEvent);
                 }, Touch.prototype.calcPoints = function(evt) {
                     var point = this.updateChangeTouches(evt);
                     this.defaultArgs = {
@@ -7134,10 +7111,10 @@
                     function Engine() {}
                     return(// eslint-disable-next-line
                     Engine.prototype.compile = function(templateString, helper, ignorePrefix) {
-                        var helper1, argName, str, nameSpace, helper2, ignorePrefix1, varCOunt, localKeys, isClass, singleSpace;
-                        return void 0 === helper && (helper = {}), str = templateString, nameSpace = argName = 'data', helper2 = helper1 = helper, ignorePrefix1 = void 0, varCOunt = 0, localKeys = [], isClass = str.match(/class="([^"]+|)\s{2}/g), singleSpace = '', isClass && isClass.forEach(function(value) {
+                        var helper1, str, nameSpace, helper2, ignorePrefix1, varCOunt, localKeys, isClass, singleSpace;
+                        return void 0 === helper && (helper = {}), str = templateString, nameSpace = 'data', helper2 = helper1 = helper, ignorePrefix1 = void 0, varCOunt = 0, localKeys = [], isClass = str.match(/class="([^"]+|)\s{2}/g), singleSpace = '', isClass && isClass.forEach(function(value) {
                             singleSpace = value.replace(/\s\s+/g, ' '), str = str.replace(value, singleSpace);
-                        }), Function(argName, "var str=\"" + str.replace(LINES, '').replace(DBL_QUOTED_STR, '\'$1\'').replace(exp, // eslint-disable-next-line
+                        }), Function('data', "var str=\"" + str.replace(LINES, '').replace(DBL_QUOTED_STR, '\'$1\'').replace(exp, // eslint-disable-next-line
                         function(match, cnt, offset, matchStr) {
                             var matches = cnt.match(CALL_FUNCTION);
                             // matches to detect any function calls
@@ -7369,12 +7346,7 @@
                 return c > 3 && r && Object.defineProperty(target, key, r), r;
             };
             new _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .Observer */ .Qj();
-            var cssClassName = {
-                RTL: 'e-rtl',
-                BUTTON: 'e-btn',
-                PRIMARY: 'e-primary',
-                ICONBTN: 'e-icon-btn'
-            }, Button = /** @class */ function(_super) {
+            var cssClassName_RTL = 'e-rtl', cssClassName_PRIMARY = 'e-primary', cssClassName_ICONBTN = 'e-icon-btn', Button = /** @class */ function(_super) {
                 /**
      * Constructor for creating the widget
      *
@@ -7392,19 +7364,19 @@
      * @private
      */ Button.prototype.render = function() {
                     this.initialize(), this.removeRippleEffect = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .rippleEffect */ .qx)(this.element, {
-                        selector: '.' + cssClassName.BUTTON
+                        selector: ".e-btn"
                     }), this.renderComplete();
                 }, Button.prototype.initialize = function() {
                     if (this.cssClass && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                         this.element
-                    ], this.cssClass.split(' ')), this.isPrimary && this.element.classList.add(cssClassName.PRIMARY), !(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isBlazor */ .xr)() || (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isBlazor */ .xr)() && 'progress-btn' !== this.getModuleName()) {
+                    ], this.cssClass.split(' ')), this.isPrimary && this.element.classList.add(cssClassName_PRIMARY), !(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isBlazor */ .xr)() || (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isBlazor */ .xr)() && 'progress-btn' !== this.getModuleName()) {
                         if (this.content) {
                             var tempContent = this.enableHtmlSanitizer ? _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .SanitizeHtmlHelper.sanitize */ .pJ.sanitize(this.content) : this.content;
                             this.element.innerHTML = tempContent;
                         }
                         this.setIconCss();
                     }
-                    this.enableRtl && this.element.classList.add(cssClassName.RTL), this.disabled ? this.controlStatus(this.disabled) : this.wireEvents();
+                    this.enableRtl && this.element.classList.add(cssClassName_RTL), this.disabled ? this.controlStatus(this.disabled) : this.wireEvents();
                 }, Button.prototype.controlStatus = function(disabled) {
                     this.element.disabled = disabled;
                 }, Button.prototype.setIconCss = function() {
@@ -7412,7 +7384,7 @@
                         var span = this.createElement('span', {
                             className: 'e-btn-icon ' + this.iconCss
                         });
-                        this.element.textContent.trim() ? (span.classList.add('e-icon-' + this.iconPosition.toLowerCase()), ('Top' === this.iconPosition || 'Bottom' === this.iconPosition) && this.element.classList.add('e-' + this.iconPosition.toLowerCase() + '-icon-btn')) : this.element.classList.add(cssClassName.ICONBTN);
+                        this.element.textContent.trim() ? (span.classList.add('e-icon-' + this.iconPosition.toLowerCase()), ('Top' === this.iconPosition || 'Bottom' === this.iconPosition) && this.element.classList.add('e-' + this.iconPosition.toLowerCase() + '-icon-btn')) : this.element.classList.add(cssClassName_ICONBTN);
                         var node = this.element.childNodes[0];
                         node && ('Left' === this.iconPosition || 'Top' === this.iconPosition) ? this.element.insertBefore(span, node) : this.element.appendChild(span);
                     }
@@ -7428,9 +7400,9 @@
      * @returns {void}
      */ Button.prototype.destroy = function() {
                     var classList = [
-                        cssClassName.PRIMARY,
-                        cssClassName.RTL,
-                        cssClassName.ICONBTN,
+                        cssClassName_PRIMARY,
+                        cssClassName_RTL,
+                        cssClassName_ICONBTN,
                         'e-success',
                         'e-info',
                         'e-danger',
@@ -7480,7 +7452,7 @@
      */ Button.prototype.onPropertyChanged = function(newProp, oldProp) {
                     for(var span = this.element.querySelector('span.e-btn-icon'), _i = 0, _a = Object.keys(newProp); _i < _a.length; _i++)switch(_a[_i]){
                         case 'isPrimary':
-                            newProp.isPrimary ? this.element.classList.add(cssClassName.PRIMARY) : this.element.classList.remove(cssClassName.PRIMARY);
+                            newProp.isPrimary ? this.element.classList.add(cssClassName_PRIMARY) : this.element.classList.remove(cssClassName_PRIMARY);
                             break;
                         case 'disabled':
                             this.controlStatus(newProp.disabled);
@@ -7504,10 +7476,10 @@
                             ], newProp.cssClass.split(' '));
                             break;
                         case 'enableRtl':
-                            newProp.enableRtl ? this.element.classList.add(cssClassName.RTL) : this.element.classList.remove(cssClassName.RTL);
+                            newProp.enableRtl ? this.element.classList.add(cssClassName_RTL) : this.element.classList.remove(cssClassName_RTL);
                             break;
                         case 'content':
-                            (0, _common_common__WEBPACK_IMPORTED_MODULE_1__ /* .getTextNode */ .UC)(this.element) || this.element.classList.remove(cssClassName.ICONBTN), (!(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isBlazor */ .xr)() || (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isBlazor */ .xr)() && !this.isServerRendered && 'progress-btn' !== this.getModuleName()) && (this.enableHtmlSanitizer && (newProp.content = _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .SanitizeHtmlHelper.sanitize */ .pJ.sanitize(newProp.content)), this.element.innerHTML = newProp.content, this.setIconCss());
+                            (0, _common_common__WEBPACK_IMPORTED_MODULE_1__ /* .getTextNode */ .UC)(this.element) || this.element.classList.remove(cssClassName_ICONBTN), (!(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isBlazor */ .xr)() || (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isBlazor */ .xr)() && !this.isServerRendered && 'progress-btn' !== this.getModuleName()) && (this.enableHtmlSanitizer && (newProp.content = _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .SanitizeHtmlHelper.sanitize */ .pJ.sanitize(newProp.content)), this.element.innerHTML = newProp.content, this.setIconCss());
                             break;
                         case 'isToggle':
                             newProp.isToggle ? _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .EventHandler.add */ .bi.add(this.element, 'click', this.btnClickHandler, this) : (_syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .EventHandler.remove */ .bi.remove(this.element, 'click', this.btnClickHandler), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
@@ -7655,24 +7627,7 @@
                     return /* binding */ Input;
                 }
             });
-            /* harmony import */ var Input, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1807), CLASSNAMES = {
-                RTL: 'e-rtl',
-                DISABLE: 'e-disabled',
-                INPUT: 'e-input',
-                TEXTAREA: 'e-multi-line-input',
-                INPUTGROUP: 'e-input-group',
-                FLOATINPUT: 'e-float-input',
-                FLOATLINE: 'e-float-line',
-                FLOATTEXT: 'e-float-text',
-                FLOATTEXTCONTENT: 'e-float-text-content',
-                CLEARICON: 'e-clear-icon',
-                CLEARICONHIDE: 'e-clear-icon-hide',
-                LABELTOP: 'e-label-top',
-                LABELBOTTOM: 'e-label-bottom',
-                NOFLOATLABEL: 'e-no-float-label',
-                INPUTCUSTOMTAG: 'e-input-custom-tag',
-                FLOATCUSTOMTAG: 'e-float-custom-tag'
-            };
+            /* harmony import */ var Input, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(1807), CLASSNAMES_RTL = 'e-rtl', CLASSNAMES_DISABLE = 'e-disabled', CLASSNAMES_INPUT = 'e-input', CLASSNAMES_INPUTGROUP = 'e-input-group', CLASSNAMES_FLOATINPUT = 'e-float-input', CLASSNAMES_FLOATLINE = 'e-float-line', CLASSNAMES_FLOATTEXT = 'e-float-text', CLASSNAMES_CLEARICON = 'e-clear-icon', CLASSNAMES_CLEARICONHIDE = 'e-clear-icon-hide', CLASSNAMES_LABELTOP = 'e-label-top', CLASSNAMES_LABELBOTTOM = 'e-label-bottom', CLASSNAMES_NOFLOATLABEL = 'e-no-float-label', CLASSNAMES_FLOATCUSTOMTAG = 'e-float-custom-tag';
             !function(Input) {
                 var floatType, isBindClearAction = !0;
                 function bindInitialEvent(args) {
@@ -7694,19 +7649,19 @@
                     var label = getParentNode(this).getElementsByClassName('e-float-text')[0];
                     !(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(label) && ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                         label
-                    ], CLASSNAMES.LABELTOP), label.classList.contains(CLASSNAMES.LABELBOTTOM) && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
+                    ], CLASSNAMES_LABELTOP), label.classList.contains(CLASSNAMES_LABELBOTTOM) && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
                         label
-                    ], CLASSNAMES.LABELBOTTOM));
+                    ], CLASSNAMES_LABELBOTTOM));
                 }
                 function _blurFn() {
                     var parent = getParentNode(this);
                     if (parent.getElementsByTagName('textarea')[0] ? '' === parent.getElementsByTagName('textarea')[0].value : '' === parent.getElementsByTagName('input')[0].value) {
                         var label = parent.getElementsByClassName('e-float-text')[0];
-                        (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(label) || (label.classList.contains(CLASSNAMES.LABELTOP) && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
+                        (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(label) || (label.classList.contains(CLASSNAMES_LABELTOP) && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
                             label
-                        ], CLASSNAMES.LABELTOP), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                        ], CLASSNAMES_LABELTOP), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                             label
-                        ], CLASSNAMES.LABELBOTTOM));
+                        ], CLASSNAMES_LABELBOTTOM));
                     }
                 }
                 function wireFloatingEvents(element) {
@@ -7714,23 +7669,23 @@
                 }
                 function createFloatingInput(args, inputObject, internalCreateElement) {
                     var makeElement = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(internalCreateElement) ? _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .createElement */ .az : internalCreateElement;
-                    'Auto' === args.floatLabelType && wireFloatingEvents(args.element), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(inputObject.container) ? (inputObject.container = createInputContainer(args, CLASSNAMES.FLOATINPUT, CLASSNAMES.FLOATCUSTOMTAG, 'div', makeElement), args.element.parentNode && args.element.parentNode.insertBefore(inputObject.container, args.element)) : ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.customTag) || inputObject.container.classList.add(CLASSNAMES.FLOATCUSTOMTAG), inputObject.container.classList.add(CLASSNAMES.FLOATINPUT));
+                    'Auto' === args.floatLabelType && wireFloatingEvents(args.element), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(inputObject.container) ? (inputObject.container = createInputContainer(args, CLASSNAMES_FLOATINPUT, CLASSNAMES_FLOATCUSTOMTAG, 'div', makeElement), args.element.parentNode && args.element.parentNode.insertBefore(inputObject.container, args.element)) : ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.customTag) || inputObject.container.classList.add(CLASSNAMES_FLOATCUSTOMTAG), inputObject.container.classList.add(CLASSNAMES_FLOATINPUT));
                     var floatLinelement = makeElement('span', {
-                        className: CLASSNAMES.FLOATLINE
+                        className: CLASSNAMES_FLOATLINE
                     }), floatLabelElement = makeElement('label', {
-                        className: CLASSNAMES.FLOATTEXT
+                        className: CLASSNAMES_FLOATTEXT
                     });
                     if ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.element.id) || '' === args.element.id || (floatLabelElement.id = 'label_' + args.element.id.replace(/ /g, '_'), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .attributes */ .Y4)(args.element, {
                         'aria-labelledby': floatLabelElement.id
-                    })), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.element.placeholder) || '' === args.element.placeholder || (floatLabelElement.innerText = encodePlaceHolder(args.element.placeholder), args.element.removeAttribute('placeholder')), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.properties) || (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.properties.placeholder) || '' === args.properties.placeholder || (floatLabelElement.innerText = encodePlaceHolder(args.properties.placeholder)), floatLabelElement.innerText || inputObject.container.classList.add(CLASSNAMES.NOFLOATLABEL), inputObject.container.classList.contains('e-float-icon-left')) {
+                    })), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.element.placeholder) || '' === args.element.placeholder || (floatLabelElement.innerText = encodePlaceHolder(args.element.placeholder), args.element.removeAttribute('placeholder')), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.properties) || (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.properties.placeholder) || '' === args.properties.placeholder || (floatLabelElement.innerText = encodePlaceHolder(args.properties.placeholder)), floatLabelElement.innerText || inputObject.container.classList.add(CLASSNAMES_NOFLOATLABEL), inputObject.container.classList.contains('e-float-icon-left')) {
                         var inputWrap = inputObject.container.querySelector('.e-input-in-wrap');
                         inputWrap.appendChild(args.element), inputWrap.appendChild(floatLinelement), inputWrap.appendChild(floatLabelElement);
                     } else inputObject.container.appendChild(args.element), inputObject.container.appendChild(floatLinelement), inputObject.container.appendChild(floatLabelElement);
-                    updateLabelState(args.element.value, floatLabelElement), 'Always' === args.floatLabelType && (floatLabelElement.classList.contains(CLASSNAMES.LABELBOTTOM) && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
+                    updateLabelState(args.element.value, floatLabelElement), 'Always' === args.floatLabelType && (floatLabelElement.classList.contains(CLASSNAMES_LABELBOTTOM) && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
                         floatLabelElement
-                    ], CLASSNAMES.LABELBOTTOM), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                    ], CLASSNAMES_LABELBOTTOM), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                         floatLabelElement
-                    ], CLASSNAMES.LABELTOP)), 'Auto' === args.floatLabelType && (// eslint-disable-next-line @typescript-eslint/no-unused-vars
+                    ], CLASSNAMES_LABELTOP)), 'Auto' === args.floatLabelType && (// eslint-disable-next-line @typescript-eslint/no-unused-vars
                     args.element.addEventListener('input', function(event) {
                         updateLabelState(args.element.value, floatLabelElement, args.element);
                     }), // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -7744,20 +7699,20 @@
                 function updateIconState(value, button, readonly) {
                     value && !readonly ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
                         button
-                    ], CLASSNAMES.CLEARICONHIDE) : (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                    ], CLASSNAMES_CLEARICONHIDE) : (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                         button
-                    ], CLASSNAMES.CLEARICONHIDE);
+                    ], CLASSNAMES_CLEARICONHIDE);
                 }
                 function updateLabelState(value, label, element) {
                     void 0 === element && (element = null), value ? ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                         label
-                    ], CLASSNAMES.LABELTOP), label.classList.contains(CLASSNAMES.LABELBOTTOM) && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
+                    ], CLASSNAMES_LABELTOP), label.classList.contains(CLASSNAMES_LABELBOTTOM) && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
                         label
-                    ], CLASSNAMES.LABELBOTTOM)) : (null == element || element !== document.activeElement) && (label.classList.contains(CLASSNAMES.LABELTOP) && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
+                    ], CLASSNAMES_LABELBOTTOM)) : (null == element || element !== document.activeElement) && (label.classList.contains(CLASSNAMES_LABELTOP) && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
                         label
-                    ], CLASSNAMES.LABELTOP), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                    ], CLASSNAMES_LABELTOP), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                         label
-                    ], CLASSNAMES.LABELBOTTOM));
+                    ], CLASSNAMES_LABELBOTTOM));
                 }
                 function getParentNode(element) {
                     var parentNode = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(element.parentNode) ? element : element.parentNode;
@@ -7766,9 +7721,9 @@
                 // eslint-disable-next-line @typescript-eslint/no-unused-vars
                 function wireClearBtnEvents(element, button, container) {
                     (void 0 == isBindClearAction || isBindClearAction) && button.addEventListener('click', function(event) {
-                        element.classList.contains(CLASSNAMES.DISABLE) || element.readOnly || (event.preventDefault(), element !== document.activeElement && element.focus(), element.value = '', (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                        element.classList.contains(CLASSNAMES_DISABLE) || element.readOnly || (event.preventDefault(), element !== document.activeElement && element.focus(), element.value = '', (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                             button
-                        ], CLASSNAMES.CLEARICONHIDE));
+                        ], CLASSNAMES_CLEARICONHIDE));
                     }), // eslint-disable-next-line @typescript-eslint/no-unused-vars
                     element.addEventListener('input', function(event) {
                         updateIconState(element.value, button);
@@ -7780,12 +7735,12 @@
                         setTimeout(function() {
                             (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                                 button
-                            ], CLASSNAMES.CLEARICONHIDE);
+                            ], CLASSNAMES_CLEARICONHIDE);
                         }, 200);
                     });
                 }
                 function validateLabel(element, floatLabelType) {
-                    if (getParentNode(element).classList.contains(CLASSNAMES.FLOATINPUT) && 'Auto' === floatLabelType) {
+                    if (getParentNode(element).classList.contains(CLASSNAMES_FLOATINPUT) && 'Auto' === floatLabelType) {
                         var label = getParentNode(element).getElementsByClassName('e-float-text')[0];
                         updateLabelState(element.value, label, element);
                     }
@@ -7843,7 +7798,7 @@
      */ function setPlaceholder(placeholder, element) {
                     placeholder = encodePlaceHolder(placeholder);
                     var parentElement = getParentNode(element);
-                    parentElement.classList.contains(CLASSNAMES.FLOATINPUT) ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(placeholder) || '' === placeholder ? (parentElement.classList.add(CLASSNAMES.NOFLOATLABEL), parentElement.getElementsByClassName('e-float-text-content')[0] ? parentElement.getElementsByClassName(CLASSNAMES.FLOATTEXT)[0].children[0].textContent = '' : parentElement.getElementsByClassName(CLASSNAMES.FLOATTEXT)[0].textContent = '') : (parentElement.getElementsByClassName('e-float-text-content')[0] ? parentElement.getElementsByClassName(CLASSNAMES.FLOATTEXT)[0].children[0].textContent = placeholder : parentElement.getElementsByClassName(CLASSNAMES.FLOATTEXT)[0].textContent = placeholder, parentElement.classList.remove(CLASSNAMES.NOFLOATLABEL), element.removeAttribute('placeholder')) : (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(placeholder) || '' === placeholder ? (element.removeAttribute('placeholder'), element.removeAttribute('aria-placeholder')) : (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .attributes */ .Y4)(element, {
+                    parentElement.classList.contains(CLASSNAMES_FLOATINPUT) ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(placeholder) || '' === placeholder ? (parentElement.classList.add(CLASSNAMES_NOFLOATLABEL), parentElement.getElementsByClassName('e-float-text-content')[0] ? parentElement.getElementsByClassName(CLASSNAMES_FLOATTEXT)[0].children[0].textContent = '' : parentElement.getElementsByClassName(CLASSNAMES_FLOATTEXT)[0].textContent = '') : (parentElement.getElementsByClassName('e-float-text-content')[0] ? parentElement.getElementsByClassName(CLASSNAMES_FLOATTEXT)[0].children[0].textContent = placeholder : parentElement.getElementsByClassName(CLASSNAMES_FLOATTEXT)[0].textContent = placeholder, parentElement.classList.remove(CLASSNAMES_NOFLOATLABEL), element.removeAttribute('placeholder')) : (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(placeholder) || '' === placeholder ? (element.removeAttribute('placeholder'), element.removeAttribute('aria-placeholder')) : (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .attributes */ .Y4)(element, {
                         placeholder: placeholder,
                         'aria-placeholder': placeholder
                     });
@@ -7874,7 +7829,7 @@
      * @param {Element[] | NodeList} elements
      * - The elements that are needed to enable/disable RTL.
      */ function setEnableRtl(isRtl, elements) {
-                    isRtl ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)(elements, CLASSNAMES.RTL) : (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)(elements, CLASSNAMES.RTL);
+                    isRtl ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)(elements, CLASSNAMES_RTL) : (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)(elements, CLASSNAMES_RTL);
                 }
                 /**
      * Enables or disables the given input element.
@@ -7891,21 +7846,21 @@
                         disabled: 'disabled',
                         'aria-disabled': 'true'
                     }, considerWrapper = !(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(inputContainer);
-                    isEnable ? (element.classList.remove(CLASSNAMES.DISABLE), removeAttributes(disabledAttrs, element), considerWrapper && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
+                    isEnable ? (element.classList.remove(CLASSNAMES_DISABLE), removeAttributes(disabledAttrs, element), considerWrapper && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
                         inputContainer
-                    ], CLASSNAMES.DISABLE)) : (element.classList.add(CLASSNAMES.DISABLE), addAttributes(disabledAttrs, element), considerWrapper && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                    ], CLASSNAMES_DISABLE)) : (element.classList.add(CLASSNAMES_DISABLE), addAttributes(disabledAttrs, element), considerWrapper && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                         inputContainer
-                    ], CLASSNAMES.DISABLE)), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(floatLabelType) || validateLabel(element, floatLabelType);
+                    ], CLASSNAMES_DISABLE)), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(floatLabelType) || validateLabel(element, floatLabelType);
                 }
                 function setClearButton(isClear, element, inputObject, initial, internalCreateElement) {
                     var button, container, makeElement = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(internalCreateElement) ? _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .createElement */ .az : internalCreateElement;
-                    isClear ? inputObject.clearButton = (button = ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(makeElement) ? _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .createElement */ .az : makeElement)('span', {
-                        className: CLASSNAMES.CLEARICON
-                    }), container = inputObject.container, (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(initial) ? (inputObject.container.classList.contains(CLASSNAMES.FLOATINPUT) ? inputObject.container.querySelector('.' + CLASSNAMES.FLOATTEXT) : element).insertAdjacentElement('afterend', button) : container.appendChild(button), !(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(container) && container.classList.contains(CLASSNAMES.FLOATINPUT) && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                    isClear ? (button = ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(makeElement) ? _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .createElement */ .az : makeElement)('span', {
+                        className: CLASSNAMES_CLEARICON
+                    }), container = inputObject.container, (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(initial) ? (inputObject.container.classList.contains(CLASSNAMES_FLOATINPUT) ? inputObject.container.querySelector('.' + CLASSNAMES_FLOATTEXT) : element).insertAdjacentElement('afterend', button) : container.appendChild(button), !(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(container) && container.classList.contains(CLASSNAMES_FLOATINPUT) && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                         container
-                    ], CLASSNAMES.INPUTGROUP), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                    ], CLASSNAMES_INPUTGROUP), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                         button
-                    ], CLASSNAMES.CLEARICONHIDE), wireClearBtnEvents(element, button, container), button.setAttribute('aria-label', 'close'), button) : ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .remove */ .Od)(inputObject.clearButton), inputObject.clearButton = null);
+                    ], CLASSNAMES_CLEARICONHIDE), wireClearBtnEvents(element, button, container), button.setAttribute('aria-label', 'close'), inputObject.clearButton = button) : ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .remove */ .Od)(inputObject.clearButton), inputObject.clearButton = null);
                 }
                 /**
      * Removing the multiple attributes from the given element such as "disabled","id" , etc.
@@ -7920,7 +7875,7 @@
      */ function removeAttributes(attrs, element) {
                     for(var _i = 0, _a = Object.keys(attrs); _i < _a.length; _i++){
                         var key = _a[_i], parentElement = getParentNode(element);
-                        'disabled' === key && element.classList.remove(CLASSNAMES.DISABLE), 'disabled' === key && parentElement.classList.contains(CLASSNAMES.INPUTGROUP) && parentElement.classList.remove(CLASSNAMES.DISABLE), 'placeholder' === key && parentElement.classList.contains(CLASSNAMES.FLOATINPUT) ? parentElement.getElementsByClassName(CLASSNAMES.FLOATTEXT)[0].textContent = '' : element.removeAttribute(key);
+                        'disabled' === key && element.classList.remove(CLASSNAMES_DISABLE), 'disabled' === key && parentElement.classList.contains(CLASSNAMES_INPUTGROUP) && parentElement.classList.remove(CLASSNAMES_DISABLE), 'placeholder' === key && parentElement.classList.contains(CLASSNAMES_FLOATINPUT) ? parentElement.getElementsByClassName(CLASSNAMES_FLOATTEXT)[0].textContent = '' : element.removeAttribute(key);
                     }
                 }
                 /**
@@ -7936,7 +7891,7 @@
      */ function addAttributes(attrs, element) {
                     for(var _i = 0, _a = Object.keys(attrs); _i < _a.length; _i++){
                         var key = _a[_i], parentElement = getParentNode(element);
-                        'disabled' === key && element.classList.add(CLASSNAMES.DISABLE), 'disabled' === key && parentElement.classList.contains(CLASSNAMES.INPUTGROUP) && parentElement.classList.add(CLASSNAMES.DISABLE), 'placeholder' === key && parentElement.classList.contains(CLASSNAMES.FLOATINPUT) ? parentElement.getElementsByClassName(CLASSNAMES.FLOATTEXT)[0].textContent = attrs[key] : element.setAttribute(key, attrs[key]);
+                        'disabled' === key && element.classList.add(CLASSNAMES_DISABLE), 'disabled' === key && parentElement.classList.contains(CLASSNAMES_INPUTGROUP) && parentElement.classList.add(CLASSNAMES_DISABLE), 'placeholder' === key && parentElement.classList.contains(CLASSNAMES_FLOATINPUT) ? parentElement.getElementsByClassName(CLASSNAMES_FLOATTEXT)[0].textContent = attrs[key] : element.setAttribute(key, attrs[key]);
                     }
                 }
                 /**
@@ -7952,7 +7907,7 @@
     */ function createSpanElement(inputObject, makeElement) {
                     if (inputObject.container.classList.contains('e-outline') && inputObject.container.getElementsByClassName('e-float-text')[0]) {
                         var labelSpanElement = makeElement('span', {
-                            className: CLASSNAMES.FLOATTEXTCONTENT
+                            className: 'e-float-text-content'
                         });
                         labelSpanElement.innerHTML = inputObject.container.getElementsByClassName('e-float-text')[0].innerHTML, inputObject.container.getElementsByClassName('e-float-text')[0].innerHTML = '', inputObject.container.getElementsByClassName('e-float-text')[0].appendChild(labelSpanElement);
                     }
@@ -8003,7 +7958,7 @@
                         innerWrapper.appendChild(inputElement);
                         for(var i = 0; i < result.length; i++)innerWrapper.appendChild(result[i]);
                     }
-                    return innerWrapper.parentNode.insertBefore(button, innerWrapper), container.classList.contains(CLASSNAMES.INPUTGROUP) || container.classList.add(CLASSNAMES.INPUTGROUP), _internalRipple(!0, container, button), button;
+                    return innerWrapper.parentNode.insertBefore(button, innerWrapper), container.classList.contains(CLASSNAMES_INPUTGROUP) || container.classList.add(CLASSNAMES_INPUTGROUP), _internalRipple(!0, container, button), button;
                 }
                 /**
      * Creates a new span element with the given icons added and append it in container element.
@@ -8016,7 +7971,7 @@
      * @param {HTMLElement} container - The container on which created span element is going to append.
      */ function appendSpan(iconClass, container, internalCreateElement) {
                     var button = createIconEle(iconClass, (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(internalCreateElement) ? _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .createElement */ .az : internalCreateElement);
-                    return container.classList.contains(CLASSNAMES.INPUTGROUP) || container.classList.add(CLASSNAMES.INPUTGROUP), (container.classList.contains('e-float-icon-left') ? container.querySelector('.e-input-in-wrap') : container).appendChild(button), _internalRipple(!0, container, button), button;
+                    return container.classList.contains(CLASSNAMES_INPUTGROUP) || container.classList.add(CLASSNAMES_INPUTGROUP), (container.classList.contains('e-float-icon-left') ? container.querySelector('.e-input-in-wrap') : container).appendChild(button), _internalRipple(!0, container, button), button;
                 }
                 function validateInputType(containerElement, input) {
                     'hidden' === input.type ? containerElement.classList.add('e-hidden') : containerElement.classList.contains('e-hidden') && containerElement.classList.remove('e-hidden');
@@ -8033,14 +7988,14 @@
                         buttons: [],
                         clearButton: null
                     };
-                    if (floatType = args.floatLabelType, isBindClearAction = args.bindClearAction, (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.floatLabelType) || 'Never' === args.floatLabelType ? (inputObject.container = createInputContainer(args, CLASSNAMES.INPUTGROUP, CLASSNAMES.INPUTCUSTOMTAG, 'span', makeElement), args.element.parentNode.insertBefore(inputObject.container, args.element), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                    if (floatType = args.floatLabelType, isBindClearAction = args.bindClearAction, (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.floatLabelType) || 'Never' === args.floatLabelType ? (inputObject.container = createInputContainer(args, CLASSNAMES_INPUTGROUP, 'e-input-custom-tag', 'span', makeElement), args.element.parentNode.insertBefore(inputObject.container, args.element), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                         args.element
-                    ], CLASSNAMES.INPUT), inputObject.container.appendChild(args.element)) : createFloatingInput(args, inputObject, makeElement), bindInitialEvent(args), !(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.properties) && !(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.properties.showClearButton) && args.properties.showClearButton && 'TEXTAREA' !== args.element.tagName && (setClearButton(args.properties.showClearButton, args.element, inputObject, !0, makeElement), inputObject.clearButton.setAttribute('role', 'button'), inputObject.container.classList.contains(CLASSNAMES.FLOATINPUT) && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                    ], CLASSNAMES_INPUT), inputObject.container.appendChild(args.element)) : createFloatingInput(args, inputObject, makeElement), bindInitialEvent(args), !(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.properties) && !(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.properties.showClearButton) && args.properties.showClearButton && 'TEXTAREA' !== args.element.tagName && (setClearButton(args.properties.showClearButton, args.element, inputObject, !0, makeElement), inputObject.clearButton.setAttribute('role', 'button'), inputObject.container.classList.contains(CLASSNAMES_FLOATINPUT) && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                         inputObject.container
-                    ], CLASSNAMES.INPUTGROUP)), !(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.buttons) && 'TEXTAREA' !== args.element.tagName) for(var i = 0; i < args.buttons.length; i++)inputObject.buttons.push(appendSpan(args.buttons[i], inputObject.container, makeElement));
+                    ], CLASSNAMES_INPUTGROUP)), !(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.buttons) && 'TEXTAREA' !== args.element.tagName) for(var i = 0; i < args.buttons.length; i++)inputObject.buttons.push(appendSpan(args.buttons[i], inputObject.container, makeElement));
                     return (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.element) || 'TEXTAREA' !== args.element.tagName || (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                         inputObject.container
-                    ], CLASSNAMES.TEXTAREA), validateInputType(inputObject.container, args.element), createSpanElement(inputObject = function(args, inputObject) {
+                    ], 'e-multi-line-input'), validateInputType(inputObject.container, args.element), createSpanElement(inputObject = function(args, inputObject) {
                         if (!(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(args.properties)) for(var _i = 0, _a = Object.keys(args.properties); _i < _a.length; _i++)switch(_a[_i]){
                             case 'cssClass':
                                 setCssClass(args.properties.cssClass, [
@@ -8077,12 +8032,12 @@
                     if (element.value = value, (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(element.getAttribute('value')) && calculateWidth(element, element.parentElement), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(floatLabelType) || 'Auto' !== floatLabelType || validateLabel(element, floatLabelType), !(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(clearButton) && clearButton) {
                         var parentElement = getParentNode(element);
                         if (!(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(parentElement)) {
-                            var button = parentElement.getElementsByClassName(CLASSNAMES.CLEARICON)[0];
+                            var button = parentElement.getElementsByClassName(CLASSNAMES_CLEARICON)[0];
                             (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(button) || (element.value && parentElement.classList.contains('e-input-focus') ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
                                 button
-                            ], CLASSNAMES.CLEARICONHIDE) : (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                            ], CLASSNAMES_CLEARICONHIDE) : (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                                 button
-                            ], CLASSNAMES.CLEARICONHIDE));
+                            ], CLASSNAMES_CLEARICONHIDE));
                         }
                     }
                     checkInputValue(floatLabelType, element);
@@ -8098,18 +8053,18 @@
                     'number' == typeof width ? container.style.width = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .formatUnit */ .Ac)(width) : 'string' == typeof width && (container.style.width = width.match(/px|%|em/) ? width : (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .formatUnit */ .Ac)(width)), calculateWidth(container.firstChild, container);
                 }, Input.setPlaceholder = setPlaceholder, Input.setReadonly = setReadonly, Input.setEnableRtl = setEnableRtl, Input.setEnabled = setEnabled, Input.setClearButton = setClearButton, Input.removeAttributes = removeAttributes, Input.addAttributes = addAttributes, Input.removeFloating = function(input) {
                     var container = input.container;
-                    if (!(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(container) && container.classList.contains(CLASSNAMES.FLOATINPUT)) {
-                        var inputEle = container.querySelector('textarea') ? container.querySelector('textarea') : container.querySelector('input'), placeholder = container.querySelector('.' + CLASSNAMES.FLOATTEXT).textContent, clearButton = null !== container.querySelector('.e-clear-icon');
-                        (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .detach */ .og)(container.querySelector('.' + CLASSNAMES.FLOATLINE)), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .detach */ .og)(container.querySelector('.' + CLASSNAMES.FLOATTEXT)), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .classList */ .s1)(container, [
-                            CLASSNAMES.INPUTGROUP
+                    if (!(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(container) && container.classList.contains(CLASSNAMES_FLOATINPUT)) {
+                        var inputEle = container.querySelector('textarea') ? container.querySelector('textarea') : container.querySelector('input'), placeholder = container.querySelector('.' + CLASSNAMES_FLOATTEXT).textContent, clearButton = null !== container.querySelector('.e-clear-icon');
+                        (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .detach */ .og)(container.querySelector('.' + CLASSNAMES_FLOATLINE)), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .detach */ .og)(container.querySelector('.' + CLASSNAMES_FLOATTEXT)), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .classList */ .s1)(container, [
+                            CLASSNAMES_INPUTGROUP
                         ], [
-                            CLASSNAMES.FLOATINPUT
+                            CLASSNAMES_FLOATINPUT
                         ]), inputEle.removeEventListener('focus', _focusFn), inputEle.removeEventListener('blur', _blurFn), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .attributes */ .Y4)(inputEle, {
                             placeholder: placeholder
-                        }), inputEle.classList.add(CLASSNAMES.INPUT), clearButton || 'INPUT' !== inputEle.tagName || inputEle.removeAttribute('required');
+                        }), inputEle.classList.add(CLASSNAMES_INPUT), clearButton || 'INPUT' !== inputEle.tagName || inputEle.removeAttribute('required');
                     }
                 }, Input.addFloating = function(input, type, placeholder, internalCreateElement) {
-                    var makeElement = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(internalCreateElement) ? _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .createElement */ .az : internalCreateElement, container = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(input, '.' + CLASSNAMES.INPUTGROUP);
+                    var makeElement = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(internalCreateElement) ? _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .createElement */ .az : internalCreateElement, container = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(input, '.' + CLASSNAMES_INPUTGROUP);
                     if (floatType = type, 'Never' !== type) {
                         var customTag = container.tagName, args = {
                             element: input,
@@ -8121,11 +8076,11 @@
                         }, iconEle = container.querySelector('.e-clear-icon'), inputObj = {
                             container: container
                         };
-                        input.classList.remove(CLASSNAMES.INPUT), createFloatingInput(args, inputObj, makeElement), createSpanElement(inputObj, makeElement), calculateWidth(args.element, inputObj.container);
+                        input.classList.remove(CLASSNAMES_INPUT), createFloatingInput(args, inputObj, makeElement), createSpanElement(inputObj, makeElement), calculateWidth(args.element, inputObj.container);
                         var isPrependIcon = container.classList.contains('e-float-icon-left');
-                        if ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(iconEle) && (iconEle = isPrependIcon ? container.querySelector('.e-input-in-wrap').querySelector('.e-input-group-icon') : container.querySelector('.e-input-group-icon')), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(iconEle)) isPrependIcon && (iconEle = container.querySelector('.e-input-group-icon')), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(iconEle) && container.classList.remove(CLASSNAMES.INPUTGROUP);
+                        if ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(iconEle) && (iconEle = isPrependIcon ? container.querySelector('.e-input-in-wrap').querySelector('.e-input-group-icon') : container.querySelector('.e-input-group-icon')), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(iconEle)) isPrependIcon && (iconEle = container.querySelector('.e-input-group-icon')), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(iconEle) && container.classList.remove(CLASSNAMES_INPUTGROUP);
                         else {
-                            var floatLine = container.querySelector('.' + CLASSNAMES.FLOATLINE), floatText = container.querySelector('.' + CLASSNAMES.FLOATTEXT), wrapper = isPrependIcon ? container.querySelector('.e-input-in-wrap') : container;
+                            var floatLine = container.querySelector('.' + CLASSNAMES_FLOATLINE), floatText = container.querySelector('.' + CLASSNAMES_FLOATTEXT), wrapper = isPrependIcon ? container.querySelector('.e-input-in-wrap') : container;
                             wrapper.insertBefore(input, iconEle), wrapper.insertBefore(floatLine, iconEle), wrapper.insertBefore(floatText, iconEle);
                         }
                     }
@@ -8390,17 +8345,15 @@
                 }, NumericTextBox.prototype.updateHTMLAttrToWrapper = function() {
                     if (!(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(this.htmlAttributes)) for(var _i = 0, _a = Object.keys(this.htmlAttributes); _i < _a.length; _i++){
                         var pro = _a[_i];
-                        if (wrapperAttributes.indexOf(pro) > -1) {
-                            if ('class' === pro) {
-                                var updatedClassValue = this.getNumericValidClassList(this.htmlAttributes[pro]);
-                                '' !== updatedClassValue && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
-                                    this.container
-                                ], updatedClassValue.split(' '));
-                            } else if ('style' === pro) {
-                                var numericStyle = this.container.getAttribute(pro);
-                                numericStyle = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(numericStyle) ? this.htmlAttributes[pro] : numericStyle + this.htmlAttributes[pro], this.container.setAttribute(pro, numericStyle);
-                            } else this.container.setAttribute(pro, this.htmlAttributes[pro]);
-                        }
+                        if (wrapperAttributes.indexOf(pro) > -1) if ('class' === pro) {
+                            var updatedClassValue = this.getNumericValidClassList(this.htmlAttributes[pro]);
+                            '' !== updatedClassValue && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                                this.container
+                            ], updatedClassValue.split(' '));
+                        } else if ('style' === pro) {
+                            var numericStyle = this.container.getAttribute(pro);
+                            numericStyle = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(numericStyle) ? this.htmlAttributes[pro] : numericStyle + this.htmlAttributes[pro], this.container.setAttribute(pro, numericStyle);
+                        } else this.container.setAttribute(pro, this.htmlAttributes[pro]);
                     }
                 }, NumericTextBox.prototype.setElementWidth = function(width) {
                     (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(width) || ('number' == typeof width ? this.container.style.width = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .formatUnit */ .Ac)(width) : 'string' == typeof width && (this.container.style.width = width.match(/px|%|em/) ? width : (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .formatUnit */ .Ac)(width)));
@@ -8576,7 +8529,7 @@
                     var floatExp = RegExp('[,.](.*)'), floatValue = floatExp.test(value.toString()), floatStep = floatExp.test(step.toString());
                     if (floatValue || floatStep) {
                         var max = Math.max(floatValue ? floatExp.exec(value.toString())[0].length : 0, floatStep ? floatExp.exec(step.toString())[0].length : 0);
-                        return value = this.roundValue(result, max);
+                        return this.roundValue(result, max);
                     }
                     return result;
                 }, NumericTextBox.prototype.roundValue = function(result, precision) {
@@ -9249,34 +9202,33 @@
  * @param {OffsetPosition} pos - specifies the position
  * @returns {OffsetPosition} - returns the postion
  */ function(posX, posY, pos) {
-                    var value, value1, value2, value3, value4, value5, value6, value7, value8;
                     switch(elementRect = element.getBoundingClientRect(), posY + posX){
                         case 'topcenter':
-                            setPosx(getElementHCenter(), pos), value = getElementTop(), pos.top = value;
+                            setPosx(getElementHCenter(), pos), pos.top = getElementTop();
                             break;
                         case 'topright':
-                            setPosx(getElementRight(), pos), value1 = getElementTop(), pos.top = value1;
+                            setPosx(getElementRight(), pos), pos.top = getElementTop();
                             break;
                         case 'centercenter':
-                            setPosx(getElementHCenter(), pos), value2 = getElementVCenter(), pos.top = value2;
+                            setPosx(getElementHCenter(), pos), pos.top = getElementVCenter();
                             break;
                         case 'centerright':
-                            setPosx(getElementRight(), pos), value3 = getElementVCenter(), pos.top = value3;
+                            setPosx(getElementRight(), pos), pos.top = getElementVCenter();
                             break;
                         case 'centerleft':
-                            setPosx(getElementLeft(), pos), value4 = getElementVCenter(), pos.top = value4;
+                            setPosx(getElementLeft(), pos), pos.top = getElementVCenter();
                             break;
                         case 'bottomcenter':
-                            setPosx(getElementHCenter(), pos), value5 = getElementBottom(), pos.top = value5;
+                            setPosx(getElementHCenter(), pos), pos.top = getElementBottom();
                             break;
                         case 'bottomright':
-                            setPosx(getElementRight(), pos), value6 = getElementBottom(), pos.top = value6;
+                            setPosx(getElementRight(), pos), pos.top = getElementBottom();
                             break;
                         case 'bottomleft':
-                            setPosx(getElementLeft(), pos), value7 = getElementBottom(), pos.top = value7;
+                            setPosx(getElementLeft(), pos), pos.top = getElementBottom();
                             break;
                         default:
-                            setPosx(getElementLeft(), pos), value8 = getElementTop(), pos.top = value8;
+                            setPosx(getElementLeft(), pos), pos.top = getElementTop();
                     }
                     return pos;
                 }(positionX.toLowerCase(), positionY.toLowerCase(), {
@@ -9380,12 +9332,7 @@
                 ], PositionData.prototype, "X", void 0), __decorate([
                     (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .Property */ .Z9)('top')
                 ], PositionData.prototype, "Y", void 0), PositionData;
-            }(_syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .ChildProperty */ .rt), CLASSNAMES = {
-                ROOT: 'e-popup',
-                RTL: 'e-rtl',
-                OPEN: 'e-popup-open',
-                CLOSE: 'e-popup-close'
-            }, Popup = /** @class */ function(_super) {
+            }(_syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .ChildProperty */ .rt), CLASSNAMES_ROOT = 'e-popup', CLASSNAMES_RTL = 'e-rtl', CLASSNAMES_OPEN = 'e-popup-open', CLASSNAMES_CLOSE = 'e-popup-close', Popup = /** @class */ function(_super) {
                 function Popup(element, options) {
                     return _super.call(this, options, element) || this;
                 }
@@ -9460,14 +9407,14 @@
      *
      * @returns {void}
      */ Popup.prototype.destroy = function() {
-                    this.element.classList.remove(CLASSNAMES.ROOT, CLASSNAMES.RTL, CLASSNAMES.OPEN, CLASSNAMES.CLOSE), this.element.classList.contains('e-popup-open') && this.unwireEvents(), _super.prototype.destroy.call(this);
+                    this.element.classList.remove(CLASSNAMES_ROOT, CLASSNAMES_RTL, CLASSNAMES_OPEN, CLASSNAMES_CLOSE), this.element.classList.contains('e-popup-open') && this.unwireEvents(), _super.prototype.destroy.call(this);
                 }, /**
      * To Initialize the control rendering
      *
      * @returns {void}
      * @private
      */ Popup.prototype.render = function() {
-                    this.element.classList.add(CLASSNAMES.ROOT);
+                    this.element.classList.add(CLASSNAMES_ROOT);
                     var styles = {};
                     1000 !== this.zIndex && (styles.zIndex = this.zIndex), 'auto' !== this.width && (styles.width = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .formatUnit */ .Ac)(this.width)), 'auto' !== this.height && (styles.height = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .formatUnit */ .Ac)(this.height)), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .setStyleAttribute */ .V7)(this.element, styles), this.fixedParent = !1, this.setEnableRtl(), this.setContent();
                 }, Popup.prototype.wireEvents = function() {
@@ -9504,7 +9451,8 @@
      * @returns {boolean} - retruns the boolean
      */ // eslint-disable-next-line
                 Popup.prototype.isElementOnViewport = function(relateToElement, scrollElement) {
-                    for(var scrollParents = this.getScrollableParent(relateToElement), parent_3 = 0; parent_3 < scrollParents.length; parent_3++)if (!this.isElementVisible(relateToElement, scrollParents[parent_3])) return !1;
+                    for(var scrollParents = this.getScrollableParent(relateToElement), parent_3 = 0; parent_3 < scrollParents.length; parent_3++)if (this.isElementVisible(relateToElement, scrollParents[parent_3])) continue;
+                    else return !1;
                     return !0;
                 }, Popup.prototype.isElementVisible = function(relateToElement, scrollElement) {
                     var rect = this.checkGetBoundingClientRect(relateToElement);
@@ -9539,14 +9487,12 @@
                 //There is no event handler
                 }, Popup.prototype.setEnableRtl = function() {
                     this.reposition(), // eslint-disable-next-line
-                    this.enableRtl ? this.element.classList.add(CLASSNAMES.RTL) : this.element.classList.remove(CLASSNAMES.RTL);
+                    this.enableRtl ? this.element.classList.add(CLASSNAMES_RTL) : this.element.classList.remove(CLASSNAMES_RTL);
                 }, Popup.prototype.setContent = function() {
-                    if (!(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(this.content)) {
-                        if (this.element.innerHTML = '', 'string' == typeof this.content) this.element.textContent = this.content;
-                        else {
-                            var relateToElem = this.getRelateToElement(), props = this.content.props;
-                            (!relateToElem.classList.contains('e-dropdown-btn') || (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(props)) && this.element.appendChild(this.content);
-                        }
+                    if (!(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(this.content)) if (this.element.innerHTML = '', 'string' == typeof this.content) this.element.textContent = this.content;
+                    else {
+                        var relateToElem = this.getRelateToElement(), props = this.content.props;
+                        (!relateToElem.classList.contains('e-dropdown-btn') || (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(props)) && this.element.appendChild(this.content);
                     }
                 }, Popup.prototype.orientationOnChange = function() {
                     var _this = this;
@@ -9621,15 +9567,13 @@
                     var relateToElement = this.getRelateToElement();
                     (0, _common_collision__WEBPACK_IMPORTED_MODULE_2__ /* .flip */ .RR)(this.element, relateToElement, this.offsetX, this.offsetY, this.position.X, this.position.Y, this.viewPortElement, param, this.fixedParent);
                 }, Popup.prototype.callFit = function(param) {
-                    if (0 !== (0, _common_collision__WEBPACK_IMPORTED_MODULE_2__ /* .isCollide */ .vF)(this.element, this.viewPortElement).length) {
-                        if ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(this.viewPortElement)) {
-                            var data = (0, _common_collision__WEBPACK_IMPORTED_MODULE_2__ /* .fit */ .Tj)(this.element, this.viewPortElement, param);
-                            param.X && (this.element.style.left = data.left + 'px'), param.Y && (this.element.style.top = data.top + 'px');
-                        } else {
-                            var elementRect = this.checkGetBoundingClientRect(this.element), viewPortRect = this.checkGetBoundingClientRect(this.viewPortElement);
-                            if ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(elementRect) || (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(viewPortRect)) return null;
-                            param && !0 === param.Y && (viewPortRect.top > elementRect.top ? this.element.style.top = '0px' : viewPortRect.bottom < elementRect.bottom && (this.element.style.top = parseInt(this.element.style.top, 10) - (elementRect.bottom - viewPortRect.bottom) + 'px')), param && !0 === param.X && (viewPortRect.right < elementRect.right ? this.element.style.left = parseInt(this.element.style.left, 10) - (elementRect.right - viewPortRect.right) + 'px' : viewPortRect.left > elementRect.left && (this.element.style.left = parseInt(this.element.style.left, 10) + (viewPortRect.left - elementRect.left) + 'px'));
-                        }
+                    if (0 !== (0, _common_collision__WEBPACK_IMPORTED_MODULE_2__ /* .isCollide */ .vF)(this.element, this.viewPortElement).length) if ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(this.viewPortElement)) {
+                        var data = (0, _common_collision__WEBPACK_IMPORTED_MODULE_2__ /* .fit */ .Tj)(this.element, this.viewPortElement, param);
+                        param.X && (this.element.style.left = data.left + 'px'), param.Y && (this.element.style.top = data.top + 'px');
+                    } else {
+                        var elementRect = this.checkGetBoundingClientRect(this.element), viewPortRect = this.checkGetBoundingClientRect(this.viewPortElement);
+                        if ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(elementRect) || (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(viewPortRect)) return null;
+                        param && !0 === param.Y && (viewPortRect.top > elementRect.top ? this.element.style.top = '0px' : viewPortRect.bottom < elementRect.bottom && (this.element.style.top = parseInt(this.element.style.top, 10) - (elementRect.bottom - viewPortRect.bottom) + 'px')), param && !0 === param.X && (viewPortRect.right < elementRect.right ? this.element.style.left = parseInt(this.element.style.left, 10) - (elementRect.right - viewPortRect.right) + 'px' : viewPortRect.left > elementRect.left && (this.element.style.left = parseInt(this.element.style.left, 10) + (viewPortRect.left - elementRect.left) + 'px'));
                     }
                 }, Popup.prototype.checkCollision = function() {
                     var horz = this.collision.X, vert = this.collision.Y;
@@ -9668,22 +9612,22 @@
                     }
                     animationOptions = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(animationOptions) || 'object' != typeof animationOptions ? this.showAnimation : animationOptions, ('none' !== this.collision.X || 'none' !== this.collision.Y) && ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
                         this.element
-                    ], CLASSNAMES.CLOSE), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                    ], CLASSNAMES_CLOSE), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                         this.element
-                    ], CLASSNAMES.OPEN), this.checkCollision(), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
+                    ], CLASSNAMES_OPEN), this.checkCollision(), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
                         this.element
-                    ], CLASSNAMES.OPEN), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                    ], CLASSNAMES_OPEN), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                         this.element
-                    ], CLASSNAMES.CLOSE)), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(animationOptions) ? ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
+                    ], CLASSNAMES_CLOSE)), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(animationOptions) ? ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
                         this.element
-                    ], CLASSNAMES.CLOSE), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                    ], CLASSNAMES_CLOSE), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                         this.element
-                    ], CLASSNAMES.OPEN), this.trigger('open')) : (animationOptions.begin = function() {
+                    ], CLASSNAMES_OPEN), this.trigger('open')) : (animationOptions.begin = function() {
                         _this.isDestroyed || ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
                             _this.element
-                        ], CLASSNAMES.CLOSE), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                        ], CLASSNAMES_CLOSE), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                             _this.element
-                        ], CLASSNAMES.OPEN));
+                        ], CLASSNAMES_OPEN));
                     }, animationOptions.end = function() {
                         _this.isDestroyed || _this.trigger('open');
                     }, new _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .Animation */ .fw(animationOptions).animate(this.element));
@@ -9696,14 +9640,14 @@
                     var _this = this;
                     animationOptions = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(animationOptions) || 'object' != typeof animationOptions ? this.hideAnimation : animationOptions, (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(animationOptions) ? ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
                         this.element
-                    ], CLASSNAMES.OPEN), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                    ], CLASSNAMES_OPEN), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                         this.element
-                    ], CLASSNAMES.CLOSE), this.trigger('close')) : (animationOptions.end = function() {
+                    ], CLASSNAMES_CLOSE), this.trigger('close')) : (animationOptions.end = function() {
                         _this.isDestroyed || ((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .removeClass */ .IV)([
                             _this.element
-                        ], CLASSNAMES.OPEN), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
+                        ], CLASSNAMES_OPEN), (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .addClass */ .cn)([
                             _this.element
-                        ], CLASSNAMES.CLOSE), _this.trigger('close'));
+                        ], CLASSNAMES_CLOSE), _this.trigger('close'));
                     }, new _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .Animation */ .fw(animationOptions).animate(this.element)), this.unwireEvents();
                 }, /**
      * Gets scrollable parent elements for the given element.
@@ -9770,7 +9714,7 @@
  */ function getScrollableParent(element, fixedParent) {
                 for(var eleStyle = getComputedStyle(element), scrollParents = [], overflowRegex = /(auto|scroll)/, parent = element.parentElement; parent && 'HTML' !== parent.tagName;){
                     var parentStyle = getComputedStyle(parent);
-                    !('absolute' === eleStyle.position && 'static' === parentStyle.position) && overflowRegex.test(parentStyle.overflow + parentStyle.overflowY + parentStyle.overflowX) && scrollParents.push(parent), parent = parent.parentElement;
+                    ('absolute' !== eleStyle.position || 'static' !== parentStyle.position) && overflowRegex.test(parentStyle.overflow + parentStyle.overflowY + parentStyle.overflowX) && scrollParents.push(parent), parent = parent.parentElement;
                 }
                 return fixedParent || scrollParents.push(document), scrollParents;
             }
@@ -9880,16 +9824,13 @@
      */ ComponentBase.prototype.updateProperties = function(nextProps, silent) {
                     for(var _this = this, dProps = (0, ej2_base /* extend */ .l7)({}, nextProps), keys = Object.keys(nextProps), _i = 0; _i < keys.length; _i++){
                         var propkey = keys[_i], isClassName = 'className' === propkey;
-                        if ('children' !== propkey) {
-                            if (isClassName || (0, ej2_base /* isNullOrUndefined */ .le)(this.htmlattributes[propkey]) || this.htmlattributes[propkey] === dProps[propkey] || (this.htmlattributes[propkey] = dProps[propkey]), this.compareValues(this.props[propkey], nextProps[propkey])) delete dProps[propkey];
-                            else if (-1 !== this.attrKeys.indexOf(propkey)) {
-                                if (isClassName) {
-                                    this.clsName = !0;
-                                    for(var propsClsName = this.props[propkey].split(' '), i = 0; i < propsClsName.length; i++)this.element.classList.remove(propsClsName[i]);
-                                    for(var dpropsClsName = dProps[propkey].split(' '), j = 0; j < dpropsClsName.length; j++)this.element.classList.add(dpropsClsName[j]);
-                                } else 'disabled' !== propkey && delete dProps[propkey];
-                            } else 'value' === propkey && nextProps[propkey] === this[propkey] ? delete dProps[propkey] : ('valueTemplate' === propkey || 'itemTemplate' === propkey || 'headerTemplate' === propkey) && nextProps[propkey].toString() === this[propkey].toString() ? delete dProps[propkey] : 'content' === propkey && 'function' == typeof dProps[propkey] && delete dProps[propkey];
-                        }
+                        if ('children' !== propkey) if (isClassName || (0, ej2_base /* isNullOrUndefined */ .le)(this.htmlattributes[propkey]) || this.htmlattributes[propkey] === dProps[propkey] || (this.htmlattributes[propkey] = dProps[propkey]), this.compareValues(this.props[propkey], nextProps[propkey])) delete dProps[propkey];
+                        else if (-1 !== this.attrKeys.indexOf(propkey)) if (isClassName) {
+                            this.clsName = !0;
+                            for(var propsClsName = this.props[propkey].split(' '), i = 0; i < propsClsName.length; i++)this.element.classList.remove(propsClsName[i]);
+                            for(var dpropsClsName = dProps[propkey].split(' '), j = 0; j < dpropsClsName.length; j++)this.element.classList.add(dpropsClsName[j]);
+                        } else 'disabled' !== propkey && delete dProps[propkey];
+                        else 'value' === propkey && nextProps[propkey] === this[propkey] || ('valueTemplate' === propkey || 'itemTemplate' === propkey || 'headerTemplate' === propkey) && nextProps[propkey].toString() === this[propkey].toString() ? delete dProps[propkey] : 'content' === propkey && 'function' == typeof dProps[propkey] && delete dProps[propkey];
                     }
                     dProps.children && delete dProps.children, this.initRenderCalled && (this.canDelayUpdate || this.props.delayUpdate) ? setTimeout(function() {
                         _this.refreshProperties(dProps, nextProps, silent);
@@ -10038,16 +9979,15 @@
                                 }
                             }
                             else this.prevProperties = (0, ej2_base /* extend */ .l7)({}, directiveValue, {}, !0);
-                            if (changedProps.length) {
-                                if ('grid' === this.getModuleName() && 'columns' === key) for(var _c1 = 0, allColumns = this.columns; _c1 < allColumns.length; _c1++)if ((0, ej2_base /* getValue */ .NA)('field', allColumns[_c1]) === (0, ej2_base /* getValue */ .NA)(_c1 + '.value.field', changedProps)) {
-                                    var propInstance = (0, ej2_base /* getValue */ .NA)(changedProps[_c1].key + '.' + changedProps[_c1].index, this);
-                                    propInstance && propInstance.setProperties ? propInstance.setProperties(changedProps[_c1].value) : (0, ej2_base /* extend */ .l7)(propInstance, changedProps[_c1].value);
-                                } else this.setProperties(directiveValue, silent);
-                                else for(var _c = 0, changedProps_1 = changedProps; _c < changedProps_1.length; _c++){
-                                    var changes = changedProps_1[_c], propInstance_1 = (0, ej2_base /* getValue */ .NA)(changes.key + '.' + changes.index, this);
-                                    propInstance_1 && propInstance_1.setProperties ? propInstance_1.setProperties(changes.value) : (0, ej2_base /* extend */ .l7)(propInstance_1, changes.value);
-                                }
+                            if (changedProps.length) if ('grid' === this.getModuleName() && 'columns' === key) for(var _c1 = 0, allColumns = this.columns; _c1 < allColumns.length; _c1++)if ((0, ej2_base /* getValue */ .NA)('field', allColumns[_c1]) === (0, ej2_base /* getValue */ .NA)(_c1 + '.value.field', changedProps)) {
+                                var propInstance = (0, ej2_base /* getValue */ .NA)(changedProps[_c1].key + '.' + changedProps[_c1].index, this);
+                                propInstance && propInstance.setProperties ? propInstance.setProperties(changedProps[_c1].value) : (0, ej2_base /* extend */ .l7)(propInstance, changedProps[_c1].value);
                             } else this.setProperties(directiveValue, silent);
+                            else for(var _c = 0, changedProps_1 = changedProps; _c < changedProps_1.length; _c++){
+                                var changes = changedProps_1[_c], propInstance_1 = (0, ej2_base /* getValue */ .NA)(changes.key + '.' + changes.index, this);
+                                propInstance_1 && propInstance_1.setProperties ? propInstance_1.setProperties(changes.value) : (0, ej2_base /* extend */ .l7)(propInstance_1, changes.value);
+                            }
+                            else this.setProperties(directiveValue, silent);
                         }
                     }
                 }, ComponentBase.prototype.componentWillUnmount = function() {
@@ -10093,17 +10033,15 @@
                         var child = subChild[_i], accessProp = !1, key = void 0;
                         'string' == typeof matcher ? (accessProp = !0, key = matcher) : key = Object.keys(matcher)[0];
                         var prop = child.props;
-                        if (this.getChildType(child) === key) {
-                            if (accessProp || !prop.children) {
-                                // tslint:disable
-                                var cacheVal = (0, ej2_base /* extend */ .l7)({}, prop, {}, !0);
-                                // tslint:disable
-                                this.processComplexTemplate(cacheVal, child.type), ret.push(cacheVal);
-                            } else {
-                                var cachedValue = this.validateChildren((0, ej2_base /* extend */ .l7)({}, prop), matcher[key], prop) || prop;
-                                cachedValue.children && delete cachedValue.children, // tslint:disable
-                                this.processComplexTemplate(cachedValue, child.type), ret.push(cachedValue);
-                            }
+                        if (this.getChildType(child) === key) if (accessProp || !prop.children) {
+                            // tslint:disable
+                            var cacheVal = (0, ej2_base /* extend */ .l7)({}, prop, {}, !0);
+                            // tslint:disable
+                            this.processComplexTemplate(cacheVal, child.type), ret.push(cacheVal);
+                        } else {
+                            var cachedValue = this.validateChildren((0, ej2_base /* extend */ .l7)({}, prop), matcher[key], prop) || prop;
+                            cachedValue.children && delete cachedValue.children, // tslint:disable
+                            this.processComplexTemplate(cachedValue, child.type), ret.push(cachedValue);
                         }
                     }
                     return ret;
@@ -10140,15 +10078,13 @@
                     this.constructor = d;
                 }
                 extendStatics1(d, b), d.prototype = null === b ? Object.create(b) : (__.prototype = b.prototype, new __());
-            });
-            !/** @class */ function(_super) {
-                function ComplexBase() {
-                    return null !== _super && _super.apply(this, arguments) || this;
-                }
-                complex_base_extends(ComplexBase, _super), ComplexBase.prototype.render = function() {
-                    return null;
-                }, ComplexBase.isDirective = !0;
-            }(react.PureComponent);
+            }), _super = react.PureComponent;
+            function ComplexBase() {
+                return null !== _super && _super.apply(this, arguments) || this;
+            }
+            complex_base_extends(ComplexBase, _super), ComplexBase.prototype.render = function() {
+                return null;
+            }, ComplexBase.isDirective = !0;
             var services_extends = (extendStatics2 = function(d, b) {
                 return (extendStatics2 = Object.setPrototypeOf || ({
                     __proto__: []
@@ -11631,7 +11567,7 @@
                         };
                         this.parent.trigger(constant /* actionBegin */ .m2, actionBeginArgs, function(actionBeginArgs) {
                             if (!actionBeginArgs.cancel) {
-                                if (!(_this.range.startOffset === _this.range.endOffset && _this.range.startContainer === _this.range.endContainer)) {
+                                if (_this.range.startOffset !== _this.range.endOffset || _this.range.startContainer !== _this.range.endContainer) {
                                     if (_this.range.deleteContents(), '#text' === _this.range.startContainer.nodeName && 0 === _this.range.startContainer.textContent.length && _this.range.startContainer.parentElement !== _this.parent.inputElement) 'BR' === _this.parent.enterKey ? _this.range.startContainer.parentElement.innerHTML = '&#8203;' : _this.range.startContainer.parentElement.innerHTML = '<br>';
                                     else if (_this.range.startContainer === _this.parent.inputElement && '' === _this.range.startContainer.innerHTML) {
                                         _this.range.startContainer.innerHTML = '<br>';
@@ -11644,10 +11580,7 @@
                                         else if (0 === focusElem.textContent.length) {
                                             for(var currentFocusElem = focusElem.previousSibling.lastChild; '#text' !== currentFocusElem.nodeName;)currentFocusElem = currentFocusElem.lastChild;
                                             _this.parent.formatter.editorManager.nodeSelection.setCursorPoint(_this.parent.contentModule.getDocument(), currentFocusElem, currentFocusElem.textContent.length), (0, ej2_base /* detach */ .og)(focusElem);
-                                        } else if ('BR' !== _this.parent.enterKey && 0 !== focusElem.previousSibling.textContent.length && 0 !== focusElem.textContent.length) {
-                                            e.args.preventDefault();
-                                            return;
-                                        }
+                                        } else if ('BR' !== _this.parent.enterKey && 0 !== focusElem.previousSibling.textContent.length && 0 !== focusElem.textContent.length) return void e.args.preventDefault();
                                         _this.getRangeNode();
                                     }
                                 }
@@ -11668,15 +11601,14 @@
                                             finalFocusElem.innerHTML = '<br>', isImageNode || (0, ej2_base /* detach */ .og)(nearBlockNode);
                                         }
                                         _this.parent.formatter.editorManager.nodeSelection.setCursorPoint(_this.parent.contentModule.getDocument(), insertElem.nextElementSibling, 0);
-                                    } else if (0 === nearBlockNode.textContent.length && ((0, ej2_base /* isNullOrUndefined */ .le)(nearBlockNode.childNodes[0]) || 'IMG' !== nearBlockNode.childNodes[0].nodeName)) {
-                                        if ((0, ej2_base /* isNullOrUndefined */ .le)(nearBlockNode.children[0]) || 'BR' === nearBlockNode.children[0].tagName) {
-                                            var insertElem = _this.createInsertElement(shiftKey_1);
-                                            insertElem.innerHTML = '<br>', _this.parent.formatter.editorManager.domNode.insertAfter(insertElem, nearBlockNode), _this.parent.formatter.editorManager.nodeSelection.setCursorPoint(_this.parent.contentModule.getDocument(), insertElem, 0);
-                                        } else {
-                                            var newElem = _this.parent.formatter.editorManager.nodeCutter.SplitNode(_this.range, nearBlockNode, !1).cloneNode(!0);
-                                            _this.parent.formatter.editorManager.domNode.insertAfter(newElem, nearBlockNode), _this.parent.formatter.editorManager.nodeSelection.setCursorPoint(_this.parent.contentModule.getDocument(), newElem, newElem.textContent.length >= 0 ? 0 : 1);
-                                        }
+                                    } else if (0 === nearBlockNode.textContent.length && ((0, ej2_base /* isNullOrUndefined */ .le)(nearBlockNode.childNodes[0]) || 'IMG' !== nearBlockNode.childNodes[0].nodeName)) if ((0, ej2_base /* isNullOrUndefined */ .le)(nearBlockNode.children[0]) || 'BR' === nearBlockNode.children[0].tagName) {
+                                        var insertElem = _this.createInsertElement(shiftKey_1);
+                                        insertElem.innerHTML = '<br>', _this.parent.formatter.editorManager.domNode.insertAfter(insertElem, nearBlockNode), _this.parent.formatter.editorManager.nodeSelection.setCursorPoint(_this.parent.contentModule.getDocument(), insertElem, 0);
                                     } else {
+                                        var newElem = _this.parent.formatter.editorManager.nodeCutter.SplitNode(_this.range, nearBlockNode, !1).cloneNode(!0);
+                                        _this.parent.formatter.editorManager.domNode.insertAfter(newElem, nearBlockNode), _this.parent.formatter.editorManager.nodeSelection.setCursorPoint(_this.parent.contentModule.getDocument(), newElem, newElem.textContent.length >= 0 ? 0 : 1);
+                                    }
+                                    else {
                                         var newElem = _this.parent.formatter.editorManager.nodeCutter.SplitNode(_this.range, nearBlockNode, !0);
                                         if ((0, ej2_base /* isNullOrUndefined */ .le)(newElem.childNodes[0]) || '#text' !== newElem.childNodes[0].nodeName || 0 !== newElem.childNodes[0].textContent.length || (0, ej2_base /* detach */ .og)(newElem.childNodes[0]), 0 === newElem.textContent.trim().length) {
                                             var brElm = _this.parent.createElement('br');
@@ -11701,7 +11633,7 @@
                                         currentParent = currentNode === _this.parent.inputElement ? previousNode : currentNode;
                                     }
                                     _this.removeBRElement(currentParent);
-                                    for(var currentParentLastChild = currentParent.lastChild; !(0, ej2_base /* isNullOrUndefined */ .le)(currentParentLastChild) && !('#text' === currentParentLastChild.nodeName || 'BR' === currentParentLastChild.nodeName);)currentParentLastChild = currentParentLastChild.lastChild;
+                                    for(var currentParentLastChild = currentParent.lastChild; !(0, ej2_base /* isNullOrUndefined */ .le)(currentParentLastChild) && '#text' !== currentParentLastChild.nodeName && 'BR' !== currentParentLastChild.nodeName;)currentParentLastChild = currentParentLastChild.lastChild;
                                     var isLastNodeLength = _this.range.startContainer === currentParentLastChild ? _this.range.startContainer.textContent.length : currentParent.textContent.length;
                                     if (currentParent !== _this.parent.inputElement && _this.parent.formatter.editorManager.domNode.isBlockNode(currentParent) && _this.range.startOffset === _this.range.endOffset && _this.range.startOffset === isLastNodeLength) {
                                         var focusBRElem = _this.parent.createElement('br');
@@ -11841,7 +11773,7 @@
  */ function onMouseMove(e) {
                 if (e.target.classList.contains(RESIZE_HANDLER) && e.target.classList.contains(FOCUSED_HANDLER) ? selectedHandler = e.target : (0, ej2_base /* isNullOrUndefined */ .le)(document.body.querySelector('.' + FOCUSED_HANDLER)) || (selectedHandler = document.body.querySelector('.' + FOCUSED_HANDLER)), !(0, ej2_base /* isNullOrUndefined */ .le)(selectedHandler)) {
                     for(var resizeTowards = '', i = 0; i < elementClass.length; i++)selectedHandler.classList.contains('e-' + elementClass[i]) && (resizeTowards = elementClass[i]);
-                    switch((0, ej2_base /* isNullOrUndefined */ .le)(resize) || (proxy = this, resize(e, proxy)), resizeTowards){
+                    switch(!(0, ej2_base /* isNullOrUndefined */ .le)(resize) && (proxy = this, resize(e, proxy)), resizeTowards){
                         case 'south':
                             resizeSouth(e);
                             break;
@@ -12066,11 +11998,10 @@
                     if (this.enableResize) {
                         if (!this.isBlazorServerRender() || (0, ej2_base /* isNullOrUndefined */ .le)(this.element.querySelector('.e-icons.e-resize-handle'))) {
                             this.element.classList.add(DLG_RESIZABLE);
-                            for(var computedHeight = getComputedStyle(this.element).minHeight, computedWidth = getComputedStyle(this.element).minWidth, direction = '', i = 0; i < this.resizeHandles.length; i++){
-                                if ('All' === this.resizeHandles[i]) {
-                                    direction = 'south north east west north-east north-west south-east south-west';
-                                    break;
-                                }
+                            for(var computedHeight = getComputedStyle(this.element).minHeight, computedWidth = getComputedStyle(this.element).minWidth, direction = '', i = 0; i < this.resizeHandles.length; i++)if ('All' === this.resizeHandles[i]) {
+                                direction = 'south north east west north-east north-west south-east south-west';
+                                break;
+                            } else {
                                 var directionValue = '';
                                 switch(this.resizeHandles[i].toString()){
                                     case 'SouthEast':
@@ -12096,11 +12027,11 @@
  * @returns {void}
  */ function(args) {
                                 resizeStart = args.resizeBegin, resize = args.resizing, resizeEnd = args.resizeComplete, targetElement = getDOMElement(args.element), containerElement = getDOMElement(args.boundary);
-                                for(var directions = args.direction.split(' '), i = 0; i < directions.length; i++)if (dialogBorderResize.indexOf(directions[i]) >= 0 && directions[i]) /**
+                                for(var directions = args.direction.split(' '), i = 0; i < directions.length; i++)if (dialogBorderResize.indexOf(directions[i]) >= 0 && directions[i]) !/**
  *
  * @param {string} direction - specifies the string
  * @returns {void}
- */ (function(direction) {
+ */ function(direction) {
                                     calculateValues();
                                     var borderBottom = (0, ej2_base /* createElement */ .az)('span', {
                                         attrs: {
@@ -12109,7 +12040,7 @@
                                         }
                                     });
                                     borderBottom.setAttribute('class', 'e-dialog-border-resize e-' + direction), 'south' === direction && (borderBottom.style.height = '2px', borderBottom.style.width = '100%', borderBottom.style.bottom = '0px', borderBottom.style.left = '0px'), 'north' === direction && (borderBottom.style.height = '2px', borderBottom.style.width = '100%', borderBottom.style.top = '0px', borderBottom.style.left = '0px'), 'east' === direction && (borderBottom.style.height = '100%', borderBottom.style.width = '2px', borderBottom.style.right = '0px', borderBottom.style.top = '0px'), 'west' === direction && (borderBottom.style.height = '100%', borderBottom.style.width = '2px', borderBottom.style.left = '0px', borderBottom.style.top = '0px'), targetElement.appendChild(borderBottom);
-                                })(directions[i]);
+                                }(directions[i]);
                                 else if ('' !== directions[i].trim()) {
                                     var resizeHandler = (0, ej2_base /* createElement */ .az)('div', {
                                         className: 'e-icons ' + RESIZE_HANDLER + " e-" + directions[i]
@@ -12175,7 +12106,7 @@
                     var _this = this;
                     if (this.initialRender = !0, this.isBlazorServerRender() || (0, ej2_base /* attributes */ .Y4)(this.element, {
                         role: 'dialog'
-                    }), 1000 === this.zIndex ? (this.setzIndex(this.element, !1), this.calculatezIndex = !0) : this.calculatezIndex = !1, this.isBlazorServerRender() && (0, ej2_base /* isNullOrUndefined */ .le)(this.headerContent) && (this.headerContent = this.element.getElementsByClassName('e-dlg-header-content')[0]), this.isBlazorServerRender() && (0, ej2_base /* isNullOrUndefined */ .le)(this.contentEle) && (this.contentEle = this.element.querySelector('#' + this.element.id + '_dialog-content')), this.isBlazorServerRender() || (this.setTargetContent(), '' === this.header || (0, ej2_base /* isNullOrUndefined */ .le)(this.header) || this.setHeader(), this.renderCloseIcon(), this.setContent(), '' === this.footerTemplate || (0, ej2_base /* isNullOrUndefined */ .le)(this.footerTemplate) ? (0, ej2_base /* isNullOrUndefined */ .le)(this.buttons[0].buttonModel) || this.setButton() : this.setFooterTemplate()), this.isBlazorServerRender() && !(0, ej2_base /* isNullOrUndefined */ .le)(this.buttons[0].buttonModel) && '' === this.footerTemplate && this.setButton(), this.allowDragging && !(0, ej2_base /* isNullOrUndefined */ .le)(this.headerContent) && this.setAllowDragging(), !this.isBlazorServerRender() && ((0, ej2_base /* attributes */ .Y4)(this.element, {
+                    }), 1000 === this.zIndex ? (this.setzIndex(this.element, !1), this.calculatezIndex = !0) : this.calculatezIndex = !1, this.isBlazorServerRender() && (0, ej2_base /* isNullOrUndefined */ .le)(this.headerContent) && (this.headerContent = this.element.getElementsByClassName('e-dlg-header-content')[0]), this.isBlazorServerRender() && (0, ej2_base /* isNullOrUndefined */ .le)(this.contentEle) && (this.contentEle = this.element.querySelector('#' + this.element.id + '_dialog-content')), !this.isBlazorServerRender() && (this.setTargetContent(), '' === this.header || (0, ej2_base /* isNullOrUndefined */ .le)(this.header) || this.setHeader(), this.renderCloseIcon(), this.setContent(), '' === this.footerTemplate || (0, ej2_base /* isNullOrUndefined */ .le)(this.footerTemplate) ? (0, ej2_base /* isNullOrUndefined */ .le)(this.buttons[0].buttonModel) || this.setButton() : this.setFooterTemplate()), this.isBlazorServerRender() && !(0, ej2_base /* isNullOrUndefined */ .le)(this.buttons[0].buttonModel) && '' === this.footerTemplate && this.setButton(), this.allowDragging && !(0, ej2_base /* isNullOrUndefined */ .le)(this.headerContent) && this.setAllowDragging(), !this.isBlazorServerRender() && ((0, ej2_base /* attributes */ .Y4)(this.element, {
                         'aria-modal': this.isModal ? 'true' : 'false'
                     }), this.isModal && this.setIsModal()), this.isBlazorServerRender() && (0, ej2_base /* isNullOrUndefined */ .le)(this.dlgContainer)) {
                         this.dlgContainer = this.element.parentElement;
@@ -12240,7 +12171,7 @@
                     });
                 }, Dialog.prototype.setAllowDragging = function() {
                     var _this = this, handleContent = '.' + DLG_HEADER_CONTENT;
-                    this.element.classList.contains('e-draggable') || (this.dragObj = new ej2_base /* Draggable */ ._l(this.element, {
+                    !this.element.classList.contains('e-draggable') && (this.dragObj = new ej2_base /* Draggable */ ._l(this.element, {
                         clone: !1,
                         isDragScroll: !0,
                         abort: '.e-dlg-closeicon-btn',
@@ -13244,12 +13175,10 @@
                     var tool = executeGroup[commandName];
                     if (option && option.undo && option.undo && 0 === this.formatter.getUndoRedoStack().length && this.formatter.saveData(), -1 !== this.maxLength && !(0, ej2_base /* isNullOrUndefined */ .le)(tool.command)) {
                         var currentInsertContentLength = 0;
-                        if ('Links' === tool.command && (currentInsertContentLength = 0 === value.text.length ? value.url.length : value.text.length), ('Images' === tool.command || 'Table' === tool.command || 'Files' === tool.command) && (currentInsertContentLength = 1), 'InsertHTML' === tool.command) {
-                            if ((0, ej2_base /* isNullOrUndefined */ .le)(value)) (0, ej2_base /* isNullOrUndefined */ .le)(tool.value) || '<hr/>' !== tool.value && '<br/>' !== tool.value || (currentInsertContentLength = 1);
-                            else {
-                                var tempElem = this.createElement('div');
-                                tempElem.innerHTML = value, currentInsertContentLength = tempElem.textContent.length;
-                            }
+                        if ('Links' === tool.command && (currentInsertContentLength = 0 === value.text.length ? value.url.length : value.text.length), ('Images' === tool.command || 'Table' === tool.command || 'Files' === tool.command) && (currentInsertContentLength = 1), 'InsertHTML' === tool.command) if ((0, ej2_base /* isNullOrUndefined */ .le)(value)) (0, ej2_base /* isNullOrUndefined */ .le)(tool.value) || '<hr/>' !== tool.value && '<br/>' !== tool.value || (currentInsertContentLength = 1);
+                        else {
+                            var tempElem = this.createElement('div');
+                            tempElem.innerHTML = value, currentInsertContentLength = tempElem.textContent.length;
                         }
                         'InsertText' === tool.command && (currentInsertContentLength = value.length);
                         var totalLength = this.getText().trim().length - this.getSelection().length + currentInsertContentLength;
@@ -13336,7 +13265,7 @@
                     if (!(0, ej2_base /* isNullOrUndefined */ .le)(closestLI) && endNode.textContent.length === range.endOffset && !range.collapsed && (0, ej2_base /* isNullOrUndefined */ .le)(endNode.nextElementSibling)) {
                         for(var i = 0; i < closestLI.childNodes.length; i++)"#text" === closestLI.childNodes[i].nodeName && 0 === closestLI.childNodes[i].textContent.trim().length && ((0, ej2_base /* detach */ .og)(closestLI.childNodes[i]), i--);
                         for(var currentLastElem = closestLI; null !== currentLastElem.lastChild && '#text' !== currentLastElem.nodeName;)currentLastElem = currentLastElem.lastChild;
-                        this.formatter.editorManager.nodeSelection.setSelectionText(this.contentModule.getDocument(), isSameContainer ? currentStartContainer : 'BR' !== currentLastElem.nodeName || (0, ej2_base /* isNullOrUndefined */ .le)(currentLastElem.previousSibling) ? currentStartContainer : currentLastElem.previousSibling, currentEndContainer, currentStartOffset, 'BR' === currentLastElem.nodeName ? 0 : currentEndOffset);
+                        this.formatter.editorManager.nodeSelection.setSelectionText(this.contentModule.getDocument(), isSameContainer || 'BR' !== currentLastElem.nodeName || (0, ej2_base /* isNullOrUndefined */ .le)(currentLastElem.previousSibling) ? currentStartContainer : currentLastElem.previousSibling, currentEndContainer, currentStartOffset, 'BR' === currentLastElem.nodeName ? 0 : currentEndOffset);
                     }
                 }, /**
      * For internal use only - keydown the event handler;
@@ -13496,27 +13425,26 @@
                             }, 0), -1 === _this.maxLength || totalLength <= _this.maxLength || e.preventDefault();
                             return;
                         }
-                        if (!pasteArgs.cancel && 'true' === _this.inputElement.contentEditable && (-1 === _this.maxLength || totalLength <= _this.maxLength)) {
-                            if ((0, ej2_base /* isNullOrUndefined */ .le)(_this.pasteCleanupModule)) {
-                                var args_2 = {
-                                    requestType: 'Paste',
-                                    editorMode: _this.editorMode,
-                                    event: e
-                                }, value = null, htmlValue = !1;
-                                e && !(0, ej2_base /* isNullOrUndefined */ .le)(e.clipboardData) && (value = e.clipboardData.getData('text/plain'), htmlValue = e.clipboardData.getData('text/html').indexOf('MsoNormal') > 0);
-                                var file = e && e.clipboardData && e.clipboardData.items.length > 0 ? e.clipboardData.items[0].getAsFile() : null;
-                                null !== value && _this.notify(constant /* paste */ .RE, {
-                                    file: file,
-                                    args: e,
-                                    text: value,
-                                    isWordPaste: htmlValue
-                                }), setTimeout(function() {
-                                    _this.formatter.onSuccess(_this, args_2);
-                                }, 0);
-                            } else _this.notify(constant /* pasteClean */ .dI, {
-                                args: e
-                            });
-                        } else e.preventDefault();
+                        if (!pasteArgs.cancel && 'true' === _this.inputElement.contentEditable && (-1 === _this.maxLength || totalLength <= _this.maxLength)) if ((0, ej2_base /* isNullOrUndefined */ .le)(_this.pasteCleanupModule)) {
+                            var args_2 = {
+                                requestType: 'Paste',
+                                editorMode: _this.editorMode,
+                                event: e
+                            }, value = null, htmlValue = !1;
+                            e && !(0, ej2_base /* isNullOrUndefined */ .le)(e.clipboardData) && (value = e.clipboardData.getData('text/plain'), htmlValue = e.clipboardData.getData('text/html').indexOf('MsoNormal') > 0);
+                            var file = e && e.clipboardData && e.clipboardData.items.length > 0 ? e.clipboardData.items[0].getAsFile() : null;
+                            null !== value && _this.notify(constant /* paste */ .RE, {
+                                file: file,
+                                args: e,
+                                text: value,
+                                isWordPaste: htmlValue
+                            }), setTimeout(function() {
+                                _this.formatter.onSuccess(_this, args_2);
+                            }, 0);
+                        } else _this.notify(constant /* pasteClean */ .dI, {
+                            args: e
+                        });
+                        else e.preventDefault();
                     });
                 }, /**
      * @param {string} action - specifies the string value.
@@ -13909,22 +13837,21 @@
                     });
                     return styleEle.rel = 'stylesheet', styleEle;
                 }, RichTextEditor.prototype.setValue = function() {
-                    if (this.valueTemplate) {
-                        if (new RegExp(/<(?=.*? .*?\/ ?>|br|hr|input|!--|wbr)[a-z]+.*?>|<([a-z]+).*?<\/\1>/i).test(this.valueTemplate)) this.setProperties({
-                            value: this.valueTemplate
-                        });
-                        else {
-                            for(var compiledTemplate = (0, ej2_base /* compile */ .MY)(this.valueTemplate)('', this, 'valueTemplate'), i = 0; i < compiledTemplate.length; i++){
-                                var item = compiledTemplate[i];
-                                (0, ej2_base /* append */ .R3)([
-                                    item
-                                ], this.element);
-                            }
-                            this.setProperties({
-                                value: this.element.innerHTML.trim()
-                            });
+                    if (this.valueTemplate) if (new RegExp(/<(?=.*? .*?\/ ?>|br|hr|input|!--|wbr)[a-z]+.*?>|<([a-z]+).*?<\/\1>/i).test(this.valueTemplate)) this.setProperties({
+                        value: this.valueTemplate
+                    });
+                    else {
+                        for(var compiledTemplate = (0, ej2_base /* compile */ .MY)(this.valueTemplate)('', this, 'valueTemplate'), i = 0; i < compiledTemplate.length; i++){
+                            var item = compiledTemplate[i];
+                            (0, ej2_base /* append */ .R3)([
+                                item
+                            ], this.element);
                         }
-                    } else {
+                        this.setProperties({
+                            value: this.element.innerHTML.trim()
+                        });
+                    }
+                    else {
                         // eslint-disable-next-line
                         var innerHtml = !(0, ej2_base /* isNullOrUndefined */ .le)(this.element.innerHTML) && this.element.innerHTML.replace(/<(\/?|\!?)(!--!--)>/g, '').trim();
                         '' !== innerHtml && ('TEXTAREA' === this.element.tagName ? this.setProperties({
@@ -14073,11 +14000,7 @@
                     'msie' === ej2_base /* Browser.info.name */ .AR.info.name ? this.contentModule.getEditPanel().removeEventListener('mscontrolselect', this.preventImgResize) : 'mozilla' === ej2_base /* Browser.info.name */ .AR.info.name && (this.contentModule.getDocument().execCommand('enableObjectResizing', !0, 'true'), this.contentModule.getDocument().execCommand('enableInlineTableEditing', !0, 'true'));
                 }, RichTextEditor.prototype.resizeHandler = function() {
                     var isExpand = !1;
-                    if (!document.body.contains(this.element)) {
-                        document.defaultView.removeEventListener('resize', this.onResizeHandler, !0);
-                        return;
-                    }
-                    this.toolbarSettings.enable && !this.inlineMode.enable && (this.toolbarModule.refreshToolbarOverflow(), isExpand = this.toolbarModule.baseToolbar.toolbarObj.element.classList.contains(classes /* CLS_EXPAND_OPEN */ .Yi)), this.setContentHeight('windowResize', isExpand), this.notify(constant /* windowResize */ .Qr, null);
+                    document.body.contains(this.element) ? (this.toolbarSettings.enable && !this.inlineMode.enable && (this.toolbarModule.refreshToolbarOverflow(), isExpand = this.toolbarModule.baseToolbar.toolbarObj.element.classList.contains(classes /* CLS_EXPAND_OPEN */ .Yi)), this.setContentHeight('windowResize', isExpand), this.notify(constant /* windowResize */ .Qr, null)) : document.defaultView.removeEventListener('resize', this.onResizeHandler, !0);
                 }, RichTextEditor.prototype.scrollHandler = function(e) {
                     this.notify(constant /* scroll */ .AR, {
                         args: e
@@ -14248,7 +14171,7 @@
                                 65
                             ], arrayKey = void 0, i = 0; i <= array.length - 1; i++)if (e.which === array[i]) {
                                 if (e.ctrlKey && 65 === e.which) return;
-                                if (65 !== e.which) {
+                                else if (65 !== e.which) {
                                     arrayKey = array[i];
                                     return;
                                 }
@@ -14817,7 +14740,7 @@
                         ((0, ej2_base /* isNullOrUndefined */ .le)(event) || event && 'copy' !== event.action) && this.enableUndo(self1);
                     }
                 }, Formatter.prototype.getAncestorNode = function(node) {
-                    return node = 3 === node.nodeType ? node.parentNode : node;
+                    return 3 === node.nodeType ? node.parentNode : node;
                 }, /**
      * onKeyHandler method
      *
@@ -14962,10 +14885,7 @@
                 'wbr',
                 'iframe',
                 'td'
-            ], selection = __webpack_require__(8867), config = __webpack_require__(103), common_util = __webpack_require__(1386), markerClassName = {
-                startSelection: 'e-editor-select-start',
-                endSelection: 'e-editor-select-end'
-            }, DOMNode = /** @class */ function() {
+            ], selection = __webpack_require__(8867), config = __webpack_require__(103), common_util = __webpack_require__(1386), markerClassName_startSelection = 'e-editor-select-start', markerClassName_endSelection = 'e-editor-select-end', DOMNode = /** @class */ function() {
                 /**
      * Constructor for creating the DOMNode plugin
      *
@@ -15197,7 +15117,7 @@
      * @hidden
 
      */ DOMNode.prototype.getSelectedNode = function(element, index) {
-                    return element.nodeType === Node.ELEMENT_NODE && element.childNodes.length > 0 && element.childNodes[index - 1] && element.childNodes[index - 1].nodeType === Node.ELEMENT_NODE && (element.childNodes[index - 1].classList.contains(markerClassName.startSelection) || element.childNodes[index - 1].classList.contains(markerClassName.endSelection)) ? element = element.childNodes[index - 1] : element.nodeType === Node.ELEMENT_NODE && element.childNodes.length > 0 && element.childNodes[index] && (element = element.childNodes[index]), element.nodeType === Node.TEXT_NODE && (element = element.parentNode), element;
+                    return element.nodeType === Node.ELEMENT_NODE && element.childNodes.length > 0 && element.childNodes[index - 1] && element.childNodes[index - 1].nodeType === Node.ELEMENT_NODE && (element.childNodes[index - 1].classList.contains(markerClassName_startSelection) || element.childNodes[index - 1].classList.contains(markerClassName_endSelection)) ? element = element.childNodes[index - 1] : element.nodeType === Node.ELEMENT_NODE && element.childNodes.length > 0 && element.childNodes[index] && (element = element.childNodes[index]), element.nodeType === Node.TEXT_NODE && (element = element.parentNode), element;
                 }, /**
      * nodeFinds method
      *
@@ -15267,14 +15187,14 @@
      * @hidden
 
      */ DOMNode.prototype.saveMarker = function(save, action) {
-                    var startTextNode, endTextNode, start = this.parent.querySelector('.' + markerClassName.startSelection), end = this.parent.querySelector('.' + markerClassName.endSelection);
-                    if ('' === start.textContent && (0, ej2_base /* isNullOrUndefined */ .le)(end) && 'tab' !== action && (1 === start.childNodes.length && 'BR' === start.childNodes[0].nodeName ? start.innerHTML = '&#65279;&#65279;<br>' : start.innerHTML = '&#65279;&#65279;'), this.hasClass(start, markerClassName.startSelection) && start.classList.length > 1) {
+                    var startTextNode, endTextNode, start = this.parent.querySelector('.' + markerClassName_startSelection), end = this.parent.querySelector('.' + markerClassName_endSelection);
+                    if ('' === start.textContent && (0, ej2_base /* isNullOrUndefined */ .le)(end) && 'tab' !== action && (1 === start.childNodes.length && 'BR' === start.childNodes[0].nodeName ? start.innerHTML = '&#65279;&#65279;<br>' : start.innerHTML = '&#65279;&#65279;'), this.hasClass(start, markerClassName_startSelection) && start.classList.length > 1) {
                         var replace = this.createTagString('p', start, this.encode(start.textContent));
-                        this.replaceWith(start, replace), (start = this.parent.querySelector('.' + markerClassName.startSelection)).classList.remove(markerClassName.startSelection), startTextNode = start.childNodes[0];
+                        this.replaceWith(start, replace), (start = this.parent.querySelector('.' + markerClassName_startSelection)).classList.remove(markerClassName_startSelection), startTextNode = start.childNodes[0];
                     } else startTextNode = this.unWrap(start)[0];
-                    if (this.hasClass(end, markerClassName.endSelection) && end.classList.length > 1) {
+                    if (this.hasClass(end, markerClassName_endSelection) && end.classList.length > 1) {
                         var replace = this.createTagString('p', end, this.encode(end.textContent));
-                        this.replaceWith(end, replace), (end = this.parent.querySelector('.' + markerClassName.endSelection)).classList.remove(markerClassName.endSelection), endTextNode = end.childNodes[0];
+                        this.replaceWith(end, replace), (end = this.parent.querySelector('.' + markerClassName_endSelection)).classList.remove(markerClassName_endSelection), endTextNode = end.childNodes[0];
                     } else endTextNode = end ? this.unWrap(end)[0] : startTextNode;
                     return save.startContainer = save.getNodeArray(startTextNode, !0), save.endContainer = save.getNodeArray(endTextNode, !1), save;
                 }, DOMNode.prototype.marker = function(className, textContent) {
@@ -15296,15 +15216,15 @@
                         }
                     }
                     if (start !== end) {
-                        if (start.nodeType !== Node.TEXT_NODE && ('BR' === start.tagName && IGNORE_BLOCK_TAGS.indexOf(start.parentNode.tagName.toLocaleLowerCase()) >= 0 || 'IMG' === start.tagName)) this.replaceWith(start, this.marker(markerClassName.startSelection, this.encode(start.textContent))), range.startContainer.querySelector('.' + markerClassName.startSelection).appendChild(start);
+                        if (start.nodeType !== Node.TEXT_NODE && ('BR' === start.tagName && IGNORE_BLOCK_TAGS.indexOf(start.parentNode.tagName.toLocaleLowerCase()) >= 0 || 'IMG' === start.tagName)) this.replaceWith(start, this.marker(markerClassName_startSelection, this.encode(start.textContent))), range.startContainer.querySelector('.' + markerClassName_startSelection).appendChild(start);
                         else if (3 != start.nodeType && '#text' != start.nodeName) {
-                            var marker = this.marker(markerClassName.startSelection, '');
+                            var marker = this.marker(markerClassName_startSelection, '');
                             (0, ej2_base /* append */ .R3)([
                                 this.parseHTMLFragment(marker)
                             ], start);
-                        } else this.replaceWith(start, this.marker(markerClassName.startSelection, this.encode(start.textContent)));
-                        end.nodeType !== Node.TEXT_NODE && 'BR' === end.tagName && IGNORE_BLOCK_TAGS.indexOf(end.parentNode.tagName.toLocaleLowerCase()) >= 0 ? (this.replaceWith(end, this.marker(markerClassName.endSelection, this.encode(end.textContent))), range.endContainer.querySelector('.' + markerClassName.endSelection).appendChild(end)) : this.ensureSelfClosingTag(end, markerClassName.endSelection, range);
-                    } else this.ensureSelfClosingTag(start, markerClassName.startSelection, range);
+                        } else this.replaceWith(start, this.marker(markerClassName_startSelection, this.encode(start.textContent)));
+                        end.nodeType !== Node.TEXT_NODE && 'BR' === end.tagName && IGNORE_BLOCK_TAGS.indexOf(end.parentNode.tagName.toLocaleLowerCase()) >= 0 ? (this.replaceWith(end, this.marker(markerClassName_endSelection, this.encode(end.textContent))), range.endContainer.querySelector('.' + markerClassName_endSelection).appendChild(end)) : this.ensureSelfClosingTag(end, markerClassName_endSelection, range);
+                    } else this.ensureSelfClosingTag(start, markerClassName_startSelection, range);
                 }, /**
      * ensureSelfClosingTag method
      *
@@ -15323,18 +15243,16 @@
                             var parNode = document.createElement('p');
                             start.parentElement.insertBefore(parNode, start), parNode.appendChild(start), start = parNode.children[0];
                         }
-                        if ('TABLE' === start.tagName) {
-                            if (isTable = !0, '' === start.textContent) {
-                                var tdNode = start.querySelectorAll('td');
-                                start = tdNode[tdNode.length - 1], start = (0, ej2_base /* isNullOrUndefined */ .le)(start.childNodes[0]) ? start : start.childNodes[0];
-                            } else {
-                                for(var lastNode = start.lastChild; 3 !== lastNode.nodeType && '#text' !== lastNode.nodeName && 'BR' !== lastNode.nodeName;)lastNode = lastNode.lastChild;
-                                start = lastNode;
-                            }
+                        if ('TABLE' === start.tagName) if (isTable = !0, '' === start.textContent) {
+                            var tdNode = start.querySelectorAll('td');
+                            start = tdNode[tdNode.length - 1], start = (0, ej2_base /* isNullOrUndefined */ .le)(start.childNodes[0]) ? start : start.childNodes[0];
+                        } else {
+                            for(var lastNode = start.lastChild; 3 !== lastNode.nodeType && '#text' !== lastNode.nodeName && 'BR' !== lastNode.nodeName;)lastNode = lastNode.lastChild;
+                            start = lastNode;
                         }
                         for(var i = 0; i < config /* selfClosingTags.length */ .i7.length; i++)start = start.tagName !== config /* selfClosingTags */ .i7[i] || isTable ? start : start.parentNode;
                         if (3 === start.nodeType && '#text' === start.nodeName) this.replaceWith(start, this.marker(className, this.encode(start.textContent)));
-                        else if ('BR' === start.nodeName) this.replaceWith(start, this.marker(markerClassName.endSelection, this.encode(start.textContent))), range.endContainer.querySelector('.' + markerClassName.endSelection).appendChild(start);
+                        else if ('BR' === start.nodeName) this.replaceWith(start, this.marker(markerClassName_endSelection, this.encode(start.textContent))), range.endContainer.querySelector('.' + markerClassName_endSelection).appendChild(start);
                         else {
                             var marker = this.marker(className, '');
                             (0, ej2_base /* append */ .R3)([
@@ -15354,9 +15272,9 @@
                     if ('BR' === element.tagName) {
                         var wrapper = "<p></p>", node = element.parentNode;
                         IGNORE_BLOCK_TAGS.indexOf(node.tagName.toLocaleLowerCase()) >= 0 && (element = this.wrap(element, this.parseHTMLFragment(wrapper)));
-                    } else if (element.nodeType !== Node.TEXT_NODE && (element.classList.contains(markerClassName.startSelection) || element.classList.contains(markerClassName.endSelection)) || textContent.replace(/\n/g, '').replace(/(^ *)|( *$)/g, '').length > 0 || textContent.length && 0 > textContent.indexOf('\n')) {
+                    } else if (element.nodeType !== Node.TEXT_NODE && (element.classList.contains(markerClassName_startSelection) || element.classList.contains(markerClassName_endSelection)) || textContent.replace(/\n/g, '').replace(/(^ *)|( *$)/g, '').length > 0 || textContent.length && 0 > textContent.indexOf('\n')) {
                         var wrapper = "<p></p>", target = element;
-                        element = this.wrap(element, this.parseHTMLFragment(wrapper)), !(target.nodeType === Node.ELEMENT_NODE && target.firstChild && 'BR' === target.firstChild.nodeName && (target.classList.contains(markerClassName.startSelection) || target.classList.contains(markerClassName.endSelection))) && element.nextElementSibling && 'BR' === element.nextElementSibling.tagName && element.appendChild(element.nextElementSibling);
+                        element = this.wrap(element, this.parseHTMLFragment(wrapper)), !(target.nodeType === Node.ELEMENT_NODE && target.firstChild && 'BR' === target.firstChild.nodeName && (target.classList.contains(markerClassName_startSelection) || target.classList.contains(markerClassName_endSelection))) && element.nextElementSibling && 'BR' === element.nextElementSibling.tagName && element.appendChild(element.nextElementSibling);
                     }
                     return element;
                 }, /**
@@ -15378,13 +15296,11 @@
                     var collectionNodes = [], selection = this.getSelection();
                     if (this.isEditorArea() && selection.rangeCount) for(var ranges = this.getRangePoint(), j = 0; j < ranges.length; j++){
                         var parentNode = void 0, range = ranges[j], startNode = this.getSelectedNode(range.startContainer, range.startOffset), endNode = this.getSelectedNode(range.endContainer, range.endOffset);
-                        if (this.isBlockNode(startNode) && 0 > collectionNodes.indexOf(startNode) && collectionNodes.push(startNode), (parentNode = this.blockParentNode(startNode)) && 0 > collectionNodes.indexOf(parentNode)) {
-                            if (IGNORE_BLOCK_TAGS.indexOf(parentNode.tagName.toLocaleLowerCase()) >= 0 && ('BR' === startNode.tagName || startNode.nodeType === Node.TEXT_NODE || startNode.classList.contains(markerClassName.startSelection) || startNode.classList.contains(markerClassName.endSelection))) {
-                                var tempNode = startNode.previousSibling && startNode.previousSibling.nodeType === Node.TEXT_NODE ? startNode.previousSibling : startNode;
-                                startNode.nextSibling || startNode.previousSibling || 'BR' !== startNode.tagName ? collectionNodes.push(this.createTempNode(tempNode)) : collectionNodes.push(tempNode);
-                            } else collectionNodes.push(parentNode);
-                        }
-                        for(var nodes = [], node = startNode; node !== endNode && node !== this.parent;)0 > nodes.indexOf(node) && node.childNodes && node.childNodes.length ? (nodes.push(node), node = node.childNodes[0]) : node && 8 !== node.nodeType && ('BR' === node.tagName || node.nodeType === Node.TEXT_NODE && '' !== node.textContent.trim() || node.nodeType !== Node.TEXT_NODE && (node.classList.contains(markerClassName.startSelection) || node.classList.contains(markerClassName.endSelection))) && IGNORE_BLOCK_TAGS.indexOf(node.parentNode.tagName.toLocaleLowerCase()) >= 0 ? node = this.createTempNode(node) : node.nextSibling && 8 !== node.nextSibling.nodeType && ('BR' === node.nextSibling.tagName || node.nextSibling.nodeType === Node.TEXT_NODE || node.nextSibling.classList.contains(markerClassName.startSelection) || node.nextSibling.classList.contains(markerClassName.endSelection)) && IGNORE_BLOCK_TAGS.indexOf(node.nextSibling.parentNode.tagName.toLocaleLowerCase()) >= 0 ? node = this.createTempNode(node.nextSibling) : node.nextSibling ? node = node.nextSibling : node.parentNode && (node = node.parentNode, nodes.push(node)), 0 > collectionNodes.indexOf(node) && node.nodeType === Node.ELEMENT_NODE && IGNORE_BLOCK_TAGS.indexOf(node.parentNode.tagName.toLocaleLowerCase()) >= 0 && (node.classList.contains(markerClassName.startSelection) || node.classList.contains(markerClassName.endSelection)) && collectionNodes.push(this.createTempNode(node)), this.isBlockNode(node) && this.ignoreTableTag(node) && 0 > nodes.indexOf(node) && 0 > collectionNodes.indexOf(node) && (node !== endNode || range.endOffset > 0) && collectionNodes.push(node), 'IMG' === node.nodeName && 'true' === node.parentElement.contentEditable && collectionNodes.push(node);
+                        if (this.isBlockNode(startNode) && 0 > collectionNodes.indexOf(startNode) && collectionNodes.push(startNode), (parentNode = this.blockParentNode(startNode)) && 0 > collectionNodes.indexOf(parentNode)) if (IGNORE_BLOCK_TAGS.indexOf(parentNode.tagName.toLocaleLowerCase()) >= 0 && ('BR' === startNode.tagName || startNode.nodeType === Node.TEXT_NODE || startNode.classList.contains(markerClassName_startSelection) || startNode.classList.contains(markerClassName_endSelection))) {
+                            var tempNode = startNode.previousSibling && startNode.previousSibling.nodeType === Node.TEXT_NODE ? startNode.previousSibling : startNode;
+                            startNode.nextSibling || startNode.previousSibling || 'BR' !== startNode.tagName ? collectionNodes.push(this.createTempNode(tempNode)) : collectionNodes.push(tempNode);
+                        } else collectionNodes.push(parentNode);
+                        for(var nodes = [], node = startNode; node !== endNode && node !== this.parent;)0 > nodes.indexOf(node) && node.childNodes && node.childNodes.length ? (nodes.push(node), node = node.childNodes[0]) : node && 8 !== node.nodeType && ('BR' === node.tagName || node.nodeType === Node.TEXT_NODE && '' !== node.textContent.trim() || node.nodeType !== Node.TEXT_NODE && (node.classList.contains(markerClassName_startSelection) || node.classList.contains(markerClassName_endSelection))) && IGNORE_BLOCK_TAGS.indexOf(node.parentNode.tagName.toLocaleLowerCase()) >= 0 ? node = this.createTempNode(node) : node.nextSibling && 8 !== node.nextSibling.nodeType && ('BR' === node.nextSibling.tagName || node.nextSibling.nodeType === Node.TEXT_NODE || node.nextSibling.classList.contains(markerClassName_startSelection) || node.nextSibling.classList.contains(markerClassName_endSelection)) && IGNORE_BLOCK_TAGS.indexOf(node.nextSibling.parentNode.tagName.toLocaleLowerCase()) >= 0 ? node = this.createTempNode(node.nextSibling) : node.nextSibling ? node = node.nextSibling : node.parentNode && (node = node.parentNode, nodes.push(node)), 0 > collectionNodes.indexOf(node) && node.nodeType === Node.ELEMENT_NODE && IGNORE_BLOCK_TAGS.indexOf(node.parentNode.tagName.toLocaleLowerCase()) >= 0 && (node.classList.contains(markerClassName_startSelection) || node.classList.contains(markerClassName_endSelection)) && collectionNodes.push(this.createTempNode(node)), this.isBlockNode(node) && this.ignoreTableTag(node) && 0 > nodes.indexOf(node) && 0 > collectionNodes.indexOf(node) && (node !== endNode || range.endOffset > 0) && collectionNodes.push(node), 'IMG' === node.nodeName && 'true' === node.parentElement.contentEditable && collectionNodes.push(node);
                         (parentNode = this.blockParentNode(endNode)) && this.ignoreTableTag(parentNode) && 0 > collectionNodes.indexOf(parentNode) && !(0, ej2_base /* isNullOrUndefined */ .le)(parentNode.previousElementSibling) && 'IMG' !== parentNode.previousElementSibling.tagName && collectionNodes.push(parentNode);
                     }
                     for(var i = collectionNodes.length - 1; i > 0; i--){
@@ -15467,12 +15383,10 @@
                         if ('LI' === startNode.parentElement.tagName && 'LI' === endNode.parentElement.tagName) (0, ej2_base /* detach */ .og)(startNode);
                         else if (startNode.closest('ul') || startNode.closest('ol')) {
                             var parentList = (0, ej2_base /* isNullOrUndefined */ .le)(startNode.closest('ul')) ? startNode.closest('ol') : startNode.closest('ul');
-                            if (parentList.firstElementChild === startNode && !(0, ej2_base /* isNullOrUndefined */ .le)(parentList.children[1]) && ('OL' === parentList.children[1].tagName || 'UL' === parentList.children[1].tagName)) {
-                                if (parentList.tagName === parentList.children[1].tagName) {
-                                    for(; parentList.children[1].lastChild;)this.parent.domNode.insertAfter(parentList.children[1].lastChild, parentList.children[1]);
-                                    (0, ej2_base /* detach */ .og)(parentList.children[1]);
-                                } else parentList.parentElement.insertBefore(parentList.children[1], parentList);
-                            }
+                            if (parentList.firstElementChild === startNode && !(0, ej2_base /* isNullOrUndefined */ .le)(parentList.children[1]) && ('OL' === parentList.children[1].tagName || 'UL' === parentList.children[1].tagName)) if (parentList.tagName === parentList.children[1].tagName) {
+                                for(; parentList.children[1].lastChild;)this.parent.domNode.insertAfter(parentList.children[1].lastChild, parentList.children[1]);
+                                (0, ej2_base /* detach */ .og)(parentList.children[1]);
+                            } else parentList.parentElement.insertBefore(parentList.children[1], parentList);
                         }
                     } else if (!(0, ej2_base /* isNullOrUndefined */ .le)(startNode.firstChild) && 'BR' === startNode.firstChild.nodeName && !(0, ej2_base /* isNullOrUndefined */ .le)(startNode.childNodes[1]) && ('UL' === startNode.childNodes[1].nodeName || 'OL' === startNode.childNodes[1].nodeName)) {
                         var parentList = (0, ej2_base /* isNullOrUndefined */ .le)(startNode.closest('ul')) ? startNode.closest('ol') : startNode.closest('ul');
@@ -15676,7 +15590,7 @@
                         elements: this.parent.domNode.blockNodes()
                     });
                 }, Lists.prototype.setSelectionBRConfig = function() {
-                    var startElem = this.parent.editableElement.querySelector('.' + markerClassName.startSelection), endElem = this.parent.editableElement.querySelector('.' + markerClassName.endSelection);
+                    var startElem = this.parent.editableElement.querySelector('.' + markerClassName_startSelection), endElem = this.parent.editableElement.querySelector('.' + markerClassName_endSelection);
                     (0, ej2_base /* isNullOrUndefined */ .le)(endElem) ? this.parent.nodeSelection.setCursorPoint(this.parent.currentDocument, startElem, 0) : this.parent.nodeSelection.setSelectionText(this.parent.currentDocument, startElem, endElem, 0, 0);
                 }, Lists.prototype.applyLists = function(elements, type, selector, item, e) {
                     if (this.isRevert(elements, type, item) && (0, ej2_base /* isNullOrUndefined */ .le)(item)) this.revertList(elements, e), this.removeEmptyListElements();
@@ -15781,7 +15695,7 @@
                             } else if (3 === this.domNode.contents(element)[0].nodeType) {
                                 var replace = this.domNode.createTagString('p', parentNode, this.parent.domNode.encode(this.domNode.contents(element)[0].textContent));
                                 this.domNode.replaceWith(this.domNode.contents(element)[0], replace);
-                            } else if (this.domNode.contents(element)[0].classList.contains(markerClassName.startSelection) || this.domNode.contents(element)[0].classList.contains(markerClassName.endSelection)) {
+                            } else if (this.domNode.contents(element)[0].classList.contains(markerClassName_startSelection) || this.domNode.contents(element)[0].classList.contains(markerClassName_endSelection)) {
                                 var replace = this.domNode.createTagString('p', parentNode, this.domNode.contents(element)[0].outerHTML);
                                 this.domNode.replaceWith(this.domNode.contents(element)[0], replace);
                             } else {
@@ -15885,24 +15799,20 @@
                     if (isCollapsed) {
                         if (node = parent_1.childNodes[index], (fragment = this.spliceEmptyNode(fragment, !1)) && fragment.childNodes.length > 0) {
                             var isEmpty = !!(1 === fragment.childNodes.length && 'IMG' !== fragment.childNodes[0].nodeName && this.isImgElm(fragment)) && '' === fragment.textContent;
-                            if (!isEmpty) {
-                                if (node) InsertMethods.AppendBefore(fragment, node);
-                                else {
-                                    parent_1.appendChild(fragment);
-                                    var divNode = document.createElement('div');
-                                    divNode.innerHTML = '&#65279;&#65279;', node = divNode.firstChild, parent_1.appendChild(node);
-                                }
+                            if (!isEmpty) if (node) InsertMethods.AppendBefore(fragment, node);
+                            else {
+                                parent_1.appendChild(fragment);
+                                var divNode = document.createElement('div');
+                                divNode.innerHTML = '&#65279;&#65279;', node = divNode.firstChild, parent_1.appendChild(node);
                             }
                         }
                     } else if (node = parent_1.childNodes.length > 1 ? parent_1.childNodes[index] : parent_1.childNodes[0], (fragment = this.spliceEmptyNode(fragment, !0)) && fragment.childNodes.length > 0) {
                         var isEmpty = !!(1 === fragment.childNodes.length && 'IMG' !== fragment.childNodes[0].nodeName && this.isImgElm(fragment)) && '' === fragment.textContent;
-                        if (!isEmpty) {
-                            if (node) InsertMethods.AppendBefore(fragment, node, !0);
-                            else {
-                                parent_1.appendChild(fragment);
-                                var divNode = document.createElement('div');
-                                divNode.innerHTML = '&#65279;&#65279;', parent_1.insertBefore(divNode.firstChild, parent_1.firstChild), node = parent_1.firstChild;
-                            }
+                        if (!isEmpty) if (node) InsertMethods.AppendBefore(fragment, node, !0);
+                        else {
+                            parent_1.appendChild(fragment);
+                            var divNode = document.createElement('div');
+                            divNode.innerHTML = '&#65279;&#65279;', parent_1.insertBefore(divNode.firstChild, parent_1.firstChild), node = parent_1.firstChild;
                         }
                     }
                     return node;
@@ -15986,7 +15896,7 @@
                 }, Formats.prototype.onKeyDown = function(e) {
                     if (13 === e.event.which) {
                         var range = this.parent.nodeSelection.getRange(this.parent.currentDocument), startCon = 0 === range.startContainer.textContent.length || 'PRE' === range.startContainer.nodeName ? range.startContainer : range.startContainer.parentElement, endCon = 0 === range.endContainer.textContent.length || 'PRE' === range.endContainer.nodeName ? range.endContainer : range.endContainer.parentElement, preElem = (0, ej2_base /* closest */ .oq)(startCon, 'pre'), endPreElem = (0, ej2_base /* closest */ .oq)(endCon, 'pre');
-                        if (((0, ej2_base /* isNullOrUndefined */ .le)(preElem) || (0, ej2_base /* isNullOrUndefined */ .le)(preElem.parentElement) || 'LI' !== preElem.parentElement.tagName) && (((0, ej2_base /* isNullOrUndefined */ .le)(preElem) && !(0, ej2_base /* isNullOrUndefined */ .le)(endPreElem) || !(0, ej2_base /* isNullOrUndefined */ .le)(preElem) && (0, ej2_base /* isNullOrUndefined */ .le)(endPreElem)) && (e.event.preventDefault(), this.deleteContent(range), this.removeCodeContent(range), range = this.parent.nodeSelection.getRange(this.parent.currentDocument), this.parent.nodeSelection.setCursorPoint(this.parent.currentDocument, endCon, 0)), 13 === e.event.which && !(0, ej2_base /* isNullOrUndefined */ .le)(preElem) && !(0, ej2_base /* isNullOrUndefined */ .le)(endPreElem))) {
+                        if (!(!(0, ej2_base /* isNullOrUndefined */ .le)(preElem) && !(0, ej2_base /* isNullOrUndefined */ .le)(preElem.parentElement) && 'LI' === preElem.parentElement.tagName) && (((0, ej2_base /* isNullOrUndefined */ .le)(preElem) && !(0, ej2_base /* isNullOrUndefined */ .le)(endPreElem) || !(0, ej2_base /* isNullOrUndefined */ .le)(preElem) && (0, ej2_base /* isNullOrUndefined */ .le)(endPreElem)) && (e.event.preventDefault(), this.deleteContent(range), this.removeCodeContent(range), range = this.parent.nodeSelection.getRange(this.parent.currentDocument), this.parent.nodeSelection.setCursorPoint(this.parent.currentDocument, endCon, 0)), 13 === e.event.which && !(0, ej2_base /* isNullOrUndefined */ .le)(preElem) && !(0, ej2_base /* isNullOrUndefined */ .le)(endPreElem))) {
                             e.event.preventDefault(), this.deleteContent(range), this.removeCodeContent(range);
                             var lastEmpty = (range = this.parent.nodeSelection.getRange(this.parent.currentDocument)).startContainer.childNodes[range.endOffset], lastBeforeBr = range.startContainer.childNodes[range.endOffset - 1], startParent = range.startContainer;
                             if (!(0, ej2_base /* isNullOrUndefined */ .le)(lastEmpty) && !(0, ej2_base /* isNullOrUndefined */ .le)(lastBeforeBr) && (0, ej2_base /* isNullOrUndefined */ .le)(lastEmpty.nextSibling) && 'BR' === lastEmpty.nodeName && 'BR' === lastBeforeBr.nodeName) this.paraFocus(range.startContainer, e.enterAction);
@@ -16028,14 +15938,13 @@
                 }, Formats.prototype.setCursorPosition = function(isEnd, preElem) {
                     var isEmpty = !1, markerElem = this.parent.editableElement.querySelector('.tempSpan'), mrkParentElem = markerElem.parentElement;
                     if (// eslint-disable-next-line
-                    '' === markerElem.parentNode.textContent ? isEmpty = !0 : this.parent.nodeSelection.setCursorPoint(this.parent.currentDocument, markerElem, 0), isEnd) {
-                        if (isEmpty) //Enter press when pre element is empty
-                        mrkParentElem === preElem ? (this.parent.nodeSelection.setCursorPoint(this.parent.currentDocument, markerElem, 0), (0, ej2_base /* detach */ .og)(markerElem)) : this.focusSelectionParent(markerElem, mrkParentElem);
-                        else {
-                            var brElm = (0, ej2_base /* createElement */ .az)('br');
-                            this.parent.domNode.insertAfter(brElm, markerElem), this.parent.nodeSelection.setCursorPoint(this.parent.currentDocument, markerElem, 0), (0, ej2_base /* detach */ .og)(markerElem);
-                        }
-                    } else // eslint-disable-next-line
+                    '' === markerElem.parentNode.textContent ? isEmpty = !0 : this.parent.nodeSelection.setCursorPoint(this.parent.currentDocument, markerElem, 0), isEnd) if (isEmpty) //Enter press when pre element is empty
+                    mrkParentElem === preElem ? (this.parent.nodeSelection.setCursorPoint(this.parent.currentDocument, markerElem, 0), (0, ej2_base /* detach */ .og)(markerElem)) : this.focusSelectionParent(markerElem, mrkParentElem);
+                    else {
+                        var brElm = (0, ej2_base /* createElement */ .az)('br');
+                        this.parent.domNode.insertAfter(brElm, markerElem), this.parent.nodeSelection.setCursorPoint(this.parent.currentDocument, markerElem, 0), (0, ej2_base /* detach */ .og)(markerElem);
+                    }
+                    else // eslint-disable-next-line
                     isEmpty ? this.focusSelectionParent(markerElem, mrkParentElem) : (0, ej2_base /* detach */ .og)(markerElem);
                 }, Formats.prototype.focusSelectionParent = function(markerElem, tempSpanPElem) {
                     (0, ej2_base /* detach */ .og)(markerElem), tempSpanPElem.innerHTML = '\u200B', this.parent.nodeSelection.setCursorPoint(this.parent.currentDocument, tempSpanPElem, 0);
@@ -16078,7 +15987,7 @@
                         }
                     }
                     this.preFormatMerge();
-                    var startNode = this.parent.editableElement.querySelector('.' + markerClassName.startSelection), endNode = this.parent.editableElement.querySelector('.' + markerClassName.endSelection);
+                    var startNode = this.parent.editableElement.querySelector('.' + markerClassName_startSelection), endNode = this.parent.editableElement.querySelector('.' + markerClassName_endSelection);
                     (0, ej2_base /* isNullOrUndefined */ .le)(startNode) || (0, ej2_base /* isNullOrUndefined */ .le)(endNode) || (startNode = startNode.lastChild, endNode = endNode.lastChild), save = this.parent.domNode.saveMarker(save, null), (0, common_util /* isIDevice */ .FA)() && (0, common_util /* setEditFrameFocus */ .ze)(this.parent.editableElement, e.selector), isSelectAll ? this.parent.nodeSelection.setSelectionText(this.parent.currentDocument, startNode, endNode, 0, endNode.textContent.length) : save.restore(), e.callBack && e.callBack({
                         requestType: e.subCommand,
                         editorMode: 'HTML',
@@ -16087,7 +15996,7 @@
                         elements: this.parent.domNode.blockNodes()
                     });
                 }, Formats.prototype.setSelectionBRConfig = function() {
-                    var startElem = this.parent.editableElement.querySelector('.' + markerClassName.startSelection), endElem = this.parent.editableElement.querySelector('.' + markerClassName.endSelection);
+                    var startElem = this.parent.editableElement.querySelector('.' + markerClassName_startSelection), endElem = this.parent.editableElement.querySelector('.' + markerClassName_endSelection);
                     (0, ej2_base /* isNullOrUndefined */ .le)(endElem) ? this.parent.nodeSelection.setCursorPoint(this.parent.currentDocument, startElem, 0) : this.parent.nodeSelection.setSelectionText(this.parent.currentDocument, startElem, endElem, 0, 0);
                 }, Formats.prototype.preFormatMerge = function() {
                     var preNodes = this.parent.editableElement.querySelectorAll('PRE');
@@ -16124,20 +16033,8 @@
                         nodeSelection.setSelectionText(docElement, range.startContainer.parentElement, range.startContainer.parentElement, currentIndex + 1, currentIndex + 1), range = nodeSelection.getRange(docElement);
                     }
                     var isCursor = range.startOffset === range.endOffset && 0 === range.startOffset && range.startContainer === range.endContainer, isCollapsed = range.collapsed, nodes = this.getNodeCollection(range, nodeSelection, node), closestParentNode = 'table' === node.nodeName.toLowerCase() ? this.closestEle(nodes[0].parentNode, editNode) : nodes[0];
-                    if (isExternal || !(0, ej2_base /* isNullOrUndefined */ .le)(node) && !(0, ej2_base /* isNullOrUndefined */ .le)(node.classList) && node.classList.contains('pasteContent')) {
-                        this.pasteInsertHTML(nodes, node, range, nodeSelection, nodeCutter, docElement, isCollapsed, closestParentNode, editNode);
-                        return;
-                    }
-                    if (editNode === range.startContainer || (isCollapsed || closestParentNode.nodeType === Node.ELEMENT_NODE && -1 !== TABLE_BLOCK_TAGS.indexOf(closestParentNode.tagName.toLocaleLowerCase())) && ('table' !== node.nodeName.toLowerCase() || !closestParentNode || -1 !== TABLE_BLOCK_TAGS.indexOf(closestParentNode.tagName.toLocaleLowerCase()))) {
-                        if (range.deleteContents(), isCursor && '' === range.startContainer.textContent && 'BR' !== range.startContainer.nodeName && (range.startContainer.innerHTML = ''), ej2_base /* Browser.isIE */ .AR.isIE) {
-                            var frag = docElement.createDocumentFragment();
-                            frag.appendChild(node), range.insertNode(frag);
-                        } else if (1 === range.startContainer.nodeType && 'hr' === range.startContainer.nodeName.toLowerCase() && 'hr' === range.endContainer.nodeName.toLowerCase()) {
-                            var paraElem = range.startContainer.nextElementSibling;
-                            paraElem && (paraElem.querySelector('br') && (0, ej2_base /* detach */ .og)(paraElem.querySelector('br')), paraElem.appendChild(node));
-                        } else 'BR' === range.startContainer.nodeName ? range.startContainer.parentElement.insertBefore(node, range.startContainer) : range.insertNode(node);
-                        3 !== node.nodeType && node.childNodes.length > 0 ? nodeSelection.setSelectionText(docElement, node, node, 1, 1) : 'IMG' === node.nodeName ? this.imageFocus(node, nodeSelection, docElement) : 3 !== node.nodeType ? nodeSelection.setSelectionContents(docElement, node) : nodeSelection.setSelectionText(docElement, node, node, node.textContent.length, node.textContent.length);
-                    } else {
+                    if (isExternal || !(0, ej2_base /* isNullOrUndefined */ .le)(node) && !(0, ej2_base /* isNullOrUndefined */ .le)(node.classList) && node.classList.contains('pasteContent')) return void this.pasteInsertHTML(nodes, node, range, nodeSelection, nodeCutter, docElement, isCollapsed, closestParentNode, editNode);
+                    if (editNode !== range.startContainer && (!isCollapsed && (closestParentNode.nodeType !== Node.ELEMENT_NODE || -1 === TABLE_BLOCK_TAGS.indexOf(closestParentNode.tagName.toLocaleLowerCase())) || 'table' === node.nodeName.toLowerCase() && closestParentNode && -1 === TABLE_BLOCK_TAGS.indexOf(closestParentNode.tagName.toLocaleLowerCase()))) {
                         var preNode = nodeCutter.GetSpliceNode(range, closestParentNode), sibNode = preNode.previousSibling, parentNode = preNode.parentNode;
                         if (1 === nodes.length || 'table' === node.nodeName.toLowerCase() && 0 === preNode.childElementCount) nodeSelection.setSelectionContents(docElement, preNode), range = nodeSelection.getRange(docElement);
                         else {
@@ -16158,6 +16055,15 @@
                             null !== previousNode && (parentNode = previousNode), parentNode.firstChild && (parentNode !== editNode || 'TABLE' === node.nodeName && isCursor && parentNode === range.startContainer && parentNode === range.endContainer) ? '' === parentNode.textContent.trim() && parentNode !== editNode ? (InsertMethods.AppendBefore(node, parentNode, !1), (0, ej2_base /* detach */ .og)(parentNode)) : InsertMethods.AppendBefore(node, parentNode.firstChild, !1) : parentNode.appendChild(node);
                         }
                         'IMG' === node.nodeName ? this.imageFocus(node, nodeSelection, docElement) : 3 !== node.nodeType ? nodeSelection.setSelectionText(docElement, node, node, 0, node.childNodes.length) : nodeSelection.setSelectionText(docElement, node, node, 0, node.textContent.length);
+                    } else {
+                        if (range.deleteContents(), isCursor && '' === range.startContainer.textContent && 'BR' !== range.startContainer.nodeName && (range.startContainer.innerHTML = ''), ej2_base /* Browser.isIE */ .AR.isIE) {
+                            var frag = docElement.createDocumentFragment();
+                            frag.appendChild(node), range.insertNode(frag);
+                        } else if (1 === range.startContainer.nodeType && 'hr' === range.startContainer.nodeName.toLowerCase() && 'hr' === range.endContainer.nodeName.toLowerCase()) {
+                            var paraElem = range.startContainer.nextElementSibling;
+                            paraElem && (paraElem.querySelector('br') && (0, ej2_base /* detach */ .og)(paraElem.querySelector('br')), paraElem.appendChild(node));
+                        } else 'BR' === range.startContainer.nodeName ? range.startContainer.parentElement.insertBefore(node, range.startContainer) : range.insertNode(node);
+                        3 !== node.nodeType && node.childNodes.length > 0 ? nodeSelection.setSelectionText(docElement, node, node, 1, 1) : 'IMG' === node.nodeName ? this.imageFocus(node, nodeSelection, docElement) : 3 !== node.nodeType ? nodeSelection.setSelectionContents(docElement, node) : nodeSelection.setSelectionText(docElement, node, node, node.textContent.length, node.textContent.length);
                     }
                 }, InsertHtml.pasteInsertHTML = function(nodes, node, range, nodeSelection, nodeCutter, docElement, isCollapsed, closestParentNode, editNode) {
                     var lasNode, sibNode, isSingleNode, preNode, lastSelectionNode, isCursor = range.startOffset === range.endOffset && range.startContainer === range.endContainer;
@@ -16165,7 +16071,7 @@
                         var currentBlockNode = this.getImmediateBlockNode(nodes[nodes.length - 1], editNode);
                         nodeSelection.setSelectionText(docElement, currentBlockNode, currentBlockNode, 0, 0), range = nodeSelection.getRange(docElement);
                     }
-                    editNode === range.startContainer || (isCollapsed || closestParentNode.nodeType === Node.ELEMENT_NODE && -1 !== TABLE_BLOCK_TAGS.indexOf(closestParentNode.tagName.toLocaleLowerCase())) && ('table' !== node.nodeName.toLowerCase() || !closestParentNode || -1 !== TABLE_BLOCK_TAGS.indexOf(closestParentNode.tagName.toLocaleLowerCase())) || (preNode = nodeCutter.GetSpliceNode(range, closestParentNode), sibNode = (0, ej2_base /* isNullOrUndefined */ .le)(preNode.previousSibling) ? preNode.parentNode.previousSibling : preNode.previousSibling, 1 === nodes.length ? (nodeSelection.setSelectionContents(docElement, preNode), range = nodeSelection.getRange(docElement), isSingleNode = !0) : (lasNode = nodeCutter.GetSpliceNode(range, nodes[nodes.length - 1].parentElement), lasNode = (0, ej2_base /* isNullOrUndefined */ .le)(lasNode) ? preNode : lasNode, nodeSelection.setSelectionText(docElement, preNode, lasNode, 0, 3 === lasNode.nodeType ? lasNode.textContent.length : lasNode.childNodes.length), range = nodeSelection.getRange(docElement), isSingleNode = !1));
+                    editNode !== range.startContainer && (!isCollapsed && (closestParentNode.nodeType !== Node.ELEMENT_NODE || -1 === TABLE_BLOCK_TAGS.indexOf(closestParentNode.tagName.toLocaleLowerCase())) || 'table' === node.nodeName.toLowerCase() && closestParentNode && -1 === TABLE_BLOCK_TAGS.indexOf(closestParentNode.tagName.toLocaleLowerCase())) && (preNode = nodeCutter.GetSpliceNode(range, closestParentNode), sibNode = (0, ej2_base /* isNullOrUndefined */ .le)(preNode.previousSibling) ? preNode.parentNode.previousSibling : preNode.previousSibling, 1 === nodes.length ? (nodeSelection.setSelectionContents(docElement, preNode), range = nodeSelection.getRange(docElement), isSingleNode = !0) : (lasNode = nodeCutter.GetSpliceNode(range, nodes[nodes.length - 1].parentElement), lasNode = (0, ej2_base /* isNullOrUndefined */ .le)(lasNode) ? preNode : lasNode, nodeSelection.setSelectionText(docElement, preNode, lasNode, 0, 3 === lasNode.nodeType ? lasNode.textContent.length : lasNode.childNodes.length), range = nodeSelection.getRange(docElement), isSingleNode = !1));
                     var containsBlockNode = !1;
                     this.removingComments(node);
                     for(var allChildNodes = node.childNodes, i = 0; i < allChildNodes.length; i++)if (BLOCK_TAGS.indexOf(allChildNodes[i].nodeName.toLocaleLowerCase()) >= 0) {
@@ -16213,31 +16119,27 @@
                     var nodes = [];
                     return range.startOffset === range.endOffset && range.startContainer === range.endContainer && 'BR' != range.startContainer.nodeName && range.startContainer.childNodes.length > 0 && ('TD' === range.startContainer.nodeName || 3 !== range.startContainer.nodeType && node.classList && node.classList.contains('pasteContent')) ? nodes.push(range.startContainer.childNodes[range.endOffset]) : nodes = nodeSelection.getInsertNodeCollection(range), nodes;
                 }, InsertHtml.insertTempNode = function(range, node, nodes, nodeCutter, editNode) {
-                    if (range.startContainer !== editNode || (0, ej2_base /* isNullOrUndefined */ .le)(range.startContainer.childNodes[range.endOffset - 1]) || 'TABLE' !== range.startContainer.childNodes[range.endOffset - 1].nodeName) {
-                        if (range.startContainer !== editNode || (0, ej2_base /* isNullOrUndefined */ .le)(range.startContainer.childNodes[range.endOffset]) || 'TABLE' !== range.startContainer.childNodes[range.endOffset].nodeName) {
-                            if (range.startContainer === range.endContainer && 3 !== range.startContainer.nodeType && 'HR' === node.firstChild.nodeName) range.startContainer.classList.contains('e-content') || 'BODY' === range.startContainer.nodeName ? range.startContainer.appendChild(node) : range.startContainer.parentNode.insertBefore(node, range.startContainer);
-                            else {
-                                var blockNode = this.getImmediateBlockNode(nodes[nodes.length - 1], editNode);
-                                if (((0, ej2_base /* isNullOrUndefined */ .le)(blockNode) || (0, ej2_base /* isNullOrUndefined */ .le)(blockNode.parentElement)) && 3 !== range.endContainer.nodeType && (blockNode = range.endContainer, range.setEnd(blockNode, range.endContainer.textContent.length)), 'BODY' === blockNode.nodeName && range.startContainer === range.endContainer && 1 === range.startContainer.nodeType && (blockNode = range.startContainer), blockNode.closest('LI') && node && node.firstElementChild && ('OL' === node.firstElementChild.tagName || 'UL' === node.firstElementChild.tagName)) for(var liNode = void 0; node.firstElementChild.lastElementChild && 'LI' === node.firstElementChild.lastElementChild.tagName;)(liNode = node.firstElementChild.lastElementChild).style.removeProperty('margin-left'), liNode.style.removeProperty('margin-top'), liNode.style.removeProperty('margin-bottom'), node.firstElementChild.insertAdjacentElement('afterend', liNode);
-                                if ('TD' === blockNode.nodeName || 'TH' === blockNode.nodeName || 'TR' === blockNode.nodeName) {
-                                    var tempSpan = (0, ej2_base /* createElement */ .az)('span', {
-                                        className: 'tempSpan'
-                                    });
-                                    range.insertNode(tempSpan), tempSpan.parentNode.replaceChild(node, tempSpan);
-                                } else {
-                                    var nodeSelection = new selection /* NodeSelection */ .q(), currentNode = this.getNodeCollection(range, nodeSelection, node)[this.getNodeCollection(range, nodeSelection, node).length - 1], splitedElm = void 0;
-                                    if ('BR' !== currentNode.nodeName && 'HR' !== currentNode.nodeName && ('#text' !== currentNode.nodeName || (0, ej2_base /* isNullOrUndefined */ .le)(currentNode.parentElement) || 'LI' !== currentNode.parentElement.nodeName) || (0, ej2_base /* isNullOrUndefined */ .le)(currentNode.parentElement) || 0 !== currentNode.parentElement.textContent.trim().length) {
-                                        if ('#text' === currentNode.nodeName && !(0, ej2_base /* isNullOrUndefined */ .le)(currentNode.parentElement) && 'LI' === currentNode.parentElement.nodeName && currentNode.parentElement.textContent.trim().length > 0) {
-                                            splitedElm = currentNode, 'LI' !== currentNode.parentElement.nodeName || (0, ej2_base /* isNullOrUndefined */ .le)(currentNode.nextSibling) || 'BR' !== currentNode.nextSibling.nodeName || (0, ej2_base /* detach */ .og)(currentNode.nextSibling), range.collapsed || range.deleteContents(), range.insertNode(node), this.contentsDeleted = !0;
-                                            return;
-                                        }
-                                        splitedElm = nodeCutter.GetSpliceNode(range, blockNode);
-                                    } else splitedElm = currentNode, 'LI' !== currentNode.parentElement.nodeName || (0, ej2_base /* isNullOrUndefined */ .le)(currentNode.nextSibling) || 'BR' !== currentNode.nextSibling.nodeName || (0, ej2_base /* detach */ .og)(currentNode.nextSibling);
-                                    splitedElm.parentNode.replaceChild(node, splitedElm);
-                                }
-                            }
-                        } else range.startContainer.insertBefore(node, range.startContainer.childNodes[range.endOffset]);
-                    } else (0, ej2_base /* isNullOrUndefined */ .le)(range.startContainer.childNodes[range.endOffset - 1].nextSibling) ? range.startContainer.appendChild(node) : range.startContainer.insertBefore(node, range.startContainer.childNodes[range.endOffset - 1].nextSibling);
+                    if (range.startContainer !== editNode || (0, ej2_base /* isNullOrUndefined */ .le)(range.startContainer.childNodes[range.endOffset - 1]) || 'TABLE' !== range.startContainer.childNodes[range.endOffset - 1].nodeName) if (range.startContainer !== editNode || (0, ej2_base /* isNullOrUndefined */ .le)(range.startContainer.childNodes[range.endOffset]) || 'TABLE' !== range.startContainer.childNodes[range.endOffset].nodeName) if (range.startContainer === range.endContainer && 3 !== range.startContainer.nodeType && 'HR' === node.firstChild.nodeName) range.startContainer.classList.contains('e-content') || 'BODY' === range.startContainer.nodeName ? range.startContainer.appendChild(node) : range.startContainer.parentNode.insertBefore(node, range.startContainer);
+                    else {
+                        var blockNode = this.getImmediateBlockNode(nodes[nodes.length - 1], editNode);
+                        if (((0, ej2_base /* isNullOrUndefined */ .le)(blockNode) || (0, ej2_base /* isNullOrUndefined */ .le)(blockNode.parentElement)) && 3 !== range.endContainer.nodeType && (blockNode = range.endContainer, range.setEnd(blockNode, range.endContainer.textContent.length)), 'BODY' === blockNode.nodeName && range.startContainer === range.endContainer && 1 === range.startContainer.nodeType && (blockNode = range.startContainer), blockNode.closest('LI') && node && node.firstElementChild && ('OL' === node.firstElementChild.tagName || 'UL' === node.firstElementChild.tagName)) for(var liNode = void 0; node.firstElementChild.lastElementChild && 'LI' === node.firstElementChild.lastElementChild.tagName;)(liNode = node.firstElementChild.lastElementChild).style.removeProperty('margin-left'), liNode.style.removeProperty('margin-top'), liNode.style.removeProperty('margin-bottom'), node.firstElementChild.insertAdjacentElement('afterend', liNode);
+                        if ('TD' === blockNode.nodeName || 'TH' === blockNode.nodeName || 'TR' === blockNode.nodeName) {
+                            var tempSpan = (0, ej2_base /* createElement */ .az)('span', {
+                                className: 'tempSpan'
+                            });
+                            range.insertNode(tempSpan), tempSpan.parentNode.replaceChild(node, tempSpan);
+                        } else {
+                            var nodeSelection = new selection /* NodeSelection */ .q(), currentNode = this.getNodeCollection(range, nodeSelection, node)[this.getNodeCollection(range, nodeSelection, node).length - 1], splitedElm = void 0;
+                            if ('BR' !== currentNode.nodeName && 'HR' !== currentNode.nodeName && ('#text' !== currentNode.nodeName || (0, ej2_base /* isNullOrUndefined */ .le)(currentNode.parentElement) || 'LI' !== currentNode.parentElement.nodeName) || (0, ej2_base /* isNullOrUndefined */ .le)(currentNode.parentElement) || 0 !== currentNode.parentElement.textContent.trim().length) if ('#text' === currentNode.nodeName && !(0, ej2_base /* isNullOrUndefined */ .le)(currentNode.parentElement) && 'LI' === currentNode.parentElement.nodeName && currentNode.parentElement.textContent.trim().length > 0) {
+                                splitedElm = currentNode, 'LI' !== currentNode.parentElement.nodeName || (0, ej2_base /* isNullOrUndefined */ .le)(currentNode.nextSibling) || 'BR' !== currentNode.nextSibling.nodeName || (0, ej2_base /* detach */ .og)(currentNode.nextSibling), range.collapsed || range.deleteContents(), range.insertNode(node), this.contentsDeleted = !0;
+                                return;
+                            } else splitedElm = nodeCutter.GetSpliceNode(range, blockNode);
+                            else splitedElm = currentNode, 'LI' !== currentNode.parentElement.nodeName || (0, ej2_base /* isNullOrUndefined */ .le)(currentNode.nextSibling) || 'BR' !== currentNode.nextSibling.nodeName || (0, ej2_base /* detach */ .og)(currentNode.nextSibling);
+                            splitedElm.parentNode.replaceChild(node, splitedElm);
+                        }
+                    }
+                    else range.startContainer.insertBefore(node, range.startContainer.childNodes[range.endOffset]);
+                    else (0, ej2_base /* isNullOrUndefined */ .le)(range.startContainer.childNodes[range.endOffset - 1].nextSibling) ? range.startContainer.appendChild(node) : range.startContainer.insertBefore(node, range.startContainer.childNodes[range.endOffset - 1].nextSibling);
                 }, InsertHtml.cursorPos = function(lastSelectionNode, node, nodeSelection, docElement, editNode) {
                     lastSelectionNode.classList.add('lastNode'), editNode.innerHTML = (0, common_util /* updateTextNode */ .Hl)(editNode.innerHTML), lastSelectionNode = editNode.querySelector('.lastNode'), (0, ej2_base /* isNullOrUndefined */ .le)(lastSelectionNode) || (this.placeCursorEnd(lastSelectionNode, node, nodeSelection, docElement, editNode), lastSelectionNode.classList.remove('lastNode'), 0 === lastSelectionNode.classList.length && lastSelectionNode.removeAttribute('class'));
                 }, InsertHtml.imageFocus = function(node, nodeSelection, docElement) {
@@ -16250,7 +16152,7 @@
                     return node;
                 }, InsertHtml.removingComments = function(elm) {
                     var innerElement = elm.innerHTML;
-                    innerElement = innerElement.replace(/<!--[\s\S]*?-->/g, ''), elm.innerHTML = innerElement;
+                    elm.innerHTML = innerElement.replace(/<!--[\s\S]*?-->/g, '');
                 }, InsertHtml.findDetachEmptyElem = function(element) {
                     return (0, ej2_base /* isNullOrUndefined */ .le)(element.parentElement) ? null : '' === element.parentElement.textContent.trim() && 'true' !== element.parentElement.contentEditable ? this.findDetachEmptyElem(element.parentElement) : element;
                 }, InsertHtml.removeEmptyElements = function(element) {
@@ -16394,18 +16296,14 @@
                             this.isBlockNode(currentNode.parentNode) || 0 === txtArray.length || 0 === i || i === txtArray.length - 1 || 3 === range.startContainer.nodeType ? (inlineNodes[i] = currentNode, check = !1) : currentNode = currentNode.parentNode;
                         }
                     }
-                    for(var i = 0, j_1 = 0; i < inlineNodes.length; i++)if (0 === i && (finalinlineNodes[j_1] = inlineNodes[i]), inlineNodes.length > 1 && i < inlineNodes.length - 1) {
-                        if (inlineNodes[i].parentElement === inlineNodes[i + 1].parentElement && inlineNodes[i] === inlineNodes[i + 1]) continue;
-                        finalinlineNodes[j_1 + 1] = inlineNodes[i + 1], j_1++;
-                    }
+                    for(var i = 0, j_1 = 0; i < inlineNodes.length; i++)if (0 === i && (finalinlineNodes[j_1] = inlineNodes[i]), inlineNodes.length > 1 && i < inlineNodes.length - 1) if (inlineNodes[i].parentElement === inlineNodes[i + 1].parentElement && inlineNodes[i] === inlineNodes[i + 1]) continue;
+                    else finalinlineNodes[j_1 + 1] = inlineNodes[i + 1], j_1++;
                     var j = 0;
                     anchorNodes[0] = this.createAchorNode(e);
-                    for(var i = 0; i < finalinlineNodes.length; i++)if (0 === i && (cloneNode = finalinlineNodes[i].cloneNode(!0), anchorNodes[i].appendChild(cloneNode)), i < finalinlineNodes.length - 1) {
-                        if (finalinlineNodes[i].parentNode === finalinlineNodes[i + 1].parentNode) {
-                            var cln = finalinlineNodes[i + 1].cloneNode(!0);
-                            anchorNodes[j].appendChild(cln);
-                        } else anchorNodes[j += 1] = this.createAchorNode(e), cloneNode = finalinlineNodes[i + 1].cloneNode(!0), anchorNodes[j].appendChild(cloneNode);
-                    }
+                    for(var i = 0; i < finalinlineNodes.length; i++)if (0 === i && (cloneNode = finalinlineNodes[i].cloneNode(!0), anchorNodes[i].appendChild(cloneNode)), i < finalinlineNodes.length - 1) if (finalinlineNodes[i].parentNode === finalinlineNodes[i + 1].parentNode) {
+                        var cln = finalinlineNodes[i + 1].cloneNode(!0);
+                        anchorNodes[j].appendChild(cln);
+                    } else anchorNodes[j += 1] = this.createAchorNode(e), cloneNode = finalinlineNodes[i + 1].cloneNode(!0), anchorNodes[j].appendChild(cloneNode);
                     this.parent.nodeSelection.setRange(document, save.range);
                     for(var i = 0, j_2 = 0, k = 0; i <= finalinlineNodes.length; i++)0 === i && (finalinlineNodes[i].parentNode.insertBefore(anchorNodes[j_2], finalinlineNodes[i].nextSibling), 1 === this.parent.domNode.blockNodes().length && this.parent.nodeSelection.setSelectionNode(this.parent.currentDocument, anchorNodes[j_2]), removeNodes[k] = finalinlineNodes[i], k++), i < finalinlineNodes.length - 1 && (finalinlineNodes[i].parentNode === finalinlineNodes[i + 1].parentNode || (j_2 += 1, finalinlineNodes[i + 1].parentNode.insertBefore(anchorNodes[j_2], finalinlineNodes[i + 1])), removeNodes[k] = finalinlineNodes[i + 1], k++);
                     for(var i = 0; i < removeNodes.length; i++)removeNodes[i].parentNode && removeNodes[i].parentNode.removeChild(removeNodes[i]);
@@ -16860,7 +16758,7 @@
                     };
                 }, TableCommand.prototype.insertRow = function(e) {
                     var isBelow = 'InsertRowBefore' !== e.item.subCommand, selectedCell = e.item.selection.range.startContainer;
-                    if ('TH' === selectedCell.nodeName || 'TD' === selectedCell.nodeName || (selectedCell = (0, ej2_base /* closest */ .oq)(selectedCell.parentElement, 'td,th')), 'th' !== selectedCell.nodeName.toLowerCase() || 'InsertRowBefore' !== e.item.subCommand) {
+                    if ('TH' !== selectedCell.nodeName && 'TD' !== selectedCell.nodeName && (selectedCell = (0, ej2_base /* closest */ .oq)(selectedCell.parentElement, 'td,th')), 'th' !== selectedCell.nodeName.toLowerCase() || 'InsertRowBefore' !== e.item.subCommand) {
                         if (this.curTable = (0, ej2_base /* closest */ .oq)(this.parent.nodeSelection.range.startContainer.parentElement, 'table'), 0 === this.curTable.querySelectorAll('.e-cell-select').length) {
                             var lastRow = this.curTable.rows[this.curTable.rows.length - 1], cloneRow = lastRow.cloneNode(!0);
                             cloneRow.removeAttribute('rowspan'), this.insertAfter(cloneRow, lastRow);
@@ -16871,8 +16769,8 @@
                                 tdElement.appendChild((0, ej2_base /* createElement */ .az)('br')), newRow.appendChild(tdElement), tdElement.setAttribute('style', allCells[isHeaderSelect && isBelow && allCells[minVal + 1] ? minVal + 1 : minVal][i].getAttribute('style'));
                             }
                             var selectedRow = void 0;
-                            selectedRow = isHeaderSelect && isBelow ? this.curTable.querySelector('tbody').childNodes[0] : this.curTable.rows[minVal], // eslint-disable-next-line
-                            'InsertRowBefore' === e.item.subCommand ? selectedRow.parentElement.insertBefore(newRow, selectedRow) : isHeaderSelect ? selectedRow.parentElement.insertBefore(newRow, selectedRow) : this.insertAfter(newRow, selectedRow);
+                            selectedRow = isHeaderSelect && isBelow ? this.curTable.querySelector('tbody').childNodes[0] : this.curTable.rows[minVal], 'InsertRowBefore' === // eslint-disable-next-line
+                            e.item.subCommand || isHeaderSelect ? selectedRow.parentElement.insertBefore(newRow, selectedRow) : this.insertAfter(newRow, selectedRow);
                         }
                         e.item.selection.setSelectionText(this.parent.currentDocument, e.item.selection.range.startContainer, e.item.selection.range.startContainer, 0, 0), e.callBack && e.callBack({
                             requestType: e.item.subCommand,
@@ -16884,7 +16782,7 @@
                     }
                 }, TableCommand.prototype.insertColumn = function(e) {
                     var curCell, selectedCell = e.item.selection.range.startContainer;
-                    'TH' === selectedCell.nodeName || 'TD' === selectedCell.nodeName || (selectedCell = (0, ej2_base /* closest */ .oq)(selectedCell.parentElement, 'td,th'));
+                    'TH' !== selectedCell.nodeName && 'TD' !== selectedCell.nodeName && (selectedCell = (0, ej2_base /* closest */ .oq)(selectedCell.parentElement, 'td,th'));
                     for(var curRow = (0, ej2_base /* closest */ .oq)(selectedCell, 'tr'), allRows = (0, ej2_base /* closest */ .oq)(curRow, 'table').rows, colIndex = Array.prototype.slice.call(curRow.querySelectorAll(':scope > td, :scope > th')).indexOf(selectedCell), previousWidth = parseInt(e.item.width, 10) / curRow.querySelectorAll(':scope > td, :scope > th').length, currentWidth = parseInt(e.item.width, 10) / (curRow.querySelectorAll(':scope > td, :scope > th').length + 1), currentTabElm = (0, ej2_base /* closest */ .oq)(curRow, 'table'), thTdElm = (0, ej2_base /* closest */ .oq)(curRow, 'table').querySelectorAll('th,td'), i = 0; i < thTdElm.length; i++)thTdElm[i].dataset.oldWidth = thTdElm[i].offsetWidth / currentTabElm.offsetWidth * 100 + '%';
                     for(var i = 0; i < allRows.length; i++){
                         var colTemplate = (curCell = allRows[i].querySelectorAll(':scope > td, :scope > th')[colIndex]).cloneNode(!0);
@@ -16936,7 +16834,7 @@
                     var allCells = this.getCorrespondingColumns(), minMaxIndex = this.getSelectedCellMinMaxIndex(allCells);
                     if (1 === this.curTable.rows.length) e.item.selection.restore(), (0, ej2_base /* detach */ .og)((0, ej2_base /* closest */ .oq)(selectedCell.parentElement, 'table'));
                     else for(maxI = minMaxIndex.endRow; maxI >= minMaxIndex.startRow; maxI--){
-                        for(j = 0, currentRow = this.curTable.rows[maxI]; j < allCells[maxI].length; j++){
+                        for(currentRow = this.curTable.rows[maxI], j = 0; j < allCells[maxI].length; j++){
                             if ((0 === j || allCells[maxI][j] !== allCells[maxI][j - 1]) && 1 < parseInt(allCells[maxI][j].getAttribute('rowspan'), 10)) {
                                 var rowSpanVal = parseInt(allCells[maxI][j].getAttribute('rowspan'), 10) - 1;
                                 //eslint-disable-next-line
@@ -17396,14 +17294,12 @@
                             var regEx = RegExp(String.fromCharCode(8203), 'g'), emptySpaceNode = void 0;
                             cursorFormat.firstChild === cursorNode ? (cursorNode.textContent = cursorFormat.parentElement && (domNode.isBlockNode(cursorFormat.parentElement) && cursorFormat.parentElement.textContent.length <= 1 ? cursorFormat.parentElement.childElementCount > 1 : 0 === cursorFormat.childElementCount) && (cursorFormat.parentElement.textContent.length > 1 || cursorFormat.parentElement.firstChild && 1 === cursorFormat.parentElement.firstChild.nodeType) ? cursorNode.textContent : cursorNode.textContent.replace(regEx, ''), emptySpaceNode = cursorNode) : (cursorFormat.firstChild.textContent = cursorFormat.firstChild.textContent.replace(regEx, ''), emptySpaceNode = cursorFormat.firstChild);
                             var pointer = void 0;
-                            if (0 === emptySpaceNode.textContent.length) {
-                                if ((0, ej2_base /* isNullOrUndefined */ .le)(emptySpaceNode.previousSibling)) {
-                                    if (!(0, ej2_base /* isNullOrUndefined */ .le)(emptySpaceNode.parentElement) && 0 === emptySpaceNode.parentElement.textContent.length) {
-                                        var brElem = document.createElement('BR');
-                                        emptySpaceNode.parentElement.appendChild(brElem), (0, ej2_base /* detach */ .og)(emptySpaceNode), cursorNode = brElem, domSelection.setCursorPoint(docElement, cursorNode.parentElement, 0);
-                                    }
-                                } else cursorNode = emptySpaceNode.previousSibling, pointer = emptySpaceNode.textContent.length - 1, domSelection.setCursorPoint(docElement, emptySpaceNode, pointer);
-                            }
+                            if (0 === emptySpaceNode.textContent.length) if ((0, ej2_base /* isNullOrUndefined */ .le)(emptySpaceNode.previousSibling)) {
+                                if (!(0, ej2_base /* isNullOrUndefined */ .le)(emptySpaceNode.parentElement) && 0 === emptySpaceNode.parentElement.textContent.length) {
+                                    var brElem = document.createElement('BR');
+                                    emptySpaceNode.parentElement.appendChild(brElem), (0, ej2_base /* detach */ .og)(emptySpaceNode), cursorNode = brElem, domSelection.setCursorPoint(docElement, cursorNode.parentElement, 0);
+                                }
+                            } else cursorNode = emptySpaceNode.previousSibling, pointer = emptySpaceNode.textContent.length - 1, domSelection.setCursorPoint(docElement, emptySpaceNode, pointer);
                         }
                         [
                             'fontcolor',
@@ -17418,7 +17314,7 @@
                     return isFormatted.getFormattedNode(currentNode, format, endNode);
                 }, SelectionCommands.removeFormat = function(nodes, index, formatNode, isCursor, isFormat, isFontStyle, range, nodeCutter, format, value, domSelection, endNode, domNode) {
                     var fontStyle, bgStyle, splitNode = null, startText = '#text' === range.startContainer.nodeName ? range.startContainer.textContent.substring(range.startOffset, range.startContainer.textContent.length) : range.startContainer.textContent;
-                    if (!(range.startContainer === range.endContainer && 0 === range.startOffset && range.endOffset === range.startContainer.length)) {
+                    if (range.startContainer !== range.endContainer || 0 !== range.startOffset || range.endOffset !== range.startContainer.length) {
                         var nodeIndex = [], cloneNode = nodes[index];
                         do nodeIndex.push(domSelection.getIndex(cloneNode)), cloneNode = cloneNode.parentNode;
                         while (cloneNode && cloneNode !== formatNode)
@@ -17427,12 +17323,10 @@
                             lastNode.innerHTML = '&#8203;', nodes[index] = lastNode.firstChild;
                         } else {
                             for(; cloneNode && cloneNode.childNodes.length > 0 && nodeIndex.length - 1 >= 0 && cloneNode.childNodes.length > nodeIndex[nodeIndex.length - 1];)cloneNode = cloneNode.childNodes[nodeIndex[nodeIndex.length - 1]], nodeIndex.pop();
-                            if ('BR' !== nodes[index].nodeName) {
-                                if (3 !== cloneNode.nodeType || isCursor && '' === cloneNode.nodeValue) {
-                                    var divNode = document.createElement('div');
-                                    divNode.innerHTML = '&#8203;', 3 !== cloneNode.nodeType ? (cloneNode.insertBefore(divNode.firstChild, cloneNode.firstChild), nodes[index] = cloneNode.firstChild) : (cloneNode.parentNode.insertBefore(divNode.firstChild, cloneNode), nodes[index] = cloneNode.previousSibling, cloneNode.parentNode.removeChild(cloneNode));
-                                } else nodes[index] = cloneNode;
-                            }
+                            if ('BR' !== nodes[index].nodeName) if (3 !== cloneNode.nodeType || isCursor && '' === cloneNode.nodeValue) {
+                                var divNode = document.createElement('div');
+                                divNode.innerHTML = '&#8203;', 3 !== cloneNode.nodeType ? (cloneNode.insertBefore(divNode.firstChild, cloneNode.firstChild), nodes[index] = cloneNode.firstChild) : (cloneNode.parentNode.insertBefore(divNode.firstChild, cloneNode), nodes[index] = cloneNode.previousSibling, cloneNode.parentNode.removeChild(cloneNode));
+                            } else nodes[index] = cloneNode;
                         }
                     }
                     if ('backgroundcolor' === format && (fontStyle = formatNode.style.fontSize), 'fontsize' === format) {
@@ -17440,7 +17334,7 @@
                         (0, ej2_base /* isNullOrUndefined */ .le)(bg) || (bgStyle = bg.style.backgroundColor);
                     }
                     var formatNodeStyles = formatNode.getAttribute('style'), formatNodeTagName = formatNode.tagName, child = InsertMethods.unwrap(formatNode);
-                    if (child[0] && !isFontStyle) for(var nodeTraverse = child[index] ? child[index] : child[0], textNode = nodeTraverse; nodeTraverse && nodeTraverse.parentElement && nodeTraverse.parentElement !== endNode; nodeTraverse){
+                    if (child[0] && !isFontStyle) for(var nodeTraverse = child[index] ? child[index] : child[0], textNode = nodeTraverse; nodeTraverse && nodeTraverse.parentElement && nodeTraverse.parentElement !== endNode;){
                         var nodeTraverseCondition = void 0;
                         if (nodeTraverseCondition = 'SPAN' === formatNode.nodeName ? nodeTraverse.parentElement.tagName.toLocaleLowerCase() === formatNode.tagName.toLocaleLowerCase() && nodeTraverse.parentElement.getAttribute('style') === formatNodeStyles : nodeTraverse.parentElement.tagName.toLocaleLowerCase() === formatNode.tagName.toLocaleLowerCase(), nodeTraverse.parentElement && nodeTraverseCondition && (nodeTraverse.parentElement.childElementCount > 1 || range.startOffset > 1)) {
                             if (textNode.parentElement && textNode.parentElement.tagName.toLocaleLowerCase() === formatNode.tagName.toLocaleLowerCase() && range.startOffset === range.endOffset && 1 !== textNode.nodeType && !(0, ej2_base /* isNullOrUndefined */ .le)(textNode.textContent) && textNode.parentElement.childElementCount > 1 && (range.setStart(textNode, 0), range.setEnd(textNode, textNode.textContent.length), nodeCutter.SplitNode(range, textNode.parentElement, !1)), 'span' === nodeTraverse.parentElement.tagName.toLocaleLowerCase() && 'underline' === formatNode.style.textDecoration && 'underline' !== nodeTraverse.parentElement.style.textDecoration) {
@@ -17464,14 +17358,13 @@
                     }
                     return nodes[index];
                 }, SelectionCommands.insertFormat = function(docElement, nodes, index, formatNode, isCursor, isFormat, isFontStyle, range, nodeCutter, format, value) {
-                    if (isCursor) {
-                        if ('uppercase' !== format && 'lowercase' !== format) {
-                            var element = this.getInsertNode(docElement, range, format, value);
-                            nodes[index] = element.firstChild, nodeCutter.position = 1;
-                        } else nodeCutter.position = range.startOffset;
-                    } else if (null === formatNode && isFormat || isFontStyle) {
+                    if (isCursor) if ('uppercase' !== format && 'lowercase' !== format) {
+                        var element = this.getInsertNode(docElement, range, format, value);
+                        nodes[index] = element.firstChild, nodeCutter.position = 1;
+                    } else nodeCutter.position = range.startOffset;
+                    else if (null === formatNode && isFormat || isFontStyle) {
                         if ('BR' !== nodes[index].nodeName && (nodes[index] = nodeCutter.GetSpliceNode(range, nodes[index]), nodes[index].textContent = nodeCutter.TrimLineBreak(nodes[index].textContent)), 'uppercase' === format || 'lowercase' === format) nodes[index].textContent = 'uppercase' === format ? nodes[index].textContent.toLocaleUpperCase() : nodes[index].textContent.toLocaleLowerCase();
-                        else if (!(!0 === isFontStyle && '' === value)) {
+                        else if (!0 !== isFontStyle || '' !== value) {
                             var element = this.GetFormatNode(format, value);
                             if ('fontsize' === format || 'fontcolor' === format) {
                                 for(var liElement = nodes[index].parentElement, parentElement = nodes[index].parentElement; !(0, ej2_base /* isNullOrUndefined */ .le)(parentElement) && 'li' !== parentElement.tagName.toLowerCase();)liElement = parentElement = parentElement.parentElement;
@@ -17484,7 +17377,7 @@
                     } else nodes[index] = nodeCutter.GetSpliceNode(range, nodes[index]);
                     return nodes[index];
                 }, SelectionCommands.applyStyles = function(nodes, index, element) {
-                    return 'BR' === nodes[index].nodeName && 'BR' === this.enterAction || (nodes[index] = index === nodes.length - 1 || 'BR' === nodes[index].nodeName ? InsertMethods.Wrap(nodes[index], element) : InsertMethods.WrapBefore(nodes[index], element, !0), nodes[index] = this.getChildNode(nodes[index], element)), nodes[index];
+                    return ('BR' !== nodes[index].nodeName || 'BR' !== this.enterAction) && (nodes[index] = index === nodes.length - 1 || 'BR' === nodes[index].nodeName ? InsertMethods.Wrap(nodes[index], element) : InsertMethods.WrapBefore(nodes[index], element, !0), nodes[index] = this.getChildNode(nodes[index], element)), nodes[index];
                 }, SelectionCommands.getInsertNode = function(docElement, range, format, value) {
                     var element = this.GetFormatNode(format, value);
                     if (element.innerHTML = '&#8203;', ej2_base /* Browser.isIE */ .AR.isIE) {
@@ -17603,7 +17496,7 @@
                     var nodeSelection = new selection /* NodeSelection */ .q(), nodeCutter = new NodeCutter(), range = nodeSelection.getRange(docElement), isCollapsed = range.collapsed, nodes = nodeSelection.getInsertNodeCollection(range), save = nodeSelection.save(range, docElement);
                     if (!isCollapsed) {
                         var preNode = void 0;
-                        if (preNode = 'BR' === nodes[0].nodeName && (0, ej2_base /* closest */ .oq)(nodes[0], 'table') ? nodeCutter.GetSpliceNode(range, (0, ej2_base /* closest */ .oq)(nodes[0], 'table')) : nodeCutter.GetSpliceNode(range, nodes[nodes.length > 1 && 'IMG' === nodes[0].nodeName ? 1 : 0]), 1 === nodes.length) nodeSelection.setSelectionContents(docElement, preNode), range = nodeSelection.getRange(docElement);
+                        if (preNode = 'BR' === nodes[0].nodeName && (0, ej2_base /* closest */ .oq)(nodes[0], 'table') ? nodeCutter.GetSpliceNode(range, (0, ej2_base /* closest */ .oq)(nodes[0], 'table')) : nodeCutter.GetSpliceNode(range, nodes[+(nodes.length > 1 && 'IMG' === nodes[0].nodeName)]), 1 === nodes.length) nodeSelection.setSelectionContents(docElement, preNode), range = nodeSelection.getRange(docElement);
                         else {
                             for(var i = 1, lastText = nodes[nodes.length - i]; nodes.length <= i && 'BR' === nodes[nodes.length - i].nodeName;)i++, lastText = nodes[nodes.length - i];
                             var lasNode = nodeCutter.GetSpliceNode(range, lastText);
@@ -17646,7 +17539,7 @@
                     return parentNodes;
                 }, ClearFormat.unWrap = function(docElement, parentNodes, nodeCutter, nodeSelection) {
                     for(var index1 = 0; index1 < parentNodes.length; index1++)if (this.NONVALID_TAGS.indexOf(parentNodes[index1].nodeName.toLowerCase()) > -1 && parentNodes[index1].parentNode && this.NONVALID_PARENT_TAGS.indexOf(parentNodes[index1].parentNode.nodeName.toLowerCase()) > -1 && (nodeSelection.setSelectionText(docElement, parentNodes[index1], parentNodes[index1], 0, parentNodes[index1].childNodes.length), InsertMethods.unwrap(nodeCutter.GetSpliceNode(nodeSelection.getRange(docElement), parentNodes[index1].parentNode))), 'p' !== parentNodes[index1].nodeName.toLocaleLowerCase()) {
-                        !(0 > this.NONVALID_PARENT_TAGS.indexOf(parentNodes[index1].nodeName.toLowerCase())) || 'p' === parentNodes[index1].parentNode.nodeName.toLocaleLowerCase() || ('blockquote' === parentNodes[index1].nodeName.toLocaleLowerCase() || 'li' === parentNodes[index1].nodeName.toLocaleLowerCase()) && this.IGNORE_PARENT_TAGS.indexOf(parentNodes[index1].childNodes[0].nodeName.toLocaleLowerCase()) > -1 || 1 === parentNodes[index1].childNodes.length && 'p' === parentNodes[index1].childNodes[0].nodeName.toLocaleLowerCase() || InsertMethods.Wrap(parentNodes[index1], docElement.createElement(this.defaultTag));
+                        0 > this.NONVALID_PARENT_TAGS.indexOf(parentNodes[index1].nodeName.toLowerCase()) && 'p' !== parentNodes[index1].parentNode.nodeName.toLocaleLowerCase() && !(('blockquote' === parentNodes[index1].nodeName.toLocaleLowerCase() || 'li' === parentNodes[index1].nodeName.toLocaleLowerCase()) && this.IGNORE_PARENT_TAGS.indexOf(parentNodes[index1].childNodes[0].nodeName.toLocaleLowerCase()) > -1) && (1 !== parentNodes[index1].childNodes.length || 'p' !== parentNodes[index1].childNodes[0].nodeName.toLocaleLowerCase()) && InsertMethods.Wrap(parentNodes[index1], docElement.createElement(this.defaultTag));
                         var childNodes = InsertMethods.unwrap(parentNodes[index1]);
                         1 === childNodes.length && 'p' === childNodes[0].parentNode.nodeName.toLocaleLowerCase() && (InsertMethods.Wrap(parentNodes[index1], docElement.createElement(this.defaultTag)), InsertMethods.unwrap(parentNodes[index1]));
                         for(var index2 = 0; index2 < childNodes.length; index2++)if (this.NONVALID_TAGS.indexOf(childNodes[index2].nodeName.toLowerCase()) > -1) this.unWrap(docElement, [
@@ -18138,7 +18031,7 @@
                     return styleClassObject;
                 }, MsWordPaste.prototype.removingComments = function(elm) {
                     var innerElement = elm.innerHTML;
-                    innerElement = innerElement.replace(/<!--[\s\S]*?-->/g, ''), elm.innerHTML = innerElement;
+                    elm.innerHTML = innerElement.replace(/<!--[\s\S]*?-->/g, '');
                 }, MsWordPaste.prototype.cleanUp = function(node, listNodes) {
                     for(var prevflagState, tempCleaner = [], allNodes = node.querySelectorAll('*'), index = 0; index < allNodes.length; index++){
                         if (-1 === this.ignorableNodes.indexOf(allNodes[index].nodeName) || 3 === allNodes[index].nodeType && '' === allNodes[index].textContent.trim()) {
@@ -18219,21 +18112,19 @@
                         var pElement = (0, ej2_base /* createElement */ .az)('p');
                         if (pElement.innerHTML = collection[index].content.join(' '), 1 === collection[index].nestedLevel && 0 === listCount && collection[index].content) root.appendChild(temp = (0, ej2_base /* createElement */ .az)(collection[index].listType)), (prevList = (0, ej2_base /* createElement */ .az)('li')).appendChild(pElement), temp.appendChild(prevList), temp.setAttribute('level', collection[index].nestedLevel.toString()), temp.style.listStyleType = collection[index].listStyleTypeName;
                         else if (collection[index].nestedLevel === pLevel) prevList.parentElement.tagName.toLowerCase() === collection[index].listType ? (prevList.parentElement.appendChild(prevList = (0, ej2_base /* createElement */ .az)('li')), prevList.appendChild(pElement)) : ((temp = (0, ej2_base /* createElement */ .az)(collection[index].listType)).style.listStyleType = collection[index].listStyleTypeName, prevList.parentElement.parentElement.appendChild(temp), (prevList = (0, ej2_base /* createElement */ .az)('li')).appendChild(pElement), temp.appendChild(prevList), temp.setAttribute('level', collection[index].nestedLevel.toString()));
-                        else if (collection[index].nestedLevel > pLevel) {
-                            if ((0, ej2_base /* isNullOrUndefined */ .le)(prevList)) root.appendChild(temp = (0, ej2_base /* createElement */ .az)(collection[index].listType)), (prevList = (0, ej2_base /* createElement */ .az)('li')).appendChild(pElement), temp.appendChild(prevList), temp.setAttribute('level', collection[index].nestedLevel.toString()), temp.style.listStyleType = collection[index].listStyleTypeName;
-                            else {
-                                for(var j = 0; j < collection[index].nestedLevel - pLevel; j++)prevList.appendChild(temp = (0, ej2_base /* createElement */ .az)(collection[index].listType)), prevList = (0, ej2_base /* createElement */ .az)('li'), j != collection[index].nestedLevel - pLevel - 1 && collection[index].nestedLevel - pLevel > 1 && (prevList.style.listStyleType = "none"), temp.appendChild(prevList);
-                                prevList.appendChild(pElement), temp.setAttribute('level', collection[index].nestedLevel.toString()), temp.style.listStyleType = collection[index].listStyleTypeName;
-                            }
-                        } else if (1 === collection[index].nestedLevel) root.lastChild.tagName.toLowerCase() === collection[index].listType ? temp = root.lastChild : (root.appendChild(temp = (0, ej2_base /* createElement */ .az)(collection[index].listType)), temp.style.listStyleType = collection[index].listStyleTypeName), (prevList = (0, ej2_base /* createElement */ .az)('li')).appendChild(pElement), temp.appendChild(prevList), temp.setAttribute('level', collection[index].nestedLevel.toString());
-                        else for(elem = prevList; elem.parentElement;)if ((elem = elem.parentElement).attributes.getNamedItem('level')) {
-                            // eslint-disable-next-line
+                        else if (collection[index].nestedLevel > pLevel) if ((0, ej2_base /* isNullOrUndefined */ .le)(prevList)) root.appendChild(temp = (0, ej2_base /* createElement */ .az)(collection[index].listType)), (prevList = (0, ej2_base /* createElement */ .az)('li')).appendChild(pElement), temp.appendChild(prevList), temp.setAttribute('level', collection[index].nestedLevel.toString()), temp.style.listStyleType = collection[index].listStyleTypeName;
+                        else {
+                            for(var j = 0; j < collection[index].nestedLevel - pLevel; j++)prevList.appendChild(temp = (0, ej2_base /* createElement */ .az)(collection[index].listType)), prevList = (0, ej2_base /* createElement */ .az)('li'), j != collection[index].nestedLevel - pLevel - 1 && collection[index].nestedLevel - pLevel > 1 && (prevList.style.listStyleType = "none"), temp.appendChild(prevList);
+                            prevList.appendChild(pElement), temp.setAttribute('level', collection[index].nestedLevel.toString()), temp.style.listStyleType = collection[index].listStyleTypeName;
+                        }
+                        else if (1 === collection[index].nestedLevel) root.lastChild.tagName.toLowerCase() === collection[index].listType ? temp = root.lastChild : (root.appendChild(temp = (0, ej2_base /* createElement */ .az)(collection[index].listType)), temp.style.listStyleType = collection[index].listStyleTypeName), (prevList = (0, ej2_base /* createElement */ .az)('li')).appendChild(pElement), temp.appendChild(prevList), temp.setAttribute('level', collection[index].nestedLevel.toString());
+                        else for(elem = prevList; elem.parentElement;)if ((elem = elem.parentElement).attributes.getNamedItem('level')) // eslint-disable-next-line
+                        {
                             if (parseInt(elem.attributes.getNamedItem('level').textContent, null) === collection[index].nestedLevel) {
                                 (prevList = (0, ej2_base /* createElement */ .az)('li')).appendChild(pElement), elem.appendChild(prevList);
                                 break;
                             // eslint-disable-next-line
-                            }
-                            if (collection[index].nestedLevel > parseInt(elem.attributes.getNamedItem('level').textContent, null)) {
+                            } else if (collection[index].nestedLevel > parseInt(elem.attributes.getNamedItem('level').textContent, null)) {
                                 elem.appendChild(temp = (0, ej2_base /* createElement */ .az)(collection[index].listType)), (prevList = (0, ej2_base /* createElement */ .az)('li')).appendChild(pElement), temp.appendChild(prevList), temp.setAttribute('level', collection[index].nestedLevel.toString()), temp.style.listStyleType = collection[index].listStyleTypeName;
                                 break;
                             }
@@ -18581,7 +18472,7 @@
                     while (node && node !== targetNode)
                     return formatCollection;
                 }, ToolbarStatus.isFormattedNode = function(docElement, formatCollection, node, formatNode, fontSize, fontName) {
-                    return formatCollection.bold || (formatCollection.bold = IsFormatted.isBold(node)), formatCollection.italic || (formatCollection.italic = IsFormatted.isItalic(node)), formatCollection.underline || (formatCollection.underline = IsFormatted.isUnderline(node)), formatCollection.strikethrough || (formatCollection.strikethrough = IsFormatted.isStrikethrough(node)), formatCollection.superscript || (formatCollection.superscript = IsFormatted.isSuperscript(node)), formatCollection.subscript || (formatCollection.subscript = IsFormatted.isSubscript(node)), formatCollection.fontcolor || (formatCollection.fontcolor = this.isFontColor(docElement, node)), formatCollection.fontname || (formatCollection.fontname = this.isFontName(docElement, node, fontName)), formatCollection.fontsize || (formatCollection.fontsize = this.isFontSize(node, fontSize)), formatCollection.backgroundcolor || (formatCollection.backgroundcolor = this.isBackgroundColor(node)), formatCollection.orderedlist || (formatCollection.orderedlist = this.isOrderedList(node)), formatCollection.unorderedlist || (formatCollection.unorderedlist = this.isUnorderedList(node)), formatCollection.alignments || (formatCollection.alignments = this.isAlignment(node)), formatCollection.formats || (formatCollection.formats = this.isFormats(node, formatNode), 'pre' !== formatCollection.formats || (formatCollection.insertcode = !0)), formatCollection.createlink || (formatCollection.createlink = this.isLink(node)), formatCollection.numberFormatList || (formatCollection.numberFormatList = this.isNumberFormatList(node)), formatCollection.bulletFormatList || (formatCollection.bulletFormatList = this.isBulletFormatList(node)), formatCollection;
+                    return formatCollection.bold || (formatCollection.bold = IsFormatted.isBold(node)), formatCollection.italic || (formatCollection.italic = IsFormatted.isItalic(node)), formatCollection.underline || (formatCollection.underline = IsFormatted.isUnderline(node)), formatCollection.strikethrough || (formatCollection.strikethrough = IsFormatted.isStrikethrough(node)), formatCollection.superscript || (formatCollection.superscript = IsFormatted.isSuperscript(node)), formatCollection.subscript || (formatCollection.subscript = IsFormatted.isSubscript(node)), formatCollection.fontcolor || (formatCollection.fontcolor = this.isFontColor(docElement, node)), formatCollection.fontname || (formatCollection.fontname = this.isFontName(docElement, node, fontName)), formatCollection.fontsize || (formatCollection.fontsize = this.isFontSize(node, fontSize)), formatCollection.backgroundcolor || (formatCollection.backgroundcolor = this.isBackgroundColor(node)), formatCollection.orderedlist || (formatCollection.orderedlist = this.isOrderedList(node)), formatCollection.unorderedlist || (formatCollection.unorderedlist = this.isUnorderedList(node)), formatCollection.alignments || (formatCollection.alignments = this.isAlignment(node)), formatCollection.formats || (formatCollection.formats = this.isFormats(node, formatNode), 'pre' === formatCollection.formats && (formatCollection.insertcode = !0)), formatCollection.createlink || (formatCollection.createlink = this.isLink(node)), formatCollection.numberFormatList || (formatCollection.numberFormatList = this.isNumberFormatList(node)), formatCollection.bulletFormatList || (formatCollection.bulletFormatList = this.isBulletFormatList(node)), formatCollection;
                 }, ToolbarStatus.isFontColor = function(docElement, node) {
                     var color = node.style && node.style.color;
                     return ((null == color || '' === color) && 3 !== node.nodeType && (color = this.getComputedStyle(docElement, node, 'color')), null !== color && '' !== color && void 0 !== color) ? color : null;
@@ -18864,7 +18755,7 @@
                                 case 'default':
                                     this.fontColorPicker.setProperties({
                                         value: newProp.fontColor.default
-                                    }), (0, this.fontColorDropDown.element).querySelector('.' + this.tools.fontcolor.icon).style.borderBottomColor = newProp.fontColor.default;
+                                    }), this.fontColorDropDown.element.querySelector('.' + this.tools.fontcolor.icon).style.borderBottomColor = newProp.fontColor.default;
                                     break;
                                 case 'mode':
                                     this.fontColorPicker.setProperties({
@@ -18892,7 +18783,7 @@
                                 case 'default':
                                     this.backgroundColorPicker.setProperties({
                                         value: newProp.backgroundColor.default
-                                    }), (0, this.backgroundColorDropDown.element).querySelector('.' + this.tools.backgroundcolor.icon).style.borderBottomColor = newProp.backgroundColor.default;
+                                    }), this.backgroundColorDropDown.element.querySelector('.' + this.tools.backgroundcolor.icon).style.borderBottomColor = newProp.backgroundColor.default;
                                     break;
                                 case 'mode':
                                     this.backgroundColorPicker.setProperties({
@@ -19047,7 +18938,7 @@
      * @hidden
 
      */ HtmlEditor.prototype.sanitizeHelper = function(value) {
-                    return value = (0, util /* sanitizeHelper */ .cC)(value, this.parent);
+                    return (0, util /* sanitizeHelper */ .cC)(value, this.parent);
                 }, HtmlEditor.prototype.addEventListener = function() {
                     this.parent.isDestroyed || (this.nodeSelectionObj = new selection /* NodeSelection */ .q(), this.colorPickerModule = new ColorPickerInput(this.parent, this.locator), this.parent.on(constant /* initialLoad */ .T5, this.instantiateRenderer, this), this.parent.on(constant /* htmlToolbarClick */ .s0, this.onToolbarClick, this), this.parent.on(constant /* keyDown */ .QG, this.onKeyDown, this), this.parent.on(constant /* keyUp */ .yR, this.onKeyUp, this), this.parent.on(constant /* renderColorPicker */ .jm, this.renderColorPicker, this), this.parent.on(constant /* initialEnd */ .Xr, this.render, this), this.parent.on(constant /* modelChanged */ .CC, this.onPropertyChanged, this), this.parent.on(constant /* destroy */ .ob, this.destroy, this), this.parent.on(constant /* selectAll */ .td, this.selectAll, this), this.parent.on(constant /* selectRange */ .jh, this.selectRange, this), this.parent.on(constant /* getSelectedHtml */ .Db, this.getSelectedHtml, this), this.parent.on(constant /* selectionSave */ .gA, this.onSelectionSave, this), this.parent.on(constant /* selectionRestore */ .Wz, this.onSelectionRestore, this), this.parent.on(constant /* readOnlyMode */ .Ed, this.updateReadOnly, this), this.parent.on(constant /* paste */ .RE, this.onPaste, this), this.parent.on(constant /* tableclass */ .LF, this.isTableClassAdded, this));
                 }, HtmlEditor.prototype.updateReadOnly = function() {
@@ -19103,24 +18994,19 @@
                     var currentRange, _this = this, args = e.args;
                     if ('chrome' === ej2_base /* Browser.info.name */ .AR.info.name && (currentRange = this.parent.getRange(), this.backSpaceCleanup(e, currentRange), this.deleteCleanup(e, currentRange)), 9 === args.keyCode && this.parent.enableTabKey && !(0, ej2_base /* isNullOrUndefined */ .le)(args.target) && (0, ej2_base /* isNullOrUndefined */ .le)((0, ej2_base /* closest */ .oq)(args.target, '.e-rte-toolbar'))) {
                         var range = this.nodeSelectionObj.getRange(this.contentRenderer.getDocument()), parentNode = this.nodeSelectionObj.getParentNodeCollection(range);
-                        if (!(('LI' === parentNode[0].nodeName || (0, ej2_base /* closest */ .oq)(parentNode[0], 'li') || (0, ej2_base /* closest */ .oq)(parentNode[0], 'table')) && 0 === range.startOffset)) {
-                            if (args.preventDefault(), args.shiftKey) {
-                                if (this.rangeCollection.length > 0 && 4 === this.rangeCollection[this.rangeCollection.length - 1].startContainer.textContent.length) {
-                                    var textCont = this.rangeCollection[this.rangeCollection.length - 1].startContainer;
-                                    this.nodeSelectionObj.setSelectionText(this.contentRenderer.getDocument(), textCont, textCont, 0, textCont.textContent.length), InsertHtml.Insert(this.contentRenderer.getDocument(), document.createTextNode('')), this.rangeCollection.pop();
-                                }
-                            } else InsertHtml.Insert(this.contentRenderer.getDocument(), '&nbsp;&nbsp;&nbsp;&nbsp;'), this.rangeCollection.push(this.nodeSelectionObj.getRange(this.contentRenderer.getDocument()));
-                        }
+                        if (!(('LI' === parentNode[0].nodeName || (0, ej2_base /* closest */ .oq)(parentNode[0], 'li') || (0, ej2_base /* closest */ .oq)(parentNode[0], 'table')) && 0 === range.startOffset)) if (args.preventDefault(), args.shiftKey) {
+                            if (this.rangeCollection.length > 0 && 4 === this.rangeCollection[this.rangeCollection.length - 1].startContainer.textContent.length) {
+                                var textCont = this.rangeCollection[this.rangeCollection.length - 1].startContainer;
+                                this.nodeSelectionObj.setSelectionText(this.contentRenderer.getDocument(), textCont, textCont, 0, textCont.textContent.length), InsertHtml.Insert(this.contentRenderer.getDocument(), document.createTextNode('')), this.rangeCollection.pop();
+                            }
+                        } else InsertHtml.Insert(this.contentRenderer.getDocument(), '&nbsp;&nbsp;&nbsp;&nbsp;'), this.rangeCollection.push(this.nodeSelectionObj.getRange(this.contentRenderer.getDocument()));
                     }
                     if (('space' === e.args.action || 'enter' === e.args.action || 13 === e.args.keyCode) && (this.spaceLink(e.args), 'HTML' === this.parent.editorMode && !this.parent.readonly)) {
                         var currentLength = this.parent.getText().trim().length, selectionLength = this.parent.getSelection().length;
-                        if (-1 === this.parent.maxLength || currentLength - selectionLength + 1 <= this.parent.maxLength || 13 !== e.args.keyCode) this.parent.notify(constant /* enterHandler */ .dp, {
+                        if (!(-1 === this.parent.maxLength || currentLength - selectionLength + 1 <= this.parent.maxLength) && 13 === e.args.keyCode) return void e.args.preventDefault();
+                        this.parent.notify(constant /* enterHandler */ .dp, {
                             args: e.args
                         });
-                        else {
-                            e.args.preventDefault();
-                            return;
-                        }
                     }
                     if ('space' === e.args.action) {
                         var currentRange_1 = this.parent.getRange(), editorValue = currentRange_1.startContainer.textContent.slice(0, currentRange_1.startOffset), orderedList_1 = this.isOrderedList(editorValue), unOrderedList = this.isUnOrderedList(editorValue);
@@ -19216,7 +19102,8 @@
                     return element.lastElementChild ? 'BR' === element.lastElementChild.tagName ? element.lastElementChild.previousElementSibling ? element.lastElementChild.previousElementSibling : element : element.lastElementChild : element;
                 }, HtmlEditor.prototype.getRootBlockNode = function(rangeBlockNode) {
                     // eslint-disable-next-line
-                    for(; rangeBlockNode && this.parent && this.parent.inputElement !== rangeBlockNode && rangeBlockNode.parentElement !== this.parent.inputElement; rangeBlockNode)rangeBlockNode = rangeBlockNode.parentElement;
+                    for(; rangeBlockNode && this.parent && this.parent.inputElement !== rangeBlockNode;)if (rangeBlockNode.parentElement === this.parent.inputElement) break;
+                    else rangeBlockNode = rangeBlockNode.parentElement;
                     return rangeBlockNode;
                 }, HtmlEditor.prototype.getRangeLiNode = function(rangeLiNode) {
                     for(var node = rangeLiNode.parentElement; node !== this.parent.inputElement && (1 !== node.nodeType || 'LI' !== node.tagName);)node = node.parentElement;
@@ -19267,7 +19154,7 @@
                 }, HtmlEditor.prototype.onToolbarClick = function(args) {
                     var save, selectNodeEle, selectParentEle, item = args.item, closestElement = (0, ej2_base /* closest */ .oq)(args.originalEvent.target, '.e-rte-quick-popup');
                     if (closestElement && !closestElement.classList.contains('e-rte-inline-popup')) {
-                        if (!('SourceCode' === item.subCommand || 'Preview' === item.subCommand || 'FontColor' === item.subCommand || 'BackgroundColor' === item.subCommand)) {
+                        if ('SourceCode' !== item.subCommand && 'Preview' !== item.subCommand && 'FontColor' !== item.subCommand && 'BackgroundColor' !== item.subCommand) {
                             (0, common_util /* isIDevice */ .FA)() && 'Images' === item.command && this.nodeSelectionObj.restore();
                             var range = this.nodeSelectionObj.getRange(this.parent.contentModule.getDocument());
                             save = this.nodeSelectionObj.save(range, this.parent.contentModule.getDocument()), selectNodeEle = this.nodeSelectionObj.getNodeCollection(range), selectParentEle = this.nodeSelectionObj.getParentNodeCollection(range);
@@ -19293,7 +19180,7 @@
                         });
                     } else {
                         var linkDialog = document.getElementById(this.parent.getID() + '_rtelink'), imageDialog = document.getElementById(this.parent.getID() + '_image');
-                        if (!('SourceCode' === item.subCommand || 'Preview' === item.subCommand || 'FontColor' === item.subCommand || 'BackgroundColor' === item.subCommand)) {
+                        if ('SourceCode' !== item.subCommand && 'Preview' !== item.subCommand && 'FontColor' !== item.subCommand && 'BackgroundColor' !== item.subCommand) {
                             var range = this.nodeSelectionObj.getRange(this.parent.contentModule.getDocument());
                             (0, ej2_base /* isNullOrUndefined */ .le)(linkDialog) && (0, ej2_base /* isNullOrUndefined */ .le)(imageDialog) && (save = this.nodeSelectionObj.save(range, this.parent.contentModule.getDocument())), selectNodeEle = this.nodeSelectionObj.getNodeCollection(range), selectParentEle = this.nodeSelectionObj.getParentNodeCollection(range);
                         }
@@ -19763,7 +19650,7 @@
  * @returns {void}
  */ function(theme, container, radius, makeElement) {
                             var uniqueID, uniqueID1, uniqueID2, uniqueID3, uniqueID4, uniqueID5, uniqueID6, uniqueID7, innerContainer = container.querySelector('.' + CLS_SPININWRAP), svg = innerContainer.querySelector('svg');
-                            switch((0, ej2_base /* isNullOrUndefined */ .le)(svg) || innerContainer.removeChild(svg), theme){
+                            switch(!(0, ej2_base /* isNullOrUndefined */ .le)(svg) && innerContainer.removeChild(svg), theme){
                                 case 'Material':
                                     globalTimeOut[uniqueID1 = random_generator()] = {
                                         timeOut: 0,
@@ -19797,14 +19684,14 @@
  * @param {createElementParams} makeElement - specifies the element
  * @returns {void}
  */ // eslint-disable-next-line
-                                    function(innerContainer, uniqueID, makeElement) {
+                                    function(innerContainer, uniqueID) {
                                         var svgBoot = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
                                         svgBoot.setAttribute('id', uniqueID), svgBoot.setAttribute('class', 'e-spin-bootstrap'), svgBoot.setAttribute('viewBox', "0 0 64 64"), innerContainer.insertBefore(svgBoot, innerContainer.firstChild);
                                         for(var item = 0; item <= 7; item++){
                                             var bootCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
                                             bootCircle.setAttribute('class', CLS_SPINCIRCLE + '_' + item), bootCircle.setAttribute('r', "2"), bootCircle.setAttribute('transform', "translate(32,32)"), svgBoot.appendChild(bootCircle);
                                         }
-                                    }(innerContainer, uniqueID, 0), /**
+                                    }(innerContainer, uniqueID), /**
  *
  * @param {HTMLElement} innerContainer - specifies the element
  * @param {number} radius - specifies the radius
@@ -19853,7 +19740,7 @@
                         var container3, template = (0, ej2_base /* isNullOrUndefined */ .le)(args.template) ? null : args.template;
                         container.wrap.classList.add(CLS_SPINTEMPLATE), container3 = container.wrap, (0, ej2_base /* isNullOrUndefined */ .le)(null) || container3.classList.add(null), container3.querySelector('.e-spinner-inner').innerHTML = template;
                     }
-                    container.wrap.classList.add(CLS_HIDESPIN);
+                    container.wrap.classList.add(CLS_HIDESPIN), container = null;
                 }
             }
             /**
@@ -19915,17 +19802,6 @@
             }
             /**
  *
- * @param {number} current - specifies the number
- * @param {number} start - specifies the stroke size
- * @param {number} change - specifies the value
- * @param {number} duration - specifies the max number
- * @returns {number} - returns the number
- */ function easeAnimation(current, start, change, duration) {
-                var timestamp = (current /= duration) * current, timecount = timestamp * current;
-                return start + change * (6 * timecount * timestamp + -15 * timestamp * timestamp + 10 * timecount);
-            }
-            /**
- *
  * @param {number} radius - specifies the number
  * @param {HTMLElement} innerConainer - specifies the element
  * @param {string} trgClass - specifies the class
@@ -19934,41 +19810,33 @@
             function fb_calculate_attributes(radius, innerConainer, trgClass) {
                 var start, end, diameter = 2 * radius, svg = innerConainer.querySelector('.' + trgClass), circle = svg.querySelector('.e-path-circle'), path = svg.querySelector('.e-path-arc'), transformOrigin = diameter / 2 + 'px';
                 circle.setAttribute('d', [
-                    'M',
+                    "M",
                     radius,
                     radius,
-                    'm',
+                    "m",
                     -radius,
-                    0,
-                    'a',
+                    "0 a",
                     radius,
                     radius,
-                    0,
-                    1,
-                    0,
+                    "0 1 0",
                     2 * radius,
-                    0,
-                    'a',
+                    "0 a",
                     radius,
                     radius,
-                    0,
-                    1,
-                    0,
+                    "0 1 0",
                     -(2 * radius),
-                    0
-                ].join(' ')), path.setAttribute('d', (start = defineArcPoints(radius, radius, radius, 45), end = defineArcPoints(radius, radius, radius, 315), [
-                    'M',
+                    "0"
+                ].join(" ")), path.setAttribute('d', (start = defineArcPoints(radius, radius, radius, 45), end = defineArcPoints(radius, radius, radius, 315), [
+                    "M",
                     start.x,
                     start.y,
-                    'A',
+                    "A",
                     radius,
                     radius,
-                    0,
-                    0,
-                    0,
+                    "0 0 0",
                     end.x,
                     end.y
-                ].join(' '))), svg.setAttribute('viewBox', '0 0 ' + diameter + ' ' + diameter), svg.style.transformOrigin = transformOrigin + ' ' + transformOrigin + ' ' + transformOrigin, svg.style.width = svg.style.height = diameter + 'px';
+                ].join(" "))), svg.setAttribute('viewBox', '0 0 ' + diameter + ' ' + diameter), svg.style.transformOrigin = transformOrigin + ' ' + transformOrigin + ' ' + transformOrigin, svg.style.width = svg.style.height = diameter + 'px';
             }
             /**
  *
@@ -19983,16 +19851,6 @@
                     x: centerX + radius * Math.cos(radians),
                     y: centerY + radius * Math.sin(radians)
                 };
-            }
-            // eslint-disable-next-line
-            /**
- * Function to show the Spinner.
- *
- * @param {HTMLElement} container - Specify the target of the Spinner.
- * @returns {void}
- * @private
- */ function showSpinner(container) {
-                showHideSpinner(container, !1), container = null;
             }
             /**
  *
@@ -20019,36 +19877,23 @@
  * @param {SpinnerInfo} spinnerInfo - specifies the spinner
  * @returns {void}
  */ function animateMaterial(spinnerInfo) {
-                                    /**
- *
- * @param {number} start - specifies the number
- * @param {number} end - specifies the end number
- * @param {Function} easing - specifies the function
- * @param {number} duration - specifies the duration
- * @param {number} count - specifies the count
- * @param {number} max - specifies the max number
- * @param {SpinnerInfo} spinnerInfo - specifies the spinner info
- * @returns {void}
- */ // eslint-disable-next-line
-                                    (function(start, end, easing, duration, count, max, spinnerInfo) {
-                                        var id = ++spinnerInfo.globalInfo[spinnerInfo.uniqueID].previousId, startTime = new Date().getTime(), diameter = parseFloat(2 * spinnerInfo.globalInfo[spinnerInfo.uniqueID].radius + ''), strokeSize = 0.1 * diameter, rotate = -90 * (spinnerInfo.globalInfo[spinnerInfo.uniqueID].count || 0);
-                                        // eslint-disable-next-line
-                                        (function mat_animation(spinnerInfo) {
-                                            var currentTime = Math.max(0, Math.min(new Date().getTime() - startTime, 1333));
-                                            /**
+                                    var id, startTime, diameter, strokeSize, rotate;
+                                    spinnerInfo.globalInfo[spinnerInfo.uniqueID].count, id = ++spinnerInfo.globalInfo[spinnerInfo.uniqueID].previousId, startTime = new Date().getTime(), strokeSize = 0.1 * (diameter = parseFloat(2 * spinnerInfo.globalInfo[spinnerInfo.uniqueID].radius + '')), rotate = -90 * (spinnerInfo.globalInfo[spinnerInfo.uniqueID].count || 0), // eslint-disable-next-line
+                                    function mat_animation(spinnerInfo) {
+                                        var current, timestamp, timecount, currentTime = Math.max(0, Math.min(new Date().getTime() - startTime, 1333));
+                                        /**
      *
      * @param {number} value - specifies the number value
      * @param {HTMLElement} container - specifies the container
      * @returns {void}
      */ (function(value, container) {
-                                                if (!(0, ej2_base /* isNullOrUndefined */ .le)(container.querySelector('svg.e-spin-material')) && !(0, ej2_base /* isNullOrUndefined */ .le)(container.querySelector('svg.e-spin-material').querySelector('path.e-path-circle'))) {
-                                                    var path = container.querySelector('svg.e-spin-material').querySelector('path.e-path-circle');
-                                                    path.setAttribute('stroke-dashoffset', getDashOffset(diameter, strokeSize, value, 75) + ''), path.setAttribute('transform', 'rotate(' + rotate + ' ' + diameter / 2 + ' ' + diameter / 2 + ')');
-                                                }
-                                            })(easing(currentTime, 1, 148, 1333), spinnerInfo.container), id === spinnerInfo.globalInfo[spinnerInfo.uniqueID].previousId && currentTime < 1333 ? // eslint-disable-next-line
-                                            globalTimeOut[spinnerInfo.uniqueID].timeOut = setTimeout(mat_animation.bind(null, spinnerInfo), 1) : animateMaterial(spinnerInfo);
-                                        })(spinnerInfo);
-                                    })(0, 0, easeAnimation, 0, spinnerInfo.globalInfo[spinnerInfo.uniqueID].count, 0, spinnerInfo), spinnerInfo.globalInfo[spinnerInfo.uniqueID].count = ++spinnerInfo.globalInfo[spinnerInfo.uniqueID].count % 4;
+                                            if (!(0, ej2_base /* isNullOrUndefined */ .le)(container.querySelector('svg.e-spin-material')) && !(0, ej2_base /* isNullOrUndefined */ .le)(container.querySelector('svg.e-spin-material').querySelector('path.e-path-circle'))) {
+                                                var path = container.querySelector('svg.e-spin-material').querySelector('path.e-path-circle');
+                                                path.setAttribute('stroke-dashoffset', getDashOffset(diameter, strokeSize, value, 75) + ''), path.setAttribute('transform', 'rotate(' + rotate + ' ' + diameter / 2 + ' ' + diameter / 2 + ')');
+                                            }
+                                        })(1 + 148 * (6 * (timecount = (timestamp = (current = currentTime / 1333) * current) * current) * timestamp + -15 * timestamp * timestamp + 10 * timecount), spinnerInfo.container), id === spinnerInfo.globalInfo[spinnerInfo.uniqueID].previousId && currentTime < 1333 ? // eslint-disable-next-line
+                                        globalTimeOut[spinnerInfo.uniqueID].timeOut = setTimeout(mat_animation.bind(null, spinnerInfo), 1) : animateMaterial(spinnerInfo);
+                                    }(spinnerInfo), spinnerInfo.globalInfo[spinnerInfo.uniqueID].count = ++spinnerInfo.globalInfo[spinnerInfo.uniqueID].count % 4;
                                 }({
                                     uniqueID: id,
                                     container: inner,
@@ -20071,14 +19916,14 @@
      * @param {number} series - specifies the series
      * @param {string} id - specifies the id
      * @returns {void}
-     */ function(circle, start, end, series, id) {
+     */ function(circle, start, series, id) {
                                         var count = 0;
                                         !// eslint-disable-next-line
                                         function boot_animate(radius) {
                                             globalTimeOut[id].isAnimate && (++count, circle.setAttribute('r', radius + ''), count >= series.length && (count = 0), // eslint-disable-next-line
                                             globalTimeOut[id].timeOut = setTimeout(boot_animate.bind(null, series[count]), 18));
                                         }(start);
-                                    }(innerContainer.getElementsByClassName('e-path-circle_' + (8 === i ? 0 : i))[0], i, 0, /**
+                                    }(innerContainer.getElementsByClassName('e-path-circle_' + (8 === i ? 0 : i))[0], i, /**
  *
  * @param {number} begin - specifies the number
  * @param {number} stop  - specifirs the number
@@ -20115,7 +19960,7 @@
  * @returns {void}
  * @private
  */ function hideSpinner(container) {
-                showHideSpinner(container, !0), container = null;
+                showHideSpinner(container, !0);
             }
             var uploader_extends = (extendStatics1 = function(d, b) {
                 return (extendStatics1 = Object.setPrototypeOf || ({
@@ -20374,10 +20219,7 @@
                     }), this.dropAreaWrapper.parentElement.insertBefore(this.uploadWrapper, this.dropAreaWrapper), this.uploadWrapper.appendChild(this.dropAreaWrapper), this.setDropArea();
                 }, Uploader.prototype.renderPreLoadFiles = function() {
                     if (this.files.length) {
-                        if (this.enablePersistence && this.filesData.length) {
-                            this.createFileList(this.filesData);
-                            return;
-                        }
+                        if (this.enablePersistence && this.filesData.length) return void this.createFileList(this.filesData);
                         if (!(0, ej2_base /* isNullOrUndefined */ .le)(this.files[0].size)) {
                             this.isPreloadFiles = !0;
                             var files = [].slice.call(this.files), filesData = [];
@@ -20437,17 +20279,15 @@
                 }, Uploader.prototype.updateHTMLAttrToWrapper = function() {
                     if (!(0, ej2_base /* isNullOrUndefined */ .le)(this.htmlAttributes)) for(var _i = 0, _a = Object.keys(this.htmlAttributes); _i < _a.length; _i++){
                         var pro = _a[_i];
-                        if (wrapperAttr.indexOf(pro) > -1) {
-                            if ('class' === pro) {
-                                var updatedClassValues = this.htmlAttributes[pro].replace(/\s+/g, ' ').trim();
-                                '' !== updatedClassValues && (0, ej2_base /* addClass */ .cn)([
-                                    this.uploadWrapper
-                                ], updatedClassValues.split(' '));
-                            } else if ('style' === pro) {
-                                var uploadStyle = this.uploadWrapper.getAttribute(pro);
-                                uploadStyle = (0, ej2_base /* isNullOrUndefined */ .le)(uploadStyle) ? this.htmlAttributes[pro] : uploadStyle + this.htmlAttributes[pro], this.uploadWrapper.setAttribute(pro, uploadStyle);
-                            } else this.uploadWrapper.setAttribute(pro, this.htmlAttributes[pro]);
-                        }
+                        if (wrapperAttr.indexOf(pro) > -1) if ('class' === pro) {
+                            var updatedClassValues = this.htmlAttributes[pro].replace(/\s+/g, ' ').trim();
+                            '' !== updatedClassValues && (0, ej2_base /* addClass */ .cn)([
+                                this.uploadWrapper
+                            ], updatedClassValues.split(' '));
+                        } else if ('style' === pro) {
+                            var uploadStyle = this.uploadWrapper.getAttribute(pro);
+                            uploadStyle = (0, ej2_base /* isNullOrUndefined */ .le)(uploadStyle) ? this.htmlAttributes[pro] : uploadStyle + this.htmlAttributes[pro], this.uploadWrapper.setAttribute(pro, uploadStyle);
+                        } else this.uploadWrapper.setAttribute(pro, this.htmlAttributes[pro]);
                     }
                 }, Uploader.prototype.setMultipleSelection = function() {
                     if (this.multiple && !this.element.hasAttribute('multiple')) {
@@ -20549,7 +20389,7 @@
                                     createSpinner({
                                         target: spinnerTarget,
                                         width: '20px'
-                                    }), showSpinner(spinnerTarget);
+                                    }), showHideSpinner(spinnerTarget, !1);
                                 }
                                 this.sequentialUpload && /* istanbul ignore next */ this.uploadSequential(), liElement.classList.contains(RESTRICT_RETRY) || this.checkActionComplete(!0);
                             } else (0, ej2_base /* closest */ .oq)(args.target, '.' + SPINNER_PANE) || this.remove(fileData, !1, !1, !0, args);
@@ -20583,7 +20423,7 @@
                         createSpinner({
                             target: spinnerTarget,
                             width: '20px'
-                        }), showSpinner(spinnerTarget);
+                        }), showHideSpinner(spinnerTarget, !1);
                     }
                     eventArgs.postRawFile && !(0, ej2_base /* isNullOrUndefined */ .le)(selectedFiles.rawFile) && '' !== selectedFiles.rawFile ? formData.append(name, selectedFiles.rawFile, selectedFiles.name) : formData.append(name, selectedFiles.name), this.updateFormData(formData, eventArgs.customFormData);
                 }, /* istanbul ignore next */ Uploader.prototype.updateFormData = function(formData, customData) {
@@ -20681,15 +20521,14 @@
                     }, this_2 = this, i = 0; i < this.filesEntries.length; i++)_loop_4(i);
                 }, Uploader.prototype.onSelectFiles = function(args) {
                     if (this.enabled) {
-                        /* istanbul ignore next */ if ('drop' === args.type) {
-                            if (this.directoryUpload) this.getFilesFromFolder(args);
-                            else {
-                                var targetFiles, files = this.sortFilesList = args.dataTransfer.files;
-                                'msie' !== this.browserName && 'edge' !== this.browserName && 'safari' !== this.browserName && (this.element.files = files), files.length > 0 && (targetFiles = this.multiple ? this.sortFileList(files) : [
-                                    files[0]
-                                ], this.renderSelectedFiles(args, targetFiles));
-                            }
-                        } else targetFiles = [].slice.call(args.target.files), this.renderSelectedFiles(args, targetFiles);
+                        /* istanbul ignore next */ if ('drop' === args.type) if (this.directoryUpload) this.getFilesFromFolder(args);
+                        else {
+                            var targetFiles, files = this.sortFilesList = args.dataTransfer.files;
+                            'msie' !== this.browserName && 'edge' !== this.browserName && 'safari' !== this.browserName && (this.element.files = files), files.length > 0 && (targetFiles = this.multiple ? this.sortFileList(files) : [
+                                files[0]
+                            ], this.renderSelectedFiles(args, targetFiles));
+                        }
+                        else targetFiles = [].slice.call(args.target.files), this.renderSelectedFiles(args, targetFiles);
                         this.isAngular && args.stopPropagation();
                     }
                 }, /* istanbul ignore next */ Uploader.prototype.getBase64 = function(file) {
@@ -20967,64 +20806,63 @@
      * @param { FileInfo[] } fileData - Specifies the files data for file list creation.
      * @returns {void}
      */ Uploader.prototype.createFileList = function(fileData, isSelectedFile) {
-                    if (/* eslint-enable valid-jsdoc, jsdoc/require-param */ this.createParentUL(), '' === this.template || (0, ej2_base /* isNullOrUndefined */ .le)(this.template)) {
-                        if (this.isFormUpload()) this.uploadWrapper.classList.add(FORM_UPLOAD), this.formFileList(fileData, this.element.files);
-                        else for(var _i = 0; _i < fileData.length; _i++){
-                            var listItem = fileData[_i], liElement = this.createElement('li', {
-                                className: FILE,
-                                attrs: {
-                                    'data-file-name': listItem.name,
-                                    'data-files-count': '1'
-                                }
-                            }), textContainer = this.createElement('span', {
-                                className: TEXT_CONTAINER
-                            }), textElement = this.createElement('span', {
-                                className: FILE_NAME,
-                                attrs: {
-                                    title: listItem.name
-                                }
+                    if (/* eslint-enable valid-jsdoc, jsdoc/require-param */ this.createParentUL(), '' === this.template || (0, ej2_base /* isNullOrUndefined */ .le)(this.template)) if (this.isFormUpload()) this.uploadWrapper.classList.add(FORM_UPLOAD), this.formFileList(fileData, this.element.files);
+                    else for(var _i = 0; _i < fileData.length; _i++){
+                        var listItem = fileData[_i], liElement = this.createElement('li', {
+                            className: FILE,
+                            attrs: {
+                                'data-file-name': listItem.name,
+                                'data-files-count': '1'
+                            }
+                        }), textContainer = this.createElement('span', {
+                            className: TEXT_CONTAINER
+                        }), textElement = this.createElement('span', {
+                            className: FILE_NAME,
+                            attrs: {
+                                title: listItem.name
+                            }
+                        });
+                        textElement.innerHTML = this.getFileNameOnly(listItem.name);
+                        var fileExtension = this.createElement('span', {
+                            className: FILE_TYPE
+                        }), fileType = this.getFileType(listItem.name);
+                        if (fileExtension.innerHTML = '.' + fileType, fileType || fileExtension.classList.add('e-hidden'), this.enableRtl) {
+                            var rtlContainer = this.createElement('span', {
+                                className: RTL_CONTAINER
                             });
-                            textElement.innerHTML = this.getFileNameOnly(listItem.name);
-                            var fileExtension = this.createElement('span', {
-                                className: FILE_TYPE
-                            }), fileType = this.getFileType(listItem.name);
-                            if (fileExtension.innerHTML = '.' + fileType, fileType || fileExtension.classList.add('e-hidden'), this.enableRtl) {
-                                var rtlContainer = this.createElement('span', {
-                                    className: RTL_CONTAINER
-                                });
-                                rtlContainer.appendChild(fileExtension), rtlContainer.appendChild(textElement), textContainer.appendChild(rtlContainer);
-                            } else textContainer.appendChild(textElement), textContainer.appendChild(fileExtension);
-                            var fileSize = this.createElement('span', {
-                                className: FILE_SIZE
-                            });
-                            fileSize.innerHTML = this.bytesToSize(listItem.size), textContainer.appendChild(fileSize);
-                            var statusElement = this.createElement('span', {
-                                className: STATUS
-                            });
-                            textContainer.appendChild(statusElement), statusElement.innerHTML = listItem.status, liElement.appendChild(textContainer);
-                            var iconElement = this.createElement('span', {
-                                className: ' e-icons',
-                                attrs: {
-                                    tabindex: this.btnTabIndex
-                                }
-                            });
-                            'msie' === this.browserName && iconElement.classList.add('e-msie'), iconElement.setAttribute('title', this.localizedTexts('remove')), liElement.appendChild(iconElement), ej2_base /* EventHandler.add */ .bi.add(iconElement, 'click', this.removeFiles, this), '2' === listItem.statusCode ? (statusElement.classList.add(UPLOAD_SUCCESS), iconElement.classList.add(DELETE_ICON), iconElement.setAttribute('title', this.localizedTexts('delete'))) : '1' !== listItem.statusCode && (statusElement.classList.remove(UPLOAD_SUCCESS), statusElement.classList.add(VALIDATION_FAILS)), this.autoUpload && '1' === listItem.statusCode && '' !== this.asyncSettings.saveUrl && (statusElement.innerHTML = ''), iconElement.classList.contains(DELETE_ICON) || iconElement.classList.add(REMOVE_ICON);
-                            var index = fileData.indexOf(listItem), eventArgs = {
-                                element: liElement,
-                                fileInfo: listItem,
-                                index: index,
-                                isPreload: this.isPreLoadFile(listItem)
-                            }, eventsArgs = {
-                                element: liElement,
-                                fileInfo: listItem,
-                                index: index,
-                                isPreload: this.isPreLoadFile(listItem)
-                            };
-                            this.trigger('rendering', eventArgs), this.trigger('fileListRendering', eventsArgs), this.listParent.appendChild(liElement), this.fileList.push(liElement), this.truncateName(textElement);
-                            var preventActionComplete = this.flag;
-                            this.isPreLoadFile(listItem) && (this.flag = !1, this.checkActionComplete(!0), this.flag = preventActionComplete);
-                        }
-                    } else this.isFormUpload() ? (this.uploadWrapper.classList.add(FORM_UPLOAD), this.formCustomFileList(fileData, this.element.files)) : this.createCustomfileList(fileData);
+                            rtlContainer.appendChild(fileExtension), rtlContainer.appendChild(textElement), textContainer.appendChild(rtlContainer);
+                        } else textContainer.appendChild(textElement), textContainer.appendChild(fileExtension);
+                        var fileSize = this.createElement('span', {
+                            className: FILE_SIZE
+                        });
+                        fileSize.innerHTML = this.bytesToSize(listItem.size), textContainer.appendChild(fileSize);
+                        var statusElement = this.createElement('span', {
+                            className: STATUS
+                        });
+                        textContainer.appendChild(statusElement), statusElement.innerHTML = listItem.status, liElement.appendChild(textContainer);
+                        var iconElement = this.createElement('span', {
+                            className: ' e-icons',
+                            attrs: {
+                                tabindex: this.btnTabIndex
+                            }
+                        });
+                        'msie' === this.browserName && iconElement.classList.add('e-msie'), iconElement.setAttribute('title', this.localizedTexts('remove')), liElement.appendChild(iconElement), ej2_base /* EventHandler.add */ .bi.add(iconElement, 'click', this.removeFiles, this), '2' === listItem.statusCode ? (statusElement.classList.add(UPLOAD_SUCCESS), iconElement.classList.add(DELETE_ICON), iconElement.setAttribute('title', this.localizedTexts('delete'))) : '1' !== listItem.statusCode && (statusElement.classList.remove(UPLOAD_SUCCESS), statusElement.classList.add(VALIDATION_FAILS)), this.autoUpload && '1' === listItem.statusCode && '' !== this.asyncSettings.saveUrl && (statusElement.innerHTML = ''), iconElement.classList.contains(DELETE_ICON) || iconElement.classList.add(REMOVE_ICON);
+                        var index = fileData.indexOf(listItem), eventArgs = {
+                            element: liElement,
+                            fileInfo: listItem,
+                            index: index,
+                            isPreload: this.isPreLoadFile(listItem)
+                        }, eventsArgs = {
+                            element: liElement,
+                            fileInfo: listItem,
+                            index: index,
+                            isPreload: this.isPreLoadFile(listItem)
+                        };
+                        this.trigger('rendering', eventArgs), this.trigger('fileListRendering', eventsArgs), this.listParent.appendChild(liElement), this.fileList.push(liElement), this.truncateName(textElement);
+                        var preventActionComplete = this.flag;
+                        this.isPreLoadFile(listItem) && (this.flag = !1, this.checkActionComplete(!0), this.flag = preventActionComplete);
+                    }
+                    else this.isFormUpload() ? (this.uploadWrapper.classList.add(FORM_UPLOAD), this.formCustomFileList(fileData, this.element.files)) : this.createCustomfileList(fileData);
                 }, Uploader.prototype.getSlicedName = function(nameElement) {
                     var text = nameElement.textContent;
                     nameElement.dataset.tail = text.slice(text.length - 10);
@@ -21073,12 +20911,10 @@
                     });
                     progressbarText.textContent = '0%', progressbarInnerWrapper.appendChild(progressBar), progressbarWrapper.appendChild(progressbarInnerWrapper), progressbarWrapper.appendChild(progressbarText), liElement.querySelector('.' + TEXT_CONTAINER).appendChild(progressbarWrapper);
                 }, /* istanbul ignore next */ Uploader.prototype.updateProgressbar = function(e, li) {
-                    if (!isNaN(Math.round(e.loaded / e.total * 100)) && !(0, ej2_base /* isNullOrUndefined */ .le)(li.querySelector('.' + PROGRESSBAR))) {
-                        if ((0, ej2_base /* isNullOrUndefined */ .le)(this.progressInterval) || '' === this.progressInterval) this.changeProgressValue(li, Math.round(e.loaded / e.total * 100).toString() + '%');
-                        else {
-                            var value = Math.round(e.loaded / e.total * 100) % parseInt(this.progressInterval, 10);
-                            (0 === value || 100 === value) && this.changeProgressValue(li, Math.round(e.loaded / e.total * 100).toString() + '%');
-                        }
+                    if (!isNaN(Math.round(e.loaded / e.total * 100)) && !(0, ej2_base /* isNullOrUndefined */ .le)(li.querySelector('.' + PROGRESSBAR))) if ((0, ej2_base /* isNullOrUndefined */ .le)(this.progressInterval) || '' === this.progressInterval) this.changeProgressValue(li, Math.round(e.loaded / e.total * 100).toString() + '%');
+                    else {
+                        var value = Math.round(e.loaded / e.total * 100) % parseInt(this.progressInterval, 10);
+                        (0 === value || 100 === value) && this.changeProgressValue(li, Math.round(e.loaded / e.total * 100).toString() + '%');
                     }
                 }, Uploader.prototype.changeProgressValue = function(li, progressValue) {
                     li.querySelector('.' + PROGRESSBAR).setAttribute('style', 'width:' + progressValue), li.querySelector('.' + PROGRESSBAR_TEXT).textContent = progressValue;
@@ -21129,7 +20965,7 @@
                     if (!((0, ej2_base /* isNullOrUndefined */ .le)(liElement) || liElement.querySelector('.' + RETRY_ICON) || (0, ej2_base /* isNullOrUndefined */ .le)(liElement.querySelector('.' + ABORT_ICON)))) {
                         this.updateStatus(file, this.localizedTexts('fileUploadCancel'), '5'), this.renderFailureState(e, file, liElement);
                         var spinnerTarget = liElement.querySelector('.' + REMOVE_ICON);
-                        (0, ej2_base /* isNullOrUndefined */ .le)(liElement) || (hideSpinner(spinnerTarget), (0, ej2_base /* isNullOrUndefined */ .le)(liElement.querySelector('.e-spinner-pane')) || (0, ej2_base /* detach */ .og)(liElement.querySelector('.e-spinner-pane')));
+                        !(0, ej2_base /* isNullOrUndefined */ .le)(liElement) && (hideSpinner(spinnerTarget), (0, ej2_base /* isNullOrUndefined */ .le)(liElement.querySelector('.e-spinner-pane')) || (0, ej2_base /* detach */ .og)(liElement.querySelector('.e-spinner-pane')));
                         var requestResponse = e && e.currentTarget ? this.getResponse(e) : null;
                         this.trigger('success', {
                             event: e,
@@ -21458,29 +21294,27 @@
                     };
                     this.trigger('chunkFailure', eventArgs, function(eventArgs) {
                         // To prevent triggering of failure event
-                        if (!eventArgs.cancel) {
-                            if (metaData.retryCount < _this.asyncSettings.retryCount) setTimeout(function() {
-                                _this.retryRequest(liElement, metaData, custom);
-                            }, _this.asyncSettings.retryAfterDelay);
-                            else {
-                                if (!(0, ej2_base /* isNullOrUndefined */ .le)(liElement)) {
-                                    var pauseButton = liElement.querySelector('.' + PAUSE_UPLOAD) ? liElement.querySelector('.' + PAUSE_UPLOAD) : liElement.querySelector('.' + RESUME_UPLOAD);
-                                    (0, ej2_base /* isNullOrUndefined */ .le)(pauseButton) || (pauseButton.classList.add(RETRY_ICON), pauseButton.classList.remove(PAUSE_UPLOAD, RESUME_UPLOAD)), _this.updateProgressBarClasses(liElement, UPLOAD_FAILED), _this.removeProgressbar(liElement, 'failure'), liElement.querySelector('.e-icons').classList.remove(UPLOAD_INPROGRESS);
-                                    var iconElement = liElement.querySelector('.' + ABORT_ICON) ? liElement.querySelector('.' + ABORT_ICON) : liElement.querySelector('.' + REMOVE_ICON);
-                                    iconElement.classList.remove(ABORT_ICON), (0, ej2_base /* isNullOrUndefined */ .le)(liElement.querySelector('.' + PAUSE_UPLOAD)) || (0, ej2_base /* detach */ .og)(liElement.querySelector('.' + PAUSE_UPLOAD)), metaData.start > 0 ? (iconElement.classList.add(DELETE_ICON), iconElement.setAttribute('title', _this.localizedTexts('delete'))) : (iconElement.classList.add(REMOVE_ICON), iconElement.setAttribute('title', _this.localizedTexts('remove')));
-                                }
-                                metaData.retryCount = 0;
-                                var file_1 = metaData.file, failureMessage = _this.localizedTexts('uploadFailedMessage'), args = {
-                                    e: e,
-                                    response: requestResponse,
-                                    operation: 'upload',
-                                    file: _this.updateStatus(file_1, failureMessage, '0', !1),
-                                    statusText: failureMessage
-                                };
-                                _this.trigger('failure', args, function(args) {
-                                    _this.updateStatus(file_1, args.statusText, '0'), _this.uploadSequential(), _this.checkActionComplete(!0);
-                                });
+                        if (!eventArgs.cancel) if (metaData.retryCount < _this.asyncSettings.retryCount) setTimeout(function() {
+                            _this.retryRequest(liElement, metaData, custom);
+                        }, _this.asyncSettings.retryAfterDelay);
+                        else {
+                            if (!(0, ej2_base /* isNullOrUndefined */ .le)(liElement)) {
+                                var pauseButton = liElement.querySelector('.' + PAUSE_UPLOAD) ? liElement.querySelector('.' + PAUSE_UPLOAD) : liElement.querySelector('.' + RESUME_UPLOAD);
+                                (0, ej2_base /* isNullOrUndefined */ .le)(pauseButton) || (pauseButton.classList.add(RETRY_ICON), pauseButton.classList.remove(PAUSE_UPLOAD, RESUME_UPLOAD)), _this.updateProgressBarClasses(liElement, UPLOAD_FAILED), _this.removeProgressbar(liElement, 'failure'), liElement.querySelector('.e-icons').classList.remove(UPLOAD_INPROGRESS);
+                                var iconElement = liElement.querySelector('.' + ABORT_ICON) ? liElement.querySelector('.' + ABORT_ICON) : liElement.querySelector('.' + REMOVE_ICON);
+                                iconElement.classList.remove(ABORT_ICON), (0, ej2_base /* isNullOrUndefined */ .le)(liElement.querySelector('.' + PAUSE_UPLOAD)) || (0, ej2_base /* detach */ .og)(liElement.querySelector('.' + PAUSE_UPLOAD)), metaData.start > 0 ? (iconElement.classList.add(DELETE_ICON), iconElement.setAttribute('title', _this.localizedTexts('delete'))) : (iconElement.classList.add(REMOVE_ICON), iconElement.setAttribute('title', _this.localizedTexts('remove')));
                             }
+                            metaData.retryCount = 0;
+                            var file_1 = metaData.file, failureMessage = _this.localizedTexts('uploadFailedMessage'), args = {
+                                e: e,
+                                response: requestResponse,
+                                operation: 'upload',
+                                file: _this.updateStatus(file_1, failureMessage, '0', !1),
+                                statusText: failureMessage
+                            };
+                            _this.trigger('failure', args, function(args) {
+                                _this.updateStatus(file_1, args.statusText, '0'), _this.uploadSequential(), _this.checkActionComplete(!0);
+                            });
                         }
                     });
                 }, Uploader.prototype.retryRequest = function(liElement, metaData, custom) {
@@ -21622,13 +21456,12 @@
                 }, Uploader.prototype.uploadFiles = function(files, custom) {
                     var selectedFiles = [];
                     if (!('' === this.asyncSettings.saveUrl || (0, ej2_base /* isNullOrUndefined */ .le)(this.asyncSettings.saveUrl))) {
-                        if (!custom || (0, ej2_base /* isNullOrUndefined */ .le)(custom)) {
-                            if (this.multiple) selectedFiles = this.filterfileList(files);
-                            else {
-                                var file = [];
-                                file.push(files[0]), selectedFiles = this.filterfileList(file);
-                            }
-                        } else selectedFiles = files;
+                        if (!custom || (0, ej2_base /* isNullOrUndefined */ .le)(custom)) if (this.multiple) selectedFiles = this.filterfileList(files);
+                        else {
+                            var file = [];
+                            file.push(files[0]), selectedFiles = this.filterfileList(file);
+                        }
+                        else selectedFiles = files;
                         for(var i = 0; i < selectedFiles.length; i++)this.uploadFilesRequest(selectedFiles, i, custom);
                     }
                 }, Uploader.prototype.uploadFilesRequest = function(selectedFiles, i, custom) {
@@ -21682,29 +21515,27 @@
                         customFormData: [],
                         currentRequest: null
                     }, function(beforeEventArgs) {
-                        if (!beforeEventArgs.cancel) {
-                            if (_this.isFormUpload()) eventArgs.filesData = fileData, _this.trigger('removing', eventArgs, function(eventArgs) {
-                                if (!eventArgs.cancel) for(var removingFiles = _this.getFilesInArray(fileData), isLiRemoved = !1, liIndex = void 0, _i = 0; _i < removingFiles.length; _i++){
-                                    var data = removingFiles[_i];
-                                    if (isLiRemoved || (liIndex = _this.fileList.indexOf(data.list)), liIndex > -1) {
-                                        var inputElement = (0, ej2_base /* isNullOrUndefined */ .le)(data.input) ? null : data.input;
-                                        inputElement && (0, ej2_base /* detach */ .og)(inputElement), _this.spliceFiles(liIndex), (0, ej2_base /* detach */ .og)(_this.fileList[liIndex]), _this.fileList.splice(liIndex, 1), isLiRemoved = !0, liIndex = -1;
-                                    }
+                        if (!beforeEventArgs.cancel) if (_this.isFormUpload()) eventArgs.filesData = fileData, _this.trigger('removing', eventArgs, function(eventArgs) {
+                            if (!eventArgs.cancel) for(var removingFiles = _this.getFilesInArray(fileData), isLiRemoved = !1, liIndex = void 0, _i = 0; _i < removingFiles.length; _i++){
+                                var data = removingFiles[_i];
+                                if (isLiRemoved || (liIndex = _this.fileList.indexOf(data.list)), liIndex > -1) {
+                                    var inputElement = (0, ej2_base /* isNullOrUndefined */ .le)(data.input) ? null : data.input;
+                                    inputElement && (0, ej2_base /* detach */ .og)(inputElement), _this.spliceFiles(liIndex), (0, ej2_base /* detach */ .og)(_this.fileList[liIndex]), _this.fileList.splice(liIndex, 1), isLiRemoved = !0, liIndex = -1;
                                 }
-                            });
-                            else if (_this.isForm && ((0, ej2_base /* isNullOrUndefined */ .le)(_this.asyncSettings.removeUrl) || '' === _this.asyncSettings.removeUrl)) eventArgs.filesData = _this.getFilesData(), _this.trigger('removing', eventArgs, function(eventArgs) {
-                                eventArgs.cancel || _this.clearAll();
-                            });
-                            else {
-                                var removeFiles = [];
-                                (fileData = (0, ej2_base /* isNullOrUndefined */ .le)(fileData) ? _this.filesData : fileData) instanceof Array ? removeFiles = fileData : removeFiles.push(fileData), eventArgs.filesData = removeFiles;
-                                for(var removeUrl = _this.asyncSettings.removeUrl, validUrl = !('' === removeUrl || (0, ej2_base /* isNullOrUndefined */ .le)(removeUrl)), _loop_5 = function(files) {
-                                    var fileUploadedIndex = _this.uploadedFilesData.indexOf(files);
-                                    ('2' === files.statusCode || '4' === files.statusCode || '0' === files.statusCode && -1 !== fileUploadedIndex) && validUrl ? _this.removeUploadedFile(files, eventArgs, removeDirectly, customTemplate) : removeDirectly ? _this.removeFilesData(files, customTemplate) : _this.trigger('removing', eventArgs, function(eventArgs) {
-                                        eventArgs.cancel || _this.removeFilesData(files, customTemplate);
-                                    }), args && !args.target.classList.contains(REMOVE_ICON) && _this.checkActionComplete(!1);
-                                }, _i = 0, removeFiles_1 = removeFiles; _i < removeFiles_1.length; _i++)_loop_5(removeFiles_1[_i]);
                             }
+                        });
+                        else if (_this.isForm && ((0, ej2_base /* isNullOrUndefined */ .le)(_this.asyncSettings.removeUrl) || '' === _this.asyncSettings.removeUrl)) eventArgs.filesData = _this.getFilesData(), _this.trigger('removing', eventArgs, function(eventArgs) {
+                            eventArgs.cancel || _this.clearAll();
+                        });
+                        else {
+                            var removeFiles = [];
+                            (fileData = (0, ej2_base /* isNullOrUndefined */ .le)(fileData) ? _this.filesData : fileData) instanceof Array ? removeFiles = fileData : removeFiles.push(fileData), eventArgs.filesData = removeFiles;
+                            for(var removeUrl = _this.asyncSettings.removeUrl, validUrl = !('' === removeUrl || (0, ej2_base /* isNullOrUndefined */ .le)(removeUrl)), _loop_5 = function(files) {
+                                var fileUploadedIndex = _this.uploadedFilesData.indexOf(files);
+                                ('2' === files.statusCode || '4' === files.statusCode || '0' === files.statusCode && -1 !== fileUploadedIndex) && validUrl ? _this.removeUploadedFile(files, eventArgs, removeDirectly, customTemplate) : removeDirectly ? _this.removeFilesData(files, customTemplate) : _this.trigger('removing', eventArgs, function(eventArgs) {
+                                    eventArgs.cancel || _this.removeFilesData(files, customTemplate);
+                                }), args && !args.target.classList.contains(REMOVE_ICON) && _this.checkActionComplete(!1);
+                            }, _i = 0, removeFiles_1 = removeFiles; _i < removeFiles_1.length; _i++)_loop_5(removeFiles_1[_i]);
                         }
                     });
                 }, /* eslint-enable valid-jsdoc, jsdoc/require-param */ /**
@@ -21770,12 +21601,10 @@
                     var fileDataFiles = this.getFilesInArray(fileData);
                     this.sequentialUpload && this.isFirstFileOnSelection && (this.isFirstFileOnSelection = !1), this.retryFailedFiles(fileDataFiles, fromcanceledStage, custom);
                 }, Uploader.prototype.retryFailedFiles = function(fileData, fromcanceledStage, custom) {
-                    for(var files = this.getFiles(fileData), i = 0; i < files.length; i++)if ('5' === files[i].statusCode || '0' === files[i].statusCode) {
-                        if (this.asyncSettings.chunkSize > 0) this.retryUpload(this.getCurrentMetaData(files[i], null), fromcanceledStage);
-                        else {
-                            var liElement = void 0;
-                            custom || (liElement = this.fileList[this.filesData.indexOf(files[i])]), this.reloadcanceledFile(null, files[i], liElement, custom);
-                        }
+                    for(var files = this.getFiles(fileData), i = 0; i < files.length; i++)if ('5' === files[i].statusCode || '0' === files[i].statusCode) if (this.asyncSettings.chunkSize > 0) this.retryUpload(this.getCurrentMetaData(files[i], null), fromcanceledStage);
+                    else {
+                        var liElement = void 0;
+                        custom || (liElement = this.fileList[this.filesData.indexOf(files[i])]), this.reloadcanceledFile(null, files[i], liElement, custom);
                     }
                 }, /**
      * Stops the in-progress chunked upload based on the file data.
@@ -21802,7 +21631,7 @@
                         createSpinner({
                             target: spinnerTarget,
                             width: '20px'
-                        }), showSpinner(spinnerTarget);
+                        }), showHideSpinner(spinnerTarget, !1);
                     }
                 }, uploader_decorate([
                     (0, ej2_base /* Complex */ .Zz)({
@@ -22161,10 +21990,7 @@
                 }, PasteCleanup.prototype.popupClose = function(popupObj, uploadObj, imgElem, e) {
                     var _this = this;
                     this.parent.inputElement.contentEditable = 'true', e.element = imgElem, this.parent.trigger(constant /* imageUploadSuccess */ .AL, e, function(e) {
-                        if (!(0, ej2_base /* isNullOrUndefined */ .le)(_this.parent.insertImageSettings.path)) {
-                            var url = _this.parent.insertImageSettings.path + e.file.name;
-                            imgElem.src = url, imgElem.setAttribute('alt', e.file.name);
-                        }
+                        (0, ej2_base /* isNullOrUndefined */ .le)(_this.parent.insertImageSettings.path) || (imgElem.src = _this.parent.insertImageSettings.path + e.file.name, imgElem.setAttribute('alt', e.file.name));
                     }), popupObj.close(), imgElem.style.opacity = '1', uploadObj.destroy(), this.toolbarEnableDisable(!1);
                 }, PasteCleanup.prototype.refreshPopup = function(imageElement, popupObj) {
                     (this.parent.iframeSettings.enable ? this.parent.element.offsetTop + imageElement.offsetTop : imageElement.offsetTop) > this.parent.element.offsetTop + this.parent.element.offsetHeight ? (popupObj.relateTo = this.parent.inputElement, popupObj.offsetY = this.parent.iframeSettings.enable ? -30 : -65, popupObj.element.style.display = 'block') : popupObj && (popupObj.refreshPosition(imageElement), popupObj.element.style.display = 'block');
@@ -22172,7 +21998,7 @@
                     for(var baseStr = base64.split(','), extension = baseStr[0].match(/:(.*?);/)[1].split('/')[1], decodeStr = atob(baseStr[1]), strLen = decodeStr.length, decodeArr = new Uint8Array(strLen); strLen--;)decodeArr[strLen] = decodeStr.charCodeAt(strLen);
                     if (!(ej2_base /* Browser.isIE */ .AR.isIE || navigator.appVersion.indexOf('Edge') > -1)) return new File([
                         decodeArr
-                    ], filename + '.' + ((0, ej2_base /* isNullOrUndefined */ .le)(extension) ? '' : extension), {
+                    ], filename + '.' + (!(0, ej2_base /* isNullOrUndefined */ .le)(extension) ? extension : ''), {
                         type: extension
                     });
                     var blob = new Blob([
@@ -22303,7 +22129,7 @@
                 }, PasteCleanup.prototype.removeTempClass = function() {
                     for(var classElm = this.parent.inputElement.querySelectorAll('.pasteContent_RTE'), i = 0; i < classElm.length; i++)classElm[i].classList.remove('pasteContent_RTE'), '' === classElm[i].getAttribute('class') && classElm[i].removeAttribute('class');
                 }, PasteCleanup.prototype.sanitizeHelper = function(value) {
-                    return value = (0, util /* sanitizeHelper */ .cC)(value, this.parent);
+                    return (0, util /* sanitizeHelper */ .cC)(value, this.parent);
                 }, //Plain Formatting
                 PasteCleanup.prototype.plainFormatting = function(value, args) {
                     var _this = this, clipBoardElem = this.parent.createElement('div', {
@@ -22364,7 +22190,7 @@
                     for(var groupingTags = deniedTags.slice(), keys = Object.keys(config /* pasteCleanupGroupingTags */ .n4), values = keys.map(function(key) {
                         return config /* pasteCleanupGroupingTags */ .n4[key];
                     }), addTags = [], i = 0; i < groupingTags.length; i++)if (groupingTags[i].split('[').length > 1 && (groupingTags[i] = groupingTags[i].split('[')[0].trim()), keys.indexOf(groupingTags[i]) > -1) for(var j = 0; j < values[keys.indexOf(groupingTags[i])].length; j++)0 > groupingTags.indexOf(values[keys.indexOf(groupingTags[i])][j]) && 0 > addTags.indexOf(values[keys.indexOf(groupingTags[i])][j]) && addTags.push(values[keys.indexOf(groupingTags[i])][j]);
-                    return deniedTags = deniedTags.concat(addTags);
+                    return deniedTags.concat(addTags);
                 }, //Filter Attributes in Denied Tags
                 PasteCleanup.prototype.attributesfilter = function(deniedTags) {
                     for(var i = 0; i < deniedTags.length; i++)if (deniedTags[i].split('[').length > 1) {
@@ -22614,10 +22440,7 @@
                     'add' === action ? this.scrollEle.scrollLeft += scrollVal : this.scrollEle.scrollLeft -= scrollVal;
                 }, HScroll.prototype.frameScrollRequest = function(scrollVal, action, isContinuous) {
                     var _this = this;
-                    if (isContinuous) {
-                        this.scrollUpdating(scrollVal, action);
-                        return;
-                    }
+                    if (isContinuous) return void this.scrollUpdating(scrollVal, action);
                     this.customStep || [].slice.call((0, ej2_base /* selectAll */ .td)('.' + CLS_OVERLAY, this.element)).forEach(function(el) {
                         scrollVal -= el.offsetWidth;
                     });
@@ -22866,10 +22689,7 @@
                     'add' === action ? this.scrollEle.scrollTop += scrollVal : this.scrollEle.scrollTop -= scrollVal;
                 }, VScroll.prototype.frameScrollRequest = function(scrollValue, action, isContinuous) {
                     var _this = this;
-                    if (isContinuous) {
-                        this.scrollUpdating(scrollValue, action);
-                        return;
-                    }
+                    if (isContinuous) return void this.scrollUpdating(scrollValue, action);
                     this.customStep || [].slice.call((0, ej2_base /* selectAll */ .td)('.' + v_scroll_CLS_OVERLAY, this.element)).forEach(function(el) {
                         scrollValue -= el.offsetHeight;
                     });
@@ -23158,21 +22978,16 @@
                 }, Toolbar.prototype.eleFocus = function(closest, pos) {
                     var sib = Object(closest)[pos + 'ElementSibling'];
                     if (sib) {
-                        if (this.eleContains(sib)) {
-                            this.eleFocus(sib, pos);
-                            return;
-                        }
+                        if (this.eleContains(sib)) return void this.eleFocus(sib, pos);
                         this.elementFocus(sib);
                     } else if (this.tbarAlign) {
                         var elem = Object(closest.parentElement)[pos + 'ElementSibling'];
-                        if ((0, ej2_base /* isNullOrUndefined */ .le)(elem) || 0 !== elem.children.length || (elem = Object(elem)[pos + 'ElementSibling']), !(0, ej2_base /* isNullOrUndefined */ .le)(elem) && elem.children.length > 0) {
-                            if ('next' === pos) {
-                                var el = elem.querySelector('.' + CLS_ITEM);
-                                this.eleContains(el) ? this.eleFocus(el, pos) : (el.firstElementChild.focus(), this.activeEleSwitch(el));
-                            } else {
-                                var el = elem.lastElementChild;
-                                this.eleContains(el) ? this.eleFocus(el, pos) : this.elementFocus(el);
-                            }
+                        if ((0, ej2_base /* isNullOrUndefined */ .le)(elem) || 0 !== elem.children.length || (elem = Object(elem)[pos + 'ElementSibling']), !(0, ej2_base /* isNullOrUndefined */ .le)(elem) && elem.children.length > 0) if ('next' === pos) {
+                            var el = elem.querySelector('.' + CLS_ITEM);
+                            this.eleContains(el) ? this.eleFocus(el, pos) : (el.firstElementChild.focus(), this.activeEleSwitch(el));
+                        } else {
+                            var el = elem.lastElementChild;
+                            this.eleContains(el) ? this.eleFocus(el, pos) : this.elementFocus(el);
                         }
                     }
                 }, Toolbar.prototype.clickHandler = function(e) {
@@ -23319,7 +23134,7 @@
                 }, Toolbar.prototype.pushingPoppedEle = function(tbarObj, popupPri, ele, eleHeight, sepHeight) {
                     var element = tbarObj.element, poppedEle = [].slice.call((0, ej2_base /* selectAll */ .td)('.' + CLS_POPUP, element.querySelector('.' + CLS_ITEMS))), nodes = (0, ej2_base /* selectAll */ .td)('.' + CLS_TBAROVERFLOW, ele), nodeIndex = 0, nodePri = 0;
                     poppedEle.forEach(function(el, index) {
-                        nodes = (0, ej2_base /* selectAll */ .td)('.' + CLS_TBAROVERFLOW, ele), el.classList.contains(CLS_TBAROVERFLOW) && nodes.length > 0 ? (tbarObj.tbResize && nodes.length > index ? ele.insertBefore(el, nodes[index]) : ele.insertBefore(el, ele.children[nodes.length]), ++nodePri) : el.classList.contains(CLS_TBAROVERFLOW) ? (ele.insertBefore(el, ele.firstChild), ++nodePri) : tbarObj.tbResize && el.classList.contains(CLS_POPOVERFLOW) && ele.children.length > 0 && 0 === nodes.length ? (ele.insertBefore(el, ele.firstChild), ++nodePri) : el.classList.contains(CLS_POPOVERFLOW) ? popupPri.push(el) : tbarObj.tbResize ? (ele.insertBefore(el, ele.childNodes[nodeIndex + nodePri]), ++nodeIndex) : ele.appendChild(el), el.classList.contains(CLS_SEPARATOR) ? (0, ej2_base /* setStyleAttribute */ .V7)(el, {
+                        nodes = (0, ej2_base /* selectAll */ .td)('.' + CLS_TBAROVERFLOW, ele), el.classList.contains(CLS_TBAROVERFLOW) && nodes.length > 0 ? (tbarObj.tbResize && nodes.length > index ? ele.insertBefore(el, nodes[index]) : ele.insertBefore(el, ele.children[nodes.length]), ++nodePri) : el.classList.contains(CLS_TBAROVERFLOW) || tbarObj.tbResize && el.classList.contains(CLS_POPOVERFLOW) && ele.children.length > 0 && 0 === nodes.length ? (ele.insertBefore(el, ele.firstChild), ++nodePri) : el.classList.contains(CLS_POPOVERFLOW) ? popupPri.push(el) : tbarObj.tbResize ? (ele.insertBefore(el, ele.childNodes[nodeIndex + nodePri]), ++nodeIndex) : ele.appendChild(el), el.classList.contains(CLS_SEPARATOR) ? (0, ej2_base /* setStyleAttribute */ .V7)(el, {
                             display: '',
                             height: sepHeight + 'px'
                         }) : (0, ej2_base /* setStyleAttribute */ .V7)(el, {
@@ -23494,7 +23309,7 @@
                                     sepCheck++, itemCount = 0, itemPopCount = 0;
                                 }
                             } else itemCount++;
-                            inEle[i].classList.contains(CLS_TBAROVERFLOW) && pre ? eleWidth -= (this.isVertical ? inEle[i].offsetHeight : inEle[i].offsetWidth) + mrgn : checkClass(inEle[i], [
+                            inEle[i].classList.contains(CLS_TBAROVERFLOW) && pre || checkClass(inEle[i], [
                                 CLS_SEPARATOR,
                                 CLS_TBARIGNORE
                             ]) ? eleWidth -= (this.isVertical ? inEle[i].offsetHeight : inEle[i].offsetWidth) + mrgn : (inEle[i].classList.add(CLS_POPUP), this.isVertical ? (0, ej2_base /* setStyleAttribute */ .V7)(inEle[i], {
@@ -23693,10 +23508,7 @@
      */ Toolbar.prototype.addItems = function(items, index) {
                     this.extendedOpen();
                     var innerItems, innerEle, itemsDiv = this.element.querySelector('.' + CLS_ITEMS);
-                    if ((0, ej2_base /* isNullOrUndefined */ .le)(itemsDiv)) {
-                        this.itemsRerender(items);
-                        return;
-                    }
+                    if ((0, ej2_base /* isNullOrUndefined */ .le)(itemsDiv)) return void this.itemsRerender(items);
                     var itemAgn = 'Left';
                     (0, ej2_base /* isNullOrUndefined */ .le)(index) && (index = 0), items.forEach(function(e) {
                         (0, ej2_base /* isNullOrUndefined */ .le)(e.align) || 'Left' === e.align || 'Left' !== itemAgn || (itemAgn = e.align);
@@ -23750,13 +23562,12 @@
                         var templateFn = void 0, val = templateProp, regEx = new RegExp(/<(?=.*? .*?\/ ?>|br|hr|input|!--|wbr)[a-z]+.*?>|<([a-z]+).*?<\/\1>/i);
                         val = 'string' == typeof templateProp ? templateProp.trim() : templateProp;
                         try {
-                            if ('object' != typeof templateProp || (0, ej2_base /* isNullOrUndefined */ .le)(templateProp.tagName)) {
-                                if ('string' == typeof templateProp && regEx.test(val)) innerEle.innerHTML = val;
-                                else if (document.querySelectorAll(val).length) {
-                                    var ele = document.querySelector(val), tempStr = ele.outerHTML.trim();
-                                    innerEle.appendChild(ele), ele.style.display = '', (0, ej2_base /* isNullOrUndefined */ .le)(tempStr) || this.tempId.push(val);
-                                } else templateFn = (0, ej2_base /* compile */ .MY)(val);
-                            } else innerEle.appendChild(templateProp);
+                            if ('object' != typeof templateProp || (0, ej2_base /* isNullOrUndefined */ .le)(templateProp.tagName)) if ('string' == typeof templateProp && regEx.test(val)) innerEle.innerHTML = val;
+                            else if (document.querySelectorAll(val).length) {
+                                var ele = document.querySelector(val), tempStr = ele.outerHTML.trim();
+                                innerEle.appendChild(ele), ele.style.display = '', (0, ej2_base /* isNullOrUndefined */ .le)(tempStr) || this.tempId.push(val);
+                            } else templateFn = (0, ej2_base /* compile */ .MY)(val);
+                            else innerEle.appendChild(templateProp);
                         } catch (e) {
                             templateFn = (0, ej2_base /* compile */ .MY)(val);
                         }
@@ -24039,13 +23850,7 @@
                 if ("object" == typeof Reflect && "function" == typeof Reflect.decorate) r = Reflect.decorate(decorators, target, key, desc);
                 else for(var i = decorators.length - 1; i >= 0; i--)(d = decorators[i]) && (r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r);
                 return c > 3 && r && Object.defineProperty(target, key, r), r;
-            }, classNames = {
-                ICON: 'e-menu-icon',
-                ITEM: 'e-item',
-                POPUP: 'e-dropdown-popup',
-                SEPARATOR: 'e-separator',
-                VERTICAL: 'e-vertical'
-            }, DropDownButton = /** @class */ function(_super) {
+            }, classNames_ITEM = 'e-item', classNames_VERTICAL = 'e-vertical', DropDownButton = /** @class */ function(_super) {
                 /**
      * Constructor for creating the widget
      *
@@ -24105,7 +23910,7 @@
                     refresh && this.getULElement() && this.createItems();
                 }, DropDownButton.prototype.createPopup = function() {
                     var _a, div = this.createElement('div', {
-                        className: classNames.POPUP,
+                        className: 'e-dropdown-popup',
                         id: this.element.id + '-popup'
                     });
                     document.body.appendChild(div), this.dropDown = new popup_popup /* Popup */ .GI(div, {
@@ -24138,7 +23943,7 @@
                         var tempItem = (item = items[i]).text;
                         li = this.createElement('li', {
                             innerHTML: item.url ? '' : tempItem,
-                            className: item.separator ? classNames.ITEM + ' ' + classNames.SEPARATOR : classNames.ITEM,
+                            className: item.separator ? classNames_ITEM + " e-separator" : classNames_ITEM,
                             attrs: {
                                 role: 'menuItem',
                                 tabindex: '-1',
@@ -24146,7 +23951,7 @@
                             },
                             id: item.id ? item.id : (0, ej2_base /* getUniqueID */ .QI)('e-' + this.getModuleName() + '-item')
                         }), this.enableHtmlSanitizer ? li.textContent = item.url ? '' : tempItem : li.innerHTML = item.url ? '' : tempItem, item.url && (li.appendChild(this.createAnchor(item)), li.classList.add('e-url')), item.iconCss ? (span = this.createElement('span', {
-                            className: classNames.ICON + ' ' + item.iconCss
+                            className: "e-menu-icon " + item.iconCss
                         }), item.url ? li.childNodes[0].appendChild(span) : li.insertBefore(span, li.childNodes[0])) : showIcon && !item.separator && li.classList.add('e-blank-icon'), item.disabled && li.classList.add('e-disabled'), eventArgs = {
                             item: item,
                             element: li
@@ -24206,7 +24011,7 @@
                     return !!(prevElem && prevElem.classList && prevElem.classList.contains('e-split-colorpicker'));
                 }, DropDownButton.prototype.appendArrowSpan = function() {
                     this.element.appendChild(this.createElement('span', {
-                        className: "e-btn-icon e-icons e-icon-" + (this.cssClass.indexOf(classNames.VERTICAL) > -1 ? 'bottom' : 'right') + ' e-caret'
+                        className: "e-btn-icon e-icons e-icon-" + (this.cssClass.indexOf(classNames_VERTICAL) > -1 ? 'bottom' : 'right') + ' e-caret'
                     }));
                 }, DropDownButton.prototype.setActiveElem = function(elem) {
                     this.activeElem = elem;
@@ -24269,7 +24074,7 @@
                 }, DropDownButton.prototype.popupWireEvents = function() {
                     var popupElement = this.getPopUpElement();
                     this.createPopupOnClick && ej2_base /* EventHandler.add */ .bi.add(document, 'mousedown touchstart', this.delegateMousedownHandler, this), popupElement && (ej2_base /* EventHandler.add */ .bi.add(popupElement, 'click', this.clickHandler, this), ej2_base /* EventHandler.add */ .bi.add(popupElement, 'keydown', this.keyBoardHandler, this), this.closeActionEvents && ej2_base /* EventHandler.add */ .bi.add(popupElement, this.closeActionEvents, this.focusoutHandler, this)), this.rippleFn = (0, ej2_base /* rippleEffect */ .qx)(popupElement, {
-                        selector: '.' + classNames.ITEM
+                        selector: '.' + classNames_ITEM
                     });
                 }, DropDownButton.prototype.popupUnWireEvents = function() {
                     var popupElement = this.getPopUpElement();
@@ -24312,7 +24117,7 @@
  * @returns {number} - Index
  */ function isValidLI(ul, li, index, keyCode, count) {
                             if (void 0 === count && (count = 0), (li.classList.contains('e-separator') || li.classList.contains('e-disabled')) && (index === (40 === keyCode ? ul.childElementCount - 1 : 0) ? index = 40 === keyCode ? 0 : ul.childElementCount - 1 : 40 === keyCode ? index++ : index--), (li = ul.children[index]).classList.contains('e-separator') || li.classList.contains('e-disabled')) {
-                                if (++count === ul.childElementCount) return index = -1;
+                                if (++count === ul.childElementCount) return -1;
                                 index = isValidLI(ul, li, index, keyCode, count);
                             }
                             return index;
@@ -24321,7 +24126,7 @@
                         ], 'e-focused'), ul.children[liIdx].focus());
                     }(this.getULElement(), e.keyCode));
                 }, DropDownButton.prototype.keyEventHandler = function(e) {
-                    !(this.target && (13 === e.keyCode || 9 === e.keyCode) || e.target && e.target.className.indexOf('e-edit-template') > -1 && 32 === e.keyCode) && (9 !== e.keyCode && e.preventDefault(), 27 === e.keyCode || 38 === e.keyCode || 9 === e.keyCode ? this.canOpen() || this.closePopup(e, this.element) : this.clickHandler(e));
+                    this.target && (13 === e.keyCode || 9 === e.keyCode) || (!(e.target && e.target.className.indexOf('e-edit-template') > -1) || 32 !== e.keyCode) && (9 !== e.keyCode && e.preventDefault(), 27 === e.keyCode || 38 === e.keyCode || 9 === e.keyCode ? this.canOpen() || this.closePopup(e, this.element) : this.clickHandler(e));
                 }, DropDownButton.prototype.getLI = function(elem) {
                     return 'LI' === elem.tagName ? elem : (0, ej2_base /* closest */ .oq)(elem, 'li');
                 }, DropDownButton.prototype.mousedownHandler = function(e) {
@@ -24343,16 +24148,15 @@
                     var _this = this;
                     void 0 === e && (e = null);
                     var popupElem = this.getPopUpElement();
-                    if (this.target) {
-                        if (this.activeElem.length > 1) {
-                            var splitButton = (0, ej2_base /* getComponent */ .Xr)(this.activeElem[0], 'split-btn');
-                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            splitButton.isReact && popupElem.childNodes.length < 1 && (// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                            splitButton.appendReactElement(this.getTargetElement(), this.getPopUpElement()), this.renderReactTemplates());
-                        } else // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        this.isReact && popupElem.childNodes.length < 1 && (// eslint-disable-next-line @typescript-eslint/no-explicit-any
-                        this.appendReactElement(this.getTargetElement(), this.getPopUpElement()), this.renderReactTemplates());
-                    } else this.createItems(!0);
+                    if (this.target) if (this.activeElem.length > 1) {
+                        var splitButton = (0, ej2_base /* getComponent */ .Xr)(this.activeElem[0], 'split-btn');
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        splitButton.isReact && popupElem.childNodes.length < 1 && (// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        splitButton.appendReactElement(this.getTargetElement(), this.getPopUpElement()), this.renderReactTemplates());
+                    } else // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    this.isReact && popupElem.childNodes.length < 1 && (// eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    this.appendReactElement(this.getTargetElement(), this.getPopUpElement()), this.renderReactTemplates());
+                    else this.createItems(!0);
                     var ul = this.getULElement();
                     this.popupWireEvents();
                     var beforeOpenArgs = {
@@ -24424,7 +24228,7 @@
                             newProp.disabled ? (this.unWireEvents(), this.isPopupCreated && !this.canOpen() && this.closePopup()) : this.wireEvents();
                             break;
                         case 'cssClass':
-                            if (newProp.cssClass.indexOf(classNames.VERTICAL) > -1) {
+                            if (newProp.cssClass.indexOf(classNames_VERTICAL) > -1) {
                                 var arrowSpan = this.element.querySelector('span.e-caret');
                                 (0, ej2_base /* classList */ .s1)(arrowSpan, [
                                     'e-icon-bottom'
@@ -24883,7 +24687,7 @@
                     var pos = {
                         top: 0,
                         left: 0
-                    }, tooltipEleWidth = this.tooltipEle.offsetWidth, tooltipEleHeight = this.tooltipEle.offsetHeight, arrowEle = (0, ej2_base /* select */ .Ys)('.' + ARROW_TIP, this.tooltipEle), tipWidth = arrowEle ? arrowEle.offsetWidth : 0, tipHeight = arrowEle ? arrowEle.offsetHeight : 0, tipAdjust = this.showTipPointer ? 0 : 8, tipHeightAdjust = tipHeight / 2 + 2 + (this.tooltipEle.offsetHeight - this.tooltipEle.clientHeight), tipWidthAdjust = tipWidth / 2 + 2 + (this.tooltipEle.offsetWidth - this.tooltipEle.clientWidth);
+                    }, tooltipEleWidth = this.tooltipEle.offsetWidth, tooltipEleHeight = this.tooltipEle.offsetHeight, arrowEle = (0, ej2_base /* select */ .Ys)('.' + ARROW_TIP, this.tooltipEle), tipWidth = arrowEle ? arrowEle.offsetWidth : 0, tipHeight = arrowEle ? arrowEle.offsetHeight : 0, tipAdjust = 8 * !this.showTipPointer, tipHeightAdjust = tipHeight / 2 + 2 + (this.tooltipEle.offsetHeight - this.tooltipEle.clientHeight), tipWidthAdjust = tipWidth / 2 + 2 + (this.tooltipEle.offsetWidth - this.tooltipEle.clientWidth);
                     switch(this.mouseTrail && (tipAdjust += 2), position){
                         case 'RightTop':
                             pos.left += tipWidth + tipAdjust, pos.top -= tooltipEleHeight - tipHeightAdjust;
@@ -24961,10 +24765,8 @@
                             content: ej2_base /* SanitizeHtmlHelper.sanitize */ .pJ.sanitize(this.content)
                         }, !0);
                         var tempArr = (0, ej2_base /* compile */ .MY)(this.content)({}, this, 'content', this.element.id + 'content', void 0, void 0, tooltipContent);
-                        if (tempArr) {
-                            if (this.enableHtmlParse) for(var nodeList = tempArr.length, i = 0; i < nodeList; i++)tooltipContent[(0, ej2_base /* append */ .R3)(tempArr, tooltipContent), 'innerHTML'] = this.content;
-                            else tooltipContent.textContent = this.content;
-                        }
+                        if (tempArr) if (this.enableHtmlParse) for(var nodeList = tempArr.length, i = 0; i < nodeList; i++)tooltipContent[(0, ej2_base /* append */ .R3)(tempArr, tooltipContent), 'innerHTML'] = this.content;
+                        else tooltipContent.textContent = this.content;
                     } else {
                         var tempArr = (0, ej2_base /* compile */ .MY)(this.content)({}, this, 'content', this.element.id + 'content', void 0, void 0, tooltipContent);
                         tempArr && (0, ej2_base /* append */ .R3)(tempArr, tooltipContent), this.renderReactTemplates();
@@ -25520,64 +25322,7 @@
                 ], TooltipData.prototype, "isVisible", void 0), slider_decorate([
                     (0, ej2_base /* Property */ .Z9)(null)
                 ], TooltipData.prototype, "format", void 0), TooltipData;
-            }(ej2_base /* ChildProperty */ .rt), slider_classNames = {
-                root: 'e-slider',
-                rtl: 'e-rtl',
-                sliderHiddenInput: 'e-slider-input',
-                controlWrapper: 'e-control-wrapper',
-                sliderHandle: 'e-handle',
-                rangeBar: 'e-range',
-                sliderButton: 'e-slider-button',
-                firstButton: 'e-first-button',
-                secondButton: 'e-second-button',
-                scale: 'e-scale',
-                tick: 'e-tick',
-                large: 'e-large',
-                tickValue: 'e-tick-value',
-                sliderTooltip: 'e-slider-tooltip',
-                sliderHover: 'e-slider-hover',
-                sliderFirstHandle: 'e-handle-first',
-                sliderSecondHandle: 'e-handle-second',
-                sliderDisabled: 'e-disabled',
-                sliderContainer: 'e-slider-container',
-                horizontalTooltipBefore: 'e-slider-horizontal-before',
-                horizontalTooltipAfter: 'e-slider-horizontal-after',
-                verticalTooltipBefore: 'e-slider-vertical-before',
-                verticalTooltipAfter: 'e-slider-vertical-after',
-                materialTooltipOpen: 'e-material-tooltip-open',
-                materialTooltipActive: 'e-tooltip-active',
-                materialSlider: 'e-material-slider',
-                sliderTrack: 'e-slider-track',
-                sliderHorizantalColor: 'e-slider-horizantal-color',
-                sliderVerticalColor: 'e-slider-vertical-color',
-                sliderHandleFocused: 'e-handle-focused',
-                verticalSlider: 'e-vertical',
-                horizontalSlider: 'e-horizontal',
-                sliderHandleStart: 'e-handle-start',
-                sliderTooltipStart: 'e-material-tooltip-start',
-                sliderTabHandle: 'e-tab-handle',
-                sliderButtonIcon: 'e-button-icon',
-                sliderSmallSize: 'e-small-size',
-                sliderTickPosition: 'e-tick-pos',
-                sliderFirstTick: 'e-first-tick',
-                sliderLastTick: 'e-last-tick',
-                sliderButtonClass: 'e-slider-btn',
-                sliderTabTrack: 'e-tab-track',
-                sliderTabRange: 'e-tab-range',
-                sliderActiveHandle: 'e-handle-active',
-                sliderMaterialHandle: 'e-material-handle',
-                sliderMaterialRange: 'e-material-range',
-                sliderMaterialDefault: 'e-material-default',
-                materialTooltipShow: 'e-material-tooltip-show',
-                materialTooltipHide: 'e-material-tooltip-hide',
-                readonly: 'e-read-only',
-                limits: 'e-limits',
-                limitBarDefault: 'e-limit-bar',
-                limitBarFirst: 'e-limit-first',
-                limitBarSecond: 'e-limit-second',
-                dragHorizontal: 'e-drag-horizontal',
-                dragVertical: 'e-drag-vertical'
-            }, Slider = /** @class */ function(_super) {
+            }(ej2_base /* ChildProperty */ .rt), slider_classNames_rtl = 'e-rtl', slider_classNames_sliderHandle = 'e-handle', slider_classNames_rangeBar = 'e-range', slider_classNames_sliderButton = 'e-slider-button', slider_classNames_firstButton = 'e-first-button', slider_classNames_secondButton = 'e-second-button', slider_classNames_scale = 'e-scale', slider_classNames_tick = 'e-tick', slider_classNames_large = 'e-large', slider_classNames_tickValue = 'e-tick-value', slider_classNames_sliderTooltip = 'e-slider-tooltip', slider_classNames_sliderHover = 'e-slider-hover', slider_classNames_sliderDisabled = 'e-disabled', slider_classNames_horizontalTooltipBefore = 'e-slider-horizontal-before', slider_classNames_verticalTooltipBefore = 'e-slider-vertical-before', slider_classNames_materialTooltipOpen = 'e-material-tooltip-open', slider_classNames_materialTooltipActive = 'e-tooltip-active', slider_classNames_materialSlider = 'e-material-slider', slider_classNames_sliderTrack = 'e-slider-track', slider_classNames_sliderHandleFocused = 'e-handle-focused', slider_classNames_verticalSlider = 'e-vertical', slider_classNames_horizontalSlider = 'e-horizontal', slider_classNames_sliderHandleStart = 'e-handle-start', slider_classNames_sliderTabHandle = 'e-tab-handle', slider_classNames_sliderButtonIcon = 'e-button-icon', slider_classNames_sliderSmallSize = 'e-small-size', slider_classNames_sliderLastTick = 'e-last-tick', slider_classNames_sliderButtonClass = 'e-slider-btn', slider_classNames_sliderTabTrack = 'e-tab-track', slider_classNames_sliderTabRange = 'e-tab-range', slider_classNames_sliderActiveHandle = 'e-handle-active', slider_classNames_sliderMaterialRange = 'e-material-range', slider_classNames_sliderMaterialDefault = 'e-material-default', slider_classNames_materialTooltipShow = 'e-material-tooltip-show', slider_classNames_materialTooltipHide = 'e-material-tooltip-hide', slider_classNames_readonly = 'e-read-only', slider_classNames_limits = 'e-limits', Slider = /** @class */ function(_super) {
                 function Slider(options, element) {
                     var _this = _super.call(this, options, element) || this;
                     return _this.horDir = 'left', _this.verDir = 'bottom', _this.transition = {
@@ -25631,7 +25376,7 @@
                 }, Slider.prototype.fractionalToInteger = function(value) {
                     value = 0 === this.numberOfDecimals(value) ? Number(value).toFixed(this.noOfDecimals) : value;
                     for(var tens = 1, i = 0; i < this.noOfDecimals; i++)tens *= 10;
-                    return value = Number((value * tens).toFixed(0));
+                    return Number((value * tens).toFixed(0));
                 }, /**
      * To Initialize the control rendering
      * @private
@@ -25643,7 +25388,7 @@
                 }, Slider.prototype.initialize = function() {
                     (0, ej2_base /* addClass */ .cn)([
                         this.element
-                    ], slider_classNames.root), this.setCSSClass();
+                    ], 'e-slider'), this.setCSSClass();
                 }, Slider.prototype.setElementWidth = function(width) {
                     (0, ej2_base /* isNullOrUndefined */ .le)(width) || ('number' == typeof width ? this.sliderContainer.style.width = (0, ej2_base /* formatUnit */ .Ac)(width) : 'string' == typeof width && (this.sliderContainer.style.width = width.match(/px|%|em/) ? width : (0, ej2_base /* formatUnit */ .Ac)(width)));
                 }, Slider.prototype.setCSSClass = function(oldCSSClass) {
@@ -25656,12 +25401,12 @@
                     this.enabled ? ((0, ej2_base /* removeClass */ .IV)([
                         this.sliderContainer
                     ], [
-                        slider_classNames.sliderDisabled
-                    ]), this.tooltip.isVisible && this.tooltipElement && 'Always' === this.tooltip.showOn && this.tooltipElement.classList.remove(slider_classNames.sliderDisabled), this.wireEvents()) : ((0, ej2_base /* addClass */ .cn)([
+                        slider_classNames_sliderDisabled
+                    ]), this.tooltip.isVisible && this.tooltipElement && 'Always' === this.tooltip.showOn && this.tooltipElement.classList.remove(slider_classNames_sliderDisabled), this.wireEvents()) : ((0, ej2_base /* addClass */ .cn)([
                         this.sliderContainer
                     ], [
-                        slider_classNames.sliderDisabled
-                    ]), this.tooltip.isVisible && this.tooltipElement && 'Always' === this.tooltip.showOn && this.tooltipElement.classList.add(slider_classNames.sliderDisabled), this.unwireEvents());
+                        slider_classNames_sliderDisabled
+                    ]), this.tooltip.isVisible && this.tooltipElement && 'Always' === this.tooltip.showOn && this.tooltipElement.classList.add(slider_classNames_sliderDisabled), this.unwireEvents());
                 }, Slider.prototype.getTheme = function(container) {
                     return window.getComputedStyle(container, ':after').getPropertyValue('content').replace(/['"]+/g, '');
                 }, /**
@@ -25669,15 +25414,15 @@
      * @private
      */ Slider.prototype.initRender = function() {
                     this.sliderContainer = this.createElement('div', {
-                        className: slider_classNames.sliderContainer + ' ' + slider_classNames.controlWrapper
+                        className: "e-slider-container e-control-wrapper"
                     }), this.element.parentNode.insertBefore(this.sliderContainer, this.element), this.sliderContainer.appendChild(this.element), this.sliderTrack = this.createElement('div', {
-                        className: slider_classNames.sliderTrack
+                        className: slider_classNames_sliderTrack
                     }), this.element.appendChild(this.sliderTrack), this.setElementWidth(this.width), this.element.tabIndex = -1, this.getThemeInitialization(), this.setHandler(), this.createRangeBar(), this.limits.enabled && this.createLimitBar(), this.setOrientClass(), this.hiddenInput = this.createElement('input', {
                         attrs: {
                             type: 'hidden',
                             value: (0, ej2_base /* isNullOrUndefined */ .le)(this.value) ? this.min.toString() : this.value.toString(),
                             name: this.element.getAttribute('name') || this.element.getAttribute('id') || '_' + (1000 * Math.random()).toFixed(0) + 'slider',
-                            class: slider_classNames.sliderHiddenInput
+                            class: 'e-slider-input'
                         }
                     }), this.hiddenInput.tabIndex = -1, this.sliderContainer.appendChild(this.hiddenInput), this.showButtons && this.setButtons(), this.setEnableRTL(), 'Range' === this.type ? this.rangeValueUpdate() : this.value = (0, ej2_base /* isNullOrUndefined */ .le)(this.value) ? parseFloat((0, ej2_base /* formatUnit */ .Ac)(this.min.toString())) : this.value, this.previousVal = 'Range' !== this.type ? this.checkHandleValue(parseFloat((0, ej2_base /* formatUnit */ .Ac)(this.value.toString()))) : [
                         this.checkHandleValue(parseFloat((0, ej2_base /* formatUnit */ .Ac)(this.value[0].toString()))),
@@ -25685,41 +25430,41 @@
                     ], this.previousChanged = this.previousVal, (0, ej2_base /* isNullOrUndefined */ .le)(this.element.hasAttribute('name')) || this.element.removeAttribute('name'), this.setValue(), this.limits.enabled && this.setLimitBar(), 'None' !== this.ticks.placement && this.renderScale(), this.tooltip.isVisible && this.renderTooltip(), this.enabled ? (0, ej2_base /* removeClass */ .IV)([
                         this.sliderContainer
                     ], [
-                        slider_classNames.sliderDisabled
+                        slider_classNames_sliderDisabled
                     ]) : (0, ej2_base /* addClass */ .cn)([
                         this.sliderContainer
                     ], [
-                        slider_classNames.sliderDisabled
+                        slider_classNames_sliderDisabled
                     ]), this.readonly ? (0, ej2_base /* addClass */ .cn)([
                         this.sliderContainer
                     ], [
-                        slider_classNames.readonly
+                        slider_classNames_readonly
                     ]) : (0, ej2_base /* removeClass */ .IV)([
                         this.sliderContainer
                     ], [
-                        slider_classNames.readonly
+                        slider_classNames_readonly
                     ]);
                 }, Slider.prototype.getThemeInitialization = function() {
                     this.isMaterial = 'material' === this.getTheme(this.sliderContainer) || 'material-dark' === this.getTheme(this.sliderContainer), this.isBootstrap = 'bootstrap' === this.getTheme(this.sliderContainer) || 'bootstrap-dark' === this.getTheme(this.sliderContainer), this.isBootstrap4 = 'bootstrap4' === this.getTheme(this.sliderContainer), this.isTailwind = 'tailwind' === this.getTheme(this.sliderContainer) || 'tailwind-dark' === this.getTheme(this.sliderContainer), this.isBootstrap5 = 'bootstrap5' === this.getTheme(this.sliderContainer), this.isFluent = 'FluentUI' === this.getTheme(this.sliderContainer), this.isMaterialTooltip = this.isMaterial && 'Range' !== this.type && this.tooltip.isVisible;
                 }, Slider.prototype.createRangeBar = function() {
                     'Default' !== this.type && (this.rangeBar = this.createElement('div', {
                         attrs: {
-                            class: slider_classNames.rangeBar
+                            class: slider_classNames_rangeBar
                         }
-                    }), this.element.appendChild(this.rangeBar), this.drag && 'Range' === this.type && ('Horizontal' === this.orientation ? this.rangeBar.classList.add(slider_classNames.dragHorizontal) : this.rangeBar.classList.add(slider_classNames.dragVertical)));
+                    }), this.element.appendChild(this.rangeBar), this.drag && 'Range' === this.type && ('Horizontal' === this.orientation ? this.rangeBar.classList.add('e-drag-horizontal') : this.rangeBar.classList.add('e-drag-vertical')));
                 }, Slider.prototype.createLimitBar = function() {
-                    var firstElementClassName = 'Range' !== this.type ? slider_classNames.limitBarDefault : slider_classNames.limitBarFirst;
-                    firstElementClassName += ' ' + slider_classNames.limits, this.limitBarFirst = this.createElement('div', {
+                    var firstElementClassName = 'Range' !== this.type ? 'e-limit-bar' : 'e-limit-first';
+                    firstElementClassName += ' ' + slider_classNames_limits, this.limitBarFirst = this.createElement('div', {
                         attrs: {
                             class: firstElementClassName
                         }
                     }), this.element.appendChild(this.limitBarFirst), 'Range' === this.type && (this.limitBarSecond = this.createElement('div', {
                         attrs: {
-                            class: slider_classNames.limitBarSecond + ' ' + slider_classNames.limits
+                            class: "e-limit-second " + slider_classNames_limits
                         }
                     }), this.element.appendChild(this.limitBarSecond));
                 }, Slider.prototype.setOrientClass = function() {
-                    'Vertical' !== this.orientation ? (this.sliderContainer.classList.remove(slider_classNames.verticalSlider), this.sliderContainer.classList.add(slider_classNames.horizontalSlider), this.firstHandle.setAttribute('aria-orientation', 'horizontal'), 'Range' === this.type && this.secondHandle.setAttribute('aria-orientation', 'horizontal')) : (this.sliderContainer.classList.remove(slider_classNames.horizontalSlider), this.sliderContainer.classList.add(slider_classNames.verticalSlider), this.firstHandle.setAttribute('aria-orientation', 'vertical'), 'Range' === this.type && this.secondHandle.setAttribute('aria-orientation', 'vertical'));
+                    'Vertical' !== this.orientation ? (this.sliderContainer.classList.remove(slider_classNames_verticalSlider), this.sliderContainer.classList.add(slider_classNames_horizontalSlider), this.firstHandle.setAttribute('aria-orientation', 'horizontal'), 'Range' === this.type && this.secondHandle.setAttribute('aria-orientation', 'horizontal')) : (this.sliderContainer.classList.remove(slider_classNames_horizontalSlider), this.sliderContainer.classList.add(slider_classNames_verticalSlider), this.firstHandle.setAttribute('aria-orientation', 'vertical'), 'Range' === this.type && this.secondHandle.setAttribute('aria-orientation', 'vertical'));
                 }, Slider.prototype.setAriaAttributes = function(element) {
                     var _this = this, min = this.min, max = this.max;
                     !(0, ej2_base /* isNullOrUndefined */ .le)(this.customValues) && this.customValues.length > 0 && (min = this.customValues[0], max = this.customValues[this.customValues.length - 1]), 'Range' !== this.type ? (0, ej2_base /* attributes */ .Y4)(element, {
@@ -25753,21 +25498,21 @@
                 }, Slider.prototype.createSecondHandle = function() {
                     this.secondHandle = this.createElement('div', {
                         attrs: {
-                            class: slider_classNames.sliderHandle,
+                            class: slider_classNames_sliderHandle,
                             role: 'slider',
                             tabIndex: '0'
                         }
-                    }), this.secondHandle.classList.add(slider_classNames.sliderSecondHandle), this.element.appendChild(this.secondHandle);
+                    }), this.secondHandle.classList.add('e-handle-second'), this.element.appendChild(this.secondHandle);
                 }, Slider.prototype.createFirstHandle = function() {
                     this.firstHandle = this.createElement('div', {
                         attrs: {
-                            class: slider_classNames.sliderHandle,
+                            class: slider_classNames_sliderHandle,
                             role: 'slider',
                             tabIndex: '0'
                         }
-                    }), this.firstHandle.classList.add(slider_classNames.sliderFirstHandle), this.element.appendChild(this.firstHandle), this.isMaterialTooltip && (this.materialHandle = this.createElement('div', {
+                    }), this.firstHandle.classList.add('e-handle-first'), this.element.appendChild(this.firstHandle), this.isMaterialTooltip && (this.materialHandle = this.createElement('div', {
                         attrs: {
-                            class: slider_classNames.sliderHandle + ' ' + slider_classNames.sliderMaterialHandle
+                            class: slider_classNames_sliderHandle + " e-material-handle"
                         }
                     }), this.element.appendChild(this.materialHandle));
                 }, Slider.prototype.wireFirstHandleEvt = function(destroy) {
@@ -25775,25 +25520,25 @@
                 }, Slider.prototype.wireSecondHandleEvt = function(destroy) {
                     destroy ? (ej2_base /* EventHandler.remove */ .bi.remove(this.secondHandle, 'mousedown touchstart', this.handleFocus), ej2_base /* EventHandler.remove */ .bi.remove(this.secondHandle, 'transitionend', this.transitionEnd), ej2_base /* EventHandler.remove */ .bi.remove(this.secondHandle, 'mouseenter touchenter', this.handleOver), ej2_base /* EventHandler.remove */ .bi.remove(this.secondHandle, 'mouseleave touchend', this.handleLeave)) : (ej2_base /* EventHandler.add */ .bi.add(this.secondHandle, 'mousedown touchstart', this.handleFocus, this), ej2_base /* EventHandler.add */ .bi.add(this.secondHandle, 'transitionend', this.transitionEnd, this), ej2_base /* EventHandler.add */ .bi.add(this.secondHandle, 'mouseenter touchenter', this.handleOver, this), ej2_base /* EventHandler.add */ .bi.add(this.secondHandle, 'mouseleave touchend', this.handleLeave, this));
                 }, Slider.prototype.handleStart = function() {
-                    'Range' !== this.type && (this.firstHandle.classList[0 === this.handlePos1 ? 'add' : 'remove'](slider_classNames.sliderHandleStart), this.isMaterialTooltip && (this.materialHandle.classList[0 === this.handlePos1 ? 'add' : 'remove'](slider_classNames.sliderHandleStart), this.tooltipElement && this.tooltipElement.classList[0 === this.handlePos1 ? 'add' : 'remove'](slider_classNames.sliderTooltipStart)));
+                    'Range' !== this.type && (this.firstHandle.classList[0 === this.handlePos1 ? 'add' : 'remove'](slider_classNames_sliderHandleStart), this.isMaterialTooltip && (this.materialHandle.classList[0 === this.handlePos1 ? 'add' : 'remove'](slider_classNames_sliderHandleStart), this.tooltipElement && this.tooltipElement.classList[0 === this.handlePos1 ? 'add' : 'remove']('e-material-tooltip-start')));
                 }, Slider.prototype.transitionEnd = function(e) {
                     'transform' !== e.propertyName && (this.handleStart(), this.enableAnimation || (this.getHandle().style.transition = 'none'), 'Default' !== this.type && (this.rangeBar.style.transition = 'none'), this.isMaterial && this.tooltip.isVisible && 'Default' === this.type && (this.tooltipElement.style.transition = this.transition.handle), this.tooltipToggle(this.getHandle()), this.closeTooltip());
                 }, Slider.prototype.handleFocusOut = function() {
-                    this.firstHandle.classList.contains(slider_classNames.sliderHandleFocused) && this.firstHandle.classList.remove(slider_classNames.sliderHandleFocused), 'Range' === this.type && this.secondHandle.classList.contains(slider_classNames.sliderHandleFocused) && this.secondHandle.classList.remove(slider_classNames.sliderHandleFocused);
+                    this.firstHandle.classList.contains(slider_classNames_sliderHandleFocused) && this.firstHandle.classList.remove(slider_classNames_sliderHandleFocused), 'Range' === this.type && this.secondHandle.classList.contains(slider_classNames_sliderHandleFocused) && this.secondHandle.classList.remove(slider_classNames_sliderHandleFocused);
                 }, Slider.prototype.handleFocus = function(e) {
-                    this.focusSliderElement(), this.sliderBarClick(e), e.currentTarget === this.firstHandle ? (this.firstHandle.classList.add(slider_classNames.sliderHandleFocused), this.firstHandle.classList.add(slider_classNames.sliderTabHandle)) : (this.secondHandle.classList.add(slider_classNames.sliderHandleFocused), this.secondHandle.classList.add(slider_classNames.sliderTabHandle)), ej2_base /* EventHandler.add */ .bi.add(document, 'mousemove touchmove', this.sliderBarMove, this), ej2_base /* EventHandler.add */ .bi.add(document, 'mouseup touchend', this.sliderBarUp, this);
+                    this.focusSliderElement(), this.sliderBarClick(e), e.currentTarget === this.firstHandle ? (this.firstHandle.classList.add(slider_classNames_sliderHandleFocused), this.firstHandle.classList.add(slider_classNames_sliderTabHandle)) : (this.secondHandle.classList.add(slider_classNames_sliderHandleFocused), this.secondHandle.classList.add(slider_classNames_sliderTabHandle)), ej2_base /* EventHandler.add */ .bi.add(document, 'mousemove touchmove', this.sliderBarMove, this), ej2_base /* EventHandler.add */ .bi.add(document, 'mouseup touchend', this.sliderBarUp, this);
                 }, Slider.prototype.handleOver = function(e) {
                     this.tooltip.isVisible && 'Hover' === this.tooltip.showOn && this.tooltipToggle(e.currentTarget), 'Default' === this.type && this.tooltipToggle(this.getHandle());
                 }, Slider.prototype.handleLeave = function(e) {
-                    !this.tooltip.isVisible || 'Hover' !== this.tooltip.showOn || e.currentTarget.classList.contains(slider_classNames.sliderHandleFocused) || e.currentTarget.classList.contains(slider_classNames.sliderTabHandle) || this.closeTooltip();
+                    !this.tooltip.isVisible || 'Hover' !== this.tooltip.showOn || e.currentTarget.classList.contains(slider_classNames_sliderHandleFocused) || e.currentTarget.classList.contains(slider_classNames_sliderTabHandle) || this.closeTooltip();
                 }, Slider.prototype.setHandler = function() {
                     this.min > this.max && (this.min = this.max), this.createFirstHandle(), 'Range' === this.type && this.createSecondHandle();
                 }, Slider.prototype.setEnableRTL = function() {
                     this.enableRtl && 'Vertical' !== this.orientation ? (0, ej2_base /* addClass */ .cn)([
                         this.sliderContainer
-                    ], slider_classNames.rtl) : (0, ej2_base /* removeClass */ .IV)([
+                    ], slider_classNames_rtl) : (0, ej2_base /* removeClass */ .IV)([
                         this.sliderContainer
-                    ], slider_classNames.rtl);
+                    ], slider_classNames_rtl);
                     var preDir = 'Vertical' !== this.orientation ? this.horDir : this.verDir;
                     this.enableRtl ? this.horDir = 'right' : this.horDir = 'left', this.verDir = 'bottom', preDir !== ('Vertical' !== this.orientation ? this.horDir : this.verDir) && 'Horizontal' === this.orientation && ((0, ej2_base /* setStyleAttribute */ .V7)(this.firstHandle, {
                         right: '',
@@ -25821,16 +25566,16 @@
                         var count = content.toString().length;
                         if (this.tooltipElement) {
                             var cssClass = count > 4 ? {
-                                oldCss: slider_classNames.sliderMaterialDefault,
-                                newCss: slider_classNames.sliderMaterialRange
+                                oldCss: slider_classNames_sliderMaterialDefault,
+                                newCss: slider_classNames_sliderMaterialRange
                             } : {
-                                oldCss: slider_classNames.sliderMaterialRange,
-                                newCss: slider_classNames.sliderMaterialDefault
+                                oldCss: slider_classNames_sliderMaterialRange,
+                                newCss: slider_classNames_sliderMaterialDefault
                             };
                             this.tooltipElement.classList.remove(cssClass.oldCss), this.tooltipElement.classList.contains(cssClass.newCss) || (this.tooltipElement.classList.add(cssClass.newCss), this.tooltipElement.style.transform = count > 4 ? 'scale(1)' : this.getTooltipTransformProperties(this.previousTooltipClass).rotate);
                         } else {
-                            var cssClass = count > 4 ? slider_classNames.sliderMaterialRange : slider_classNames.sliderMaterialDefault;
-                            this.tooltipObj.cssClass = slider_classNames.sliderTooltip + ' ' + cssClass;
+                            var cssClass = count > 4 ? slider_classNames_sliderMaterialRange : slider_classNames_sliderMaterialDefault;
+                            this.tooltipObj.cssClass = slider_classNames_sliderTooltip + ' ' + cssClass;
                         }
                     }
                 }, Slider.prototype.tooltipPlacement = function() {
@@ -25840,7 +25585,7 @@
                         this.tooltipElement
                     ], this.tooltip.cssClass.split(' ').filter(function(css) {
                         return css;
-                    })), args.target.removeAttribute('aria-describedby'), this.isMaterialTooltip && (this.tooltipElement.firstElementChild.classList.add(slider_classNames.materialTooltipHide), this.handleStart(), this.setTooltipTransform());
+                    })), args.target.removeAttribute('aria-describedby'), this.isMaterialTooltip && (this.tooltipElement.firstElementChild.classList.add(slider_classNames_materialTooltipHide), this.handleStart(), this.setTooltipTransform());
                 }, Slider.prototype.tooltipCollision = function(position) {
                     if (this.isBootstrap || this.isBootstrap4 || this.isMaterial && !this.isMaterialTooltip) {
                         var tooltipOffsetValue = this.isBootstrap4 ? 3 : 6;
@@ -25874,29 +25619,29 @@
                     var cssClass;
                     switch(position){
                         case 'TopCenter':
-                            cssClass = slider_classNames.horizontalTooltipBefore;
+                            cssClass = slider_classNames_horizontalTooltipBefore;
                             break;
                         case 'BottomCenter':
-                            cssClass = slider_classNames.horizontalTooltipAfter;
+                            cssClass = 'e-slider-horizontal-after';
                             break;
                         case 'LeftCenter':
-                            cssClass = slider_classNames.verticalTooltipBefore;
+                            cssClass = slider_classNames_verticalTooltipBefore;
                             break;
                         case 'RightCenter':
-                            cssClass = slider_classNames.verticalTooltipAfter;
+                            cssClass = 'e-slider-vertical-after';
                     }
                     return cssClass;
                 }, Slider.prototype.getTooltipTransformProperties = function(className) {
                     var transformProperties;
                     if (this.tooltipElement) {
                         var position = 'Horizontal' === this.orientation ? this.tooltipElement.clientHeight + 14 - this.tooltipElement.clientHeight / 2 : this.tooltipElement.clientWidth + 14 - this.tooltipElement.clientWidth / 2;
-                        transformProperties = 'Horizontal' === this.orientation ? className === slider_classNames.horizontalTooltipBefore ? {
+                        transformProperties = 'Horizontal' === this.orientation ? className === slider_classNames_horizontalTooltipBefore ? {
                             rotate: 'rotate(45deg)',
                             translate: "translateY(" + position + "px)"
                         } : {
                             rotate: 'rotate(225deg)',
                             translate: "translateY(" + -position + "px)"
-                        } : className === slider_classNames.verticalTooltipBefore ? {
+                        } : className === slider_classNames_verticalTooltipBefore ? {
                             rotate: 'rotate(-45deg)',
                             translate: "translateX(" + position + "px)"
                         } : {
@@ -25910,7 +25655,7 @@
                     if (this.isMaterialTooltip) {
                         this.refreshTooltip(this.firstHandle);
                         var tooltipContentElement = this.tooltipElement.firstElementChild;
-                        tooltipContentElement.classList.remove(slider_classNames.materialTooltipHide), tooltipContentElement.classList.add(slider_classNames.materialTooltipShow), this.firstHandle.style.cursor = 'default', this.tooltipElement.style.transition = this.scaleTransform, this.tooltipElement.classList.add(slider_classNames.materialTooltipOpen), this.materialHandle.style.transform = 'scale(0)', tooltipContentElement.innerText.length > 4 ? this.tooltipElement.style.transform = 'scale(1)' : this.tooltipElement.style.transform = this.getTooltipTransformProperties(this.previousTooltipClass).rotate, 'Default' === this.type ? setTimeout(function() {
+                        tooltipContentElement.classList.remove(slider_classNames_materialTooltipHide), tooltipContentElement.classList.add(slider_classNames_materialTooltipShow), this.firstHandle.style.cursor = 'default', this.tooltipElement.style.transition = this.scaleTransform, this.tooltipElement.classList.add(slider_classNames_materialTooltipOpen), this.materialHandle.style.transform = 'scale(0)', tooltipContentElement.innerText.length > 4 ? this.tooltipElement.style.transform = 'scale(1)' : this.tooltipElement.style.transform = this.getTooltipTransformProperties(this.previousTooltipClass).rotate, 'Default' === this.type ? setTimeout(function() {
                             _this.tooltipElement.style.transition = _this.transition.handle;
                         }, 2500) : setTimeout(function() {
                             _this.tooltipElement.style.transition = 'none';
@@ -25920,20 +25665,20 @@
                     var _this = this;
                     if (this.isMaterialTooltip) {
                         var tooltipContentElement = this.tooltipElement.firstElementChild;
-                        this.tooltipElement.style.transition = this.scaleTransform, tooltipContentElement.classList.remove(slider_classNames.materialTooltipShow), tooltipContentElement.classList.add(slider_classNames.materialTooltipHide), this.firstHandle.style.cursor = '-webkit-grab', this.firstHandle.style.cursor = 'grab', this.materialHandle && (this.materialHandle.style.transform = 'scale(1)'), this.tooltipElement.classList.remove(slider_classNames.materialTooltipOpen), this.setTooltipTransform(), this.tooltipTarget = void 0, setTimeout(function() {
+                        this.tooltipElement.style.transition = this.scaleTransform, tooltipContentElement.classList.remove(slider_classNames_materialTooltipShow), tooltipContentElement.classList.add(slider_classNames_materialTooltipHide), this.firstHandle.style.cursor = '-webkit-grab', this.firstHandle.style.cursor = 'grab', this.materialHandle && (this.materialHandle.style.transform = 'scale(1)'), this.tooltipElement.classList.remove(slider_classNames_materialTooltipOpen), this.setTooltipTransform(), this.tooltipTarget = void 0, setTimeout(function() {
                             _this.tooltipElement.style.transition = 'none';
                         }, 2500);
                     }
                 }, Slider.prototype.checkTooltipPosition = function(args) {
                     var tooltipClass = this.tooltipPositionCalculation(args.collidedPosition);
-                    void 0 !== this.tooltipCollidedPosition && this.tooltipCollidedPosition === args.collidedPosition && args.element.classList.contains(tooltipClass) || (this.isMaterialTooltip && (void 0 !== tooltipClass && (args.element.classList.remove(this.previousTooltipClass), args.element.classList.add(tooltipClass), this.previousTooltipClass = tooltipClass), args.element.style.transform && args.element.classList.contains(slider_classNames.materialTooltipOpen) && args.element.firstElementChild.innerText.length <= 4 && (args.element.style.transform = this.getTooltipTransformProperties(this.previousTooltipClass).rotate)), this.tooltipCollidedPosition = args.collidedPosition), this.isMaterialTooltip && this.tooltipElement && -1 !== this.tooltipElement.style.transform.indexOf('translate') && this.setTooltipTransform();
+                    void 0 !== this.tooltipCollidedPosition && this.tooltipCollidedPosition === args.collidedPosition && args.element.classList.contains(tooltipClass) || (this.isMaterialTooltip && (void 0 !== tooltipClass && (args.element.classList.remove(this.previousTooltipClass), args.element.classList.add(tooltipClass), this.previousTooltipClass = tooltipClass), args.element.style.transform && args.element.classList.contains(slider_classNames_materialTooltipOpen) && args.element.firstElementChild.innerText.length <= 4 && (args.element.style.transform = this.getTooltipTransformProperties(this.previousTooltipClass).rotate)), this.tooltipCollidedPosition = args.collidedPosition), this.isMaterialTooltip && this.tooltipElement && -1 !== this.tooltipElement.style.transform.indexOf('translate') && this.setTooltipTransform();
                 }, Slider.prototype.setTooltipTransform = function() {
                     var transformProperties = this.getTooltipTransformProperties(this.previousTooltipClass);
                     this.tooltipElement.firstElementChild.innerText.length > 4 ? this.tooltipElement.style.transform = transformProperties.translate + " scale(0.01)" : this.tooltipElement.style.transform = transformProperties.translate + " " + transformProperties.rotate + " scale(0.01)";
                 }, Slider.prototype.renderTooltip = function() {
                     this.tooltipObj = new Tooltip({
                         showTipPointer: this.isBootstrap || this.isMaterial || this.isBootstrap4 || this.isTailwind || this.isBootstrap5 || this.isFluent,
-                        cssClass: slider_classNames.sliderTooltip,
+                        cssClass: slider_classNames_sliderTooltip,
                         height: this.isMaterial ? 30 : 'auto',
                         animation: {
                             open: {
@@ -25962,19 +25707,19 @@
                         this.secondHandle
                     ].forEach(function(handle) {
                         (0, ej2_base /* isNullOrUndefined */ .le)(handle) || (handle.style.transition = 'none');
-                    }), this.isMaterialTooltip && (this.sliderContainer.classList.add(slider_classNames.materialSlider), this.tooltipValue(), this.tooltipObj.animation.close.effect = 'None', this.tooltipObj.open(this.firstHandle));
+                    }), this.isMaterialTooltip && (this.sliderContainer.classList.add(slider_classNames_materialSlider), this.tooltipValue(), this.tooltipObj.animation.close.effect = 'None', this.tooltipObj.open(this.firstHandle));
                 }, Slider.prototype.tooltipBeforeClose = function() {
                     this.tooltipElement = void 0, this.tooltipCollidedPosition = void 0;
                 }, Slider.prototype.setButtons = function() {
                     this.firstBtn = this.createElement('div', {
-                        className: slider_classNames.sliderButton + ' ' + slider_classNames.firstButton
+                        className: slider_classNames_sliderButton + ' ' + slider_classNames_firstButton
                     }), this.firstBtn.appendChild(this.createElement('span', {
-                        className: slider_classNames.sliderButtonIcon
+                        className: slider_classNames_sliderButtonIcon
                     })), this.isTailwind && this.firstBtn.querySelector('span').classList.add('e-icons'), this.firstBtn.tabIndex = -1, this.secondBtn = this.createElement('div', {
-                        className: slider_classNames.sliderButton + ' ' + slider_classNames.secondButton
+                        className: slider_classNames_sliderButton + ' ' + slider_classNames_secondButton
                     }), this.secondBtn.appendChild(this.createElement('span', {
-                        className: slider_classNames.sliderButtonIcon
-                    })), this.isTailwind && this.secondBtn.querySelector('span').classList.add('e-icons'), this.secondBtn.tabIndex = -1, this.sliderContainer.classList.add(slider_classNames.sliderButtonClass), this.sliderContainer.appendChild(this.firstBtn), this.sliderContainer.appendChild(this.secondBtn), this.sliderContainer.appendChild(this.element), this.buttonTitle();
+                        className: slider_classNames_sliderButtonIcon
+                    })), this.isTailwind && this.secondBtn.querySelector('span').classList.add('e-icons'), this.secondBtn.tabIndex = -1, this.sliderContainer.classList.add(slider_classNames_sliderButtonClass), this.sliderContainer.appendChild(this.firstBtn), this.sliderContainer.appendChild(this.secondBtn), this.sliderContainer.appendChild(this.element), this.buttonTitle();
                 }, Slider.prototype.buttonTitle = function() {
                     var enabledRTL = this.enableRtl && 'Vertical' !== this.orientation;
                     this.l10n.setLocale(this.locale);
@@ -25990,13 +25735,13 @@
                     this.isMaterial && this.getHandle().classList.remove('e-large-thumb-size');
                 }, Slider.prototype.repeatButton = function(args) {
                     var value, hVal = this.handleValueUpdate(), enabledRTL = this.enableRtl && 'Vertical' !== this.orientation;
-                    args.target.parentElement.classList.contains(slider_classNames.firstButton) || args.target.classList.contains(slider_classNames.firstButton) ? value = enabledRTL ? this.add(hVal, parseFloat(this.step.toString()), !0) : this.add(hVal, parseFloat(this.step.toString()), !1) : (args.target.parentElement.classList.contains(slider_classNames.secondButton) || args.target.classList.contains(slider_classNames.secondButton)) && (value = enabledRTL ? this.add(hVal, parseFloat(this.step.toString()), !1) : this.add(hVal, parseFloat(this.step.toString()), !0)), this.limits.enabled && (value = this.getLimitCorrectedValues(value)), value >= this.min && value <= this.max && (this.changeHandleValue(value), this.tooltipToggle(this.getHandle()));
+                    args.target.parentElement.classList.contains(slider_classNames_firstButton) || args.target.classList.contains(slider_classNames_firstButton) ? value = enabledRTL ? this.add(hVal, parseFloat(this.step.toString()), !0) : this.add(hVal, parseFloat(this.step.toString()), !1) : (args.target.parentElement.classList.contains(slider_classNames_secondButton) || args.target.classList.contains(slider_classNames_secondButton)) && (value = enabledRTL ? this.add(hVal, parseFloat(this.step.toString()), !1) : this.add(hVal, parseFloat(this.step.toString()), !0)), this.limits.enabled && (value = this.getLimitCorrectedValues(value)), value >= this.min && value <= this.max && (this.changeHandleValue(value), this.tooltipToggle(this.getHandle()));
                 }, Slider.prototype.repeatHandlerMouse = function(args) {
                     args.preventDefault(), ('mousedown' === args.type || 'touchstart' === args.type) && (this.buttonClick(args), this.repeatInterval = setInterval(this.repeatButton.bind(this), 180, args));
                 }, Slider.prototype.materialChange = function() {
                     this.getHandle().classList.contains('e-large-thumb-size') || this.getHandle().classList.add('e-large-thumb-size');
                 }, Slider.prototype.focusHandle = function() {
-                    this.getHandle().classList.contains(slider_classNames.sliderTabHandle) || this.getHandle().classList.add(slider_classNames.sliderTabHandle);
+                    this.getHandle().classList.contains(slider_classNames_sliderTabHandle) || this.getHandle().classList.add(slider_classNames_sliderTabHandle);
                 }, Slider.prototype.repeatHandlerUp = function(e) {
                     this.changeEvent('changed', e), this.closeTooltip(), clearInterval(this.repeatInterval), this.getHandle().focus();
                 }, Slider.prototype.customTickCounter = function(bigNum) {
@@ -26006,13 +25751,13 @@
                 Slider.prototype.renderScale = function() {
                     var li, islargeTick, orien = 'Vertical' === this.orientation ? 'v' : 'h';
                     this.noOfDecimals = this.numberOfDecimals(this.step), this.ul = this.createElement('ul', {
-                        className: slider_classNames.scale + " e-" + orien + '-scale ' + slider_classNames.tick + '-' + this.ticks.placement.toLowerCase(),
+                        className: slider_classNames_scale + " e-" + orien + '-scale ' + slider_classNames_tick + '-' + this.ticks.placement.toLowerCase(),
                         attrs: {
                             role: 'presentation',
                             tabIndex: '-1',
                             'aria-hidden': 'true'
                         }
-                    }), this.ul.style.zIndex = '-1', ej2_base /* Browser.isAndroid */ .AR.isAndroid && 'h' === orien && this.ul.classList.add(slider_classNames.sliderTickPosition);
+                    }), this.ul.style.zIndex = '-1', ej2_base /* Browser.isAndroid */ .AR.isAndroid && 'h' === orien && this.ul.classList.add('e-tick-pos');
                     var smallStep = this.ticks.smallStep;
                     this.ticks.showSmallTicks ? smallStep <= 0 && (smallStep = parseFloat((0, ej2_base /* formatUnit */ .Ac)(this.step))) : smallStep = this.ticks.largeStep > 0 ? this.ticks.largeStep : parseFloat((0, ej2_base /* formatUnit */ .Ac)(this.max)) - parseFloat((0, ej2_base /* formatUnit */ .Ac)(this.min));
                     var min = this.fractionalToInteger(this.min), max = this.fractionalToInteger(this.max), steps = this.fractionalToInteger(smallStep), bigNum = !(0, ej2_base /* isNullOrUndefined */ .le)(this.customValues) && this.customValues.length > 0 && this.customValues.length - 1, customStep = this.customTickCounter(bigNum), count = !(0, ej2_base /* isNullOrUndefined */ .le)(this.customValues) && this.customValues.length > 0 ? bigNum * customStep + bigNum : Math.abs((max - min) / steps);
@@ -26024,7 +25769,7 @@
                     for(var i = 0, y = !(0, ej2_base /* isNullOrUndefined */ .le)(this.customValues) && this.customValues.length > 0 ? this.customValues.length - 1 : 0, k = 0; i <= count; i++){
                         if (li = this.createElement('li', {
                             attrs: {
-                                class: slider_classNames.tick,
+                                class: slider_classNames_tick,
                                 role: 'presentation',
                                 tabIndex: '-1',
                                 'aria-hidden': 'true'
@@ -26035,7 +25780,7 @@
                             var largestep = this.fractionalToInteger(this.ticks.largeStep), startValue = this.fractionalToInteger(start);
                             islargeTick = 'h' === orien ? (startValue - min) % largestep == 0 : Math.abs(startValue - parseFloat(max.toString())) % largestep == 0;
                         }
-                        islargeTick && li.classList.add(slider_classNames.large), 'h' === orien ? li.style.width = tickWidth + '%' : li.style.height = tickWidth + '%';
+                        islargeTick && li.classList.add(slider_classNames_large), 'h' === orien ? li.style.width = tickWidth + '%' : li.style.height = tickWidth + '%';
                         var repeat = islargeTick ? 'Both' === this.ticks.placement ? 2 : 1 : 0;
                         if (islargeTick) for(var j = 0; j < repeat; j++)this.createTick(li, start, tickWidth);
                         else (0, ej2_base /* isNullOrUndefined */ .le)(this.customValues) && this.formatTicksValue(li, start);
@@ -26045,7 +25790,7 @@
                     }
                     this.ticksAlignment(orien, tickWidth);
                 }, Slider.prototype.ticksAlignment = function(orien, tickWidth, triggerEvent) {
-                    void 0 === triggerEvent && (triggerEvent = !0), this.firstChild = this.ul.firstElementChild, this.lastChild = this.ul.lastElementChild, this.firstChild.classList.add(slider_classNames.sliderFirstTick), this.lastChild.classList.add(slider_classNames.sliderLastTick), this.sliderContainer.classList.add(slider_classNames.scale + '-' + this.ticks.placement.toLowerCase()), 'h' === orien ? (this.firstChild.style.width = tickWidth / 2 + '%', this.lastChild.style.width = tickWidth / 2 + '%') : (this.firstChild.style.height = tickWidth / 2 + '%', this.lastChild.style.height = tickWidth / 2 + '%');
+                    void 0 === triggerEvent && (triggerEvent = !0), this.firstChild = this.ul.firstElementChild, this.lastChild = this.ul.lastElementChild, this.firstChild.classList.add('e-first-tick'), this.lastChild.classList.add(slider_classNames_sliderLastTick), this.sliderContainer.classList.add(slider_classNames_scale + '-' + this.ticks.placement.toLowerCase()), 'h' === orien ? (this.firstChild.style.width = tickWidth / 2 + '%', this.lastChild.style.width = tickWidth / 2 + '%') : (this.firstChild.style.height = tickWidth / 2 + '%', this.lastChild.style.height = tickWidth / 2 + '%');
                     var eventArgs = {
                         ticksWrapper: this.ul,
                         tickElements: this.tickElementCollection
@@ -26053,7 +25798,7 @@
                     triggerEvent && this.trigger('renderedTicks', eventArgs), this.scaleAlignment();
                 }, Slider.prototype.createTick = function(li, start, tickWidth) {
                     var span = this.createElement('span', {
-                        className: slider_classNames.tickValue + ' ' + slider_classNames.tick + '-' + this.ticks.placement.toLowerCase(),
+                        className: slider_classNames_tickValue + ' ' + slider_classNames_tick + '-' + this.ticks.placement.toLowerCase(),
                         attrs: {
                             role: 'presentation',
                             tabIndex: '-1',
@@ -26071,13 +25816,13 @@
                         li.setAttribute('title', observedArgs.text.toString()), spanElement && (_this.enableHtmlSanitizer ? spanElement.innerHTML = ej2_base /* SanitizeHtmlHelper.sanitize */ .pJ.sanitize(observedArgs.text.toString()) : spanElement.innerHTML = observedArgs.text.toString());
                     });
                 }, Slider.prototype.scaleAlignment = function() {
-                    this.tickValuePosition(), this.orientation, 'Vertical' === this.orientation ? this.element.getBoundingClientRect().width <= 15 ? this.sliderContainer.classList.add(slider_classNames.sliderSmallSize) : this.sliderContainer.classList.remove(slider_classNames.sliderSmallSize) : this.element.getBoundingClientRect().height <= 15 ? this.sliderContainer.classList.add(slider_classNames.sliderSmallSize) : this.sliderContainer.classList.remove(slider_classNames.sliderSmallSize);
+                    this.tickValuePosition(), this.orientation, 'Vertical' === this.orientation ? this.element.getBoundingClientRect().width <= 15 ? this.sliderContainer.classList.add(slider_classNames_sliderSmallSize) : this.sliderContainer.classList.remove(slider_classNames_sliderSmallSize) : this.element.getBoundingClientRect().height <= 15 ? this.sliderContainer.classList.add(slider_classNames_sliderSmallSize) : this.sliderContainer.classList.remove(slider_classNames_sliderSmallSize);
                 }, Slider.prototype.tickValuePosition = function() {
                     this.firstChild = this.element.querySelector('ul').children[0];
                     var firstChild, otherChild, other, first = this.firstChild.getBoundingClientRect(), smallStep = this.ticks.smallStep, count = Math.abs(parseFloat((0, ej2_base /* formatUnit */ .Ac)(this.max)) - parseFloat((0, ej2_base /* formatUnit */ .Ac)(this.min))) / smallStep;
                     this.firstChild.children.length > 0 && (firstChild = this.firstChild.children[0].getBoundingClientRect());
                     var tickElements = [
-                        this.sliderContainer.querySelectorAll('.' + slider_classNames.tick + '.' + slider_classNames.large + ' .' + slider_classNames.tickValue)
+                        this.sliderContainer.querySelectorAll('.' + slider_classNames_tick + '.' + slider_classNames_large + ' .' + slider_classNames_tickValue)
                     ];
                     other = 'Both' === this.ticks.placement ? [].slice.call(tickElements[0], 2) : [].slice.call(tickElements[0], 1);
                     for(var tickWidth = 'Vertical' === this.orientation ? 2 * first.height : 2 * first.width, i = 0; i < this.firstChild.children.length; i++)'Vertical' === this.orientation ? this.firstChild.children[i].style.top = -(firstChild.height / 2) + 'px' : this.enableRtl ? this.firstChild.children[i].style.left = (tickWidth - this.firstChild.children[i].getBoundingClientRect().width) / 2 + 'px' : this.firstChild.children[i].style.left = -(firstChild.width / 2) + 'px';
@@ -26086,7 +25831,7 @@
                     }) : (0, ej2_base /* setStyleAttribute */ .V7)(other[i], {
                         left: (tickWidth - otherChild.width) / 2 + 'px'
                     });
-                    this.enableRtl && this.lastChild.children.length && 0 !== count && (this.lastChild.children[0].style.left = -(this.lastChild.getBoundingClientRect().width / 2) + 'px', 'Both' === this.ticks.placement && (this.lastChild.children[1].style.left = -(this.lastChild.getBoundingClientRect().width / 2) + 'px')), 0 === count && ('Horizontal' === this.orientation && (this.enableRtl ? (this.firstChild.classList.remove(slider_classNames.sliderLastTick), this.firstChild.style.right = this.firstHandle.style.right, this.firstChild.children[0].style.left = this.firstChild.getBoundingClientRect().width / 2 + 2 + 'px', 'Both' === this.ticks.placement && (this.firstChild.children[1].style.left = this.firstChild.getBoundingClientRect().width / 2 + 2 + 'px')) : (this.firstChild.classList.remove(slider_classNames.sliderLastTick), this.firstChild.style.left = this.firstHandle.style.left)), 'Vertical' === this.orientation && this.firstChild.classList.remove(slider_classNames.sliderLastTick));
+                    this.enableRtl && this.lastChild.children.length && 0 !== count && (this.lastChild.children[0].style.left = -(this.lastChild.getBoundingClientRect().width / 2) + 'px', 'Both' === this.ticks.placement && (this.lastChild.children[1].style.left = -(this.lastChild.getBoundingClientRect().width / 2) + 'px')), 0 === count && ('Horizontal' === this.orientation && (this.enableRtl ? (this.firstChild.classList.remove(slider_classNames_sliderLastTick), this.firstChild.style.right = this.firstHandle.style.right, this.firstChild.children[0].style.left = this.firstChild.getBoundingClientRect().width / 2 + 2 + 'px', 'Both' === this.ticks.placement && (this.firstChild.children[1].style.left = this.firstChild.getBoundingClientRect().width / 2 + 2 + 'px')) : (this.firstChild.classList.remove(slider_classNames_sliderLastTick), this.firstChild.style.left = this.firstHandle.style.left)), 'Vertical' === this.orientation && this.firstChild.classList.remove(slider_classNames_sliderLastTick));
                 }, Slider.prototype.setAriaAttrValue = function(element) {
                     var ariaValueText, isTickFormatted = !((0, ej2_base /* isNullOrUndefined */ .le)(this.ticks) || (0, ej2_base /* isNullOrUndefined */ .le)(this.ticks.format)), text = isTickFormatted ? this.formatContent(this.tooltipFormatInfo, !1) : this.formatContent(this.ticksFormatInfo, !1), valuenow = isTickFormatted ? this.formatContent(this.ticksFormatInfo, !0) : this.formatContent(this.tooltipFormatInfo, !0);
                     ariaValueText = 2 === (text = this.customAriaText ? this.customAriaText : text).split(' - ').length ? text.split(' - ') : [
@@ -26111,23 +25856,23 @@
                 }, Slider.prototype.handleValueUpdate = function() {
                     return 'Range' === this.type ? 1 === this.activeHandle ? this.handleVal1 : this.handleVal2 : this.handleVal1;
                 }, Slider.prototype.getLimitCorrectedValues = function(value) {
-                    return value = 'MinRange' === this.type || 'Default' === this.type ? this.getLimitValueAndPosition(value, this.limits.minStart, this.limits.minEnd)[0] : 1 === this.activeHandle ? this.getLimitValueAndPosition(value, this.limits.minStart, this.limits.minEnd)[0] : this.getLimitValueAndPosition(value, this.limits.maxStart, this.limits.maxEnd)[0];
+                    return 'MinRange' === this.type || 'Default' === this.type || 1 === this.activeHandle ? this.getLimitValueAndPosition(value, this.limits.minStart, this.limits.minEnd)[0] : this.getLimitValueAndPosition(value, this.limits.maxStart, this.limits.maxEnd)[0];
                 }, Slider.prototype.focusSliderElement = function() {
                     this.isElementFocused || (this.element.focus(), this.isElementFocused = !0);
                 }, Slider.prototype.buttonClick = function(args) {
                     this.focusSliderElement();
                     var value, enabledRTL = this.enableRtl && 'Vertical' !== this.orientation, hVal = this.handleValueUpdate();
-                    40 === args.keyCode || 37 === args.keyCode || args.currentTarget.classList.contains(slider_classNames.firstButton) ? value = // eslint-disable-next-line
-                    enabledRTL ? this.add(hVal, parseFloat(this.step.toString()), !0) : this.add(hVal, parseFloat(this.step.toString()), !1) : 38 === args.keyCode || 39 === args.keyCode || args.currentTarget.classList.contains(slider_classNames.secondButton) ? value = // eslint-disable-next-line
-                    enabledRTL ? this.add(hVal, parseFloat(this.step.toString()), !1) : this.add(hVal, parseFloat(this.step.toString()), !0) : 33 === args.keyCode || args.currentTarget.classList.contains(slider_classNames.firstButton) ? value = // eslint-disable-next-line
-                    enabledRTL ? this.add(hVal, parseFloat(this.ticks.largeStep.toString()), !1) : this.add(hVal, parseFloat(this.ticks.largeStep.toString()), !0) : 34 === args.keyCode || args.currentTarget.classList.contains(slider_classNames.secondButton) ? value = // eslint-disable-next-line
-                    enabledRTL ? this.add(hVal, parseFloat(this.ticks.largeStep.toString()), !0) : this.add(hVal, parseFloat(this.ticks.largeStep.toString()), !1) : 36 === args.keyCode ? value = parseFloat(this.min.toString()) : 35 === args.keyCode && (value = parseFloat(this.max.toString())), this.limits.enabled && (value = this.getLimitCorrectedValues(value)), this.changeHandleValue(value), !this.isMaterial || this.tooltip.isVisible || this.getHandle().classList.contains(slider_classNames.sliderTabHandle) || this.materialChange(), this.tooltipToggle(this.getHandle()), this.getHandle().focus(), this.focusHandle(), args.currentTarget.classList.contains(slider_classNames.firstButton) && ej2_base /* EventHandler.add */ .bi.add(this.firstBtn, 'mouseup touchend', this.buttonUp, this), args.currentTarget.classList.contains(slider_classNames.secondButton) && ej2_base /* EventHandler.add */ .bi.add(this.secondBtn, 'mouseup touchend', this.buttonUp, this);
+                    40 === args.keyCode || 37 === args.keyCode || args.currentTarget.classList.contains(slider_classNames_firstButton) ? value = // eslint-disable-next-line
+                    enabledRTL ? this.add(hVal, parseFloat(this.step.toString()), !0) : this.add(hVal, parseFloat(this.step.toString()), !1) : 38 === args.keyCode || 39 === args.keyCode || args.currentTarget.classList.contains(slider_classNames_secondButton) ? value = // eslint-disable-next-line
+                    enabledRTL ? this.add(hVal, parseFloat(this.step.toString()), !1) : this.add(hVal, parseFloat(this.step.toString()), !0) : 33 === args.keyCode || args.currentTarget.classList.contains(slider_classNames_firstButton) ? value = // eslint-disable-next-line
+                    enabledRTL ? this.add(hVal, parseFloat(this.ticks.largeStep.toString()), !1) : this.add(hVal, parseFloat(this.ticks.largeStep.toString()), !0) : 34 === args.keyCode || args.currentTarget.classList.contains(slider_classNames_secondButton) ? value = // eslint-disable-next-line
+                    enabledRTL ? this.add(hVal, parseFloat(this.ticks.largeStep.toString()), !0) : this.add(hVal, parseFloat(this.ticks.largeStep.toString()), !1) : 36 === args.keyCode ? value = parseFloat(this.min.toString()) : 35 === args.keyCode && (value = parseFloat(this.max.toString())), this.limits.enabled && (value = this.getLimitCorrectedValues(value)), this.changeHandleValue(value), !this.isMaterial || this.tooltip.isVisible || this.getHandle().classList.contains(slider_classNames_sliderTabHandle) || this.materialChange(), this.tooltipToggle(this.getHandle()), this.getHandle().focus(), this.focusHandle(), args.currentTarget.classList.contains(slider_classNames_firstButton) && ej2_base /* EventHandler.add */ .bi.add(this.firstBtn, 'mouseup touchend', this.buttonUp, this), args.currentTarget.classList.contains(slider_classNames_secondButton) && ej2_base /* EventHandler.add */ .bi.add(this.secondBtn, 'mouseup touchend', this.buttonUp, this);
                 }, Slider.prototype.tooltipToggle = function(target) {
                     this.isMaterialTooltip ? // eslint-disable-next-line
-                    this.tooltipElement.classList.contains(slider_classNames.materialTooltipOpen) ? this.refreshTooltip(this.firstHandle) : this.openMaterialTooltip() : // eslint-disable-next-line
+                    this.tooltipElement.classList.contains(slider_classNames_materialTooltipOpen) ? this.refreshTooltip(this.firstHandle) : this.openMaterialTooltip() : // eslint-disable-next-line
                     this.tooltipElement ? this.refreshTooltip(target) : this.openTooltip(target);
                 }, Slider.prototype.buttonUp = function(args) {
-                    args.currentTarget.classList.contains(slider_classNames.firstButton) && ej2_base /* EventHandler.remove */ .bi.remove(this.firstBtn, 'mouseup touchend', this.buttonUp), args.currentTarget.classList.contains(slider_classNames.secondButton) && ej2_base /* EventHandler.remove */ .bi.remove(this.secondBtn, 'mouseup touchend', this.buttonUp);
+                    args.currentTarget.classList.contains(slider_classNames_firstButton) && ej2_base /* EventHandler.remove */ .bi.remove(this.firstBtn, 'mouseup touchend', this.buttonUp), args.currentTarget.classList.contains(slider_classNames_secondButton) && ej2_base /* EventHandler.remove */ .bi.remove(this.secondBtn, 'mouseup touchend', this.buttonUp);
                 }, Slider.prototype.setRangeBar = function() {
                     'Horizontal' === this.orientation ? 'MinRange' === this.type ? (// eslint-disable-next-line
                     this.enableRtl ? this.rangeBar.style.right = '0px' : this.rangeBar.style.left = '0px', (0, ej2_base /* setStyleAttribute */ .V7)(this.rangeBar, {
@@ -26275,7 +26020,7 @@
                     }), this.refreshTooltip(this.tooltipTarget), this.setBarColor();
                 }, Slider.prototype.changeHandleValue = function(value) {
                     var position = null;
-                    1 === this.activeHandle ? this.limits.enabled && this.limits.startHandleFixed || (this.handleVal1 = this.checkHandleValue(value), this.handlePos1 = this.checkHandlePosition(this.handleVal1), 'Range' === this.type && this.handlePos1 > this.handlePos2 && (this.handlePos1 = this.handlePos2, this.handleVal1 = this.handleVal2), this.handlePos1 === this.preHandlePos1 || (position = this.preHandlePos1 = this.handlePos1)) : this.limits.enabled && this.limits.endHandleFixed || (this.handleVal2 = this.checkHandleValue(value), this.handlePos2 = this.checkHandlePosition(this.handleVal2), 'Range' === this.type && this.handlePos2 < this.handlePos1 && (this.handlePos2 = this.handlePos1, this.handleVal2 = this.handleVal1), this.handlePos2 === this.preHandlePos2 || (position = this.preHandlePos2 = this.handlePos2)), this.modifyZindex(), null !== position && ('Default' !== this.type && this.setRangeBar(), this.setHandlePosition(null));
+                    1 === this.activeHandle ? this.limits.enabled && this.limits.startHandleFixed || (this.handleVal1 = this.checkHandleValue(value), this.handlePos1 = this.checkHandlePosition(this.handleVal1), 'Range' === this.type && this.handlePos1 > this.handlePos2 && (this.handlePos1 = this.handlePos2, this.handleVal1 = this.handleVal2), this.handlePos1 !== this.preHandlePos1 && (position = this.preHandlePos1 = this.handlePos1)) : this.limits.enabled && this.limits.endHandleFixed || (this.handleVal2 = this.checkHandleValue(value), this.handlePos2 = this.checkHandlePosition(this.handleVal2), 'Range' === this.type && this.handlePos2 < this.handlePos1 && (this.handlePos2 = this.handlePos1, this.handleVal2 = this.handleVal1), this.handlePos2 !== this.preHandlePos2 && (position = this.preHandlePos2 = this.handlePos2)), this.modifyZindex(), null !== position && ('Default' !== this.type && this.setRangeBar(), this.setHandlePosition(null));
                 }, // eslint-disable-next-line
                 Slider.prototype.tempStartEnd = function() {
                     return this.min > this.max ? {
@@ -26321,7 +26066,7 @@
                                 var value = this.getLimitValueAndPosition(handleVal, this.limits.maxStart, this.limits.maxEnd);
                                 handleVal = value[0], handlepos = value[1];
                             }
-                            this.secondHandle.classList.add(slider_classNames.sliderActiveHandle), this.handlePos2 = this.preHandlePos2 = handlepos, this.handleVal2 = handleVal;
+                            this.secondHandle.classList.add(slider_classNames_sliderActiveHandle), this.handlePos2 = this.preHandlePos2 = handlepos, this.handleVal2 = handleVal;
                         }
                         this.modifyZindex(), this.secondHandle.focus();
                     } else {
@@ -26330,16 +26075,16 @@
                                 var value = this.getLimitValueAndPosition(handleVal, this.limits.minStart, this.limits.minEnd);
                                 handleVal = value[0], handlepos = value[1];
                             }
-                            this.firstHandle.classList.add(slider_classNames.sliderActiveHandle), this.handlePos1 = this.preHandlePos1 = handlepos, this.handleVal1 = handleVal;
+                            this.firstHandle.classList.add(slider_classNames_sliderActiveHandle), this.handlePos1 = this.preHandlePos1 = handlepos, this.handleVal1 = handleVal;
                         }
                         this.modifyZindex(), this.firstHandle.focus();
                     }
-                    this.isMaterialTooltip && this.tooltipElement.classList.add(slider_classNames.materialTooltipActive);
-                    var focusedElement = this.element.querySelector('.' + slider_classNames.sliderTabHandle);
-                    focusedElement && this.getHandle() !== focusedElement && focusedElement.classList.remove(slider_classNames.sliderTabHandle);
+                    this.isMaterialTooltip && this.tooltipElement.classList.add(slider_classNames_materialTooltipActive);
+                    var focusedElement = this.element.querySelector('.' + slider_classNames_sliderTabHandle);
+                    focusedElement && this.getHandle() !== focusedElement && focusedElement.classList.remove(slider_classNames_sliderTabHandle);
                     var handle = 1 === this.activeHandle ? this.firstHandle : this.secondHandle;
                     if (evt.target === handle) {
-                        !this.isMaterial || this.tooltip.isVisible || this.getHandle().classList.contains(slider_classNames.sliderTabHandle) || this.materialChange(), this.sliderBarUp(evt), this.tooltipToggle(this.getHandle());
+                        !this.isMaterial || this.tooltip.isVisible || this.getHandle().classList.contains(slider_classNames_sliderTabHandle) || this.materialChange(), this.sliderBarUp(evt), this.tooltipToggle(this.getHandle());
                         return;
                     }
                     if (this.checkRepeatedValue(handleVal)) {
@@ -26376,16 +26121,16 @@
                     }
                     this.activeHandle = 1, this.setHandlePosition(event), this.activeHandle = 2, this.setHandlePosition(event), this.tooltipToggle(this.rangeBar), this.setRangeBar();
                 }, Slider.prototype.sliderBarUp = function(event) {
-                    this.changeEvent('changed', event), this.handleFocusOut(), this.firstHandle.classList.remove(slider_classNames.sliderActiveHandle), 'Range' === this.type && (this.initialTooltip = !1, this.secondHandle.classList.remove(slider_classNames.sliderActiveHandle)), this.closeTooltip(), this.isMaterial && (this.getHandle().classList.remove('e-large-thumb-size'), this.isMaterialTooltip && this.tooltipElement.classList.remove(slider_classNames.materialTooltipActive)), ej2_base /* EventHandler.remove */ .bi.remove(document, 'mousemove touchmove', this.sliderBarMove), ej2_base /* EventHandler.remove */ .bi.remove(document, 'mouseup touchend', this.sliderBarUp);
+                    this.changeEvent('changed', event), this.handleFocusOut(), this.firstHandle.classList.remove(slider_classNames_sliderActiveHandle), 'Range' === this.type && (this.initialTooltip = !1, this.secondHandle.classList.remove(slider_classNames_sliderActiveHandle)), this.closeTooltip(), this.isMaterial && (this.getHandle().classList.remove('e-large-thumb-size'), this.isMaterialTooltip && this.tooltipElement.classList.remove(slider_classNames_materialTooltipActive)), ej2_base /* EventHandler.remove */ .bi.remove(document, 'mousemove touchmove', this.sliderBarMove), ej2_base /* EventHandler.remove */ .bi.remove(document, 'mouseup touchend', this.sliderBarUp);
                 }, Slider.prototype.sliderBarMove = function(evt) {
-                    'touchmove' !== evt.type && evt.preventDefault(), pos = 'mousemove' === evt.type ? {
+                    'touchmove' !== evt.type && evt.preventDefault();
+                    var pos = 'mousemove' === evt.type ? {
                         x: evt.clientX,
                         y: evt.clientY
                     } : {
                         x: evt.changedTouches[0].clientX,
                         y: evt.changedTouches[0].clientY
-                    };
-                    var pos, handlepos = this.xyToPosition(pos), handleVal = this.positionToValue(handlepos);
+                    }, handlepos = this.xyToPosition(pos), handleVal = this.positionToValue(handlepos);
                     if (handlepos = Math.round(handlepos), 'Range' !== this.type && 1 === this.activeHandle) {
                         if (!(this.limits.enabled && this.limits.startHandleFixed)) {
                             if (this.limits.enabled) {
@@ -26394,18 +26139,18 @@
                             }
                             this.handlePos1 = handlepos, this.handleVal1 = handleVal;
                         }
-                        this.firstHandle.classList.add(slider_classNames.sliderActiveHandle);
+                        this.firstHandle.classList.add(slider_classNames_sliderActiveHandle);
                     }
                     if ('Range' === this.type) {
                         if (1 === this.activeHandle) {
-                            if (this.firstHandle.classList.add(slider_classNames.sliderActiveHandle), !(this.limits.enabled && this.limits.startHandleFixed) && (handlepos > this.handlePos2 && (handlepos = this.handlePos2, handleVal = this.handleVal2), handlepos !== this.preHandlePos1)) {
+                            if (this.firstHandle.classList.add(slider_classNames_sliderActiveHandle), !(this.limits.enabled && this.limits.startHandleFixed) && (handlepos > this.handlePos2 && (handlepos = this.handlePos2, handleVal = this.handleVal2), handlepos !== this.preHandlePos1)) {
                                 if (this.limits.enabled) {
                                     var value = this.getLimitValueAndPosition(handleVal, this.limits.minStart, this.limits.minEnd);
                                     handleVal = value[0], handlepos = value[1];
                                 }
                                 this.handlePos1 = this.preHandlePos1 = handlepos, this.handleVal1 = handleVal, this.activeHandle = 1;
                             }
-                        } else if (2 === this.activeHandle && (this.secondHandle.classList.add(slider_classNames.sliderActiveHandle), !(this.limits.enabled && this.limits.endHandleFixed) && (handlepos < this.handlePos1 && (handlepos = this.handlePos1, handleVal = this.handleVal1), handlepos !== this.preHandlePos2))) {
+                        } else if (2 === this.activeHandle && (this.secondHandle.classList.add(slider_classNames_sliderActiveHandle), !(this.limits.enabled && this.limits.endHandleFixed)) && (handlepos < this.handlePos1 && (handlepos = this.handlePos1, handleVal = this.handleVal1), handlepos !== this.preHandlePos2)) {
                             if (this.limits.enabled) {
                                 var value = this.getLimitValueAndPosition(handleVal, this.limits.maxStart, this.limits.maxEnd);
                                 handleVal = value[0], handlepos = value[1];
@@ -26413,7 +26158,7 @@
                             this.handlePos2 = this.preHandlePos2 = handlepos, this.handleVal2 = handleVal, this.activeHandle = 2;
                         }
                     }
-                    this.checkRepeatedValue(handleVal) && (this.getHandle().style.transition = this.scaleTransform, 'Default' !== this.type && (this.rangeBar.style.transition = 'none'), this.setHandlePosition(evt), !this.isMaterial || this.tooltip.isVisible || this.getHandle().classList.contains(slider_classNames.sliderTabHandle) || this.materialChange(), this.tooltipToggle(this.getHandle()), 'Default' !== this.type && this.setRangeBar());
+                    this.checkRepeatedValue(handleVal) && (this.getHandle().style.transition = this.scaleTransform, 'Default' !== this.type && (this.rangeBar.style.transition = 'none'), this.setHandlePosition(evt), !this.isMaterial || this.tooltip.isVisible || this.getHandle().classList.contains(slider_classNames_sliderTabHandle) || this.materialChange(), this.tooltipToggle(this.getHandle()), 'Default' !== this.type && this.setRangeBar());
                 }, Slider.prototype.dragRangeBarUp = function(event) {
                     this.rangeBarDragged ? this.isDragComplete = !0 : (this.focusSliderElement(), this.sliderBarClick(event)), this.changeEvent('changed', event), this.closeTooltip(), ej2_base /* EventHandler.remove */ .bi.remove(document, 'mousemove touchmove', this.dragRangeBarMove), ej2_base /* EventHandler.remove */ .bi.remove(document, 'mouseup touchend', this.dragRangeBarUp), this.rangeBarDragged = !1;
                 }, Slider.prototype.checkRepeatedValue = function(currentValue) {
@@ -26452,8 +26197,8 @@
                             event.changedTouches[0].clientX,
                             event.changedTouches[0].clientY
                         ])[0], yPostion = _b[1]), 'Horizontal' === this.orientation ? (this.firstPartRemain = xPostion - this.rangeBar.getBoundingClientRect().left, this.secondPartRemain = this.rangeBar.getBoundingClientRect().right - xPostion) : (this.firstPartRemain = yPostion - this.rangeBar.getBoundingClientRect().top, this.secondPartRemain = this.rangeBar.getBoundingClientRect().bottom - yPostion), this.minDiff = this.handleVal2 - this.handleVal1, this.tooltipToggle(this.rangeBar);
-                        var focusedElement = this.element.querySelector('.' + slider_classNames.sliderTabHandle);
-                        focusedElement && focusedElement.classList.remove(slider_classNames.sliderTabHandle), ej2_base /* EventHandler.add */ .bi.add(document, 'mousemove touchmove', this.dragRangeBarMove, this), ej2_base /* EventHandler.add */ .bi.add(document, 'mouseup touchend', this.dragRangeBarUp, this);
+                        var focusedElement = this.element.querySelector('.' + slider_classNames_sliderTabHandle);
+                        focusedElement && focusedElement.classList.remove(slider_classNames_sliderTabHandle), ej2_base /* EventHandler.add */ .bi.add(document, 'mousemove touchmove', this.dragRangeBarMove, this), ej2_base /* EventHandler.add */ .bi.add(document, 'mouseup touchend', this.dragRangeBarUp, this);
                     }
                 }, Slider.prototype.elementClick = function(event) {
                     if (this.isDragComplete) {
@@ -26470,27 +26215,25 @@
                         value: this.formResetValue
                     }, !0), this.setValue();
                 }, Slider.prototype.keyUp = function(event) {
-                    if (9 === event.keyCode && event.target.classList.contains(slider_classNames.sliderHandle) && (this.focusSliderElement(), !event.target.classList.contains(slider_classNames.sliderTabHandle))) {
-                        this.element.querySelector('.' + slider_classNames.sliderTabHandle) && this.element.querySelector('.' + slider_classNames.sliderTabHandle).classList.remove(slider_classNames.sliderTabHandle), event.target.classList.add(slider_classNames.sliderTabHandle);
+                    if (9 === event.keyCode && event.target.classList.contains(slider_classNames_sliderHandle) && (this.focusSliderElement(), !event.target.classList.contains(slider_classNames_sliderTabHandle))) {
+                        this.element.querySelector('.' + slider_classNames_sliderTabHandle) && this.element.querySelector('.' + slider_classNames_sliderTabHandle).classList.remove(slider_classNames_sliderTabHandle), event.target.classList.add(slider_classNames_sliderTabHandle);
                         var parentElement = event.target.parentElement;
-                        parentElement === this.element && (parentElement.querySelector('.' + slider_classNames.sliderTrack).classList.add(slider_classNames.sliderTabTrack), ('Range' === this.type || 'MinRange' === this.type) && parentElement.querySelector('.' + slider_classNames.rangeBar).classList.add(slider_classNames.sliderTabRange)), 'Range' === this.type && (event.target.previousSibling.classList.contains(slider_classNames.sliderHandle) ? this.activeHandle = 2 : this.activeHandle = 1), this.getHandle().focus(), this.tooltipToggle(this.getHandle());
+                        parentElement === this.element && (parentElement.querySelector('.' + slider_classNames_sliderTrack).classList.add(slider_classNames_sliderTabTrack), ('Range' === this.type || 'MinRange' === this.type) && parentElement.querySelector('.' + slider_classNames_rangeBar).classList.add(slider_classNames_sliderTabRange)), 'Range' === this.type && (event.target.previousSibling.classList.contains(slider_classNames_sliderHandle) ? this.activeHandle = 2 : this.activeHandle = 1), this.getHandle().focus(), this.tooltipToggle(this.getHandle());
                     }
                     this.closeTooltip(), this.changeEvent('changed', event);
                 }, Slider.prototype.hover = function(event) {
-                    if (!(0, ej2_base /* isNullOrUndefined */ .le)(event)) {
-                        if ('mouseover' === event.type || 'touchmove' === event.type || 'mousemove' === event.type || 'pointermove' === event.type || 'touchstart' === event.type) this.sliderContainer.classList.add(slider_classNames.sliderHover);
-                        else {
-                            this.sliderContainer.classList.remove(slider_classNames.sliderHover);
-                            var curTarget = event.currentTarget;
-                            this.tooltip.isVisible && 'Always' !== this.tooltip.showOn && this.tooltipObj && this.isMaterialTooltip && !curTarget.classList.contains(slider_classNames.sliderHandleFocused) && !curTarget.classList.contains(slider_classNames.sliderTabHandle) && this.closeMaterialTooltip();
-                        }
+                    if (!(0, ej2_base /* isNullOrUndefined */ .le)(event)) if ('mouseover' === event.type || 'touchmove' === event.type || 'mousemove' === event.type || 'pointermove' === event.type || 'touchstart' === event.type) this.sliderContainer.classList.add(slider_classNames_sliderHover);
+                    else {
+                        this.sliderContainer.classList.remove(slider_classNames_sliderHover);
+                        var curTarget = event.currentTarget;
+                        this.tooltip.isVisible && 'Always' !== this.tooltip.showOn && this.tooltipObj && this.isMaterialTooltip && !curTarget.classList.contains(slider_classNames_sliderHandleFocused) && !curTarget.classList.contains(slider_classNames_sliderTabHandle) && this.closeMaterialTooltip();
                     }
                 }, Slider.prototype.sliderFocusOut = function(event) {
-                    event.relatedTarget !== this.secondHandle && event.relatedTarget !== this.firstHandle && event.relatedTarget !== this.element && event.relatedTarget !== this.firstBtn && event.relatedTarget !== this.secondBtn && (this.closeMaterialTooltip(), this.closeTooltip(), this.element.querySelector('.' + slider_classNames.sliderTabHandle) && this.element.querySelector('.' + slider_classNames.sliderTabHandle).classList.remove(slider_classNames.sliderTabHandle), this.element.querySelector('.' + slider_classNames.sliderTabTrack) && (this.element.querySelector('.' + slider_classNames.sliderTabTrack).classList.remove(slider_classNames.sliderTabTrack), ('Range' === this.type || 'MinRange' === this.type) && this.element.querySelector('.' + slider_classNames.sliderTabRange) && this.element.querySelector('.' + slider_classNames.sliderTabRange).classList.remove(slider_classNames.sliderTabRange)), this.hiddenInput.focus(), this.hiddenInput.blur(), this.isElementFocused = !1);
+                    event.relatedTarget !== this.secondHandle && event.relatedTarget !== this.firstHandle && event.relatedTarget !== this.element && event.relatedTarget !== this.firstBtn && event.relatedTarget !== this.secondBtn && (this.closeMaterialTooltip(), this.closeTooltip(), this.element.querySelector('.' + slider_classNames_sliderTabHandle) && this.element.querySelector('.' + slider_classNames_sliderTabHandle).classList.remove(slider_classNames_sliderTabHandle), this.element.querySelector('.' + slider_classNames_sliderTabTrack) && (this.element.querySelector('.' + slider_classNames_sliderTabTrack).classList.remove(slider_classNames_sliderTabTrack), ('Range' === this.type || 'MinRange' === this.type) && this.element.querySelector('.' + slider_classNames_sliderTabRange) && this.element.querySelector('.' + slider_classNames_sliderTabRange).classList.remove(slider_classNames_sliderTabRange)), this.hiddenInput.focus(), this.hiddenInput.blur(), this.isElementFocused = !1);
                 }, Slider.prototype.removeElement = function(element) {
                     element.parentNode && element.parentNode.removeChild(element);
                 }, Slider.prototype.changeSliderType = function(type, args) {
-                    this.isMaterialTooltip && this.materialHandle && (this.sliderContainer.classList.remove(slider_classNames.materialSlider), this.removeElement(this.materialHandle), this.materialHandle = void 0), this.removeElement(this.firstHandle), this.firstHandle = void 0, 'Default' !== type && ('Range' === type && (this.removeElement(this.secondHandle), this.secondHandle = void 0), this.removeElement(this.rangeBar), this.rangeBar = void 0), this.tooltip.isVisible && !(0, ej2_base /* isNullOrUndefined */ .le)(this.tooltipObj) && (this.tooltipObj.destroy(), this.tooltipElement = void 0, this.tooltipCollidedPosition = void 0), !this.limits.enabled || ('MinRange' === type || 'Default' === type ? (0, ej2_base /* isNullOrUndefined */ .le)(this.limitBarFirst) || (this.removeElement(this.limitBarFirst), this.limitBarFirst = void 0) : (0, ej2_base /* isNullOrUndefined */ .le)(this.limitBarSecond) || (this.removeElement(this.limitBarSecond), this.limitBarSecond = void 0)), this.activeHandle = 1, this.getThemeInitialization(), 'Range' === this.type && this.rangeValueUpdate(), this.createRangeBar(), this.limits.enabled && this.createLimitBar(), this.setHandler(), this.setOrientClass(), this.wireFirstHandleEvt(!1), 'Range' === this.type && this.wireSecondHandleEvt(!1), this.setValue(), this.tooltip.isVisible && (this.renderTooltip(), this.wireMaterialTooltipEvent(!1)), this.setBarColor(), 'tooltip' !== args && this.updateConfig();
+                    this.isMaterialTooltip && this.materialHandle && (this.sliderContainer.classList.remove(slider_classNames_materialSlider), this.removeElement(this.materialHandle), this.materialHandle = void 0), this.removeElement(this.firstHandle), this.firstHandle = void 0, 'Default' !== type && ('Range' === type && (this.removeElement(this.secondHandle), this.secondHandle = void 0), this.removeElement(this.rangeBar), this.rangeBar = void 0), this.tooltip.isVisible && !(0, ej2_base /* isNullOrUndefined */ .le)(this.tooltipObj) && (this.tooltipObj.destroy(), this.tooltipElement = void 0, this.tooltipCollidedPosition = void 0), this.limits.enabled && ('MinRange' === type || 'Default' === type ? (0, ej2_base /* isNullOrUndefined */ .le)(this.limitBarFirst) || (this.removeElement(this.limitBarFirst), this.limitBarFirst = void 0) : (0, ej2_base /* isNullOrUndefined */ .le)(this.limitBarSecond) || (this.removeElement(this.limitBarSecond), this.limitBarSecond = void 0)), this.activeHandle = 1, this.getThemeInitialization(), 'Range' === this.type && this.rangeValueUpdate(), this.createRangeBar(), this.limits.enabled && this.createLimitBar(), this.setHandler(), this.setOrientClass(), this.wireFirstHandleEvt(!1), 'Range' === this.type && this.wireSecondHandleEvt(!1), this.setValue(), this.tooltip.isVisible && (this.renderTooltip(), this.wireMaterialTooltipEvent(!1)), this.setBarColor(), 'tooltip' !== args && this.updateConfig();
                 }, Slider.prototype.changeRtl = function() {
                     if (this.enableRtl || 'Range' !== this.type || (this.value = [
                         this.handleVal2,
@@ -26527,7 +26270,7 @@
                     _super.prototype.destroy.call(this), this.unwireEvents(), window.removeEventListener('resize', this.onresize), (0, ej2_base /* removeClass */ .IV)([
                         this.sliderContainer
                     ], [
-                        slider_classNames.sliderDisabled
+                        slider_classNames_sliderDisabled
                     ]), this.firstHandle.removeAttribute('aria-orientation'), 'Range' === this.type && this.secondHandle.removeAttribute('aria-orientation'), this.sliderContainer.parentNode.insertBefore(this.element, this.sliderContainer), (0, ej2_base /* detach */ .og)(this.sliderContainer), this.tooltip.isVisible && this.tooltipObj.destroy(), this.element.innerHTML = '';
                 }, /**
      * Calls internally if any of the property value is changed.
@@ -26572,7 +26315,7 @@
                                 this.changeOrientation();
                                 break;
                             case 'ticks':
-                                (0, ej2_base /* isNullOrUndefined */ .le)(this.sliderContainer.querySelector('.' + slider_classNames.scale)) || ((0, ej2_base /* detach */ .og)(this.ul), Array.prototype.forEach.call(this.sliderContainer.classList, function(className) {
+                                (0, ej2_base /* isNullOrUndefined */ .le)(this.sliderContainer.querySelector('.' + slider_classNames_scale)) || ((0, ej2_base /* detach */ .og)(this.ul), Array.prototype.forEach.call(this.sliderContainer.classList, function(className) {
                                     className.match(/e-scale-/) && _this.sliderContainer.classList.remove(className);
                                 })), 'None' !== this.ticks.placement && (this.renderScale(), this.setZindex());
                                 break;
@@ -26580,7 +26323,7 @@
                                 this.showButtons && this.buttonTitle();
                                 break;
                             case 'showButtons':
-                                newProp.showButtons ? (this.setButtons(), this.reposition(), this.enabled && !this.readonly && this.wireButtonEvt(!1)) : this.firstBtn && this.secondBtn && (this.sliderContainer.removeChild(this.firstBtn), this.sliderContainer.removeChild(this.secondBtn), this.sliderContainer.classList.remove(slider_classNames.sliderButtonClass), this.firstBtn = void 0, this.secondBtn = void 0, this.reposition());
+                                newProp.showButtons ? (this.setButtons(), this.reposition(), this.enabled && !this.readonly && this.wireButtonEvt(!1)) : this.firstBtn && this.secondBtn && (this.sliderContainer.removeChild(this.firstBtn), this.sliderContainer.removeChild(this.secondBtn), this.sliderContainer.classList.remove(slider_classNames_sliderButtonClass), this.firstBtn = void 0, this.secondBtn = void 0, this.reposition());
                                 break;
                             case 'enabled':
                                 this.setEnabled();
@@ -26599,10 +26342,10 @@
                         }
                     }
                 }, Slider.prototype.setReadOnly = function() {
-                    this.readonly ? (this.unwireEvents(), this.sliderContainer.classList.add(slider_classNames.readonly)) : (this.wireEvents(), this.sliderContainer.classList.remove(slider_classNames.readonly));
+                    this.readonly ? (this.unwireEvents(), this.sliderContainer.classList.add(slider_classNames_readonly)) : (this.wireEvents(), this.sliderContainer.classList.remove(slider_classNames_readonly));
                 }, Slider.prototype.setMinMaxValue = function() {
                     var _this = this;
-                    this.setValue(), this.refreshTooltip(this.tooltipTarget), !(0, ej2_base /* isNullOrUndefined */ .le)(this.sliderContainer.querySelector('.' + slider_classNames.scale)) && this.ul && ((0, ej2_base /* detach */ .og)(this.ul), Array.prototype.forEach.call(this.sliderContainer.classList, function(className) {
+                    this.setValue(), this.refreshTooltip(this.tooltipTarget), !(0, ej2_base /* isNullOrUndefined */ .le)(this.sliderContainer.querySelector('.' + slider_classNames_scale)) && this.ul && ((0, ej2_base /* detach */ .og)(this.ul), Array.prototype.forEach.call(this.sliderContainer.classList, function(className) {
                         className.match(/e-scale-/) && _this.sliderContainer.classList.remove(className);
                     })), 'None' !== this.ticks.placement && (this.renderScale(), this.setZindex());
                 }, Slider.prototype.setZindex = function() {
@@ -26614,7 +26357,7 @@
                     for(var i = 0; i < this.colorRange.length; i++)if (!(0, ej2_base /* isNullOrUndefined */ .le)(this.colorRange[i].start) && !(0, ej2_base /* isNullOrUndefined */ .le)(this.colorRange[i].end) && this.colorRange[i].end > this.colorRange[i].start) {
                         this.colorRange[i].start < this.min && (this.colorRange[i].start = this.min), this.colorRange[i].end > this.max && (this.colorRange[i].end = this.max);
                         var startingPosition = this.checkHandlePosition(this.colorRange[i].start), endPosition = this.checkHandlePosition(this.colorRange[i].end), trackContainer = this.createElement('div');
-                        trackContainer.style.backgroundColor = this.colorRange[i].color, trackContainer.style.border = '1px solid ' + this.colorRange[i].color, 'Horizontal' === this.orientation ? (trackClassName = slider_classNames.sliderHorizantalColor, trackPosition = this.enableRtl ? (0, ej2_base /* isNullOrUndefined */ .le)(this.customValues) ? this.checkHandlePosition(this.max) - this.checkHandlePosition(this.colorRange[i].end) : this.checkHandlePosition(this.customValues.length - this.colorRange[i].end - 1) : this.checkHandlePosition(this.colorRange[i].start), trackContainer.style.width = endPosition - startingPosition + 'px', trackContainer.style.left = trackPosition + 'px') : (trackClassName = slider_classNames.sliderVerticalColor, trackPosition = this.checkHandlePosition(this.colorRange[i].start), trackContainer.style.height = endPosition - startingPosition + 'px', trackContainer.style.bottom = trackPosition + 'px'), trackContainer.classList.add(trackClassName), this.sliderTrack.appendChild(trackContainer);
+                        trackContainer.style.backgroundColor = this.colorRange[i].color, trackContainer.style.border = '1px solid ' + this.colorRange[i].color, 'Horizontal' === this.orientation ? (trackClassName = 'e-slider-horizantal-color', trackPosition = this.enableRtl ? (0, ej2_base /* isNullOrUndefined */ .le)(this.customValues) ? this.checkHandlePosition(this.max) - this.checkHandlePosition(this.colorRange[i].end) : this.checkHandlePosition(this.customValues.length - this.colorRange[i].end - 1) : this.checkHandlePosition(this.colorRange[i].start), trackContainer.style.width = endPosition - startingPosition + 'px', trackContainer.style.left = trackPosition + 'px') : (trackClassName = 'e-slider-vertical-color', trackPosition = this.checkHandlePosition(this.colorRange[i].start), trackContainer.style.height = endPosition - startingPosition + 'px', trackContainer.style.bottom = trackPosition + 'px'), trackContainer.classList.add(trackClassName), this.sliderTrack.appendChild(trackContainer);
                     }
                 }, /**
      * Gets the component name
@@ -26692,110 +26435,108 @@
                 if ("object" == typeof Reflect && "function" == typeof Reflect.decorate) r = Reflect.decorate(decorators, target, key, desc);
                 else for(var i = decorators.length - 1; i >= 0; i--)(d = decorators[i]) && (r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r);
                 return c > 3 && r && Object.defineProperty(target, key, r), r;
-            }, APPLY = 'e-apply', CANCEL = 'e-cancel', CURRENT = 'e-current', CTRLBTN = 'e-ctrl-btn', CTRLSWITCH = 'e-switch-ctrl-btn', DISABLED = 'e-disabled', FORMATSWITCH = 'e-value-switch-btn', HANDLER = 'e-handler', HEX = 'e-hex', HIDEHEX = 'e-hide-hex-value', HIDEOPACITY = 'e-hide-opacity', HIDERGBA = 'e-hide-switchable-value', HIDEVALUE = 'e-hide-value', HIDEVALUESWITCH = 'e-hide-valueswitcher', HSVAREA = 'e-hsv-color', HSVCONTAINER = 'e-hsv-container', INPUTWRAPPER = 'e-selected-value', MODESWITCH = 'e-mode-switch-btn', NOCOLOR = 'e-nocolor-item', OPACITY = 'e-opacity-value', PALETTES = 'e-palette', PALETTECONTENT = 'e-color-palette', PICKERCONTENT = 'e-color-picker', PREVIEW = 'e-preview-container', PREVIOUS = 'e-previous', SHOWVALUE = 'e-show-value', SELECT = 'e-selected', SPLITPREVIEW = 'e-split-preview', TILE = 'e-tile', presets = {
-                default: [
-                    '#000000',
-                    '#f44336',
-                    '#e91e63',
-                    '#9c27b0',
-                    '#673ab7',
-                    '#2196f3',
-                    '#03a9f4',
-                    '#00bcd4',
-                    '#009688',
-                    '#ffeb3b',
-                    '#ffffff',
-                    '#ffebee',
-                    '#fce4ec',
-                    '#f3e5f5',
-                    '#ede7f6',
-                    '#e3f2fd',
-                    '#e1f5fe',
-                    '#e0f7fa',
-                    '#e0f2f1',
-                    '#fffde7',
-                    '#f2f2f2',
-                    '#ffcdd2',
-                    '#f8bbd0',
-                    '#e1bee7',
-                    '#d1c4e9',
-                    '#bbdefb',
-                    '#b3e5fc',
-                    '#b2ebf2',
-                    '#b2dfdb',
-                    '#fff9c4',
-                    '#e6e6e6',
-                    '#ef9a9a',
-                    '#f48fb1',
-                    '#ce93d8',
-                    '#b39ddb',
-                    '#90caf9',
-                    '#81d4fa',
-                    '#80deea',
-                    '#80cbc4',
-                    '#fff59d',
-                    '#cccccc',
-                    '#e57373',
-                    '#f06292',
-                    '#ba68c8',
-                    '#9575cd',
-                    '#64b5f6',
-                    '#4fc3f7',
-                    '#4dd0e1',
-                    '#4db6ac',
-                    '#fff176',
-                    '#b3b3b3',
-                    '#ef5350',
-                    '#ec407a',
-                    '#ab47bc',
-                    '#7e57c2',
-                    '#42a5f5',
-                    '#29b6f6',
-                    '#26c6da',
-                    '#26a69a',
-                    '#ffee58',
-                    '#999999',
-                    '#e53935',
-                    '#d81b60',
-                    '#8e24aa',
-                    '#5e35b1',
-                    '#1e88e5',
-                    '#039be5',
-                    '#00acc1',
-                    '#00897b',
-                    '#fdd835',
-                    '#808080',
-                    '#d32f2f',
-                    '#c2185b',
-                    '#7b1fa2',
-                    '#512da8',
-                    '#1976d2',
-                    '#0288d1',
-                    '#0097a7',
-                    '#00796b',
-                    '#fbc02d',
-                    '#666666',
-                    '#c62828',
-                    '#ad1457',
-                    '#6a1b9a',
-                    '#4527a0',
-                    '#1565c0',
-                    '#0277bd',
-                    '#00838f',
-                    '#00695c',
-                    '#f9a825',
-                    '#4d4d4d',
-                    '#b71c1c',
-                    '#880e4f',
-                    '#4a148c',
-                    '#311b92',
-                    '#0d47a1',
-                    '#01579b',
-                    '#006064',
-                    '#004d40',
-                    '#f57f17'
-                ]
-            }, ColorPicker = /** @class */ function(_super) {
+            }, APPLY = 'e-apply', CANCEL = 'e-cancel', CURRENT = 'e-current', CTRLBTN = 'e-ctrl-btn', CTRLSWITCH = 'e-switch-ctrl-btn', DISABLED = 'e-disabled', FORMATSWITCH = 'e-value-switch-btn', HANDLER = 'e-handler', HEX = 'e-hex', HIDEHEX = 'e-hide-hex-value', HIDEOPACITY = 'e-hide-opacity', HIDERGBA = 'e-hide-switchable-value', HIDEVALUE = 'e-hide-value', HIDEVALUESWITCH = 'e-hide-valueswitcher', HSVAREA = 'e-hsv-color', HSVCONTAINER = 'e-hsv-container', INPUTWRAPPER = 'e-selected-value', MODESWITCH = 'e-mode-switch-btn', NOCOLOR = 'e-nocolor-item', OPACITY = 'e-opacity-value', PALETTES = 'e-palette', PALETTECONTENT = 'e-color-palette', PICKERCONTENT = 'e-color-picker', PREVIEW = 'e-preview-container', PREVIOUS = 'e-previous', SHOWVALUE = 'e-show-value', SELECT = 'e-selected', SPLITPREVIEW = 'e-split-preview', TILE = 'e-tile', presets_default = [
+                '#000000',
+                '#f44336',
+                '#e91e63',
+                '#9c27b0',
+                '#673ab7',
+                '#2196f3',
+                '#03a9f4',
+                '#00bcd4',
+                '#009688',
+                '#ffeb3b',
+                '#ffffff',
+                '#ffebee',
+                '#fce4ec',
+                '#f3e5f5',
+                '#ede7f6',
+                '#e3f2fd',
+                '#e1f5fe',
+                '#e0f7fa',
+                '#e0f2f1',
+                '#fffde7',
+                '#f2f2f2',
+                '#ffcdd2',
+                '#f8bbd0',
+                '#e1bee7',
+                '#d1c4e9',
+                '#bbdefb',
+                '#b3e5fc',
+                '#b2ebf2',
+                '#b2dfdb',
+                '#fff9c4',
+                '#e6e6e6',
+                '#ef9a9a',
+                '#f48fb1',
+                '#ce93d8',
+                '#b39ddb',
+                '#90caf9',
+                '#81d4fa',
+                '#80deea',
+                '#80cbc4',
+                '#fff59d',
+                '#cccccc',
+                '#e57373',
+                '#f06292',
+                '#ba68c8',
+                '#9575cd',
+                '#64b5f6',
+                '#4fc3f7',
+                '#4dd0e1',
+                '#4db6ac',
+                '#fff176',
+                '#b3b3b3',
+                '#ef5350',
+                '#ec407a',
+                '#ab47bc',
+                '#7e57c2',
+                '#42a5f5',
+                '#29b6f6',
+                '#26c6da',
+                '#26a69a',
+                '#ffee58',
+                '#999999',
+                '#e53935',
+                '#d81b60',
+                '#8e24aa',
+                '#5e35b1',
+                '#1e88e5',
+                '#039be5',
+                '#00acc1',
+                '#00897b',
+                '#fdd835',
+                '#808080',
+                '#d32f2f',
+                '#c2185b',
+                '#7b1fa2',
+                '#512da8',
+                '#1976d2',
+                '#0288d1',
+                '#0097a7',
+                '#00796b',
+                '#fbc02d',
+                '#666666',
+                '#c62828',
+                '#ad1457',
+                '#6a1b9a',
+                '#4527a0',
+                '#1565c0',
+                '#0277bd',
+                '#00838f',
+                '#00695c',
+                '#f9a825',
+                '#4d4d4d',
+                '#b71c1c',
+                '#880e4f',
+                '#4a148c',
+                '#311b92',
+                '#0d47a1',
+                '#01579b',
+                '#006064',
+                '#004d40',
+                '#f57f17'
+            ], ColorPicker = /** @class */ function(_super) {
                 function ColorPicker(options, element) {
                     return _super.call(this, options, element) || this;
                 }
@@ -26945,7 +26686,7 @@
                         (0, ej2_base /* selectAll */ .td)('.e-row', paletteGroup).length > 10 && (0, ej2_base /* addClass */ .cn)([
                             paletteGroup
                         ], 'e-palette-group');
-                    } else this.appendPalette(presets.default, 'default');
+                    } else this.appendPalette(presets_default, 'default');
                     'Palette' === this.mode && !this.modeSwitcher && this.noColor && this.setNoColor();
                     var width = parseInt(getComputedStyle(this.container).borderBottomWidth, 10);
                     this.container.style.width = (0, ej2_base /* formatUnit */ .Ac)(this.container.children[0].offsetWidth + width + width), this.rgb = this.hexToRgb(this.roundValue(this.value)), this.hsv = this.rgbToHsv.apply(this, this.rgb);
@@ -27236,7 +26977,7 @@
                     this.updatePreview(rgba), this.updateInput(cValue), this.triggerEvent(cValue, pValue, rgba, isKey);
                 }, ColorPicker.prototype.updateInput = function(value) {
                     var wrapper = this.getWrapper();
-                    wrapper.classList.contains(HIDEVALUE) || (wrapper.classList.contains(HIDEHEX) || input /* Input.setValue */ .I.setValue(value.substr(0, 7), (0, ej2_base /* select */ .Ys)('.' + HEX, this.container)), wrapper.classList.contains(HIDERGBA) || (this.isRgb ? this.updateValue(this.rgb, !1) : this.updateValue(this.hsv, !1)));
+                    !wrapper.classList.contains(HIDEVALUE) && (wrapper.classList.contains(HIDEHEX) || input /* Input.setValue */ .I.setValue(value.substr(0, 7), (0, ej2_base /* select */ .Ys)('.' + HEX, this.container)), wrapper.classList.contains(HIDERGBA) || (this.isRgb ? this.updateValue(this.rgb, !1) : this.updateValue(this.hsv, !1)));
                 }, ColorPicker.prototype.updatePreview = function(value) {
                     this.enableOpacity && this.updateOpacitySliderBg(), (0, ej2_base /* select */ .Ys)('.e-tip-transparent', this.tooltipEle).style.backgroundColor = value, (0, ej2_base /* select */ .Ys)('.' + PREVIEW + ' .' + CURRENT, this.container).style.backgroundColor = value, (0, ej2_base /* select */ .Ys)('.' + PREVIEW + ' .' + PREVIOUS, this.container).style.backgroundColor = this.convertToRgbString(this.hexToRgb(this.value));
                 }, ColorPicker.prototype.getDragHandler = function() {
@@ -27591,7 +27332,7 @@
                     else {
                         switch(max){
                             case r:
-                                h = (g - b) / d + (g < b ? 6 : 0);
+                                h = (g - b) / d + 6 * (g < b);
                                 break;
                             case g:
                                 h = (b - r) / d + 2;
@@ -27994,7 +27735,7 @@
 
      */ ToolbarRenderer.prototype.renderColorPickerDropDown = function(args, item, colorPicker, defaultColor) {
                     var range, _this = this, proxy = this, css = classes /* CLS_RTE_ELEMENTS */ .i7 + ' ' + classes /* CLS_TB_BTN */ .Fs + (this.parent.inlineMode ? ' ' + classes /* CLS_INLINE_DROPDOWN */ .ZV : '');
-                    css += ' ' + ('backgroundcolor' === item ? classes /* CLS_BACKGROUND_COLOR_DROPDOWN */ .Z8 : classes /* CLS_FONT_COLOR_DROPDOWN */ .UQ) + ' ' + this.parent.cssClass;
+                    css += ' ' + ('backgroundcolor' === item ? classes /* CLS_BACKGROUND_COLOR_DROPDOWN */ .Z8 : classes /* CLS_FONT_COLOR_DROPDOWN */ .UQ), css += ' ' + this.parent.cssClass;
                     var content = proxy.parent.createElement('span', {
                         className: classes /* CLS_COLOR_CONTENT */ .uN
                     }), inlineEle = proxy.parent.createElement('span', {
@@ -29812,7 +29553,13 @@
  * @returns {string} - returns the string value
  * @hidden
  */ function getDropDownValue(items, value, type, returnType) {
-                for(var data, result, k = 0; k < items.length; k++)if ('value' === type && items[k].value.toLocaleLowerCase() === value.toLocaleLowerCase() || 'text' === type && items[k].text.toLocaleLowerCase() === value.toLocaleLowerCase() || 'subCommand' === type && items[k].subCommand.toLocaleLowerCase() === value.toLocaleLowerCase()) {
+                for(var data, result, k = 0; k < items.length; k++)if ('value' === type && items[k].value.toLocaleLowerCase() === value.toLocaleLowerCase()) {
+                    data = items[k];
+                    break;
+                } else if ('text' === type && items[k].text.toLocaleLowerCase() === value.toLocaleLowerCase()) {
+                    data = items[k];
+                    break;
+                } else if ('subCommand' === type && items[k].subCommand.toLocaleLowerCase() === value.toLocaleLowerCase()) {
                     data = items[k];
                     break;
                 }
@@ -29914,19 +29661,25 @@
  * @returns {number} - returns the number
  * @hidden
  */ function getTBarItemsIndex(items, toolbarItems) {
-                for(var itemsIndex = [], i = 0; i < items.length; i++)for(var j = 0; j < toolbarItems.length; j++)if ('Separator' !== toolbarItems[j].type) {
-                    if ('OrderedList' === items[i] && 'OL' === toolbarItems[j].subCommand || 'UnorderedList' === items[i] && 'UL' === toolbarItems[j].subCommand || 'InsertCode' === items[i] && 'Pre' === toolbarItems[j].subCommand || 'FileManager' === items[i] && 'File' === toolbarItems[j].subCommand) {
-                        itemsIndex.push(j);
-                        break;
-                    }
-                    if ('object' == typeof items[i] && 'Custom' === items[i].command) {
-                        itemsIndex.push(i);
-                        break;
-                    }
-                    if (items[i] === toolbarItems[j].subCommand) {
-                        itemsIndex.push(j);
-                        break;
-                    }
+                for(var itemsIndex = [], i = 0; i < items.length; i++)for(var j = 0; j < toolbarItems.length; j++)if ('Separator' === toolbarItems[j].type) continue;
+                else if ('OrderedList' === items[i] && 'OL' === toolbarItems[j].subCommand) {
+                    itemsIndex.push(j);
+                    break;
+                } else if ('UnorderedList' === items[i] && 'UL' === toolbarItems[j].subCommand) {
+                    itemsIndex.push(j);
+                    break;
+                } else if ('InsertCode' === items[i] && 'Pre' === toolbarItems[j].subCommand) {
+                    itemsIndex.push(j);
+                    break;
+                } else if ('FileManager' === items[i] && 'File' === toolbarItems[j].subCommand) {
+                    itemsIndex.push(j);
+                    break;
+                } else if ('object' == typeof items[i] && 'Custom' === items[i].command) {
+                    itemsIndex.push(i);
+                    break;
+                } else if (items[i] === toolbarItems[j].subCommand) {
+                    itemsIndex.push(j);
+                    break;
                 }
                 return itemsIndex;
             }
@@ -30011,7 +29764,7 @@
  * @returns {boolean} - returns the boolean value
  * @hidden
  */ function isEditableValueEmpty(value) {
-                return '<p><br></p>' === value || '&lt;p&gt;&lt;br&gt;&lt;/p&gt;' === value || '<div><br></div>' === value || '&lt;div&gt;&lt;br&gt;&lt;/div&gt;' === value || '<br>' === value || '&lt;br&gt;' === value || '' === value;
+                return '<p><br></p>' === value || '&lt;p&gt;&lt;br&gt;&lt;/p&gt;' === value || '<div><br></div>' === value || '&lt;div&gt;&lt;br&gt;&lt;/div&gt;' === value || '<br>' === value || '&lt;br&gt;' === value || '' === value || !1;
             }
             /**
  * @param {string} value - specifies the string value
@@ -31824,15 +31577,13 @@
                 }, CheckBox.prototype.updateVueArrayModel = function(init) {
                     if (this.isVue && 'object' == typeof this.value) {
                         var value = this.element.value;
-                        if (value && this.value) {
-                            if (init) for(var i = 0; i < this.value.length; i++)value === this.value[i] && (this.changeState('check'), this.setProperties({
-                                checked: !0
-                            }, !0));
-                            else {
-                                var index = this.value.indexOf(value);
-                                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                                return this.checked ? index < 0 && this.value.push(value) : index > -1 && this.value.splice(index, 1), this.value;
-                            }
+                        if (value && this.value) if (init) for(var i = 0; i < this.value.length; i++)value === this.value[i] && (this.changeState('check'), this.setProperties({
+                            checked: !0
+                        }, !0));
+                        else {
+                            var index = this.value.indexOf(value);
+                            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                            return this.checked ? index < 0 && this.value.push(value) : index > -1 && this.value.splice(index, 1), this.value;
                         }
                     }
                     return this.validCheck ? this.element.checked : !this.element.checked;
@@ -31941,10 +31692,7 @@
                 }, Link.prototype.hideLinkQuickToolbar = function() {
                     this.quickToolObj && this.quickToolObj.linkQTBar && document.body.contains(this.quickToolObj.linkQTBar.element) && this.quickToolObj.linkQTBar.hidePopup();
                 }, Link.prototype.editAreaClickHandler = function(e) {
-                    if (this.parent.readonly) {
-                        this.hideLinkQuickToolbar();
-                        return;
-                    }
+                    if (this.parent.readonly) return void this.hideLinkQuickToolbar();
                     var args = e.args, showOnRightClick = this.parent.quickToolbarSettings.showOnRightClick;
                     if (2 !== args.which && (!showOnRightClick || 1 !== args.which) && (showOnRightClick || 3 !== args.which) && 'HTML' === this.parent.editorMode && this.parent.quickToolbarModule && this.parent.quickToolbarModule.linkQTBar) {
                         this.quickToolObj = this.parent.quickToolbarModule;
@@ -32016,16 +31764,10 @@
                     this.dialogObj && (this.dialogObj.destroy(), (0, ej2_base /* detach */ .og)(this.dialogObj.element), this.dialogObj = null);
                 }, Link.prototype.linkDialog = function(e, inputDetails) {
                     var _this = this;
-                    if (this.dialogObj) {
-                        this.dialogObj.hide({
-                            returnValue: !0
-                        });
-                        return;
-                    }
-                    if ('HTML' === this.parent.editorMode && e.selectParent.length > 0 && !(0, ej2_base /* isNullOrUndefined */ .le)(e.selectParent[0].classList) && e.selectParent[0].classList.contains('e-rte-anchor') && (0, ej2_base /* isNullOrUndefined */ .le)(inputDetails)) {
-                        this.editLink(e);
-                        return;
-                    }
+                    if (this.dialogObj) return void this.dialogObj.hide({
+                        returnValue: !0
+                    });
+                    if ('HTML' === this.parent.editorMode && e.selectParent.length > 0 && !(0, ej2_base /* isNullOrUndefined */ .le)(e.selectParent[0].classList) && e.selectParent[0].classList.contains('e-rte-anchor') && (0, ej2_base /* isNullOrUndefined */ .le)(inputDetails)) return void this.editLink(e);
                     var linkWebAddress = this.i10n.getConstant('linkWebUrl'), linkDisplayText = this.i10n.getConstant('linkText'), linkTooltip = this.i10n.getConstant('linkTooltipLabel'), urlPlace = this.i10n.getConstant('linkurl'), textPlace = this.i10n.getConstant('textPlaceholder'), title = this.i10n.getConstant('linkTitle'), linkDialogEle = this.parent.createElement('div', {
                         className: "e-rte-link-dialog " + this.parent.cssClass,
                         id: this.rteID + '_rtelink'
@@ -32094,10 +31836,7 @@
                     var linkTitle, argsValue, linkEle = this.selfLink.dialogObj.element, linkUrl = linkEle.querySelector('.e-rte-linkurl').value, linkText = linkEle.querySelector('.e-rte-linkText').value;
                     'HTML' === this.selfLink.parent.editorMode && (linkTitle = linkEle.querySelector('.e-rte-linkTitle').value);
                     var target = this.selfLink.checkBoxObj.checked ? '_blank' : null;
-                    if ('' === linkUrl) {
-                        this.selfLink.checkUrl(!0);
-                        return;
-                    }
+                    if ('' === linkUrl) return void this.selfLink.checkUrl(!0);
                     this.selfLink.isUrl(linkUrl) ? this.selfLink.checkUrl(!1) : (linkText = '' === linkText ? linkUrl : linkText, this.selfLink.parent.enableAutoUrl || (linkUrl = linkUrl.indexOf('http') > -1 ? linkUrl : 'http://' + linkUrl));
                     var proxy = this.selfLink;
                     if ('HTML' === proxy.parent.editorMode && (0, ej2_base /* isNullOrUndefined */ .le)((0, ej2_base /* closest */ .oq)(this.selection.range.startContainer.parentNode, "[id='" + proxy.parent.contentModule.getPanel().id + "']"))) {
@@ -32364,21 +32103,19 @@
                     return nodes.length > 1 || nodes.length && 0 === range.startOffset && 0 === range.endOffset ? (this.ensureInsideTableList = !0, !0) : (this.ensureInsideTableList = !1, !1);
                 }, Table.prototype.tabSelection = function(event, selection, ele) {
                     var insideList = this.insideList(selection.range);
-                    if ((37 !== event.keyCode && 39 !== event.keyCode || 3 !== selection.range.startContainer.nodeType) && !insideList) {
-                        if (event.preventDefault(), ele.classList.remove(_base_classes__WEBPACK_IMPORTED_MODULE_3__ /* .CLS_TABLE_SEL */ .HC), event.shiftKey || 37 === event.keyCode) {
-                            var prevElement = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(ele.previousSibling) ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'tr').previousSibling) ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').previousSibling) ? ele : 'td' === (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').previousSibling.nodeName.toLowerCase() ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').previousSibling : ele : (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'tr').previousSibling.childNodes[(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'tr').previousSibling.childNodes.length - 1] : ele.previousSibling;
-                            if (ele === prevElement && 0 === ele.cellIndex && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').tHead) {
-                                var clsTble = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table');
-                                prevElement = clsTble.rows[0].cells[clsTble.rows[0].cells.length - 1];
-                            }
-                            37 === event.keyCode && ele === prevElement && (prevElement = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').previousSibling), prevElement && (// eslint-disable-next-line
-                            '' !== prevElement.textContent.trim() && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(prevElement, 'td') ? selection.setSelectionNode(this.contentModule.getDocument(), prevElement) : selection.setSelectionText(this.contentModule.getDocument(), prevElement, prevElement, 0, 0));
-                        } else {
-                            var nextElement = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(ele.nextSibling) ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'tr').nextSibling) ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').nextSibling) ? ele : 'td' === (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').nextSibling.nodeName.toLowerCase() ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').nextSibling : ele : (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'tr').nextSibling.childNodes[0] : ele.nextSibling;
-                            ele === nextElement && 'TH' === ele.nodeName && (nextElement = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').rows[1].cells[0]), 39 === event.keyCode && ele === nextElement && (nextElement = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').nextSibling), nextElement && (// eslint-disable-next-line
-                            '' !== nextElement.textContent.trim() && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(nextElement, 'td') ? selection.setSelectionNode(this.contentModule.getDocument(), nextElement) : selection.setSelectionText(this.contentModule.getDocument(), nextElement, nextElement, 0, 0)), ele === nextElement && 39 !== event.keyCode && nextElement && (ele.classList.add(_base_classes__WEBPACK_IMPORTED_MODULE_3__ /* .CLS_TABLE_SEL */ .HC), this.addRow(selection, event, !0), ele.classList.remove(_base_classes__WEBPACK_IMPORTED_MODULE_3__ /* .CLS_TABLE_SEL */ .HC), // eslint-disable-next-line
-                            '' !== (nextElement = nextElement.parentElement.nextSibling ? nextElement.parentElement.nextSibling.firstChild : nextElement.parentElement.firstChild).textContent.trim() && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(nextElement, 'td') ? selection.setSelectionNode(this.contentModule.getDocument(), nextElement) : selection.setSelectionText(this.contentModule.getDocument(), nextElement, nextElement, 0, 0));
+                    if ((37 !== event.keyCode && 39 !== event.keyCode || 3 !== selection.range.startContainer.nodeType) && !insideList) if (event.preventDefault(), ele.classList.remove(_base_classes__WEBPACK_IMPORTED_MODULE_3__ /* .CLS_TABLE_SEL */ .HC), event.shiftKey || 37 === event.keyCode) {
+                        var prevElement = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(ele.previousSibling) ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'tr').previousSibling) ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').previousSibling) ? ele : 'td' === (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').previousSibling.nodeName.toLowerCase() ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').previousSibling : ele : (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'tr').previousSibling.childNodes[(0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'tr').previousSibling.childNodes.length - 1] : ele.previousSibling;
+                        if (ele === prevElement && 0 === ele.cellIndex && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').tHead) {
+                            var clsTble = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table');
+                            prevElement = clsTble.rows[0].cells[clsTble.rows[0].cells.length - 1];
                         }
+                        37 === event.keyCode && ele === prevElement && (prevElement = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').previousSibling), prevElement && (// eslint-disable-next-line
+                        '' !== prevElement.textContent.trim() && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(prevElement, 'td') ? selection.setSelectionNode(this.contentModule.getDocument(), prevElement) : selection.setSelectionText(this.contentModule.getDocument(), prevElement, prevElement, 0, 0));
+                    } else {
+                        var nextElement = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)(ele.nextSibling) ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'tr').nextSibling) ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .isNullOrUndefined */ .le)((0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').nextSibling) ? ele : 'td' === (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').nextSibling.nodeName.toLowerCase() ? (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').nextSibling : ele : (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'tr').nextSibling.childNodes[0] : ele.nextSibling;
+                        ele === nextElement && 'TH' === ele.nodeName && (nextElement = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').rows[1].cells[0]), 39 === event.keyCode && ele === nextElement && (nextElement = (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(ele, 'table').nextSibling), nextElement && (// eslint-disable-next-line
+                        '' !== nextElement.textContent.trim() && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(nextElement, 'td') ? selection.setSelectionNode(this.contentModule.getDocument(), nextElement) : selection.setSelectionText(this.contentModule.getDocument(), nextElement, nextElement, 0, 0)), ele === nextElement && 39 !== event.keyCode && nextElement && (ele.classList.add(_base_classes__WEBPACK_IMPORTED_MODULE_3__ /* .CLS_TABLE_SEL */ .HC), this.addRow(selection, event, !0), ele.classList.remove(_base_classes__WEBPACK_IMPORTED_MODULE_3__ /* .CLS_TABLE_SEL */ .HC), // eslint-disable-next-line
+                        '' !== (nextElement = nextElement.parentElement.nextSibling ? nextElement.parentElement.nextSibling.firstChild : nextElement.parentElement.firstChild).textContent.trim() && (0, _syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .closest */ .oq)(nextElement, 'td') ? selection.setSelectionNode(this.contentModule.getDocument(), nextElement) : selection.setSelectionText(this.contentModule.getDocument(), nextElement, nextElement, 0, 0));
                     }
                 }, Table.prototype.tableArrowNavigation = function(event, selection, ele) {
                     var selText = selection.range.startContainer;
@@ -32573,7 +32310,7 @@
                                 widthCompare = currentTd.offsetWidth - (currentTd.offsetWidth - currentTd.clientWidth) - 2 * currentTDPad;
                             } else widthCompare = rteWidth;
                             if (_this.resizeBtnStat.column) {
-                                var width = parseFloat(_this.columnEle.offsetWidth.toString()), cellRow = 'TH' === _this.curTable.rows[0].cells[0].nodeName ? 1 : 0, currentTableWidth = parseFloat(_this.curTable.style.width.split('%')[0]), currentColumnCellWidth = parseFloat(_this.curTable.rows[cellRow].cells[_this.colIndex].style.width.split('%')[0]);
+                                var width = parseFloat(_this.columnEle.offsetWidth.toString()), cellRow = +('TH' === _this.curTable.rows[0].cells[0].nodeName), currentTableWidth = parseFloat(_this.curTable.style.width.split('%')[0]), currentColumnCellWidth = parseFloat(_this.curTable.rows[cellRow].cells[_this.colIndex].style.width.split('%')[0]);
                                 if ('first' === _this.currentColumnResize) // Below the value '100' is the 100% width of the parent element.
                                 {
                                     if (mouseX -= 0.75, _this.removeResizeElement(), (0 !== mouseX && 5 < currentColumnCellWidth || mouseX < 0) && currentTableWidth <= 100 && 100 >= _this.convertPixelToPercentage(tableWidth - mouseX, widthCompare)) {
@@ -32664,14 +32401,8 @@
                     this.parent.formatter.process(this.parent, delKey ? cmd : args, args.originalEvent, value), this.contentModule.getEditPanel().focus(), (null === this.parent.inputElement.innerHTML || '' === this.parent.inputElement.innerHTML) && ('DIV' === this.parent.enterKey ? this.contentModule.getEditPanel().innerHTML = '<div><br/></div>' : 'BR' === this.parent.enterKey ? this.contentModule.getEditPanel().innerHTML = '<br/>' : this.contentModule.getEditPanel().innerHTML = '<p><br/></p>'), this.removeResizeElement(), this.hideTableQuickToolbar();
                 }, Table.prototype.renderDlgContent = function(args) {
                     var _this = this;
-                    if (_syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .Browser.isDevice */ .AR.isDevice || this.parent.inlineMode.enable) {
-                        this.insertTableDialog(args);
-                        return;
-                    }
-                    if (this.popupObj) {
-                        this.popupObj.hide();
-                        return;
-                    }
+                    if (_syncfusion_ej2_base__WEBPACK_IMPORTED_MODULE_0__ /* .Browser.isDevice */ .AR.isDevice || this.parent.inlineMode.enable) return void this.insertTableDialog(args);
+                    if (this.popupObj) return void this.popupObj.hide();
                     this.hideTableQuickToolbar();
                     var insertbtn = this.l10n.getConstant('inserttablebtn');
                     this.dlgDiv = this.parent.createElement('div', {
@@ -32850,12 +32581,9 @@
                 }, // eslint-disable-next-line
                 Table.prototype.createDialog = function(args) {
                     var _this = this;
-                    if (this.editdlgObj) {
-                        this.editdlgObj.hide({
-                            returnValue: !0
-                        });
-                        return;
-                    }
+                    if (this.editdlgObj) return void this.editdlgObj.hide({
+                        returnValue: !0
+                    });
                     var tableDialog = this.parent.createElement('div', {
                         className: "e-rte-edit-table " + this.parent.cssClass,
                         id: this.rteID + '_tabledialog'

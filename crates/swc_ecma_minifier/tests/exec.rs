@@ -20,7 +20,7 @@ use swc_ecma_minifier::{
     optimize,
     option::{
         terser::TerserCompressorOptions, CompressOptions, ExtraOptions, MangleOptions,
-        MinifyOptions,
+        ManglePropertiesOptions, MinifyOptions,
     },
 };
 use swc_ecma_parser::{parse_file_as_module, EsSyntax, Syntax};
@@ -98,13 +98,9 @@ fn run(
     config: Option<&str>,
     mangle: Option<MangleOptions>,
 ) -> Option<Program> {
-    let _ = rayon::ThreadPoolBuilder::new()
-        .thread_name(|i| format!("rayon-{}", i + 1))
-        .build_global();
-
     let compress_config = config.map(|config| parse_compressor_config(cm.clone(), config).1);
 
-    let fm = cm.new_source_file(FileName::Anon.into(), input.into());
+    let fm = cm.new_source_file(FileName::Anon.into(), input.to_string());
     let comments = SingleThreadedComments::default();
 
     eprintln!("---- {} -----\n{}", Color::Green.paint("Input"), fm.src);
@@ -239,6 +235,52 @@ fn run_exec_test(input_src: &str, config: &str, skip_mangle: bool) {
         })
         .unwrap();
     }
+}
+
+fn run_mangle_props_exec_test(input_src: &str) {
+    let expected_output = stdout_of(input_src).unwrap();
+
+    eprintln!(
+        "---- {} -----\n{}",
+        Color::Green.paint("Expected"),
+        expected_output
+    );
+
+    testing::run_test2(false, |cm, handler| {
+        let _tracing = span!(Level::ERROR, "mangle-props").entered();
+
+        let output = run(
+            cm.clone(),
+            &handler,
+            input_src,
+            None,
+            Some(MangleOptions {
+                top_level: Some(true),
+                props: Some(ManglePropertiesOptions::default()),
+                ..Default::default()
+            }),
+        );
+
+        let output = output.expect("Parsing in base test should not fail");
+        let output = print(cm, &[&output], true, false);
+
+        eprintln!(
+            "---- {} -----\n{}",
+            Color::Green.paint("Optimized code"),
+            output
+        );
+
+        let actual_output = stdout_of(&output).expect("failed to execute the optimized code");
+        assert_ne!(actual_output, "");
+
+        assert_eq!(
+            DebugUsingDisplay(&actual_output),
+            DebugUsingDisplay(&expected_output)
+        );
+
+        Ok(())
+    })
+    .unwrap();
 }
 
 fn run_default_exec_test(input_src: &str) {
@@ -2744,7 +2786,7 @@ extract({
     b: 4,
 });"#;
     let config = r#"{
-    "pure_getters": true,
+    "pure_getters": false,
     "unused": true
 }"#;
 
@@ -5481,6 +5523,129 @@ fn terser_reduce_vars_issue_3110_3() {
     "properties": true,
     "reduce_vars": true,
     "sequences": true,
+    "side_effects": true,
+    "unused": true
+}"#;
+
+    run_exec_test(src, config, false);
+}
+
+#[test]
+fn terser_reduce_vars_shorthand_proto_null() {
+    let src = r#"(function () {
+    var __proto__ = null;
+    var o = { __proto__ };
+    console.log(
+        Object.getPrototypeOf(o) === Object.prototype,
+        Object.prototype.hasOwnProperty.call(o, "__proto__"),
+        o.__proto__ === null
+    );
+})();"#;
+    let config = r#"{
+    "evaluate": true,
+    "inline": true,
+    "passes": 2,
+    "properties": true,
+    "reduce_vars": true,
+    "side_effects": true,
+    "unused": true
+}"#;
+
+    run_exec_test(src, config, false);
+}
+
+#[test]
+fn terser_reduce_vars_shorthand_proto_object() {
+    let src = r#"(function () {
+    var __proto__ = { marker: 1 };
+    var o = { __proto__ };
+    console.log(
+        Object.getPrototypeOf(o) === Object.prototype,
+        Object.prototype.hasOwnProperty.call(o, "__proto__"),
+        o.__proto__ === __proto__,
+        o.__proto__.marker
+    );
+})();"#;
+    let config = r#"{
+    "evaluate": true,
+    "inline": true,
+    "passes": 2,
+    "properties": true,
+    "reduce_vars": true,
+    "side_effects": true,
+    "unused": true
+}"#;
+
+    run_exec_test(src, config, false);
+}
+
+#[test]
+fn terser_reduce_vars_shorthand_member_not_reexecuted_in_loop() {
+    let src = r#"(function () {
+    var calls = 0;
+    var source = {
+        get value() {
+            calls++;
+            return { n: calls };
+        },
+    };
+    var value = source.value;
+    for (var i = 0; i < 3; i++) {
+        console.log(({ value }).value.n);
+    }
+    console.log(calls);
+})();"#;
+    let config = r#"{
+    "evaluate": true,
+    "inline": true,
+    "passes": 2,
+    "properties": true,
+    "reduce_vars": true,
+    "side_effects": true,
+    "unused": true
+}"#;
+
+    run_exec_test(src, config, false);
+}
+
+#[test]
+fn terser_reduce_vars_shorthand_method_this_not_collapsed() {
+    let src = r#"(function () {
+    var fn = function () {
+        return this.x;
+    };
+    console.log(({ fn, x: "PASS" }).fn());
+})();"#;
+    let config = r#"{
+    "collapse_vars": true,
+    "evaluate": true,
+    "inline": true,
+    "passes": 2,
+    "properties": true,
+    "reduce_vars": true,
+    "side_effects": true,
+    "unsafe": true,
+    "unused": true
+}"#;
+
+    run_exec_test(src, config, false);
+}
+
+#[test]
+fn terser_reduce_vars_shorthand_multi_use_function_identity() {
+    let src = r#"(function () {
+    function foo() {
+        return "PASS";
+    }
+    var o = { foo };
+    console.log(o.foo === foo, o.foo());
+})();"#;
+    let config = r#"{
+    "evaluate": true,
+    "inline": true,
+    "passes": 2,
+    "properties": true,
+    "reduce_vars": true,
     "side_effects": true,
     "unused": true
 }"#;
@@ -8749,6 +8914,127 @@ for (const tmp of test) {
 }
 
 #[test]
+fn issue_11027_many_mangle_props_runtime_collision() {
+    let src = r#"class Base {
+    a = "base-a";
+    b = "base-b";
+    c = "base-c";
+    d = "base-d";
+    e = "base-e";
+    f = "base-f";
+    n = "base-n";
+    r = "base-r";
+    s = "base-s";
+    w = "base-w";
+    x = "base-x";
+    y = "base-y";
+    z = "base-z";
+    E = "base-E";
+}
+Object.defineProperty(Base.prototype, "Q", {
+    get() {
+        return "base-Q:" + this.a + ":" + this.z;
+    }
+});
+class Derived extends Base {
+    fieldAlpha = "derived-alpha";
+    fieldBeta = "derived-beta";
+    fieldGamma = "derived-gamma";
+    fieldDelta = "derived-delta";
+    fieldEpsilon = "derived-epsilon";
+    fieldZeta = "derived-zeta";
+    fieldEta = "derived-eta";
+    fieldTheta = "derived-theta";
+    fieldIota = "derived-iota";
+    fieldKappa = "derived-kappa";
+    fieldLambda = "derived-lambda";
+    fieldMu = "derived-mu";
+    fieldNu = "derived-nu";
+    fieldXi = "derived-xi";
+    fieldOmicron = "derived-omicron";
+    fieldPi = "derived-pi";
+    fieldRho = "derived-rho";
+    fieldSigma = "derived-sigma";
+    fieldTau = "derived-tau";
+    fieldUpsilon = "derived-upsilon";
+    fieldPhi = "derived-phi";
+    fieldChi = "derived-chi";
+    fieldPsi = "derived-psi";
+    fieldOmega = "derived-omega";
+    fieldFinal = "derived-final";
+
+    methodAlpha() {
+        return this.fieldAlpha + ":" + this.fieldBeta;
+    }
+
+    methodBeta() {
+        return this.fieldGamma + ":" + this.fieldDelta;
+    }
+
+    methodGamma() {
+        return this.fieldEpsilon + ":" + this.fieldZeta;
+    }
+
+    methodDelta() {
+        return this.fieldEta + ":" + this.fieldTheta;
+    }
+
+    methodEpsilon() {
+        return this.fieldIota + ":" + this.fieldKappa;
+    }
+
+    methodZeta() {
+        return this.fieldLambda + ":" + this.fieldMu;
+    }
+
+    readQ() {
+        return super.Q + ":" + this.fieldNu;
+    }
+}
+const d = new Derived();
+const baseKeys = ["a", "b", "c", "d", "e", "f", "n", "r", "s", "w", "x", "y", "z", "E", "Q"];
+console.log(baseKeys.map((key) => d[key]).join("|"));
+console.log(
+    d.fieldAlpha,
+    d.fieldBeta,
+    d.fieldGamma,
+    d.fieldDelta,
+    d.fieldEpsilon,
+    d.fieldZeta,
+    d.fieldEta,
+    d.fieldTheta,
+    d.fieldIota,
+    d.fieldKappa,
+    d.fieldLambda,
+    d.fieldMu,
+    d.fieldNu,
+    d.fieldXi,
+    d.fieldOmicron,
+    d.fieldPi,
+    d.fieldRho,
+    d.fieldSigma,
+    d.fieldTau,
+    d.fieldUpsilon,
+    d.fieldPhi,
+    d.fieldChi,
+    d.fieldPsi,
+    d.fieldOmega,
+    d.fieldFinal
+);
+console.log(
+    d.methodAlpha(),
+    d.methodBeta(),
+    d.methodGamma(),
+    d.methodDelta(),
+    d.methodEpsilon(),
+    d.methodZeta(),
+    d.readQ()
+);"#;
+
+    run_mangle_props_exec_test(src);
+}
+
+#[test]
 fn terser_issue_747_dont_reuse_prop() {
     let src = r#""aaaaaaaaaabbbbb";
 var obj = {};
@@ -11374,4 +11660,647 @@ fn isssue_9498() {
         console.log(y.a);
 ",
     )
+}
+
+#[test]
+fn issue_10095() {
+    run_exec_test(
+        "
+    function module() {
+        function a() {
+            if (a.isInit) return;
+            a.isInit = true;
+
+            console.log('run')
+        }
+
+        function b() {
+            a();
+
+            console.log('after');
+        }
+
+        b();
+        b();
+    }
+
+    module();
+    ",
+        r#"{
+        "defaults": true,
+        "arguments": false,
+        "arrows": false,
+        "booleans": false,
+        "booleans_as_integers": false,
+        "collapse_vars": false,
+        "comparisons": false,
+        "computed_props": false,
+        "conditionals": false,
+        "dead_code": false,
+        "directives": false,
+        "drop_console": false,
+        "drop_debugger": false,
+        "evaluate": false,
+        "expression": false,
+        "hoist_funs": false,
+        "hoist_props": false,
+        "hoist_vars": false,
+        "if_return": false,
+        "join_vars": false,
+        "keep_classnames": false,
+        "keep_fargs": false,
+        "keep_fnames": false,
+        "keep_infinity": false,
+        "loops": false,
+        "negate_iife": false,
+        "properties": false,
+        "reduce_funcs": false,
+        "reduce_vars": false,
+        "side_effects": false,
+        "switches": false,
+        "typeofs": false,
+        "unsafe": false,
+        "unsafe_arrows": false,
+        "unsafe_comps": false,
+        "unsafe_Function": false,
+        "unsafe_math": false,
+        "unsafe_symbols": false,
+        "unsafe_methods": false,
+        "unsafe_proto": false,
+        "unsafe_regexp": false,
+        "unsafe_undefined": false,
+        "unused": false,
+        "const_to_let": false,
+        "pristine_globals": false
+      }"#,
+        false,
+    );
+}
+
+#[test]
+fn issue_10133() {
+    run_default_exec_test(
+        "
+    function splineCurve(firstPoint, middlePoint, afterPoint) {
+        const previous = firstPoint.skip ? middlePoint : firstPoint;
+        const current = middlePoint;
+        const next = afterPoint;
+        return {
+                x: current.x - (next.x - previous.x),
+                y: current.y - (next.y - previous.y)
+        };
+    }
+
+    function _updateBezierControlPoints(points) {
+        let i, ilen, point, controlPoints;
+            let prev = points[0];
+            for(i = 0, ilen = points.length; i < ilen; ++i){
+                point = points[i];
+                controlPoints = splineCurve(prev, point, points[Math.min(i + 1, ilen - 1)]);
+                point.cp1x = controlPoints.x;
+                prev = point;
+            }
+    }
+    let points = [{x: 1, y: 2}, {x: 2, y: 1}, {x: 3, y: 2}];
+    _updateBezierControlPoints(points);
+    console.log(points)
+    ",
+    );
+}
+
+#[test]
+fn issue_10435() {
+    run_default_exec_test(
+        "
+    const errorMessages = {
+  '001': () => '[React Flow]: Seems like you have not used zustand \
+         provider as an ancestor. Help: https://reactflow.dev/error#001',
+  '010': () => 'Handle: No node id found. Make sure to only use a Handle inside a custom Node.',
+};
+
+const ERR1 = errorMessages['001']();
+
+const ERR2 = errorMessages['010']();
+
+function printError() {
+  console.log(ERR1);
+  console.log(ERR2)
+}
+
+printError()
+
+        ",
+    );
+}
+
+#[test]
+fn issue_11517() {
+    // Test that the minifier does not incorrectly merge if statements with
+    // similar structures but different string literal values in local variables.
+    run_default_exec_test(
+        "
+const buildErrorLog = ({
+  errorType,
+  mode,
+}) => {
+  const isModeA = mode === 'modeA';
+  const isModeB = mode === 'modeB';
+
+  if (errorType === 'A_ERROR') {
+    const message = 'A error occured';
+    return { fieldX: true, fieldY: true, message };
+  }
+  if (errorType === 'B_ERROR') {
+    const message = 'B error occured';
+    return { fieldX: true, fieldY: true, message };
+  }
+  return { fieldX: true, fieldY: true, message: 'Invalid configuration' };
+};
+
+const resultA = buildErrorLog({ errorType: 'A_ERROR', mode: 'modeA' });
+const resultB = buildErrorLog({ errorType: 'B_ERROR', mode: 'modeB' });
+console.log('A:', resultA.message);
+console.log('B:', resultB.message);
+        ",
+    );
+}
+
+/// Test that `unsafe_hoist_static_method_alias` properly handles variable name
+/// collisions. When a variable already exists with the same name as the alias
+/// would have, the hoisting should either use a different name or skip
+/// hoisting.
+#[test]
+fn issue_9741_collision() {
+    let src = r#"
+const _Object_assign = [];
+_Object_assign.push(1);
+_Object_assign.push(2);
+_Object_assign.push(3);
+
+const a = {};
+Object.assign(a, {});
+const b = {};
+Object.assign(b, {});
+Object.assign(b, a);
+
+console.log(_Object_assign.length);
+console.log(_Object_assign[0]);
+console.log(Array.isArray(_Object_assign));
+"#;
+    let config = r#"{
+    "defaults": true,
+    "toplevel": true,
+    "unsafe_hoist_static_method_alias": true
+}"#;
+
+    run_exec_test(src, config, false);
+}
+
+/// Test that `unsafe_hoist_global_objects_alias` hoists global constructors
+/// like Map, Set, Promise, etc. to local variables when used multiple times.
+#[test]
+fn issue_9741_global_objects() {
+    let src = r#"
+const a = new Map();
+a.set('foo', 1);
+const b = new Map();
+b.set('bar', 2);
+const c = new Map();
+c.set('baz', 3);
+
+console.log(a.get('foo'));
+console.log(b.get('bar'));
+console.log(c.get('baz'));
+console.log(a instanceof Map);
+console.log(b instanceof Map);
+"#;
+    let config = r#"{
+    "defaults": true,
+    "toplevel": true,
+    "unsafe_hoist_global_objects_alias": true
+}"#;
+
+    run_exec_test(src, config, false);
+}
+
+/// Test that `unsafe_hoist_global_objects_alias` handles variable name
+/// collisions properly.
+#[test]
+fn issue_9741_global_objects_collision() {
+    let src = r#"
+const _Map = "not a map";
+
+const a = new Map();
+a.set('foo', 1);
+const b = new Map();
+b.set('bar', 2);
+
+console.log(_Map);
+console.log(a.get('foo'));
+console.log(b.get('bar'));
+console.log(a instanceof Map);
+"#;
+    let config = r#"{
+    "defaults": true,
+    "toplevel": true,
+    "unsafe_hoist_global_objects_alias": true
+}"#;
+
+    run_exec_test(src, config, false);
+}
+
+/// Test that `unsafe_hoist_static_method_alias` handles function name
+/// collisions properly when a user-defined function has the same name
+/// as the generated alias.
+#[test]
+fn issue_9741_collision_function() {
+    let src = r#"
+function _Object_assign(a, b) {
+    return a + b;
+}
+console.log(_Object_assign(4, 2));
+
+const a = {};
+Object.assign(a, { x: 1 });
+const b = {};
+Object.assign(b, { y: 2 });
+console.log(a.x);
+console.log(b.y);
+"#;
+    let config = r#"{
+    "defaults": true,
+    "toplevel": true,
+    "unsafe_hoist_static_method_alias": true
+}"#;
+
+    run_exec_test(src, config, false);
+}
+
+/// Test both options working together.
+#[test]
+fn issue_9741_combined() {
+    let src = r#"
+const a = new Map();
+const b = new Map();
+const c = new Map();
+
+const obj1 = {};
+Object.assign(obj1, {});
+const obj2 = {};
+Object.assign(obj2, {});
+Object.assign(obj2, obj1);
+
+console.log(a instanceof Map);
+console.log(b instanceof Map);
+console.log(c instanceof Map);
+console.log(typeof obj1);
+console.log(typeof obj2);
+"#;
+    let config = r#"{
+    "defaults": true,
+    "toplevel": true,
+    "unsafe_hoist_static_method_alias": true,
+    "unsafe_hoist_global_objects_alias": true
+}"#;
+
+    run_exec_test(src, config, false);
+}
+
+/// Issue #11517: Minifier incorrectly merges if statements with different local
+/// variable values. Original reproduction case.
+#[test]
+fn issue_11517_original() {
+    let src = r#"
+const buildErrorLog = ({
+  errorType,
+  mode,
+}) => {
+  const isModeA = mode === 'modeA';
+  const isModeB = mode === 'modeB';
+
+  if (errorType === 'A_ERROR') {
+    const message = 'A error occurred';
+    return { fieldX: true, fieldY: true, message };
+  }
+  if (errorType === 'B_ERROR') {
+    const message = 'B error occurred';
+    return { fieldX: true, fieldY: true, message };
+  }
+  return { fieldX: true, fieldY: true, message: 'Invalid configuration' };
+};
+
+console.log(buildErrorLog({ errorType: 'A_ERROR', mode: 'modeA' }).message);
+console.log(buildErrorLog({ errorType: 'B_ERROR', mode: 'modeB' }).message);
+console.log(buildErrorLog({ errorType: 'C_ERROR', mode: 'modeA' }).message);
+"#;
+    run_default_exec_test(src);
+}
+
+/// Issue #11517: Simplified version with two if statements having different
+/// const values.
+#[test]
+fn issue_11517_simplified() {
+    let src = r#"
+function test(type) {
+  if (type === 'A') {
+    const msg = 'Message A';
+    return msg;
+  }
+  if (type === 'B') {
+    const msg = 'Message B';
+    return msg;
+  }
+  return 'Default';
+}
+
+console.log(test('A'));
+console.log(test('B'));
+console.log(test('C'));
+"#;
+    run_default_exec_test(src);
+}
+
+/// Issue #11517: Correct merging when values are the same.
+/// This tests that merging still works correctly when it should.
+#[test]
+fn issue_11517_same_values_should_merge() {
+    let src = r#"
+function test(x) {
+  if (x === 'A') {
+    const msg = 'same';
+    return msg;
+  }
+  if (x === 'B') {
+    const msg = 'same';
+    return msg;
+  }
+  return 'default';
+}
+
+console.log(test('A'));
+console.log(test('B'));
+console.log(test('C'));
+"#;
+    run_default_exec_test(src);
+}
+
+/// Issue #11517: Using let instead of const for local variable.
+#[test]
+fn issue_11517_let_variable() {
+    let src = r#"
+function process(x) {
+  if (x === 'foo') {
+    let val = 100;
+    return val + 1;
+  }
+  if (x === 'bar') {
+    let val = 200;
+    return val + 1;
+  }
+  return 0;
+}
+
+console.log(process('foo'));
+console.log(process('bar'));
+console.log(process('baz'));
+"#;
+    run_default_exec_test(src);
+}
+
+/// Issue #11517: Using var instead of const for local variable.
+#[test]
+fn issue_11517_var_variable() {
+    let src = r#"
+function compute(n) {
+  if (n === 1) {
+    var x = 'first';
+    return x;
+  }
+  if (n === 2) {
+    var x = 'second';
+    return x;
+  }
+  return 'other';
+}
+
+console.log(compute(1));
+console.log(compute(2));
+console.log(compute(3));
+"#;
+    run_default_exec_test(src);
+}
+
+/// Issue #11517: With continue statements instead of return.
+#[test]
+fn issue_11517_continue() {
+    let src = r#"
+function sumWithLabels(arr) {
+  let result = [];
+  for (let i = 0; i < arr.length; i++) {
+    const val = arr[i];
+    if (val === 1) {
+      const label = 'one';
+      result.push(label);
+      continue;
+    }
+    if (val === 2) {
+      const label = 'two';
+      result.push(label);
+      continue;
+    }
+    result.push('other');
+  }
+  return result;
+}
+
+console.log(sumWithLabels([1, 2, 3, 1, 2]).join(','));
+"#;
+    run_default_exec_test(src);
+}
+
+/// Issue #11517: With break statements.
+#[test]
+fn issue_11517_break() {
+    let src = r#"
+function findLabel(arr) {
+  let found = 'none';
+  for (let i = 0; i < arr.length; i++) {
+    if (arr[i] === 'x') {
+      const label = 'found x';
+      found = label;
+      break;
+    }
+    if (arr[i] === 'y') {
+      const label = 'found y';
+      found = label;
+      break;
+    }
+  }
+  return found;
+}
+
+console.log(findLabel(['a', 'b', 'x', 'y']));
+console.log(findLabel(['a', 'y', 'x']));
+console.log(findLabel(['a', 'b', 'c']));
+"#;
+    run_default_exec_test(src);
+}
+
+/// Issue #11517: With throw statements.
+#[test]
+fn issue_11517_throw() {
+    let src = r#"
+function validate(type) {
+  try {
+    if (type === 'invalid1') {
+      const err = 'Error type 1';
+      throw new Error(err);
+    }
+    if (type === 'invalid2') {
+      const err = 'Error type 2';
+      throw new Error(err);
+    }
+    return 'valid';
+  } catch (e) {
+    return e.message;
+  }
+}
+
+console.log(validate('invalid1'));
+console.log(validate('invalid2'));
+console.log(validate('valid'));
+"#;
+    run_default_exec_test(src);
+}
+
+/// Issue #11517: Class method.
+#[test]
+fn issue_11517_class_method() {
+    let src = r#"
+class Handler {
+  process(type) {
+    if (type === 'alpha') {
+      const code = 'A';
+      return code;
+    }
+    if (type === 'beta') {
+      const code = 'B';
+      return code;
+    }
+    return 'X';
+  }
+}
+
+const h = new Handler();
+console.log(h.process('alpha'));
+console.log(h.process('beta'));
+console.log(h.process('gamma'));
+"#;
+    run_default_exec_test(src);
+}
+
+/// Issue #11517: With closure returning function that uses local variable.
+#[test]
+fn issue_11517_closure() {
+    let src = r#"
+function createHandler(type) {
+  if (type === 'A') {
+    const prefix = 'handler-a:';
+    return (x) => prefix + x;
+  }
+  if (type === 'B') {
+    const prefix = 'handler-b:';
+    return (x) => prefix + x;
+  }
+  return (x) => 'default:' + x;
+}
+
+const hA = createHandler('A');
+const hB = createHandler('B');
+const hC = createHandler('C');
+
+console.log(hA('test'));
+console.log(hB('test'));
+console.log(hC('test'));
+"#;
+    run_default_exec_test(src);
+}
+
+/// Issue #11517: Real-world HTTP status pattern with multiple branches.
+#[test]
+fn issue_11517_http_status() {
+    let src = r#"
+function getStatusMessage(status) {
+  if (status === 200) {
+    const message = 'OK';
+    return { status, message, success: true };
+  }
+  if (status === 201) {
+    const message = 'Created';
+    return { status, message, success: true };
+  }
+  if (status === 400) {
+    const message = 'Bad Request';
+    return { status, message, success: true };
+  }
+  if (status === 404) {
+    const message = 'Not Found';
+    return { status, message, success: true };
+  }
+  if (status === 500) {
+    const message = 'Internal Server Error';
+    return { status, message, success: true };
+  }
+  return { status, message: 'Unknown', success: false };
+}
+
+console.log(getStatusMessage(200).message);
+console.log(getStatusMessage(201).message);
+console.log(getStatusMessage(400).message);
+console.log(getStatusMessage(404).message);
+console.log(getStatusMessage(500).message);
+console.log(getStatusMessage(999).message);
+"#;
+    run_default_exec_test(src);
+}
+
+#[test]
+fn object_freeze_spread_computed_registration() {
+    let src = r#"
+const Inner = /*#__PURE__*/ Object.freeze({
+  FocalTweet: "FocalTweet"
+});
+const Outer = /*#__PURE__*/ Object.freeze({
+  ...Inner,
+  Tweet: "Tweet"
+});
+const handlers = {
+  [Outer.Tweet]: "tweetHandler",
+  [Outer.FocalTweet]: "focalTweetHandler"
+};
+
+console.log(Outer.FocalTweet);
+console.log(handlers.FocalTweet);
+console.log(Object.prototype.hasOwnProperty.call(handlers, "undefined"));
+"#;
+    let config = r#"{
+        "defaults": true,
+        "toplevel": true,
+        "passes": 3
+    }"#;
+
+    run_exec_test(src, config, false);
+}
+
+#[test]
+fn object_spread_proto_key_is_not_flattened() {
+    let src = r#"
+const proto = { poisoned: true };
+const out = { ...{ __proto__: proto } };
+
+console.log(Object.getPrototypeOf(out) === Object.prototype);
+console.log(out.poisoned);
+"#;
+
+    run_default_exec_test(src);
 }

@@ -1,14 +1,4 @@
 {
-  "124": [
-    {
-      "kind": "Block",
-      "span": {
-        "start": 83,
-        "end": 123
-      },
-      "text": "/* Invalid, more than one space */"
-    }
-  ],
   "65": [
     {
       "kind": "Block",
@@ -17,6 +7,16 @@
         "end": 64
       },
       "text": "/* Invalid, wrong quoting style used */"
+    }
+  ],
+  "124": [
+    {
+      "kind": "Block",
+      "span": {
+        "start": 83,
+        "end": 123
+      },
+      "text": "/* Invalid, more than one space */"
     }
   ],
   "212": [

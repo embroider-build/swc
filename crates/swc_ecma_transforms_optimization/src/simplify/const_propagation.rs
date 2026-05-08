@@ -1,6 +1,7 @@
 #![allow(clippy::borrowed_box)]
 
-use swc_common::{collections::AHashMap, util::take::Take};
+use rustc_hash::FxHashMap;
+use swc_common::util::take::Take;
 use swc_ecma_ast::*;
 use swc_ecma_visit::{noop_visit_mut_type, visit_mut_pass, VisitMut, VisitMutWith};
 
@@ -17,7 +18,7 @@ struct ConstPropagation<'a> {
 struct Scope<'a> {
     parent: Option<&'a Scope<'a>>,
     /// Stores only inlinable constant variables.
-    vars: AHashMap<Id, Box<Expr>>,
+    vars: FxHashMap<Id, Box<Expr>>,
 }
 
 impl<'a> Scope<'a> {
@@ -47,6 +48,8 @@ impl VisitMut for ConstPropagation<'_> {
         let id = match &n.orig {
             ModuleExportName::Ident(ident) => ident.to_id(),
             ModuleExportName::Str(..) => return,
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         };
         if let Some(expr) = self.scope.find_var(&id) {
             if let Expr::Ident(v) = &**expr {
@@ -67,8 +70,12 @@ impl VisitMut for ConstPropagation<'_> {
                     }
                 }
                 ModuleExportName::Str(..) => {}
+                #[cfg(swc_ast_unknown)]
+                _ => panic!("unable to access unknown nodes"),
             },
             Some(ModuleExportName::Str(..)) => {}
+            #[cfg(swc_ast_unknown)]
+            Some(_) => panic!("unable to access unknown nodes"),
             None => {}
         }
     }

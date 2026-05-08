@@ -156,6 +156,8 @@ impl VisitMut for Fixer<'_> {
         let lhs_expr = match &mut expr.left {
             AssignTarget::Simple(e) => Some(e),
             AssignTarget::Pat(..) => None,
+            #[cfg(swc_ast_unknown)]
+            _ => None,
         };
 
         if let Some(e) = lhs_expr
@@ -203,6 +205,8 @@ impl VisitMut for Fixer<'_> {
                     }));
                 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 
@@ -213,9 +217,11 @@ impl VisitMut for Fixer<'_> {
         self.ctx = old;
 
         match &*expr.arg {
-            Expr::Cond(..) | Expr::Assign(..) | Expr::Bin(..) | Expr::Yield(..) => {
-                self.wrap(&mut expr.arg)
-            }
+            Expr::Cond(..)
+            | Expr::Assign(..)
+            | Expr::Bin(..)
+            | Expr::Yield(..)
+            | Expr::Arrow(..) => self.wrap(&mut expr.arg),
             _ => {}
         }
     }
@@ -293,12 +299,11 @@ impl VisitMut for Fixer<'_> {
 
             // While simplifying, (1 + x) * Nan becomes `1 + x * Nan`.
             // But it should be `(1 + x) * Nan`
-            Expr::Bin(BinExpr { op: op_of_lhs, .. }) => {
+            Expr::Bin(BinExpr { op: op_of_lhs, .. })
                 if op_of_lhs.precedence() < expr.op.precedence()
-                    || (op_of_lhs.precedence() == expr.op.precedence() && expr.op == op!("**"))
-                {
-                    self.wrap(&mut expr.left);
-                }
+                    || (op_of_lhs.precedence() == expr.op.precedence() && expr.op == op!("**")) =>
+            {
+                self.wrap(&mut expr.left);
             }
 
             Expr::Unary(UnaryExpr {
@@ -535,14 +540,12 @@ impl VisitMut for Fixer<'_> {
         node.visit_mut_children_with(self);
 
         if will_eat_else_token(&node.cons) {
-            node.cons = Box::new(
-                BlockStmt {
-                    span: node.cons.span(),
-                    stmts: vec![*node.cons.take()],
-                    ..Default::default()
-                }
-                .into(),
-            );
+            *node.cons = BlockStmt {
+                span: node.cons.span(),
+                stmts: vec![*node.cons.take()],
+                ..Default::default()
+            }
+            .into();
         }
     }
 
@@ -621,7 +624,8 @@ impl VisitMut for Fixer<'_> {
             | Expr::Assign(..)
             | Expr::Seq(..)
             | Expr::Unary(..)
-            | Expr::Lit(..) => self.wrap(&mut node.callee),
+            | Expr::Lit(..)
+            | Expr::OptChain(..) => self.wrap(&mut node.callee),
             _ => {}
         }
         self.ctx = ctx;
@@ -719,6 +723,9 @@ impl VisitMut for Fixer<'_> {
         e.visit_mut_children_with(self);
 
         match &*e.tag {
+            Expr::Object(..) if self.ctx == Context::Default => {
+                self.wrap(&mut e.tag);
+            }
             Expr::OptChain(..)
             | Expr::Arrow(..)
             | Expr::Cond(..)
@@ -921,6 +928,18 @@ impl Fixer<'_> {
                                 callee: Callee::Expr(callee_expr),
                                 ..
                             }) if callee_expr.is_fn_expr() => self.wrap(callee_expr),
+                            // Also handle when the call is inside a binary expression
+                            Expr::Bin(BinExpr { left, .. }) => {
+                                if let Expr::Call(CallExpr {
+                                    callee: Callee::Expr(callee_expr),
+                                    ..
+                                }) = &mut **left
+                                {
+                                    if callee_expr.is_fn_expr() {
+                                        self.wrap(callee_expr)
+                                    }
+                                }
+                            }
                             _ => (),
                         }
                     }
@@ -943,10 +962,10 @@ impl Fixer<'_> {
                     | Expr::Arrow(..)
                     | Expr::Yield(..) => self.wrap(&mut expr.test),
 
-                    Expr::Object(..) | Expr::Fn(..) | Expr::Class(..) => {
-                        if self.ctx == Context::Default {
-                            self.wrap(&mut expr.test)
-                        }
+                    Expr::Object(..) | Expr::Fn(..) | Expr::Class(..)
+                        if self.ctx == Context::Default =>
+                    {
+                        self.wrap(&mut expr.test)
                     }
                     _ => {}
                 };
@@ -1802,4 +1821,24 @@ var store = global[SHARED] || (global[SHARED] = {});
     identical!(issue_5417, "console.log(a ?? b ?? c)");
 
     identical!(bin_and_unary, "console.log(a++ && b--)");
+
+    test_fixer!(
+        issue_11322,
+        "((function () { })() && a, b)",
+        "(function () { })() && a, b"
+    );
+
+    test_fixer!(
+        issue_11322_simple,
+        "(function () { })() && a",
+        "(function () { })() && a"
+    );
+
+    test_fixer!(
+        issue_11322_stmt,
+        "(function () { })() && a;",
+        "(function () { })() && a;"
+    );
+
+    identical!(issue_11612, "r = new (XE?.default)({ ...e });");
 }

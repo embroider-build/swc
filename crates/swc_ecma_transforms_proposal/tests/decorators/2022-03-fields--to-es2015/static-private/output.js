@@ -1,10 +1,9 @@
-var _init_a, _init_b;
+var _init_a, _init_b, _initStatic;
 const dec = ()=>{};
 class Foo {
 }
-var __ = {
-    writable: true,
-    value: { e: [_init_a, _init_b] } = _apply_decs_2203_r(Foo, [
+(()=>{
+    ({ e: [_init_a, _init_b, _initStatic] } = _apply_decs_2203_r(Foo, [
         [
             dec,
             5,
@@ -27,8 +26,9 @@ var __ = {
                 _class_static_private_field_spec_set(this, Foo, _b, value);
             }
         ]
-    ], [])
-};
+    ], []));
+    _initStatic(Foo);
+})();
 var _a = {
     writable: true,
     value: _init_a(Foo)

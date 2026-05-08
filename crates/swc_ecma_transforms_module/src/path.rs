@@ -10,7 +10,7 @@ use std::{
 use anyhow::{anyhow, Context, Error};
 use path_clean::PathClean;
 use pathdiff::diff_paths;
-use swc_atoms::JsWord;
+use swc_atoms::Atom;
 use swc_common::{FileName, Mark, Span, SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_loader::resolve::{Resolution, Resolve};
@@ -28,11 +28,11 @@ pub enum Resolver {
 }
 
 impl Resolver {
-    pub(crate) fn resolve(&self, src: JsWord) -> JsWord {
+    pub(crate) fn resolve(&self, src: Atom) -> Atom {
         match self {
             Self::Real { resolver, base } => resolver
                 .resolve_import(base, &src)
-                .with_context(|| format!("failed to resolve import `{}`", src))
+                .with_context(|| format!("failed to resolve import `{src}`"))
                 .unwrap(),
             Self::Default => src,
         }
@@ -41,7 +41,7 @@ impl Resolver {
     pub(crate) fn make_require_call(
         &self,
         unresolved_mark: Mark,
-        src: JsWord,
+        src: Atom,
         src_span: Span,
     ) -> Expr {
         let src = self.resolve(src);
@@ -56,7 +56,7 @@ impl Resolver {
             args: vec![Lit::Str(Str {
                 span: src_span,
                 raw: None,
-                value: src,
+                value: src.into(),
             })
             .as_arg()],
             ..Default::default()
@@ -69,7 +69,7 @@ pub trait ImportResolver {
     /// Resolves `target` as a string usable by the modules pass.
     ///
     /// The returned string will be used as a module specifier.
-    fn resolve_import(&self, base: &FileName, module_specifier: &str) -> Result<JsWord, Error>;
+    fn resolve_import(&self, base: &FileName, module_specifier: &str) -> Result<Atom, Error>;
 }
 
 /// [ImportResolver] implementation which just uses original source.
@@ -77,7 +77,7 @@ pub trait ImportResolver {
 pub struct NoopImportResolver;
 
 impl ImportResolver for NoopImportResolver {
-    fn resolve_import(&self, _: &FileName, module_specifier: &str) -> Result<JsWord, Error> {
+    fn resolve_import(&self, _: &FileName, module_specifier: &str) -> Result<Atom, Error> {
         Ok(module_specifier.into())
     }
 }
@@ -94,35 +94,41 @@ where
 {
     resolver: R,
     config: Config,
+    preserve_symlinks: bool,
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Config {
     pub base_dir: Option<PathBuf>,
     pub resolve_fully: bool,
+    pub file_extension: String,
+}
+
+impl Default for Config {
+    fn default() -> Config {
+        Config {
+            file_extension: crate::util::Config::default_js_ext(),
+            resolve_fully: bool::default(),
+            base_dir: Option::default(),
+        }
+    }
 }
 
 impl<R> NodeImportResolver<R>
 where
     R: Resolve,
 {
-    #[deprecated(note = "Use `with_config`")]
-    pub fn new(resolver: R) -> Self {
-        Self::with_config(resolver, Default::default())
-    }
-
-    #[deprecated(note = "Use `with_config`")]
-    pub fn with_base_dir(resolver: R, base_dir: Option<PathBuf>) -> Self {
-        Self::with_config(
-            resolver,
-            Config {
-                base_dir,
-                ..Default::default()
-            },
-        )
-    }
-
     pub fn with_config(resolver: R, config: Config) -> Self {
+        Self::with_config_inner(resolver, config, false)
+    }
+
+    /// Creates a resolver that preserves symlink paths when rewriting module
+    /// specifiers.
+    pub fn with_config_preserving_symlinks(resolver: R, config: Config) -> Self {
+        Self::with_config_inner(resolver, config, true)
+    }
+
+    fn with_config_inner(resolver: R, config: Config, preserve_symlinks: bool) -> Self {
         #[cfg(not(all(target_arch = "wasm32", not(target_os = "wasi"))))]
         if let Some(base_dir) = &config.base_dir {
             assert!(
@@ -139,7 +145,11 @@ where
             );
         }
 
-        Self { resolver, config }
+        Self {
+            resolver,
+            config,
+            preserve_symlinks,
+        }
     }
 }
 
@@ -147,7 +157,7 @@ impl<R> NodeImportResolver<R>
 where
     R: Resolve,
 {
-    fn to_specifier(&self, mut target_path: PathBuf, orig_filename: Option<&str>) -> JsWord {
+    fn to_specifier(&self, mut target_path: PathBuf, orig_filename: Option<&str>) -> Atom {
         debug!(
             "Creating a specifier for `{}` with original filename `{:?}`",
             target_path.display(),
@@ -162,13 +172,13 @@ where
             };
 
             let is_resolved_as_non_js = if let Some(ext) = target_path.extension() {
-                ext != "js"
+                ext.to_string_lossy() != self.config.file_extension
             } else {
                 false
             };
 
             let is_resolved_as_js = if let Some(ext) = target_path.extension() {
-                ext == "js"
+                ext.to_string_lossy() == self.config.file_extension
             } else {
                 false
             };
@@ -191,30 +201,39 @@ where
                 // Resolved: `./foo/index.js`
 
                 if self.config.resolve_fully {
-                    target_path.set_file_name("index.js");
+                    target_path.set_file_name(format!("index.{}", self.config.file_extension));
                 } else {
                     target_path.set_file_name("index");
                 }
-            } else if is_resolved_as_index && is_resolved_as_js && orig_filename != "index.js" {
+            } else if is_resolved_as_index
+                && is_resolved_as_js
+                && orig_filename != format!("index.{}", self.config.file_extension)
+            {
                 // Import: `./foo`
                 // Resolved: `./foo/index.js`
 
                 target_path.pop();
             } else if is_resolved_as_non_js && self.config.resolve_fully && file_stem_matches {
-                target_path.set_extension("js");
+                target_path.set_extension(self.config.file_extension.clone());
             } else if !is_resolved_as_js && !is_resolved_as_index && !is_exact {
                 target_path.set_file_name(orig_filename);
             } else if is_resolved_as_non_js && is_exact {
                 if let Some(ext) = Path::new(orig_filename).extension() {
                     target_path.set_extension(ext);
                 } else {
-                    target_path.set_extension("js");
+                    target_path.set_extension(self.config.file_extension.clone());
                 }
             } else if self.config.resolve_fully && is_resolved_as_non_js {
-                target_path.set_extension("js");
+                target_path.set_extension(self.config.file_extension.clone());
             } else if is_resolved_as_non_js && is_resolved_as_index {
                 if orig_filename == "index" {
                     target_path.set_extension("");
+                } else if Path::new(orig_filename).file_stem()
+                    == Some(std::ffi::OsStr::new("index"))
+                {
+                    // User explicitly imported an index file with extension
+                    // (e.g. "./plugins/index.js"), so preserve it.
+                    target_path.set_file_name(orig_filename);
                 } else {
                     target_path.pop();
                 }
@@ -230,7 +249,7 @@ where
         }
     }
 
-    fn try_resolve_import(&self, base: &FileName, module_specifier: &str) -> Result<JsWord, Error> {
+    fn try_resolve_import(&self, base: &FileName, module_specifier: &str) -> Result<Atom, Error> {
         let _tracing = if cfg!(debug_assertions) {
             Some(
                 tracing::span!(
@@ -245,7 +264,7 @@ where
             None
         };
 
-        let orig_slug = module_specifier.split('/').last();
+        let orig_slug = module_specifier.split('/').next_back();
 
         let target = self.resolver.resolve(base, module_specifier);
         let mut target = match target {
@@ -256,12 +275,14 @@ where
             }
         };
 
-        // Bazel uses symlink
-        //
-        // https://github.com/swc-project/swc/issues/8265
-        if let FileName::Real(resolved) = &target.filename {
-            if let Ok(orig) = canonicalize(resolved) {
-                target.filename = FileName::Real(orig);
+        if !self.preserve_symlinks {
+            // Bazel uses symlink
+            //
+            // https://github.com/swc-project/swc/issues/8265
+            if let FileName::Real(resolved) = &target.filename {
+                if let Ok(orig) = canonicalize(resolved) {
+                    target.filename = FileName::Real(orig);
+                }
             }
         }
 
@@ -286,7 +307,7 @@ where
         let mut base = match base {
             FileName::Real(v) => Cow::Borrowed(
                 v.parent()
-                    .ok_or_else(|| anyhow!("failed to get parent of {:?}", v))?,
+                    .ok_or_else(|| anyhow!("failed to get parent of {v:?}"))?,
             ),
             FileName::Anon => match &self.config.base_dir {
                 Some(v) => Cow::Borrowed(&**v),
@@ -345,10 +366,23 @@ where
         }
 
         let s = rel_path.to_string_lossy();
-        let s = if s.starts_with('.') || s.starts_with('/') || rel_path.is_absolute() {
+        // Check for actual relative path markers (./ or ../) or absolute paths.
+        // Note: We can't just check `starts_with('.')` because that would match
+        // hidden directories like `.foo`, which need a `./` prefix to be valid
+        // relative imports. See https://github.com/swc-project/swc/issues/9551
+        //
+        // On Windows, we also need to check for backslash variants (.\ and ..\).
+        let s = if s.starts_with("./")
+            || s.starts_with("../")
+            || s.starts_with(".\\")
+            || s.starts_with("..\\")
+            || s == ".."
+            || s.starts_with('/')
+            || rel_path.is_absolute()
+        {
             s
         } else {
-            Cow::Owned(format!("./{}", s))
+            Cow::Owned(format!("./{s}"))
         };
 
         Ok(self.to_specifier(s.into_owned().into(), slug))
@@ -359,7 +393,7 @@ impl<R> ImportResolver for NodeImportResolver<R>
 where
     R: Resolve,
 {
-    fn resolve_import(&self, base: &FileName, module_specifier: &str) -> Result<JsWord, Error> {
+    fn resolve_import(&self, base: &FileName, module_specifier: &str) -> Result<Atom, Error> {
         self.try_resolve_import(base, module_specifier)
             .or_else(|err| {
                 warn!("Failed to resolve import: {}", err);
@@ -374,7 +408,7 @@ macro_rules! impl_ref {
         where
             $P: ImportResolver,
         {
-            fn resolve_import(&self, base: &FileName, target: &str) -> Result<JsWord, Error> {
+            fn resolve_import(&self, base: &FileName, target: &str) -> Result<Atom, Error> {
                 (**self).resolve_import(base, target)
             }
         }

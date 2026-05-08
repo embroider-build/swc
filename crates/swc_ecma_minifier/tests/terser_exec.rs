@@ -16,6 +16,7 @@ use serde::Deserialize;
 use swc_common::{
     comments::SingleThreadedComments,
     errors::{Handler, HANDLER},
+    input::SourceFileInput,
     sync::Lrc,
     Mark, SourceMap,
 };
@@ -28,10 +29,7 @@ use swc_ecma_minifier::{
     optimize,
     option::{terser::TerserCompressorOptions, CompressOptions, ExtraOptions, MinifyOptions},
 };
-use swc_ecma_parser::{
-    lexer::{input::SourceFileInput, Lexer},
-    EsSyntax, Parser, Syntax,
-};
+use swc_ecma_parser::{lexer::Lexer, EsSyntax, Parser, Syntax};
 use swc_ecma_transforms_base::{
     fixer::{fixer, paren_remover},
     hygiene::hygiene,
@@ -59,7 +57,10 @@ use testing::assert_eq;
         "blocks/issue_1672_for",
         // parser error
         "arrow/async_identifiers",
-        "async/async_identifiers"
+        "async/async_identifiers",
+        // lint error
+        "sequences/delete_seq_4/input.js",
+        "sequences/delete_seq_5/input.js"
     )
 )]
 fn terser_exec(input: PathBuf) {
@@ -79,7 +80,7 @@ fn terser_exec(input: PathBuf) {
         }
 
         let input_stdout = stdout_of(&input_src, Duration::from_millis(1000)).map_err(|_| {
-            eprintln!("This test is not executable test: \n{}", input_src);
+            eprintln!("This test is not executable test: \n{input_src}");
         })?;
 
         // Formmating
@@ -101,7 +102,7 @@ fn terser_exec(input: PathBuf) {
             })
             .context("This test is not an excutable test")
             .map_err(|err| {
-                eprintln!("{}", err);
+                eprintln!("{err}");
             })?;
 
         if input_stdout != expected_stdout {
@@ -259,7 +260,7 @@ fn run(cm: Lrc<SourceMap>, handler: &Handler, input: &Path, config: &str) -> Opt
 }
 
 fn stdout_of(code: &str, timeout: Duration) -> Result<String, Error> {
-    eprintln!("Executing node with timeout: {:?}", timeout);
+    eprintln!("Executing node with timeout: {timeout:?}");
 
     let code = code.to_string();
     let (sender, receiver) = mpsc::channel();

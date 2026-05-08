@@ -3,11 +3,9 @@ use std::sync::atomic::Ordering;
 use anyhow::Error;
 use indexmap::IndexSet;
 use petgraph::EdgeDirection;
-use swc_common::{
-    collections::{AHashMap, AHashSet, ARandomState},
-    sync::Lock,
-    FileName, SyntaxContext, DUMMY_SP,
-};
+use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
+use swc_atoms::atom;
+use swc_common::{sync::Lock, FileName, SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_transforms_base::helpers::Helpers;
 use swc_ecma_utils::{find_pat_ids, prepend_stmt, private_ident, quote_ident, ExprFactory};
@@ -31,7 +29,7 @@ pub(super) struct Ctx {
     pub graph: ModuleGraph,
     pub cycles: Vec<Vec<ModuleId>>,
     pub transitive_remap: CloneMap<SyntaxContext, SyntaxContext>,
-    pub export_stars_in_wrapped: Lock<AHashMap<ModuleId, Vec<SyntaxContext>>>,
+    pub export_stars_in_wrapped: Lock<FxHashMap<ModuleId, Vec<SyntaxContext>>>,
 }
 
 impl Ctx {
@@ -90,7 +88,7 @@ where
         ctx: &Ctx,
         entry_id: ModuleId,
         entry: &mut Modules,
-        all: &mut AHashMap<ModuleId, Modules>,
+        all: &mut FxHashMap<ModuleId, Modules>,
     ) {
         self.run(|| {
             let injected_ctxt = self.injected_ctxt;
@@ -145,8 +143,8 @@ where
         &self,
         graph: &ModuleGraph,
         start: ModuleId,
-        dejavu: &mut AHashSet<ModuleId>,
-    ) -> IndexSet<ModuleId, ARandomState> {
+        dejavu: &mut FxHashSet<ModuleId>,
+    ) -> IndexSet<ModuleId, FxBuildHasher> {
         let mut set = IndexSet::default();
 
         for dep in graph.neighbors_directed(start, Outgoing) {
@@ -200,7 +198,7 @@ where
             fn add_var(
                 injected_ctxt: SyntaxContext,
                 vars: &mut Vec<(ModuleId, ModuleItem)>,
-                declared: &mut AHashSet<Id>,
+                declared: &mut FxHashSet<Id>,
                 map: &CloneMap<SyntaxContext, SyntaxContext>,
                 module_id: ModuleId,
                 id: Id,
@@ -241,7 +239,7 @@ where
             // If an user import and export from D, the transitive syntax context map
             // contains a entry from D to foo because it's reexported and
             // the variable (reexported from D) exist because it's imported.
-            let mut declared_ids = AHashSet::<_>::default();
+            let mut declared_ids = FxHashSet::<_>::default();
 
             for (_, stmt) in entry.iter() {
                 if let ModuleItem::Stmt(Stmt::Decl(Decl::Var(decl))) = stmt {
@@ -266,6 +264,8 @@ where
                                             ModuleExportName::Str(..) => {
                                                 unimplemented!("module string names unimplemented")
                                             }
+                                            #[cfg(swc_ast_unknown)]
+                                            _ => panic!("unable to access unknown nodes"),
                                         };
 
                                         let id: Id = exported.into();
@@ -288,9 +288,13 @@ where
                                             ModuleExportName::Str(..) => {
                                                 unimplemented!("module string names unimplemented")
                                             }
+                                            #[cfg(swc_ast_unknown)]
+                                            _ => panic!("unable to access unknown nodes"),
                                         }
                                     }
                                 }
+                                #[cfg(swc_ast_unknown)]
+                                _ => panic!("unable to access unknown nodes"),
                             }
                         }
                     }
@@ -323,7 +327,7 @@ where
 
         {
             let mut map = ctx.export_stars_in_wrapped.lock();
-            let mut additional_props = AHashMap::<_, Vec<_>>::default();
+            let mut additional_props = FxHashMap::<_, Vec<_>>::default();
             // Handle `export *` for wrapped modules.
             for (module_id, ctxts) in map.drain() {
                 for (_, stmt) in entry.iter() {
@@ -382,11 +386,15 @@ where
                             Expr::Call(CallExpr { callee, .. }) => match callee {
                                 Callee::Super(_) | Callee::Import(_) => continue,
                                 Callee::Expr(v) => v,
+                                #[cfg(swc_ast_unknown)]
+                                _ => panic!("unable to access unknown nodes"),
                             },
                             Expr::Await(AwaitExpr { arg, .. }) => match &mut **arg {
                                 Expr::Call(CallExpr { callee, .. }) => match callee {
                                     Callee::Super(_) | Callee::Import(_) => continue,
                                     Callee::Expr(v) => v,
+                                    #[cfg(swc_ast_unknown)]
+                                    _ => panic!("unable to access unknown nodes"),
                                 },
                                 _ => continue,
                             },
@@ -448,7 +456,8 @@ where
         entry.retain_mut(|_, item| {
             match item {
                 ModuleItem::ModuleDecl(ModuleDecl::ExportAll(export)) => {
-                    if self.config.external_modules.contains(&export.src.value) {
+                    let src_atom = export.src.value.to_atom_lossy().into_owned();
+                    if self.config.external_modules.contains(&src_atom) {
                         return true;
                     }
 
@@ -457,7 +466,8 @@ where
 
                 ModuleItem::ModuleDecl(ModuleDecl::ExportNamed(export)) => {
                     if let Some(src) = &export.src {
-                        if self.config.external_modules.contains(&src.value) {
+                        let src_atom = src.value.to_atom_lossy().into_owned();
+                        if self.config.external_modules.contains(&src_atom) {
                             return true;
                         }
                     }
@@ -470,7 +480,8 @@ where
                 }
 
                 ModuleItem::ModuleDecl(ModuleDecl::Import(import)) => {
-                    if self.config.external_modules.contains(&import.src.value) {
+                    let src_atom = import.src.value.to_atom_lossy().into_owned();
+                    if self.config.external_modules.contains(&src_atom) {
                         return true;
                     }
 
@@ -520,6 +531,8 @@ where
                             ModuleExportName::Str(..) => {
                                 unimplemented!("module string names unimplemented")
                             }
+                            #[cfg(swc_ast_unknown)]
+                            _ => panic!("unable to access unknown nodes"),
                         };
                         // Default is not exported via `export *`
                         if &*exported.sym == "default" {
@@ -587,8 +600,9 @@ where
             for item in items {
                 match item {
                     ModuleItem::ModuleDecl(ModuleDecl::Import(mut import)) => {
+                        let src_atom = import.src.value.to_atom_lossy().into_owned();
                         // Preserve imports from node.js builtin modules.
-                        if self.config.external_modules.contains(&import.src.value) {
+                        if self.config.external_modules.contains(&src_atom) {
                             new.push(import.into());
                             continue;
                         }
@@ -615,6 +629,8 @@ where
                                             ModuleExportName::Str(..) => {
                                                 unimplemented!("module string names unimplemented")
                                             }
+                                            #[cfg(swc_ast_unknown)]
+                                            _ => panic!("unable to access unknown nodes"),
                                         };
                                         new.push(
                                             imported
@@ -630,7 +646,7 @@ where
                                 ImportSpecifier::Default(s) => {
                                     new.push(
                                         Ident::new(
-                                            "default".into(),
+                                            atom!("default"),
                                             import.span,
                                             ExportMetadata::decode(import.with.as_deref())
                                                 .export_ctxt
@@ -667,6 +683,8 @@ where
                                         );
                                     }
                                 }
+                                #[cfg(swc_ast_unknown)]
+                                _ => panic!("unable to access unknown nodes"),
                             }
                         }
 
@@ -682,7 +700,7 @@ where
                         // To allow using identifier of the declaration in the original module, we
                         // create `const local_default = orig_ident` if original identifier exists.
 
-                        let local = Ident::new("default".into(), DUMMY_SP, info.local_ctxt());
+                        let local = Ident::new(atom!("default"), DUMMY_SP, info.local_ctxt());
 
                         match export.decl {
                             DefaultDecl::Class(c) => {
@@ -756,6 +774,8 @@ where
                                 }
                             }
                             DefaultDecl::TsInterfaceDecl(_) => continue,
+                            #[cfg(swc_ast_unknown)]
+                            _ => panic!("unable to access unknown nodes"),
                         }
 
                         // Create `export { local_default as default }`
@@ -764,7 +784,7 @@ where
                             local.sym
                         );
 
-                        let exported = Ident::new("default".into(), DUMMY_SP, info.export_ctxt());
+                        let exported = Ident::new(atom!("default"), DUMMY_SP, info.export_ctxt());
 
                         new.push(
                             local
@@ -805,7 +825,7 @@ where
 
                         // TODO: Check if we really need this.
 
-                        let local = Ident::new("default".into(), DUMMY_SP, info.local_ctxt());
+                        let local = Ident::new(atom!("default"), DUMMY_SP, info.local_ctxt());
 
                         // Create `const local_default = expr`
                         new.push(
@@ -815,7 +835,7 @@ where
                                 .into_module_item(injected_ctxt, "prepare -> export default expr"),
                         );
 
-                        let exported = Ident::new("default".into(), DUMMY_SP, info.export_ctxt());
+                        let exported = Ident::new(atom!("default"), DUMMY_SP, info.export_ctxt());
 
                         new.push(
                             local
@@ -928,6 +948,8 @@ where
                             | Decl::TsEnum(_)
                             | Decl::TsModule(_)
                             | Decl::Using(..) => continue,
+                            #[cfg(swc_ast_unknown)]
+                            _ => panic!("unable to access unknown nodes"),
                         };
 
                         tracing::trace!(
@@ -997,7 +1019,7 @@ where
                                             CallExpr {
                                                 span: DUMMY_SP,
                                                 callee: Ident::new(
-                                                    "load".into(),
+                                                    atom!("load"),
                                                     DUMMY_SP,
                                                     dep.export_ctxt(),
                                                 )
@@ -1025,6 +1047,8 @@ where
                                                             "module string names unimplemented"
                                                         )
                                                     }
+                                                    #[cfg(swc_ast_unknown)]
+                                                    _ => panic!("unable to access unknown nodes"),
                                                 };
                                             }
                                             ExportSpecifier::Default(s) => {
@@ -1071,6 +1095,8 @@ where
                                                     definite: Default::default(),
                                                 });
                                             }
+                                            #[cfg(swc_ast_unknown)]
+                                            _ => panic!("unable to access unknown nodes"),
                                         }
                                     }
 
@@ -1103,6 +1129,8 @@ where
                                         ModuleExportName::Str(..) => {
                                             unimplemented!("module string names unimplemented")
                                         }
+                                        #[cfg(swc_ast_unknown)]
+                                        _ => panic!("unable to access unknown nodes"),
                                     };
                                     let orig_ident = match orig {
                                         ModuleExportName::Ident(ident) => ident,
@@ -1124,7 +1152,7 @@ where
                                     ..
                                 }) => {
                                     new.push(
-                                        Ident::new("default".into(), DUMMY_SP, info.local_ctxt())
+                                        Ident::new(atom!("default"), DUMMY_SP, info.local_ctxt())
                                             .clone()
                                             .assign_to(exported.clone())
                                             .into_module_item(
@@ -1204,6 +1232,8 @@ where
                                             ModuleExportName::Str(..) => {
                                                 unimplemented!("module string names unimplemented")
                                             }
+                                            #[cfg(swc_ast_unknown)]
+                                            _ => panic!("unable to access unknown nodes"),
                                         }
                                     }
                                 }
@@ -1250,7 +1280,8 @@ where
 
             for stmt in stmts {
                 if let ModuleItem::ModuleDecl(ModuleDecl::Import(import)) = &stmt {
-                    if self.config.external_modules.contains(&import.src.value) {
+                    let src_atom = import.src.value.to_atom_lossy().into_owned();
+                    if self.config.external_modules.contains(&src_atom) {
                         new.push(stmt);
                         continue;
                     }
@@ -1264,6 +1295,8 @@ where
                                         ModuleExportName::Str(..) => {
                                             unimplemented!("module string names unimplemented")
                                         }
+                                        #[cfg(swc_ast_unknown)]
+                                        _ => panic!("unable to access unknown nodes"),
                                     };
                                     vars.push((
                                         module_id,
@@ -1286,7 +1319,7 @@ where
                                     .find(|s| s.0.src.value == import.src.value)
                                 {
                                     let imported =
-                                        Ident::new("default".into(), DUMMY_SP, src.export_ctxt);
+                                        Ident::new(atom!("default"), DUMMY_SP, src.export_ctxt);
                                     vars.push((
                                         module_id,
                                         imported.assign_to(default.local.clone()).into_module_item(
@@ -1319,6 +1352,8 @@ where
                                     continue;
                                 }
                             }
+                            #[cfg(swc_ast_unknown)]
+                            _ => panic!("unable to access unknown nodes"),
                         }
                     }
 

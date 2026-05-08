@@ -1,59 +1,62 @@
 use std::{
-    collections::{HashMap, HashSet},
+    collections::HashMap,
     env,
     path::{Path, PathBuf},
     sync::Arc,
 };
 
-use anyhow::{bail, Context, Error};
+#[cfg(any(
+    feature = "module",
+    all(feature = "plugin", not(target_arch = "wasm32"))
+))]
+use anyhow::Context;
+use anyhow::{bail, Error};
+use bytes_str::BytesStr;
 use dashmap::DashMap;
+use either::Either;
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxBuildHasher, FxHashMap, FxHashSet};
 use serde::{Deserialize, Serialize};
-use swc_atoms::JsWord;
-use swc_cached::regex::CachedRegex;
+use swc_atoms::Atom;
 #[allow(unused)]
 use swc_common::plugin::metadata::TransformPluginMetadataContext;
 use swc_common::{
-    collections::{AHashMap, AHashSet, ARandomState},
     comments::{Comments, SingleThreadedComments},
     errors::Handler,
-    FileName, Mark, SourceMap, SyntaxContext,
+    FileName, Mark, SourceMap,
 };
-pub use swc_compiler_base::{IsModule, SourceMapsConfig};
+pub use swc_compiler_base::SourceMapsConfig;
+pub use swc_config::is_module::IsModule;
 use swc_config::{
-    config_types::{BoolConfig, BoolOr, BoolOrDataConfig, MergingOption},
+    file_pattern::FilePattern,
     merge::Merge,
+    types::{BoolConfig, BoolOr, BoolOrDataConfig, MergingOption},
 };
 use swc_ecma_ast::{noop_pass, EsVersion, Expr, Pass, Program};
 use swc_ecma_ext_transforms::jest;
+#[cfg(feature = "lint")]
 use swc_ecma_lints::{
     config::LintConfig,
-    rules::{lint_to_fold, LintParams},
+    rules::{lint_pass, LintParams},
 };
+#[cfg(feature = "module")]
 use swc_ecma_loader::resolvers::{
     lru::CachingResolver, node::NodeModulesResolver, tsc::TsConfigResolver,
 };
 pub use swc_ecma_minifier::js::*;
 use swc_ecma_minifier::option::terser::TerserTopLevelOptions;
-#[allow(deprecated)]
-pub use swc_ecma_parser::JscTarget;
 use swc_ecma_parser::{parse_file_as_expr, Syntax, TsSyntax};
+use swc_ecma_preset_env::{Caniuse, Feature};
 pub use swc_ecma_transforms::proposals::DecoratorVersion;
 use swc_ecma_transforms::{
-    feature::FeatureFlag,
-    hygiene,
-    modules::{
-        self,
-        path::{ImportResolver, NodeImportResolver, Resolver},
-        rewriter::import_rewriter,
-        EsModuleConfig,
-    },
+    fixer::{fixer, paren_remover},
+    helpers,
+    hygiene::{self, hygiene_with_config},
     optimization::{const_modules, json_parse, simplifier},
     proposals::{
         decorators, explicit_resource_management::explicit_resource_management,
-        export_default_from, import_assertions,
+        export_default_from, import_attributes,
     },
     react::{self, default_pragma, default_pragma_frag},
     resolver,
@@ -61,8 +64,15 @@ use swc_ecma_transforms::{
     Assumptions,
 };
 use swc_ecma_transforms_compat::es2015::regenerator;
+#[cfg(feature = "module")]
+use swc_ecma_transforms_module::{
+    self as modules,
+    path::{ImportResolver, NodeImportResolver, Resolver},
+    rewriter::import_rewriter,
+    util, EsModuleConfig,
+};
 use swc_ecma_transforms_optimization::{
-    inline_globals2,
+    inline_globals,
     simplify::{dce::Config as DceConfig, Config as SimplifyConfig},
     GlobalExprMap,
 };
@@ -71,9 +81,9 @@ use swc_ecma_visit::VisitMutWith;
 use swc_visit::Optional;
 
 pub use crate::plugin::PluginConfig;
-use crate::{
-    builder::PassBuilder, dropped_comments_preserver::dropped_comments_preserver, SwcImportResolver,
-};
+#[cfg(feature = "module")]
+use crate::SwcImportResolver;
+use crate::{builder::MinifierPass, dropped_comments_preserver::dropped_comments_preserver};
 
 #[cfg(test)]
 mod tests;
@@ -95,7 +105,7 @@ pub static PLUGIN_MODULE_CACHE: Lazy<swc_plugin_runner::cache::PluginModuleCache
 #[cfg(feature = "plugin")]
 pub fn init_plugin_module_cache_once(
     enable_fs_cache_store: bool,
-    fs_cache_store_root: &Option<String>,
+    fs_cache_store_root: Option<&str>,
 ) {
     PLUGIN_MODULE_CACHE.inner.get_or_init(|| {
         parking_lot::Mutex::new(swc_plugin_runner::cache::PluginModuleCache::create_inner(
@@ -184,6 +194,38 @@ pub struct Options {
 
     #[serde(default)]
     pub experimental: ExperimentalOptions,
+
+    #[serde(skip, default)]
+    pub runtime_options: RuntimeOptions,
+}
+
+#[derive(Clone, Debug)]
+pub struct RuntimeOptions {
+    #[cfg(feature = "plugin")]
+    pub(crate) plugin_runtime: Option<Arc<dyn swc_plugin_runner::runtime::Runtime>>,
+}
+
+impl RuntimeOptions {
+    #[cfg(feature = "plugin")]
+    pub fn plugin_runtime(
+        mut self,
+        plugin_runtime: Arc<dyn swc_plugin_runner::runtime::Runtime>,
+    ) -> Self {
+        self.plugin_runtime = Some(plugin_runtime);
+        self
+    }
+}
+
+#[allow(clippy::derivable_impls)]
+impl Default for RuntimeOptions {
+    fn default() -> Self {
+        RuntimeOptions {
+            #[cfg(all(feature = "plugin", feature = "plugin_backend_wasmer"))]
+            plugin_runtime: Some(Arc::new(swc_plugin_backend_wasmer::WasmerRuntime)),
+            #[cfg(all(feature = "plugin", not(feature = "plugin_backend_wasmer")))]
+            plugin_runtime: None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default, Deserialize, Merge)]
@@ -221,10 +263,12 @@ impl Options {
         &self,
         cm: &Arc<SourceMap>,
         base: &FileName,
-        parse: impl FnOnce(Syntax, EsVersion, IsModule) -> Result<Program, Error>,
+        parse: impl FnOnce(Syntax, EsVersion, IsModule) -> Result<(Program, bool), Error>,
         output_path: Option<&Path>,
         source_root: Option<String>,
         source_file_name: Option<String>,
+        source_map_ignore_list: Option<FilePattern>,
+
         handler: &Handler,
         config: Option<Config>,
         comments: Option<&'a SingleThreadedComments>,
@@ -258,12 +302,16 @@ impl Options {
             paths,
             minify: mut js_minify,
             experimental,
+            #[cfg(feature = "lint")]
             lints,
             preserve_all_comments,
+            rewrite_relative_import_extensions,
+            preserve_symlinks,
             ..
         } = cfg.jsc;
         let loose = loose.into_bool();
         let preserve_all_comments = preserve_all_comments.into_bool();
+        let preserve_symlinks = preserve_symlinks.into_bool();
         let keep_class_names = keep_class_names.into_bool();
         let external_helpers = external_helpers.into_bool();
 
@@ -286,7 +334,7 @@ impl Options {
 
         let syntax = syntax.unwrap_or_default();
 
-        let mut program = parse(syntax, es_version, is_module)?;
+        let (mut program, flow_strip_script_like_module) = parse(syntax, es_version, is_module)?;
 
         let mut transform = transform.into_inner().unwrap_or_default();
 
@@ -306,7 +354,7 @@ impl Options {
             syntax.typescript(),
         ));
 
-        let default_top_level = program.is_module();
+        let default_top_level = program.is_module() && !flow_strip_script_like_module;
 
         js_minify = js_minify.map(|mut c| {
             let compress = c
@@ -427,8 +475,6 @@ impl Options {
             });
         }
 
-        let regenerator = transform.regenerator.clone();
-
         let preserve_comments = if preserve_all_comments {
             BoolOr::Bool(true)
         } else {
@@ -473,13 +519,13 @@ impl Options {
                 match opts {
                     SimplifyOption::Bool(allow_simplify) => {
                         if *allow_simplify {
-                            Some(simplifier(top_level_mark, Default::default()))
+                            Some(simplifier(unresolved_mark, Default::default()))
                         } else {
                             None
                         }
                     }
                     SimplifyOption::Json(cfg) => Some(simplifier(
-                        top_level_mark,
+                        unresolved_mark,
                         SimplifyConfig {
                             dce: DceConfig {
                                 preserve_imports_with_side_effects: cfg
@@ -501,9 +547,6 @@ impl Options {
                 .map(|opts| opts.build(cm, handler))
         };
 
-        let unresolved_ctxt = SyntaxContext::empty().apply_mark(unresolved_mark);
-        let top_level_ctxt = SyntaxContext::empty().apply_mark(top_level_mark);
-
         let pass = (
             const_modules,
             optimization,
@@ -523,6 +566,7 @@ impl Options {
         };
 
         let verbatim_module_syntax = transform.verbatim_module_syntax.into_bool();
+        let ts_enum_is_mutable = transform.ts_enum_is_mutable.into_bool();
 
         let charset = cfg.jsc.output.charset.or_else(|| {
             if js_minify.as_ref()?.format.ascii_only {
@@ -536,7 +580,7 @@ impl Options {
         // This is because minifier API is compatible with Terser, and Terser
         // defaults to true, while by default swc itself doesn't enable
         // inline_script by default.
-        let codegen_inline_script = js_minify.as_ref().map_or(false, |v| v.format.inline_script);
+        let codegen_inline_script = js_minify.as_ref().is_some_and(|v| v.format.inline_script);
 
         let preamble = if !cfg.jsc.output.preamble.is_empty() {
             cfg.jsc.output.preamble
@@ -548,40 +592,169 @@ impl Options {
         };
 
         let paths = paths.into_iter().collect();
-        let resolver = ModuleConfig::get_resolver(&base_url, paths, base, cfg.module.as_ref());
+        let resolver = ModuleConfig::get_resolver(
+            &base_url,
+            paths,
+            base,
+            cfg.module.as_ref(),
+            preserve_symlinks,
+        );
 
-        let pass = PassBuilder::new(
-            cm,
-            handler,
-            loose,
-            assumptions,
-            top_level_mark,
-            unresolved_mark,
-            pass,
-        )
-        .target(es_version)
-        .skip_helper_injection(self.skip_helper_injection)
-        .minify(js_minify)
-        .hygiene(if self.disable_hygiene {
+        let target = es_version;
+        let inject_helpers = !self.skip_helper_injection;
+        let fixer_enabled = !self.disable_fixer;
+        let hygiene_config = if self.disable_hygiene {
             None
         } else {
             Some(hygiene::Config {
                 keep_class_names,
                 ..Default::default()
             })
-        })
-        .fixer(!self.disable_fixer)
-        .preset_env(cfg.env)
-        .regenerator(regenerator)
-        .finalize(
-            syntax,
-            cfg.module,
-            comments.map(|v| v as _),
-            resolver.clone(),
+        };
+        let env = cfg.env.map(Into::into);
+
+        // Implementing finalize logic directly
+        #[cfg(feature = "module")]
+        let (need_analyzer, import_interop, ignore_dynamic) = match cfg.module {
+            Some(ModuleConfig::CommonJs(ref c)) => (true, c.import_interop(), c.ignore_dynamic),
+            Some(ModuleConfig::Amd(ref c)) => {
+                (true, c.config.import_interop(), c.config.ignore_dynamic)
+            }
+            Some(ModuleConfig::Umd(ref c)) => {
+                (true, c.config.import_interop(), c.config.ignore_dynamic)
+            }
+            Some(ModuleConfig::SystemJs(_))
+            | Some(ModuleConfig::Es6(..))
+            | Some(ModuleConfig::NodeNext(..))
+            | None => (false, true.into(), true),
+        };
+
+        let feature_config = env
+            .as_ref()
+            .map(|e: &swc_ecma_preset_env::EnvConfig| e.get_feature_config());
+
+        // compat
+        let compat_pass = {
+            if let Some(env_config) = env {
+                Either::Left(swc_ecma_preset_env::transform_from_env(
+                    unresolved_mark,
+                    comments.map(|v| v as &dyn Comments),
+                    env_config,
+                    assumptions,
+                ))
+            } else {
+                Either::Right(swc_ecma_preset_env::transform_from_es_version(
+                    unresolved_mark,
+                    comments.map(|v| v as &dyn Comments),
+                    target,
+                    assumptions,
+                    loose,
+                ))
+            }
+        };
+
+        let is_mangler_enabled = js_minify
+            .as_ref()
+            .map(|v| v.mangle.is_obj() || v.mangle.is_true())
+            .unwrap_or(false);
+
+        #[cfg(feature = "module")]
+        let rewrite_import_pass: Box<dyn Pass> = {
+            let swc_import_rewriter: Box<dyn Pass> = match resolver.clone() {
+                Some((base, resolver)) => match cfg.module {
+                    None | Some(ModuleConfig::Es6(..)) | Some(ModuleConfig::NodeNext(..)) => {
+                        Box::new(import_rewriter(base, resolver))
+                    }
+                    _ => Box::new(noop_pass()),
+                },
+                None => Box::new(noop_pass()),
+            };
+
+            let typescript_import_rewriter = Optional::new(
+                modules::rewriter::typescript_import_rewriter(),
+                rewrite_relative_import_extensions.into_bool(),
+            );
+
+            // swc_import_rewriter should be in front of typescript_import_rewriter
+            // because path aliases should be resolved before rewriting relative import
+            // extensions
+            Box::new((swc_import_rewriter, typescript_import_rewriter))
+        };
+        #[cfg(not(feature = "module"))]
+        let rewrite_import_pass: Box<dyn Pass> = {
+            let _ = &resolver;
+            let _ = &cfg.module;
+            let _ = rewrite_relative_import_extensions;
+            Box::new(noop_pass())
+        };
+
+        #[cfg(feature = "module")]
+        let module_pass: Box<dyn Pass> = Box::new((
+            // module / helper
+            Optional::new(
+                modules::import_analysis::import_analyzer(import_interop, ignore_dynamic),
+                need_analyzer,
+            ),
+            // Rewrite import pass should be before inject_helpers pass because typescript import
+            // rewriter may require ts_rewrite_relative_import_extension helper
+            rewrite_import_pass,
+            Optional::new(helpers::inject_helpers(unresolved_mark), inject_helpers),
+            ModuleConfig::build(
+                cm.clone(),
+                comments.map(|v| v as &dyn Comments),
+                cfg.module,
+                unresolved_mark,
+                resolver.clone(),
+                |f| {
+                    feature_config
+                        .as_ref()
+                        .map_or_else(|| target.caniuse(f), |env| env.caniuse(f))
+                },
+            ),
+        ));
+        #[cfg(not(feature = "module"))]
+        let module_pass: Box<dyn Pass> = {
+            let _ = &cfg.module;
+            let _ = &resolver;
+            let _ = &feature_config;
+            Box::new((
+                rewrite_import_pass,
+                Optional::new(helpers::inject_helpers(unresolved_mark), inject_helpers),
+                ModuleConfig::build(
+                    cm.clone(),
+                    comments.map(|v| v as &dyn Comments),
+                    cfg.module,
+                    unresolved_mark,
+                    |_f| true,
+                ),
+            ))
+        };
+
+        let built_pass = (
+            pass,
+            Optional::new(
+                paren_remover(comments.map(|v| v as &dyn Comments)),
+                fixer_enabled,
+            ),
+            compat_pass,
+            module_pass,
+            MinifierPass {
+                options: js_minify,
+                cm: cm.clone(),
+                comments: comments.map(|v| v as &dyn Comments),
+                top_level_mark,
+            },
+            Optional::new(
+                hygiene_with_config(swc_ecma_transforms_base::hygiene::Config {
+                    top_level_mark,
+                    ..hygiene_config.clone().unwrap_or_default()
+                }),
+                hygiene_config.is_some() && !is_mangler_enabled,
+            ),
+            Optional::new(fixer(comments.map(|v| v as &dyn Comments)), fixer_enabled),
         );
 
         let keep_import_attributes = experimental.keep_import_attributes.into_bool();
-        let disable_all_lints = experimental.disable_all_lints.into_bool();
 
         #[cfg(feature = "plugin")]
         let plugin_transforms: Box<dyn Pass> = {
@@ -601,56 +774,29 @@ impl Options {
             // 2. embedded runtime can compiles & execute wasm
             #[cfg(all(feature = "plugin", not(target_arch = "wasm32")))]
             {
-                use swc_ecma_loader::resolve::Resolve;
-
-                let plugin_resolver = CachingResolver::new(
-                    40,
-                    NodeModulesResolver::new(
-                        swc_ecma_loader::TargetEnv::Node,
-                        Default::default(),
-                        true,
-                    ),
-                );
+                let plugin_runtime = self
+                    .runtime_options
+                    .plugin_runtime
+                    .clone()
+                    .context("plugin runtime not configured")?;
 
                 if let Some(plugins) = &experimental.plugins {
-                    // Currently swc enables filesystemcache by default on Embedded runtime plugin
-                    // target.
-                    init_plugin_module_cache_once(true, &experimental.cache_root);
-
-                    let mut inner_cache = PLUGIN_MODULE_CACHE
-                        .inner
-                        .get()
-                        .expect("Cache should be available")
-                        .lock();
-
-                    // Populate cache to the plugin modules if not loaded
-                    for plugin_config in plugins.iter() {
-                        let plugin_name = &plugin_config.0;
-
-                        if !inner_cache.contains(&plugin_name) {
-                            let resolved_path = plugin_resolver.resolve(
-                                &FileName::Real(PathBuf::from(&plugin_name)),
-                                &plugin_name,
-                            )?;
-
-                            let path = if let FileName::Real(value) = resolved_path.filename {
-                                value
-                            } else {
-                                anyhow::bail!("Failed to resolve plugin path: {:?}", resolved_path);
-                            };
-
-                            inner_cache.store_bytes_from_path(&path, &plugin_name)?;
-                            tracing::debug!("Initialized WASM plugin {plugin_name}");
-                        }
-                    }
+                    crate::plugin::compile_wasm_plugins(
+                        experimental.cache_root.as_deref(),
+                        plugins,
+                        &*plugin_runtime,
+                    )
+                    .context("Failed to compile wasm plugins")?;
                 }
 
                 Box::new(crate::plugin::plugins(
                     experimental.plugins,
+                    experimental.plugin_env_vars,
                     transform_metadata_context,
                     comments.cloned(),
                     cm.clone(),
                     unresolved_mark,
+                    plugin_runtime,
                 ))
             }
 
@@ -665,7 +811,7 @@ impl Options {
                      skipped. Refer https://github.com/swc-project/swc/issues/3934 for the details.",
                 );
 
-                Box::new(noop())
+                Box::new(noop_pass())
             }
         };
 
@@ -688,6 +834,9 @@ impl Options {
         {
             plugin_transforms.unwrap()
         } else {
+            let jsx_enabled =
+                syntax.jsx() && transform.react.runtime != Some(react::Runtime::Preserve);
+
             let decorator_pass: Box<dyn Pass> =
                 match transform.decorator_version.unwrap_or_default() {
                     DecoratorVersion::V202112 => Box::new(decorators(decorators::Config {
@@ -698,9 +847,28 @@ impl Options {
                     DecoratorVersion::V202203 => Box::new(
                         swc_ecma_transforms::proposals::decorator_2022_03::decorator_2022_03(),
                     ),
-                    DecoratorVersion::V202311 => todo!("2023-11 decorator"),
+                    DecoratorVersion::V202311 => Box::new(
+                        swc_ecma_transforms::proposals::decorator_2023_11::decorator_2023_11(),
+                    ),
                 };
-
+            #[cfg(feature = "lint")]
+            let lint = {
+                use swc_common::SyntaxContext;
+                let disable_all_lints = experimental.disable_all_lints.into_bool();
+                let unresolved_ctxt = SyntaxContext::empty().apply_mark(unresolved_mark);
+                let top_level_ctxt = SyntaxContext::empty().apply_mark(top_level_mark);
+                Optional::new(
+                    lint_pass(swc_ecma_lints::rules::all(LintParams {
+                        program: &program,
+                        lint_config: &lints,
+                        top_level_ctxt,
+                        unresolved_ctxt,
+                        es_version,
+                        source_map: cm.clone(),
+                    })),
+                    !disable_all_lints,
+                )
+            };
             Box::new((
                 (
                     if experimental.run_plugin_first.into_bool() {
@@ -708,59 +876,67 @@ impl Options {
                     } else {
                         None
                     },
-                    Optional::new(
-                        lint_to_fold(swc_ecma_lints::rules::all(LintParams {
-                            program: &program,
-                            lint_config: &lints,
-                            top_level_ctxt,
-                            unresolved_ctxt,
-                            es_version,
-                            source_map: cm.clone(),
-                        })),
-                        !disable_all_lints,
-                    ),
+                    #[cfg(feature = "lint")]
+                    lint,
                     // Decorators may use type information
                     Optional::new(decorator_pass, syntax.decorators()),
                     Optional::new(
                         explicit_resource_management(),
                         syntax.explicit_resource_management(),
                     ),
+                    // The transform strips import assertions, so it's only enabled if
+                    // keep_import_assertions is false.
+                    Optional::new(import_attributes(), !keep_import_attributes),
                 ),
-                // The transform strips import assertions, so it's only enabled if
-                // keep_import_assertions is false.
-                (
-                    Optional::new(import_assertions(), !keep_import_attributes),
-                    Optional::new(
-                        typescript::tsx::<Option<&dyn Comments>>(
-                            cm.clone(),
-                            typescript::Config {
-                                import_export_assign_config,
-                                verbatim_module_syntax,
-                                ..Default::default()
-                            },
-                            typescript::TsxConfig {
-                                pragma: Some(
-                                    transform
-                                        .react
-                                        .pragma
-                                        .clone()
-                                        .unwrap_or_else(default_pragma),
-                                ),
-                                pragma_frag: Some(
-                                    transform
-                                        .react
-                                        .pragma_frag
-                                        .clone()
-                                        .unwrap_or_else(default_pragma_frag),
-                                ),
-                            },
-                            comments.map(|v| v as _),
-                            unresolved_mark,
-                            top_level_mark,
+                ({
+                    let native_class_properties = !assumptions.set_public_class_fields
+                        && feature_config.as_ref().map_or_else(
+                            || target.caniuse(Feature::ClassProperties),
+                            |env| env.caniuse(Feature::ClassProperties),
+                        );
+
+                    let ts_config = typescript::Config {
+                        import_export_assign_config,
+                        verbatim_module_syntax,
+                        native_class_properties,
+                        ts_enum_is_mutable,
+                        flow_syntax: syntax.flow(),
+                        ..Default::default()
+                    };
+
+                    (
+                        Optional::new(
+                            typescript::typescript(ts_config, unresolved_mark, top_level_mark),
+                            syntax.typescript() && !jsx_enabled,
                         ),
-                        syntax.typescript(),
-                    ),
-                ),
+                        Optional::new(
+                            typescript::tsx::<Option<&dyn Comments>>(
+                                cm.clone(),
+                                ts_config,
+                                typescript::TsxConfig {
+                                    pragma: Some(
+                                        transform
+                                            .react
+                                            .pragma
+                                            .clone()
+                                            .unwrap_or_else(default_pragma),
+                                    ),
+                                    pragma_frag: Some(
+                                        transform
+                                            .react
+                                            .pragma_frag
+                                            .clone()
+                                            .unwrap_or_else(default_pragma_frag),
+                                    ),
+                                },
+                                comments.map(|v| v as _),
+                                unresolved_mark,
+                                top_level_mark,
+                            ),
+                            syntax.typescript() && jsx_enabled,
+                        ),
+                    )
+                }),
                 (
                     plugin_transforms.take(),
                     custom_before_pass(&program),
@@ -773,9 +949,9 @@ impl Options {
                             top_level_mark,
                             unresolved_mark,
                         ),
-                        syntax.jsx(),
+                        jsx_enabled,
                     ),
-                    pass,
+                    built_pass,
                     Optional::new(jest::jest(), transform.hidden.jest.into_bool()),
                     Optional::new(
                         dropped_comments_preserver(comments.cloned()),
@@ -799,15 +975,24 @@ impl Options {
             output_path: output_path.map(|v| v.to_path_buf()),
             source_root,
             source_file_name,
+            source_map_ignore_list,
             comments: comments.cloned(),
             preserve_comments,
             emit_source_map_columns: cfg.emit_source_map_columns.into_bool(),
-            output: JscOutputConfig { charset, preamble },
+            output: JscOutputConfig {
+                charset,
+                preamble,
+                ..cfg.jsc.output
+            },
             emit_assert_for_import_attributes: experimental
                 .emit_assert_for_import_attributes
                 .into_bool(),
+            emit_source_map_scopes: experimental.emit_source_map_scopes.into_bool(),
             codegen_inline_script,
+            flow_strip_script_like_module,
             emit_isolated_dts: experimental.emit_isolated_dts.into_bool(),
+            unresolved_mark,
+            #[cfg(feature = "module")]
             resolver,
         })
     }
@@ -824,7 +1009,7 @@ pub enum RootMode {
     UpwardOptional,
 }
 
-const fn default_swcrc() -> bool {
+pub const fn default_swcrc() -> bool {
     true
 }
 
@@ -869,7 +1054,7 @@ impl Default for Rc {
             Config {
                 env: None,
                 test: None,
-                exclude: Some(FileMatcher::Regex("\\.tsx?$".into())),
+                exclude: Some(FileMatcher::Pattern(FilePattern::Regex("\\.tsx?$".into()))),
                 jsc: JscConfig {
                     syntax: Some(Default::default()),
                     ..Default::default()
@@ -878,7 +1063,7 @@ impl Default for Rc {
             },
             Config {
                 env: None,
-                test: Some(FileMatcher::Regex("\\.tsx$".into())),
+                test: Some(FileMatcher::Pattern(FilePattern::Regex("\\.tsx$".into()))),
                 exclude: None,
                 jsc: JscConfig {
                     syntax: Some(Syntax::Typescript(TsSyntax {
@@ -891,7 +1076,9 @@ impl Default for Rc {
             },
             Config {
                 env: None,
-                test: Some(FileMatcher::Regex("\\.(cts|mts)$".into())),
+                test: Some(FileMatcher::Pattern(FilePattern::Regex(
+                    "\\.(cts|mts)$".into(),
+                ))),
                 exclude: None,
                 jsc: JscConfig {
                     syntax: Some(Syntax::Typescript(TsSyntax {
@@ -905,7 +1092,7 @@ impl Default for Rc {
             },
             Config {
                 env: None,
-                test: Some(FileMatcher::Regex("\\.ts$".into())),
+                test: Some(FileMatcher::Pattern(FilePattern::Regex("\\.ts$".into()))),
                 exclude: None,
                 jsc: JscConfig {
                     syntax: Some(Syntax::Typescript(TsSyntax {
@@ -987,6 +1174,9 @@ pub struct Config {
     pub source_maps: Option<SourceMapsConfig>,
 
     #[serde(default)]
+    pub source_map_ignore_list: Option<FilePattern>,
+
+    #[serde(default)]
     pub inline_sources_content: BoolConfig<true>,
 
     #[serde(default)]
@@ -1029,18 +1219,13 @@ impl Config {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(untagged)]
 pub enum FileMatcher {
+    #[default]
     None,
-    Regex(CachedRegex),
+    Pattern(FilePattern),
     Multi(Vec<FileMatcher>),
-}
-
-impl Default for FileMatcher {
-    fn default() -> Self {
-        Self::None
-    }
 }
 
 impl FileMatcher {
@@ -1048,7 +1233,7 @@ impl FileMatcher {
         match self {
             FileMatcher::None => Ok(false),
 
-            FileMatcher::Regex(re) => {
+            FileMatcher::Pattern(re) => {
                 let filename = if cfg!(target_os = "windows") {
                     filename.to_string_lossy().replace('\\', "/")
                 } else {
@@ -1108,6 +1293,7 @@ pub struct BuiltInput<P: Pass> {
 
     pub source_root: Option<String>,
     pub source_file_name: Option<String>,
+    pub source_map_ignore_list: Option<FilePattern>,
 
     pub comments: Option<SingleThreadedComments>,
     pub preserve_comments: BoolOr<JsMinifyCommentOption>,
@@ -1117,9 +1303,13 @@ pub struct BuiltInput<P: Pass> {
 
     pub output: JscOutputConfig,
     pub emit_assert_for_import_attributes: bool,
+    pub emit_source_map_scopes: bool,
     pub codegen_inline_script: bool,
+    pub flow_strip_script_like_module: bool,
 
     pub emit_isolated_dts: bool,
+    pub unresolved_mark: Mark,
+    #[cfg(feature = "module")]
     pub resolver: Option<(FileName, Arc<dyn ImportResolver>)>,
 }
 
@@ -1144,14 +1334,19 @@ where
             output_path: self.output_path,
             source_root: self.source_root,
             source_file_name: self.source_file_name,
+            source_map_ignore_list: self.source_map_ignore_list,
+            comments: self.comments,
             preserve_comments: self.preserve_comments,
             inline_sources_content: self.inline_sources_content,
-            comments: self.comments,
             emit_source_map_columns: self.emit_source_map_columns,
             output: self.output,
             emit_assert_for_import_attributes: self.emit_assert_for_import_attributes,
+            emit_source_map_scopes: self.emit_source_map_scopes,
             codegen_inline_script: self.codegen_inline_script,
+            flow_strip_script_like_module: self.flow_strip_script_like_module,
             emit_isolated_dts: self.emit_isolated_dts,
+            unresolved_mark: self.unresolved_mark,
+            #[cfg(feature = "module")]
             resolver: self.resolver,
         }
     }
@@ -1195,6 +1390,7 @@ pub struct JscConfig {
     pub experimental: JscExperimental,
 
     #[serde(default)]
+    #[cfg(feature = "lint")]
     pub lints: LintConfig,
 
     #[serde(default)]
@@ -1202,6 +1398,21 @@ pub struct JscConfig {
 
     #[serde(default)]
     pub output: JscOutputConfig,
+
+    /// https://www.typescriptlang.org/tsconfig/#rewriteRelativeImportExtensions
+    #[serde(default)]
+    pub rewrite_relative_import_extensions: BoolConfig<false>,
+
+    /// When `true`, symlinked paths are preserved in generated module
+    /// specifiers instead of being canonicalized to their real paths.
+    ///
+    /// This is the config-level analogue of Node's `--preserve-symlinks`.
+    /// Enable it when your project relies on symlinked source files (for
+    /// example, a monorepo that symlinks shared sources into each package)
+    /// and you want relative imports inside those files to continue to
+    /// resolve against their symlinked location rather than the real path.
+    #[serde(default)]
+    pub preserve_symlinks: BoolConfig<false>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, Merge)]
@@ -1212,6 +1423,12 @@ pub struct JscOutputConfig {
 
     #[serde(default)]
     pub preamble: String,
+
+    #[serde(default)]
+    pub preserve_annotations: BoolConfig<false>,
+
+    #[serde(default)]
+    pub source_map_url: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -1231,12 +1448,17 @@ pub struct JscExperimental {
     /// This requires cargo feature `plugin`.
     #[serde(default)]
     pub plugins: Option<Vec<PluginConfig>>,
+    #[serde(default)]
+    pub plugin_env_vars: Option<Vec<Atom>>,
     /// If true, keeps import assertions in the output.
     #[serde(default, alias = "keepImportAssertions")]
     pub keep_import_attributes: BoolConfig<false>,
 
     #[serde(default)]
     pub emit_assert_for_import_attributes: BoolConfig<false>,
+
+    #[serde(default)]
+    pub emit_source_map_scopes: BoolConfig<false>,
     /// Location where swc may stores its intermediate cache.
     /// Currently this is only being used for wasm plugin's bytecache.
     /// Path should be absolute directory, which will be created if not exist.
@@ -1261,18 +1483,19 @@ pub struct JscExperimental {
     pub disable_all_lints: BoolConfig<true>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, Default)]
 pub enum ErrorFormat {
     #[serde(rename = "json")]
     Json,
     #[serde(rename = "normal")]
+    #[default]
     Normal,
 }
 
 impl ErrorFormat {
     pub fn format(&self, err: &Error) -> String {
         match self {
-            ErrorFormat::Normal => format!("{:?}", err),
+            ErrorFormat::Normal => format!("{err:?}"),
             ErrorFormat::Json => {
                 let mut map = serde_json::Map::new();
 
@@ -1295,16 +1518,11 @@ impl ErrorFormat {
     }
 }
 
-impl Default for ErrorFormat {
-    fn default() -> Self {
-        Self::Normal
-    }
-}
-
 /// `paths` section of `tsconfig.json`.
-pub type Paths = IndexMap<String, Vec<String>, ARandomState>;
+pub type Paths = IndexMap<String, Vec<String>, FxBuildHasher>;
 pub(crate) type CompiledPaths = Vec<(String, Vec<String>)>;
 
+#[cfg(feature = "module")]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 #[serde(tag = "type")]
@@ -1323,14 +1541,36 @@ pub enum ModuleConfig {
     NodeNext(EsModuleConfig),
 }
 
+/// Stub enum when module feature is disabled.
+/// Config will still deserialize but transforms won't run.
+#[cfg(not(feature = "module"))]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+#[serde(tag = "type")]
+pub enum ModuleConfig {
+    #[serde(rename = "commonjs")]
+    CommonJs(serde_json::Value),
+    #[serde(rename = "umd")]
+    Umd(serde_json::Value),
+    #[serde(rename = "amd")]
+    Amd(serde_json::Value),
+    #[serde(rename = "systemjs")]
+    SystemJs(serde_json::Value),
+    #[serde(rename = "es6")]
+    Es6(serde_json::Value),
+    #[serde(rename = "nodenext")]
+    NodeNext(serde_json::Value),
+}
+
+#[cfg(feature = "module")]
 impl ModuleConfig {
     pub fn build<'cmt>(
         cm: Arc<SourceMap>,
         comments: Option<&'cmt dyn Comments>,
         config: Option<ModuleConfig>,
         unresolved_mark: Mark,
-        available_features: FeatureFlag,
         resolver: Option<(FileName, Arc<dyn ImportResolver>)>,
+        caniuse: impl Fn(Feature) -> bool,
     ) -> Box<dyn Pass + 'cmt> {
         let resolver = if let Some((base, resolver)) = resolver {
             Resolver::Real { base, resolver }
@@ -1338,30 +1578,36 @@ impl ModuleConfig {
             Resolver::Default
         };
 
-        match config {
-            None | Some(ModuleConfig::Es6(..)) | Some(ModuleConfig::NodeNext(..)) => match resolver
-            {
-                Resolver::Default => Box::new(noop_pass()),
-                Resolver::Real { base, resolver } => Box::new(import_rewriter(base, resolver)),
-            },
+        let support_block_scoping = caniuse(Feature::BlockScoping);
+        let support_arrow = caniuse(Feature::ArrowFunctions);
+
+        let transform_pass = match config {
             Some(ModuleConfig::CommonJs(config)) => Box::new(modules::common_js::common_js(
                 resolver,
                 unresolved_mark,
                 config,
-                available_features,
-            )),
+                modules::common_js::FeatureFlag {
+                    support_block_scoping,
+                    support_arrow,
+                },
+            )) as Box<dyn Pass>,
             Some(ModuleConfig::Umd(config)) => Box::new(modules::umd::umd(
                 cm,
                 resolver,
                 unresolved_mark,
                 config,
-                available_features,
+                modules::umd::FeatureFlag {
+                    support_block_scoping,
+                },
             )),
             Some(ModuleConfig::Amd(config)) => Box::new(modules::amd::amd(
                 resolver,
                 unresolved_mark,
                 config,
-                available_features,
+                modules::amd::FeatureFlag {
+                    support_block_scoping,
+                    support_arrow,
+                },
                 comments,
             )),
             Some(ModuleConfig::SystemJs(config)) => Box::new(modules::system_js::system_js(
@@ -1369,7 +1615,10 @@ impl ModuleConfig {
                 unresolved_mark,
                 config,
             )),
-        }
+            _ => Box::new(noop_pass()),
+        };
+
+        Box::new(transform_pass)
     }
 
     pub fn get_resolver(
@@ -1377,6 +1626,7 @@ impl ModuleConfig {
         paths: CompiledPaths,
         base: &FileName,
         config: Option<&ModuleConfig>,
+        preserve_symlinks: bool,
     ) -> Option<(FileName, Arc<dyn ImportResolver>)> {
         let skip_resolver = base_url.as_os_str().is_empty() && paths.is_empty();
 
@@ -1385,7 +1635,7 @@ impl ModuleConfig {
         }
 
         let base = match base {
-            FileName::Real(v) if !skip_resolver => {
+            FileName::Real(v) if !skip_resolver && !preserve_symlinks => {
                 FileName::Real(v.canonicalize().unwrap_or_else(|_| v.to_path_buf()))
             }
             _ => base.clone(),
@@ -1393,25 +1643,80 @@ impl ModuleConfig {
 
         let base_url = base_url.to_path_buf();
         let resolver = match config {
-            None => build_resolver(base_url, paths, false),
+            None => build_resolver(
+                base_url,
+                paths,
+                false,
+                &util::Config::default_js_ext(),
+                preserve_symlinks,
+            ),
             Some(ModuleConfig::Es6(config)) | Some(ModuleConfig::NodeNext(config)) => {
-                build_resolver(base_url, paths, config.resolve_fully)
+                build_resolver(
+                    base_url,
+                    paths,
+                    config.config.resolve_fully,
+                    &config.config.out_file_extension,
+                    preserve_symlinks,
+                )
             }
-            Some(ModuleConfig::CommonJs(config)) => {
-                build_resolver(base_url, paths, config.resolve_fully)
-            }
-            Some(ModuleConfig::Umd(config)) => {
-                build_resolver(base_url, paths, config.config.resolve_fully)
-            }
-            Some(ModuleConfig::Amd(config)) => {
-                build_resolver(base_url, paths, config.config.resolve_fully)
-            }
-            Some(ModuleConfig::SystemJs(config)) => {
-                build_resolver(base_url, paths, config.resolve_fully)
-            }
+            Some(ModuleConfig::CommonJs(config)) => build_resolver(
+                base_url,
+                paths,
+                config.resolve_fully,
+                &config.out_file_extension,
+                preserve_symlinks,
+            ),
+            Some(ModuleConfig::Umd(config)) => build_resolver(
+                base_url,
+                paths,
+                config.config.resolve_fully,
+                &config.config.out_file_extension,
+                preserve_symlinks,
+            ),
+            Some(ModuleConfig::Amd(config)) => build_resolver(
+                base_url,
+                paths,
+                config.config.resolve_fully,
+                &config.config.out_file_extension,
+                preserve_symlinks,
+            ),
+            Some(ModuleConfig::SystemJs(config)) => build_resolver(
+                base_url,
+                paths,
+                config.config.resolve_fully,
+                &config.config.out_file_extension,
+                preserve_symlinks,
+            ),
         };
 
         Some((base, resolver))
+    }
+}
+
+/// Stub impl when module feature is disabled
+#[cfg(not(feature = "module"))]
+impl ModuleConfig {
+    /// Returns a noop pass when module feature is disabled.
+    pub fn build<'cmt>(
+        _cm: Arc<SourceMap>,
+        _comments: Option<&'cmt dyn Comments>,
+        _config: Option<ModuleConfig>,
+        _unresolved_mark: Mark,
+        _caniuse: impl Fn(Feature) -> bool,
+    ) -> Box<dyn Pass + 'cmt> {
+        Box::new(noop_pass())
+    }
+
+    /// Returns None when module feature is disabled.
+    #[allow(clippy::type_complexity)]
+    pub fn get_resolver(
+        _base_url: &Path,
+        _paths: CompiledPaths,
+        _base: &FileName,
+        _config: Option<&ModuleConfig>,
+        _preserve_symlinks: bool,
+    ) -> Option<(FileName, Arc<dyn swc_ecma_loader::resolve::Resolve>)> {
+        None
     }
 }
 
@@ -1453,6 +1758,9 @@ pub struct TransformConfig {
 
     #[serde(default)]
     pub decorator_version: Option<DecoratorVersion>,
+
+    #[serde(default)]
+    pub ts_enum_is_mutable: BoolConfig<false>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, Merge)]
@@ -1466,7 +1774,7 @@ pub struct HiddenTransformConfig {
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct ConstModulesConfig {
     #[serde(default)]
-    pub globals: FxHashMap<JsWord, FxHashMap<JsWord, String>>,
+    pub globals: FxHashMap<Atom, FxHashMap<Atom, BytesStr>>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, Merge)]
@@ -1527,34 +1835,30 @@ pub struct ErrorConfig {
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct GlobalPassOption {
     #[serde(default)]
-    pub vars: IndexMap<JsWord, JsWord, ARandomState>,
+    pub vars: IndexMap<Atom, Atom, FxBuildHasher>,
     #[serde(default)]
     pub envs: GlobalInliningPassEnvs,
 
     #[serde(default)]
-    pub typeofs: AHashMap<JsWord, JsWord>,
+    pub typeofs: FxHashMap<Atom, Atom>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum GlobalInliningPassEnvs {
-    List(AHashSet<String>),
-    Map(AHashMap<JsWord, JsWord>),
+    List(FxHashSet<String>),
+    Map(FxHashMap<Atom, Atom>),
 }
 
 impl Default for GlobalInliningPassEnvs {
     fn default() -> Self {
-        let mut v = HashSet::default();
-        v.insert(String::from("NODE_ENV"));
-        v.insert(String::from("SWC_ENV"));
-
-        GlobalInliningPassEnvs::List(v)
+        GlobalInliningPassEnvs::List(Default::default())
     }
 }
 
 impl GlobalPassOption {
     pub fn build(self, cm: &SourceMap, handler: &Handler) -> impl 'static + Pass {
-        type ValuesMap = Arc<AHashMap<JsWord, Expr>>;
+        type ValuesMap = Arc<FxHashMap<Atom, Expr>>;
 
         fn expr(cm: &SourceMap, handler: &Handler, src: String) -> Box<Expr> {
             let fm = cm.new_source_file(FileName::Anon.into(), src);
@@ -1581,14 +1885,14 @@ impl GlobalPassOption {
         fn mk_map(
             cm: &SourceMap,
             handler: &Handler,
-            values: impl Iterator<Item = (JsWord, JsWord)>,
+            values: impl Iterator<Item = (Atom, Atom)>,
             is_env: bool,
         ) -> ValuesMap {
             let mut m = HashMap::default();
 
             for (k, v) in values {
                 let v = if is_env {
-                    format!("'{}'", v)
+                    format!("'{v}'")
                 } else {
                     (*v).into()
                 };
@@ -1607,7 +1911,7 @@ impl GlobalPassOption {
         } else {
             match &self.envs {
                 GlobalInliningPassEnvs::List(env_list) => {
-                    static CACHE: Lazy<DashMap<Vec<String>, ValuesMap, ARandomState>> =
+                    static CACHE: Lazy<DashMap<Vec<String>, ValuesMap, FxBuildHasher>> =
                         Lazy::new(Default::default);
 
                     let cache_key = env_list.iter().cloned().collect::<Vec<_>>();
@@ -1628,7 +1932,7 @@ impl GlobalPassOption {
                 }
 
                 GlobalInliningPassEnvs::Map(map) => {
-                    static CACHE: Lazy<DashMap<Vec<(JsWord, JsWord)>, ValuesMap, ARandomState>> =
+                    static CACHE: Lazy<DashMap<Vec<(Atom, Atom)>, ValuesMap, FxBuildHasher>> =
                         Lazy::new(Default::default);
 
                     let cache_key = self
@@ -1653,7 +1957,7 @@ impl GlobalPassOption {
         };
 
         let global_exprs = {
-            static CACHE: Lazy<DashMap<Vec<(JsWord, JsWord)>, GlobalExprMap, ARandomState>> =
+            static CACHE: Lazy<DashMap<Vec<(Atom, Atom)>, GlobalExprMap, FxBuildHasher>> =
                 Lazy::new(Default::default);
 
             let cache_key = self
@@ -1676,7 +1980,7 @@ impl GlobalPassOption {
                             *expr(cm, handler, v.to_string()),
                         )
                     })
-                    .collect::<AHashMap<_, _>>();
+                    .collect::<FxHashMap<_, _>>();
                 let map = Arc::new(map);
                 CACHE.insert(cache_key, map.clone());
                 map
@@ -1684,7 +1988,7 @@ impl GlobalPassOption {
         };
 
         let global_map = {
-            static CACHE: Lazy<DashMap<Vec<(JsWord, JsWord)>, ValuesMap, ARandomState>> =
+            static CACHE: Lazy<DashMap<Vec<(Atom, Atom)>, ValuesMap, FxBuildHasher>> =
                 Lazy::new(Default::default);
 
             let cache_key = self
@@ -1707,11 +2011,11 @@ impl GlobalPassOption {
             }
         };
 
-        inline_globals2(env_map, global_map, global_exprs, Arc::new(self.typeofs))
+        inline_globals(env_map, global_map, global_exprs, Arc::new(self.typeofs))
     }
 }
 
-fn default_env_name() -> String {
+pub(crate) fn default_env_name() -> String {
     if let Ok(v) = env::var("SWC_ENV") {
         return v;
     }
@@ -1722,13 +2026,17 @@ fn default_env_name() -> String {
     }
 }
 
+#[cfg(feature = "module")]
 fn build_resolver(
     mut base_url: PathBuf,
     paths: CompiledPaths,
     resolve_fully: bool,
+    file_extension: &str,
+    preserve_symlinks: bool,
 ) -> SwcImportResolver {
-    static CACHE: Lazy<DashMap<(PathBuf, CompiledPaths, bool), SwcImportResolver, ARandomState>> =
-        Lazy::new(Default::default);
+    static CACHE: Lazy<
+        DashMap<(PathBuf, CompiledPaths, bool, String, bool), SwcImportResolver, FxBuildHasher>,
+    > = Lazy::new(Default::default);
 
     // On Windows, we need to normalize path as UNC path.
     if cfg!(target_os = "windows") {
@@ -1744,7 +2052,13 @@ fn build_resolver(
             .unwrap();
     }
 
-    if let Some(cached) = CACHE.get(&(base_url.clone(), paths.clone(), resolve_fully)) {
+    if let Some(cached) = CACHE.get(&(
+        base_url.clone(),
+        paths.clone(),
+        resolve_fully,
+        file_extension.to_owned(),
+        preserve_symlinks,
+    )) {
         return cached.clone();
     }
 
@@ -1760,17 +2074,29 @@ fn build_resolver(
         let r = TsConfigResolver::new(r, base_url.clone(), paths.clone());
         let r = CachingResolver::new(256, r);
 
-        let r = NodeImportResolver::with_config(
-            r,
-            swc_ecma_transforms::modules::path::Config {
-                base_dir: Some(base_url.clone()),
-                resolve_fully,
-            },
-        );
+        let cfg = modules::path::Config {
+            base_dir: Some(base_url.clone()),
+            resolve_fully,
+            file_extension: file_extension.to_owned(),
+        };
+        let r = if preserve_symlinks {
+            NodeImportResolver::with_config_preserving_symlinks(r, cfg)
+        } else {
+            NodeImportResolver::with_config(r, cfg)
+        };
         Arc::new(r)
     };
 
-    CACHE.insert((base_url, paths, resolve_fully), r.clone());
+    CACHE.insert(
+        (
+            base_url,
+            paths,
+            resolve_fully,
+            file_extension.to_owned(),
+            preserve_symlinks,
+        ),
+        r.clone(),
+    );
 
     r
 }

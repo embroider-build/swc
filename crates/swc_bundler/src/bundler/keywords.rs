@@ -1,4 +1,5 @@
-use swc_common::{collections::AHashMap, util::take::Take};
+use rustc_hash::FxHashMap;
+use swc_common::util::take::Take;
 use swc_ecma_ast::*;
 use swc_ecma_utils::private_ident;
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
@@ -7,7 +8,7 @@ use crate::id::Id;
 
 #[derive(Default)]
 pub struct KeywordRenamer {
-    renamed: AHashMap<Id, Ident>,
+    renamed: FxHashMap<Id, Ident>,
 }
 
 impl KeywordRenamer {
@@ -60,6 +61,8 @@ impl VisitMut for KeywordRenamer {
         let orig = match &n.orig {
             ModuleExportName::Ident(ident) => ident,
             ModuleExportName::Str(..) => unimplemented!("module string names unimplemented"),
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         };
         if let Some(renamed) = self.renamed(orig) {
             n.orig = ModuleExportName::Ident(renamed);

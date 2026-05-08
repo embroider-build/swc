@@ -17,19 +17,6 @@ pub fn plugin_transform(
     }
 }
 
-#[proc_macro_attribute]
-pub fn css_plugin_transform(
-    _args: proc_macro::TokenStream,
-    input: proc_macro::TokenStream,
-) -> proc_macro::TokenStream {
-    let token = proc_macro2::TokenStream::from(input);
-    let parsed_results = syn::parse2::<SynItem>(token).expect("Failed to parse tokens");
-    match parsed_results {
-        SynItem::Fn(func) => handle_func(func, Ident::new("Stylesheet", Span::call_site())),
-        _ => panic!("Please confirm if plugin macro is specified for the function"),
-    }
-}
-
 #[allow(clippy::redundant_clone)]
 fn handle_func(func: ItemFn, ast_type: Ident) -> TokenStream {
     let ident = func.sig.ident.clone();
@@ -44,6 +31,7 @@ fn handle_func(func: ItemFn, ast_type: Ident) -> TokenStream {
         // Declaration for imported function from swc host.
         // Refer swc_plugin_runner for the actual implementation.
         #[cfg(target_arch = "wasm32")] // Allow testing
+        #[link(wasm_import_module = "env")]
         extern "C" {
             fn __set_transform_result(bytes_ptr: u32, bytes_ptr_len: u32);
             fn __set_transform_plugin_core_pkg_diagnostics(bytes_ptr: u32, bytes_ptr_len: u32);
@@ -59,7 +47,7 @@ fn handle_func(func: ItemFn, ast_type: Ident) -> TokenStream {
 
         impl swc_core::common::errors::Emitter for PluginDiagnosticsEmitter {
             #[cfg_attr(not(target_arch = "wasm32"), allow(unused))]
-            fn emit(&mut self, db: &swc_core::common::errors::DiagnosticBuilder<'_>) {
+            fn emit(&mut self, db: &mut swc_core::common::errors::DiagnosticBuilder<'_>) {
                 let diag = swc_core::common::plugin::serialized::PluginSerializedBytes::try_serialize(&swc_core::common::plugin::serialized::VersionedSerializable::new(*db.diagnostic.clone()))
                     .expect("Should able to serialize Diagnostic");
                 let (ptr, len) = diag.as_ptr();

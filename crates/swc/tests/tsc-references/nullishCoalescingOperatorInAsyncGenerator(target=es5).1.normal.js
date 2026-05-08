@@ -1,12 +1,9 @@
 //// [nullishCoalescingOperatorInAsyncGenerator.ts]
-// https://github.com/microsoft/TypeScript/issues/37686
 import { _ as _wrap_async_generator } from "@swc/helpers/_/_wrap_async_generator";
 import { _ as _ts_generator } from "@swc/helpers/_/_ts_generator";
+// https://github.com/microsoft/TypeScript/issues/37686
 function f(a) {
-    return _f.apply(this, arguments);
-}
-function _f() {
-    _f = _wrap_async_generator(function(a) {
+    return _wrap_async_generator(function() {
         var _a_b, c;
         return _ts_generator(this, function(_state) {
             switch(_state.label){
@@ -34,6 +31,5 @@ function _f() {
                     ];
             }
         });
-    });
-    return _f.apply(this, arguments);
+    })();
 }

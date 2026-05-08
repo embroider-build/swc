@@ -6,10 +6,15 @@ use swc_common::{
 #[cfg(feature = "__plugin_mode")]
 use swc_trace_macro::swc_trace;
 
-#[cfg(all(feature = "__rkyv", feature = "__plugin_mode", target_arch = "wasm32"))]
+#[cfg(all(
+    feature = "encoding-impl",
+    feature = "__plugin_mode",
+    target_arch = "wasm32"
+))]
 use crate::memory_interop::read_returned_result_from_host;
 
 #[cfg(target_arch = "wasm32")]
+#[link(wasm_import_module = "env")]
 extern "C" {
     fn __copy_comment_to_host_env(bytes_ptr: u32, bytes_ptr_len: u32);
     fn __add_leading_comment_proxy(byte_pos: u32);
@@ -48,7 +53,7 @@ impl PluginCommentsProxy {
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused))]
     fn allocate_comments_buffer_to_host<T>(&self, value: T)
     where
-        T: rkyv::Serialize<rkyv::ser::serializers::AllocSerializer<512>>,
+        T: cbor4ii::core::enc::Encode,
     {
         #[cfg(target_arch = "wasm32")]
         {

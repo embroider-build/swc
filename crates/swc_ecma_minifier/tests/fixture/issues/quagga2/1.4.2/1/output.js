@@ -31,7 +31,7 @@
             });
         /******/ }, /******/ /******/ // define __esModule on exports
         /******/ __webpack_require__.r = function(exports1) {
-            "undefined" != typeof Symbol && Symbol.toStringTag && /******/ Object.defineProperty(exports1, Symbol.toStringTag, {
+            "u" > typeof Symbol && Symbol.toStringTag && /******/ Object.defineProperty(exports1, Symbol.toStringTag, {
                 value: "Module"
             }), /******/ Object.defineProperty(exports1, "__esModule", {
                 value: !0
@@ -203,48 +203,39 @@
             var gl_vec2 = __webpack_require__(7), gl_vec3 = __webpack_require__(84), vec2 = {
                 clone: gl_vec2.clone,
                 dot: gl_vec2.dot
-            }, cluster = {
-                create: function(point, threshold) {
-                    var points = [], center = {
-                        rad: 0,
-                        vec: vec2.clone([
-                            0,
-                            0
-                        ])
-                    }, pointMap = {};
-                    function _add(pointToAdd) {
-                        pointMap[pointToAdd.id] = pointToAdd, points.push(pointToAdd);
-                    }
-                    function updateCenter() {
-                        var i, sum = 0;
-                        for(i = 0; i < points.length; i++)sum += points[i].rad;
-                        center.rad = sum / points.length, center.vec = vec2.clone([
-                            Math.cos(center.rad),
-                            Math.sin(center.rad)
-                        ]);
-                    }
-                    return _add(point), updateCenter(), {
-                        add: function(pointToAdd) {
-                            pointMap[pointToAdd.id] || (_add(pointToAdd), updateCenter());
-                        },
-                        fits: function(otherPoint) {
-                            return Math.abs(vec2.dot(otherPoint.point.vec, center.vec)) > threshold;
-                        },
-                        getPoints: function() {
-                            return points;
-                        },
-                        getCenter: function() {
-                            return center;
-                        }
-                    };
-                },
-                createPoint: function(newPoint, id, property) {
-                    return {
-                        rad: newPoint[property],
-                        point: newPoint,
-                        id: id
-                    };
+            }, cluster_create = function(point, threshold) {
+                var points = [], center = {
+                    rad: 0,
+                    vec: vec2.clone([
+                        0,
+                        0
+                    ])
+                }, pointMap = {};
+                function _add(pointToAdd) {
+                    pointMap[pointToAdd.id] = pointToAdd, points.push(pointToAdd);
                 }
+                function updateCenter() {
+                    var i, sum = 0;
+                    for(i = 0; i < points.length; i++)sum += points[i].rad;
+                    center.rad = sum / points.length, center.vec = vec2.clone([
+                        Math.cos(center.rad),
+                        Math.sin(center.rad)
+                    ]);
+                }
+                return _add(point), updateCenter(), {
+                    add: function(pointToAdd) {
+                        pointMap[pointToAdd.id] || (_add(pointToAdd), updateCenter());
+                    },
+                    fits: function(otherPoint) {
+                        return Math.abs(vec2.dot(otherPoint.point.vec, center.vec)) > threshold;
+                    },
+                    getPoints: function() {
+                        return points;
+                    },
+                    getCenter: function() {
+                        return center;
+                    }
+                };
             }, array_helper = __webpack_require__(10), cv_utils_vec2 = {
                 clone: gl_vec2.clone
             }, vec3 = {
@@ -300,22 +291,25 @@
                         for(var k = 1; k < max; k++)0 == (p12 = (p1 = px(0, k)) * (p2 = px(k + 1, max))) && (p12 = 1), m12 = mx(0, k) * p2 - mx(k + 1, max) * p1, vet[k] = m12 * m12 / p12;
                         return array_helper.a.maxIndex(vet);
                     }() << bitShift;
-                }(imageWrapper);
-                return !function(imageWrapper, threshold, targetWrapper) {
-                    targetWrapper || // eslint-disable-next-line no-param-reassign
-                    (targetWrapper = imageWrapper);
-                    for(var imageData = imageWrapper.data, length = imageData.length, targetData = targetWrapper.data; length--;)targetData[length] = imageData[length] < threshold ? 1 : 0;
-                }(imageWrapper, threshold, targetWrapper), threshold;
+                }(imageWrapper), targetWrapper1 = targetWrapper;
+                targetWrapper1 || // eslint-disable-next-line no-param-reassign
+                (targetWrapper1 = imageWrapper);
+                for(var imageData = imageWrapper.data, length = imageData.length, targetData = targetWrapper1.data; length--;)targetData[length] = +(imageData[length] < threshold);
+                return threshold;
             } // local thresholding
             function cv_utils_cluster(points, threshold, property) {
-                var i, k, thisCluster, point, clusters = [];
+                var newPoint, id, i, k, thisCluster, point, clusters = [];
                 for(property || // eslint-disable-next-line no-param-reassign
                 (property = "rad"), i = 0; i < points.length; i++)!function(newPoint) {
                     var found = !1;
                     for(k = 0; k < clusters.length; k++)(thisCluster = clusters[k]).fits(newPoint) && (thisCluster.add(newPoint), found = !0);
                     return found;
                 } // iterate over each cloud
-                (point = cluster.createPoint(points[i], i, property)) && clusters.push(cluster.create(point, threshold));
+                ((newPoint = points[i], id = i, point = {
+                    rad: newPoint[property],
+                    point: newPoint,
+                    id: id
+                })) && clusters.push(cluster_create(point, threshold));
                 return clusters;
             }
             function topGeneric(list, top, scoreFunc) {
@@ -326,7 +320,7 @@
                 };
                 for(i = 0; i < list.length; i++)if ((score = scoreFunc.apply(this, [
                     list[i]
-                ])) > min) for(pos = 0, (hit = queue[minIdx]).score = score, hit.item = list[i], min = Number.MAX_VALUE; pos < top; pos++)queue[pos].score < min && (min = queue[pos].score, minIdx = pos);
+                ])) > min) for((hit = queue[minIdx]).score = score, hit.item = list[i], min = Number.MAX_VALUE, pos = 0; pos < top; pos++)queue[pos].score < min && (min = queue[pos].score, minIdx = pos);
                 return queue;
             }
             function grayAndHalfSampleFromCanvasData(canvasData, size, outArray) {
@@ -390,7 +384,7 @@
                         y: found
                     } : null;
                 }
-                return (optimalPatchSize = findPatchSizeForDivisors(common)) || (optimalPatchSize = findPatchSizeForDivisors(_computeDivisors(wideSide))) || (optimalPatchSize = findPatchSizeForDivisors(_computeDivisors(desiredPatchSize * nrOfPatches))), optimalPatchSize;
+                return !(optimalPatchSize = findPatchSizeForDivisors(common)) && ((optimalPatchSize = findPatchSizeForDivisors(_computeDivisors(wideSide))) || (optimalPatchSize = findPatchSizeForDivisors(_computeDivisors(desiredPatchSize * nrOfPatches)))), optimalPatchSize;
             }
             var _dimensionsConverters = {
                 top: function(dimension, context) {
@@ -413,7 +407,7 @@
                 }, parsedArea = Object.keys(area).reduce(function(result, key) {
                     var value, parsed = {
                         value: parseFloat(value = area[key]),
-                        unit: (value.indexOf("%"), value.length, "%")
+                        unit: (value.indexOf("%") === value.length, "%")
                     }, calculated = _dimensionsConverters[key](parsed, context);
                     return result[key] = calculated, result;
                 }, {});
@@ -504,7 +498,7 @@
             function assertNumberPositive(val) {
                 if (val < 0) throw Error("expected positive number, received ".concat(val));
             }
-            var ImageWrapper = /*#__PURE__*/ function() {
+            /* harmony default export */ __webpack_exports__.a = /*#__PURE__*/ function() {
                 // Represents a basic image combining the data and size. In addition, some methods for
                 // manipulation are contained within.
                 function ImageWrapper(size, data) {
@@ -589,7 +583,7 @@
                                 theta: 0,
                                 rad: 0
                             };
-                            for(y = 0; y < height; y++)for(x = 0, ysq = y * y; x < width; x++)(val = data[y * width + x]) > 0 && (label = labelSum[val - 1], label.m00 += 1, label.m01 += y, label.m10 += x, label.m11 += x * y, label.m02 += ysq, label.m20 += x * x);
+                            for(y = 0; y < height; y++)for(ysq = y * y, x = 0; x < width; x++)(val = data[y * width + x]) > 0 && (label = labelSum[val - 1], label.m00 += 1, label.m01 += y, label.m10 += x, label.m11 += x * y, label.m02 += ysq, label.m20 += x * x);
                             for(i = 0; i < labelCount; i++)isNaN((label = labelSum[i]).m00) || 0 === label.m00 || (x_ = label.m10 / label.m00, y_ = label.m01 / label.m00, mu11 = label.m11 / label.m00 - x_ * y_, tmp = 0.5 * Math.atan(tmp = (label.m02 / label.m00 - y_ * y_ - (label.m20 / label.m00 - x_ * x_)) / (2 * mu11)) + (mu11 >= 0 ? PI_4 : -PI_4) + PI, label.theta = (180 * tmp / PI + 90) % 180 - 90, label.theta < 0 && (label.theta += 180), label.rad = tmp > PI ? tmp - PI : tmp, label.vec = vec2.clone([
                                 Math.cos(tmp),
                                 Math.sin(tmp)
@@ -649,7 +643,6 @@
                     }
                 ]), ImageWrapper;
             }();
-            /* harmony default export */ __webpack_exports__.a = ImageWrapper;
         /***/ },
         /* 12 */ /***/ function(module1, exports1, __webpack_require__) {
             module1.exports = __webpack_require__(228);
@@ -657,7 +650,7 @@
         /* 13 */ /***/ function(module1, exports1, __webpack_require__) {
             var superPropBase = __webpack_require__(227);
             function _get(target, property, receiver) {
-                return "undefined" != typeof Reflect && Reflect.get ? module1.exports = _get = Reflect.get : module1.exports = _get = function(target, property, receiver) {
+                return "u" > typeof Reflect && Reflect.get ? module1.exports = _get = Reflect.get : module1.exports = _get = function(target, property, receiver) {
                     var base = superPropBase(target, property);
                     if (base) {
                         var desc = Object.getOwnPropertyDescriptor(base, property);
@@ -698,40 +691,17 @@
             };
         /***/ },
         /* 15 */ /***/ function(module1, exports1) {
-            /**
-                 * Checks if `value` is classified as an `Array` object.
-                 *
-                 * @static
-                 * @memberOf _
-                 * @since 0.1.0
-                 * @category Lang
-                 * @param {*} value The value to check.
-                 * @returns {boolean} Returns `true` if `value` is an array, else `false`.
-                 * @example
-                 *
-                 * _.isArray([1, 2, 3]);
-                 * // => true
-                 *
-                 * _.isArray(document.body.children);
-                 * // => false
-                 *
-                 * _.isArray('abc');
-                 * // => false
-                 *
-                 * _.isArray(_.noop);
-                 * // => false
-                 */ var isArray = Array.isArray;
-            module1.exports = isArray;
+            module1.exports = Array.isArray;
         /***/ },
         /* 16 */ /***/ function(module1, exports1, __webpack_require__) {
-            var baseMerge = __webpack_require__(90), merge = __webpack_require__(145)(function(object, source, srcIndex) {
+            var baseMerge = __webpack_require__(90);
+            module1.exports = __webpack_require__(145)(function(object, source, srcIndex) {
                 baseMerge(object, source, srcIndex);
             });
-            module1.exports = merge;
         /***/ },
         /* 17 */ /***/ function(module1, exports1, __webpack_require__) {
-            var freeGlobal = __webpack_require__(45), freeSelf = "object" == typeof self && self && self.Object === Object && self, root = freeGlobal || freeSelf || Function("return this")();
-            module1.exports = root;
+            var freeGlobal = __webpack_require__(45), freeSelf = "object" == typeof self && self && self.Object === Object && self;
+            module1.exports = freeGlobal || freeSelf || Function("return this")();
         /***/ },
         /* 18 */ /***/ function(module1, exports1) {
             module1.exports = /**
@@ -892,13 +862,10 @@
         /* 23 */ /***/ function(module1, __webpack_exports__, __webpack_require__) {
             "use strict";
             /* WEBPACK VAR INJECTION */ (function(global) {
-                /* harmony import */ var _config, _currentImageWrapper, _skelImageWrapper, _subImageWrapper, _labelImageWrapper, _patchGrid, _patchLabelGrid, _imageToPatchGrid, _binaryImageWrapper, _patchSize, _inputImageWrapper, _skeletonizer, gl_vec2__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(7), gl_mat2__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(34), _common_image_wrapper__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(11), _common_cv_utils__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(8), _common_array_helper__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(10), _common_image_debug__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(9), _rasterizer__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(87), _tracer__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(21), _skeletonizer__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(88), _canvasContainer = {
-                    ctx: {
-                        binary: null
-                    },
-                    dom: {
-                        binary: null
-                    }
+                /* harmony import */ var _config, _currentImageWrapper, _skelImageWrapper, _subImageWrapper, _labelImageWrapper, _patchGrid, _patchLabelGrid, _imageToPatchGrid, _binaryImageWrapper, _patchSize, _inputImageWrapper, _skeletonizer, gl_vec2__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(7), gl_mat2__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(34), _common_image_wrapper__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(11), _common_cv_utils__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(8), _common_array_helper__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(10), _common_image_debug__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(9), _rasterizer__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(87), _tracer__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(21), _skeletonizer__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(88), _canvasContainer_ctx = {
+                    binary: null
+                }, _canvasContainer_dom = {
+                    binary: null
                 }, _numPatches = {
                     x: 0,
                     y: 0
@@ -911,23 +878,23 @@
                             x: _inputImageWrapper.size.x / 2 | 0,
                             // eslint-disable-next-line no-bitwise
                             y: _inputImageWrapper.size.y / 2 | 0
-                        }) : _inputImageWrapper, _patchSize = Object(_common_cv_utils__WEBPACK_IMPORTED_MODULE_3__./* calculatePatchSize */ a)(_config.patchSize, _currentImageWrapper.size), _numPatches.x = _currentImageWrapper.size.x / _patchSize.x | 0, _numPatches.y = _currentImageWrapper.size.y / _patchSize.y | 0, _binaryImageWrapper = new _common_image_wrapper__WEBPACK_IMPORTED_MODULE_2__./* default */ a(_currentImageWrapper.size, void 0, Uint8Array, !1), _labelImageWrapper = new _common_image_wrapper__WEBPACK_IMPORTED_MODULE_2__./* default */ a(_patchSize, void 0, Array, !0), skeletonImageData = new ArrayBuffer(65536), _subImageWrapper = new _common_image_wrapper__WEBPACK_IMPORTED_MODULE_2__./* default */ a(_patchSize, new Uint8Array(skeletonImageData, 0, _patchSize.x * _patchSize.y)), _skelImageWrapper = new _common_image_wrapper__WEBPACK_IMPORTED_MODULE_2__./* default */ a(_patchSize, new Uint8Array(skeletonImageData, _patchSize.x * _patchSize.y * 3, _patchSize.x * _patchSize.y), void 0, !0), _skeletonizer = Object(_skeletonizer__WEBPACK_IMPORTED_MODULE_8__./* default */ a)("undefined" != typeof window ? window : "undefined" != typeof self ? self : global, {
+                        }) : _inputImageWrapper, _patchSize = Object(_common_cv_utils__WEBPACK_IMPORTED_MODULE_3__./* calculatePatchSize */ a)(_config.patchSize, _currentImageWrapper.size), _numPatches.x = _currentImageWrapper.size.x / _patchSize.x | 0, _numPatches.y = _currentImageWrapper.size.y / _patchSize.y | 0, _binaryImageWrapper = new _common_image_wrapper__WEBPACK_IMPORTED_MODULE_2__./* default */ a(_currentImageWrapper.size, void 0, Uint8Array, !1), _labelImageWrapper = new _common_image_wrapper__WEBPACK_IMPORTED_MODULE_2__./* default */ a(_patchSize, void 0, Array, !0), skeletonImageData = new ArrayBuffer(65536), _subImageWrapper = new _common_image_wrapper__WEBPACK_IMPORTED_MODULE_2__./* default */ a(_patchSize, new Uint8Array(skeletonImageData, 0, _patchSize.x * _patchSize.y)), _skelImageWrapper = new _common_image_wrapper__WEBPACK_IMPORTED_MODULE_2__./* default */ a(_patchSize, new Uint8Array(skeletonImageData, _patchSize.x * _patchSize.y * 3, _patchSize.x * _patchSize.y), void 0, !0), _skeletonizer = Object(_skeletonizer__WEBPACK_IMPORTED_MODULE_8__./* default */ a)("u" > typeof window ? window : "u" > typeof self ? self : global, {
                             size: _patchSize.x
                         }, skeletonImageData), _imageToPatchGrid = new _common_image_wrapper__WEBPACK_IMPORTED_MODULE_2__./* default */ a({
                             // eslint-disable-next-line no-bitwise
                             x: _currentImageWrapper.size.x / _subImageWrapper.size.x | 0,
                             // eslint-disable-next-line no-bitwise
                             y: _currentImageWrapper.size.y / _subImageWrapper.size.y | 0
-                        }, void 0, Array, !0), _patchGrid = new _common_image_wrapper__WEBPACK_IMPORTED_MODULE_2__./* default */ a(_imageToPatchGrid.size, void 0, void 0, !0), _patchLabelGrid = new _common_image_wrapper__WEBPACK_IMPORTED_MODULE_2__./* default */ a(_imageToPatchGrid.size, void 0, Int32Array, !0), _config.useWorker || "undefined" == typeof document || (_canvasContainer.dom.binary = document.createElement("canvas"), _canvasContainer.dom.binary.className = "binaryBuffer", !0 === _config.debug.showCanvas && document.querySelector("#debug").appendChild(_canvasContainer.dom.binary), _canvasContainer.ctx.binary = _canvasContainer.dom.binary.getContext("2d"), _canvasContainer.dom.binary.width = _binaryImageWrapper.size.x, _canvasContainer.dom.binary.height = _binaryImageWrapper.size.y);
+                        }, void 0, Array, !0), _patchGrid = new _common_image_wrapper__WEBPACK_IMPORTED_MODULE_2__./* default */ a(_imageToPatchGrid.size, void 0, void 0, !0), _patchLabelGrid = new _common_image_wrapper__WEBPACK_IMPORTED_MODULE_2__./* default */ a(_imageToPatchGrid.size, void 0, Int32Array, !0), !_config.useWorker && "u" > typeof document && (_canvasContainer_dom.binary = document.createElement("canvas"), _canvasContainer_dom.binary.className = "binaryBuffer", !0 === _config.debug.showCanvas && document.querySelector("#debug").appendChild(_canvasContainer_dom.binary), _canvasContainer_ctx.binary = _canvasContainer_dom.binary.getContext("2d"), _canvasContainer_dom.binary.width = _binaryImageWrapper.size.x, _canvasContainer_dom.binary.height = _binaryImageWrapper.size.y);
                     },
                     locate: function() {
-                        _config.halfSample && Object(_common_cv_utils__WEBPACK_IMPORTED_MODULE_3__./* halfSample */ f)(_inputImageWrapper, _currentImageWrapper), Object(_common_cv_utils__WEBPACK_IMPORTED_MODULE_3__./* otsuThreshold */ i)(_currentImageWrapper, _binaryImageWrapper), _binaryImageWrapper.zeroBorder(), _config.debug.showCanvas && _binaryImageWrapper.show(_canvasContainer.dom.binary, 255);
+                        _config.halfSample && Object(_common_cv_utils__WEBPACK_IMPORTED_MODULE_3__./* halfSample */ f)(_inputImageWrapper, _currentImageWrapper), Object(_common_cv_utils__WEBPACK_IMPORTED_MODULE_3__./* otsuThreshold */ i)(_currentImageWrapper, _binaryImageWrapper), _binaryImageWrapper.zeroBorder(), _config.debug.showCanvas && _binaryImageWrapper.show(_canvasContainer_dom.binary, 255);
                         var patchesFound = /**
                      * Iterate over the entire image
                      * extract patches
                      */ function() {
                             var x, y, i, j, x1, y1, moments, rasterResult, patch, patchesFound = [];
-                            for(i = 0; i < _numPatches.x; i++)for(j = 0; j < _numPatches.y; j++)x = x1 = _subImageWrapper.size.x * i, y = y1 = _subImageWrapper.size.y * j, _binaryImageWrapper.subImageAsCopy(_subImageWrapper, Object(_common_cv_utils__WEBPACK_IMPORTED_MODULE_3__./* imageRef */ h)(x, y)), _skeletonizer.skeletonize(), _config.debug.showSkeleton && _skelImageWrapper.overlay(_canvasContainer.dom.binary, 360, Object(_common_cv_utils__WEBPACK_IMPORTED_MODULE_3__./* imageRef */ h)(x, y)), _skelImageWrapper.zeroBorder(), _common_array_helper__WEBPACK_IMPORTED_MODULE_4__./* default */ a.init(_labelImageWrapper.data, 0), rasterResult = _rasterizer__WEBPACK_IMPORTED_MODULE_6__./* default */ a.create(_skelImageWrapper, _labelImageWrapper).rasterize(0), _config.debug.showLabels && _labelImageWrapper.overlay(_canvasContainer.dom.binary, Math.floor(360 / rasterResult.count), {
+                            for(i = 0; i < _numPatches.x; i++)for(j = 0; j < _numPatches.y; j++)x = x1 = _subImageWrapper.size.x * i, y = y1 = _subImageWrapper.size.y * j, _binaryImageWrapper.subImageAsCopy(_subImageWrapper, Object(_common_cv_utils__WEBPACK_IMPORTED_MODULE_3__./* imageRef */ h)(x, y)), _skeletonizer.skeletonize(), _config.debug.showSkeleton && _skelImageWrapper.overlay(_canvasContainer_dom.binary, 360, Object(_common_cv_utils__WEBPACK_IMPORTED_MODULE_3__./* imageRef */ h)(x, y)), _skelImageWrapper.zeroBorder(), _common_array_helper__WEBPACK_IMPORTED_MODULE_4__./* default */ a.init(_labelImageWrapper.data, 0), rasterResult = _rasterizer__WEBPACK_IMPORTED_MODULE_6__./* default */ a.create(_skelImageWrapper, _labelImageWrapper).rasterize(0), _config.debug.showLabels && _labelImageWrapper.overlay(_canvasContainer_dom.binary, Math.floor(360 / rasterResult.count), {
                                 x: x1,
                                 y: y1
                             }), moments = _labelImageWrapper.moments(rasterResult.count), patchesFound = patchesFound.concat(/**
@@ -944,7 +911,7 @@
                                     for(k = 0; k < moments.length; k++)moments[k].m00 > minComponentWeight && eligibleMoments.push(moments[k]);
                                      // if at least 2 moments are found which have at least minComponentWeights covered
                                     if (eligibleMoments.length >= 2) {
-                                        for(k = 0, matchingMoments = /**
+                                        for(matchingMoments = /**
                      * Find similar moments (via cluster)
                      * @param {Object} moments
                      */ function(moments) {
@@ -956,7 +923,7 @@
                                                 for(var i = 0; i < points.length; i++)result.push(points[i].point);
                                             }
                                             return result;
-                                        }(eligibleMoments), avg = 0; k < matchingMoments.length; k++)avg += matchingMoments[k].rad;
+                                        }(eligibleMoments), avg = 0, k = 0; k < matchingMoments.length; k++)avg += matchingMoments[k].rad;
                                          // Only two of the moments are allowed not to fit into the equation
                                         matchingMoments.length > 1 && matchingMoments.length >= eligibleMoments.length / 4 * 3 && matchingMoments.length > moments.length / 4 && (avg /= matchingMoments.length, patch = {
                                             index: patchPos[1] * _numPatches.x + patchPos[0],
@@ -996,7 +963,7 @@
                                 i,
                                 j
                             ], x1, y1));
-                            if (_config.debug.showFoundPatches) for(i = 0; i < patchesFound.length; i++)patch = patchesFound[i], _common_image_debug__WEBPACK_IMPORTED_MODULE_5__./* default */ a.drawRect(patch.pos, _subImageWrapper.size, _canvasContainer.ctx.binary, {
+                            if (_config.debug.showFoundPatches) for(i = 0; i < patchesFound.length; i++)patch = patchesFound[i], _common_image_debug__WEBPACK_IMPORTED_MODULE_5__./* default */ a.drawRect(patch.pos, _subImageWrapper.size, _canvasContainer_ctx.binary, {
                                 color: "#99ff00",
                                 lineWidth: 2
                             });
@@ -1028,7 +995,7 @@
                                     x: currentIdx % _patchLabelGrid.size.x,
                                     y: currentIdx / _patchLabelGrid.size.x | 0
                                 };
-                                if (currentIdx < _patchLabelGrid.data.length) for(dir = 0, currentPatch = _imageToPatchGrid.data[currentIdx], _patchLabelGrid.data[currentIdx] = label; dir < _tracer__WEBPACK_IMPORTED_MODULE_7__./* default */ a.searchDirections.length; dir++){
+                                if (currentIdx < _patchLabelGrid.data.length) for(currentPatch = _imageToPatchGrid.data[currentIdx], _patchLabelGrid.data[currentIdx] = label, dir = 0; dir < _tracer__WEBPACK_IMPORTED_MODULE_7__./* default */ a.searchDirections.length; dir++){
                                     if (y = current.y + _tracer__WEBPACK_IMPORTED_MODULE_7__./* default */ a.searchDirections[dir][0], x = current.x + _tracer__WEBPACK_IMPORTED_MODULE_7__./* default */ a.searchDirections[dir][1], idx = y * _patchLabelGrid.size.x + x, 0 === _patchGrid.data[idx]) {
                                         _patchLabelGrid.data[idx] = Number.MAX_VALUE; // eslint-disable-next-line no-continue
                                         continue;
@@ -1038,7 +1005,7 @@
                             } // prepare for finding the right patches
                             (currIdx);
                              // draw patch-labels if requested
-                            if (_config.debug.showPatchLabels) for(j = 0; j < _patchLabelGrid.data.length; j++)_patchLabelGrid.data[j] > 0 && _patchLabelGrid.data[j] <= label && (patch = _imageToPatchGrid.data[j], hsv[0] = _patchLabelGrid.data[j] / (label + 1) * 360, Object(_common_cv_utils__WEBPACK_IMPORTED_MODULE_3__./* hsv2rgb */ g)(hsv, rgb), _common_image_debug__WEBPACK_IMPORTED_MODULE_5__./* default */ a.drawRect(patch.pos, _subImageWrapper.size, _canvasContainer.ctx.binary, {
+                            if (_config.debug.showPatchLabels) for(j = 0; j < _patchLabelGrid.data.length; j++)_patchLabelGrid.data[j] > 0 && _patchLabelGrid.data[j] <= label && (patch = _imageToPatchGrid.data[j], hsv[0] = _patchLabelGrid.data[j] / (label + 1) * 360, Object(_common_cv_utils__WEBPACK_IMPORTED_MODULE_3__./* hsv2rgb */ g)(hsv, rgb), _common_image_debug__WEBPACK_IMPORTED_MODULE_5__./* default */ a.drawRect(patch.pos, _subImageWrapper.size, _canvasContainer_ctx.binary, {
                                 color: "rgb(".concat(rgb.join(","), ")"),
                                 lineWidth: 2
                             }));
@@ -1084,7 +1051,7 @@
                      * @returns {Array} The minimal bounding box
                      */ function(patches) {
                                     var overAvg, i, j, patch, transMat, box, scale, minx = _binaryImageWrapper.size.x, miny = _binaryImageWrapper.size.y, maxx = -_binaryImageWrapper.size.x, maxy = -_binaryImageWrapper.size.y;
-                                    for(i = 0, overAvg = 0; i < patches.length; i++)overAvg += (patch = patches[i]).rad, _config.debug.showPatches && _common_image_debug__WEBPACK_IMPORTED_MODULE_5__./* default */ a.drawRect(patch.pos, _subImageWrapper.size, _canvasContainer.ctx.binary, {
+                                    for(i = 0, overAvg = 0; i < patches.length; i++)overAvg += (patch = patches[i]).rad, _config.debug.showPatches && _common_image_debug__WEBPACK_IMPORTED_MODULE_5__./* default */ a.drawRect(patch.pos, _subImageWrapper.size, _canvasContainer_ctx.binary, {
                                         color: "red"
                                     });
                                     for(overAvg /= patches.length, (overAvg = (180 * overAvg / Math.PI + 90) % 180 - 90) < 0 && (overAvg += 180), overAvg = (180 - overAvg) * Math.PI / 180, transMat = gl_mat2__WEBPACK_IMPORTED_MODULE_1__.copy(gl_mat2__WEBPACK_IMPORTED_MODULE_1__.create(), [
@@ -1093,16 +1060,16 @@
                                         -Math.sin(overAvg),
                                         Math.cos(overAvg)
                                     ]), i = 0; i < patches.length; i++){
-                                        for(j = 0, patch = patches[i]; j < 4; j++)gl_vec2__WEBPACK_IMPORTED_MODULE_0__.transformMat2(patch.box[j], patch.box[j], transMat);
+                                        for(patch = patches[i], j = 0; j < 4; j++)gl_vec2__WEBPACK_IMPORTED_MODULE_0__.transformMat2(patch.box[j], patch.box[j], transMat);
                                         _config.debug.boxFromPatches.showTransformed && _common_image_debug__WEBPACK_IMPORTED_MODULE_5__./* default */ a.drawPath(patch.box, {
                                             x: 0,
                                             y: 1
-                                        }, _canvasContainer.ctx.binary, {
+                                        }, _canvasContainer_ctx.binary, {
                                             color: "#99ff00",
                                             lineWidth: 2
                                         });
                                     } // find bounding box
-                                    for(i = 0; i < patches.length; i++)for(j = 0, patch = patches[i]; j < 4; j++)patch.box[j][0] < minx && (minx = patch.box[j][0]), patch.box[j][0] > maxx && (maxx = patch.box[j][0]), patch.box[j][1] < miny && (miny = patch.box[j][1]), patch.box[j][1] > maxy && (maxy = patch.box[j][1]);
+                                    for(i = 0; i < patches.length; i++)for(patch = patches[i], j = 0; j < 4; j++)patch.box[j][0] < minx && (minx = patch.box[j][0]), patch.box[j][0] > maxx && (maxx = patch.box[j][0]), patch.box[j][1] < miny && (miny = patch.box[j][1]), patch.box[j][1] > maxy && (maxy = patch.box[j][1]);
                                     for(box = [
                                         [
                                             minx,
@@ -1123,19 +1090,19 @@
                                     ], _config.debug.boxFromPatches.showTransformedBox && _common_image_debug__WEBPACK_IMPORTED_MODULE_5__./* default */ a.drawPath(box, {
                                         x: 0,
                                         y: 1
-                                    }, _canvasContainer.ctx.binary, {
+                                    }, _canvasContainer_ctx.binary, {
                                         color: "#ff0000",
                                         lineWidth: 2
                                     }), scale = _config.halfSample ? 2 : 1, transMat = gl_mat2__WEBPACK_IMPORTED_MODULE_1__.invert(transMat, transMat), j = 0; j < 4; j++)gl_vec2__WEBPACK_IMPORTED_MODULE_0__.transformMat2(box[j], box[j], transMat);
                                     for(_config.debug.boxFromPatches.showBB && _common_image_debug__WEBPACK_IMPORTED_MODULE_5__./* default */ a.drawPath(box, {
                                         x: 0,
                                         y: 1
-                                    }, _canvasContainer.ctx.binary, {
+                                    }, _canvasContainer_ctx.binary, {
                                         color: "#ff0000",
                                         lineWidth: 2
                                     }), j = 0; j < 4; j++)gl_vec2__WEBPACK_IMPORTED_MODULE_0__.scale(box[j], box[j], scale);
                                     return box;
-                                }(patches)) && (boxes.push(box), _config.debug.showRemainingPatchLabels)) for(j = 0; j < patches.length; j++)patch = patches[j], hsv[0] = topLabels[i].label / (maxLabel + 1) * 360, Object(_common_cv_utils__WEBPACK_IMPORTED_MODULE_3__./* hsv2rgb */ g)(hsv, rgb), _common_image_debug__WEBPACK_IMPORTED_MODULE_5__./* default */ a.drawRect(patch.pos, _subImageWrapper.size, _canvasContainer.ctx.binary, {
+                                }(patches)) && (boxes.push(box), _config.debug.showRemainingPatchLabels)) for(j = 0; j < patches.length; j++)patch = patches[j], hsv[0] = topLabels[i].label / (maxLabel + 1) * 360, Object(_common_cv_utils__WEBPACK_IMPORTED_MODULE_3__./* hsv2rgb */ g)(hsv, rgb), _common_image_debug__WEBPACK_IMPORTED_MODULE_5__./* default */ a.drawRect(patch.pos, _subImageWrapper.size, _canvasContainer_ctx.binary, {
                                     color: "rgb(".concat(rgb.join(","), ")"),
                                     lineWidth: 2
                                 });
@@ -1230,12 +1197,10 @@
             };
         /***/ },
         /* 27 */ /***/ function(module1, exports1, __webpack_require__) {
-            /** Built-in value references. */ var Symbol1 = __webpack_require__(17).Symbol;
-            module1.exports = Symbol1;
+            module1.exports = __webpack_require__(17).Symbol;
         /***/ },
         /* 28 */ /***/ function(module1, exports1, __webpack_require__) {
-            /* Built-in method references that are verified to be native. */ var nativeCreate = __webpack_require__(35)(Object, "create");
-            module1.exports = nativeCreate;
+            module1.exports = __webpack_require__(35)(Object, "create");
         /***/ },
         /* 29 */ /***/ function(module1, exports1, __webpack_require__) {
             var isKeyable = __webpack_require__(117);
@@ -1252,12 +1217,12 @@
             };
         /***/ },
         /* 30 */ /***/ function(module1, exports1, __webpack_require__) {
-            var baseIsArguments = __webpack_require__(132), isObjectLike = __webpack_require__(18), objectProto = Object.prototype, hasOwnProperty = objectProto.hasOwnProperty, propertyIsEnumerable = objectProto.propertyIsEnumerable, isArguments = baseIsArguments(function() {
+            var baseIsArguments = __webpack_require__(132), isObjectLike = __webpack_require__(18), objectProto = Object.prototype, hasOwnProperty = objectProto.hasOwnProperty, propertyIsEnumerable = objectProto.propertyIsEnumerable;
+            module1.exports = baseIsArguments(function() {
                 return arguments;
             }()) ? baseIsArguments : function(value) {
                 return isObjectLike(value) && hasOwnProperty.call(value, "callee") && !propertyIsEnumerable.call(value, "callee");
             };
-            module1.exports = isArguments;
         /***/ },
         /* 31 */ /***/ function(module1, exports1) {
             /** Used to detect unsigned integer values. */ var reIsUint = /^(?:0|[1-9]\d*)$/;
@@ -1489,13 +1454,11 @@
             };
         /***/ },
         /* 44 */ /***/ function(module1, exports1, __webpack_require__) {
-            /* Built-in method references that are verified to be native. */ var Map1 = __webpack_require__(35)(__webpack_require__(17), "Map");
-            module1.exports = Map1;
+            module1.exports = __webpack_require__(35)(__webpack_require__(17), "Map");
         /***/ },
         /* 45 */ /***/ function(module1, exports1, __webpack_require__) {
             /* WEBPACK VAR INJECTION */ (function(global) {
-                /** Detect free variable `global` from Node.js. */ var freeGlobal = "object" == typeof global && global && global.Object === Object && global;
-                module1.exports = freeGlobal;
+                module1.exports = "object" == typeof global && global && global.Object === Object && global;
             /* WEBPACK VAR INJECTION */ }).call(this, __webpack_require__(46));
         /***/ },
         /* 46 */ /***/ function(module1, exports1) {
@@ -1546,17 +1509,16 @@
             };
         /***/ },
         /* 49 */ /***/ function(module1, exports1, __webpack_require__) {
-            var getNative = __webpack_require__(35), defineProperty = function() {
+            var getNative = __webpack_require__(35);
+            module1.exports = function() {
                 try {
                     var func = getNative(Object, "defineProperty");
                     return func({}, "", {}), func;
                 } catch (e) {}
             }();
-            module1.exports = defineProperty;
         /***/ },
         /* 50 */ /***/ function(module1, exports1, __webpack_require__) {
-            /** Built-in value references. */ var getPrototype = __webpack_require__(131)(Object.getPrototypeOf, Object);
-            module1.exports = getPrototype;
+            module1.exports = __webpack_require__(131)(Object.getPrototypeOf, Object);
         /***/ },
         /* 51 */ /***/ function(module1, exports1) {
             /** Used for built-in method references. */ var objectProto = Object.prototype;
@@ -1573,13 +1535,13 @@
         /***/ },
         /* 52 */ /***/ function(module1, exports1, __webpack_require__) {
             /* WEBPACK VAR INJECTION */ (function(module1) {
-                var root = __webpack_require__(17), stubFalse = __webpack_require__(134), freeExports = exports1 && !exports1.nodeType && exports1, freeModule = freeExports && "object" == typeof module1 && module1 && !module1.nodeType && module1, Buffer = freeModule && freeModule.exports === freeExports ? root.Buffer : void 0, nativeIsBuffer = Buffer ? Buffer.isBuffer : void 0;
-                module1.exports = nativeIsBuffer || stubFalse;
+                var root = __webpack_require__(17), stubFalse = __webpack_require__(134), freeExports = exports1 && !exports1.nodeType && exports1, freeModule = freeExports && "object" == typeof module1 && module1 && !module1.nodeType && module1, Buffer = freeModule && freeModule.exports === freeExports ? root.Buffer : void 0;
+                module1.exports = (Buffer ? Buffer.isBuffer : void 0) || stubFalse;
             /* WEBPACK VAR INJECTION */ }).call(this, __webpack_require__(38)(module1));
         /***/ },
         /* 53 */ /***/ function(module1, exports1, __webpack_require__) {
-            var baseIsTypedArray = __webpack_require__(136), baseUnary = __webpack_require__(137), nodeUtil = __webpack_require__(138), nodeIsTypedArray = nodeUtil && nodeUtil.isTypedArray, isTypedArray = nodeIsTypedArray ? baseUnary(nodeIsTypedArray) : baseIsTypedArray;
-            module1.exports = isTypedArray;
+            var baseIsTypedArray = __webpack_require__(136), baseUnary = __webpack_require__(137), nodeUtil = __webpack_require__(138), nodeIsTypedArray = nodeUtil && nodeUtil.isTypedArray;
+            module1.exports = nodeIsTypedArray ? baseUnary(nodeIsTypedArray) : baseIsTypedArray;
         /***/ },
         /* 54 */ /***/ function(module1, exports1) {
             module1.exports = /**
@@ -1677,8 +1639,8 @@
             };
         /***/ },
         /* 59 */ /***/ function(module1, exports1, __webpack_require__) {
-            var baseSetToString = __webpack_require__(148), setToString = __webpack_require__(150)(baseSetToString);
-            module1.exports = setToString;
+            var baseSetToString = __webpack_require__(148);
+            module1.exports = __webpack_require__(150)(baseSetToString);
         /***/ },
         /* 60 */ /***/ function(module1, exports1, __webpack_require__) {
             var arrayLikeToArray = __webpack_require__(61);
@@ -1981,10 +1943,10 @@
             };
         /***/ },
         /* 85 */ /***/ function(module1, exports1, __webpack_require__) {
-            var basePick = __webpack_require__(229), pick = __webpack_require__(243)(function(object, paths) {
+            var basePick = __webpack_require__(229);
+            module1.exports = __webpack_require__(243)(function(object, paths) {
                 return null == object ? {} : basePick(object, paths);
             });
-            module1.exports = pick;
         /***/ },
         /* 86 */ /***/ function(module1, exports1, __webpack_require__) {
             var getPrototypeOf = __webpack_require__(2), setPrototypeOf = __webpack_require__(41), isNativeFunction = __webpack_require__(248), construct = __webpack_require__(249);
@@ -2040,15 +2002,14 @@
                         rasterize: function(depthlabel) {
                             var color, bc, lc, labelindex, cx, cy, vertex, p, cc, sc, pos, i, colorMap = [], connectedCount = 0;
                             for(i = 0; i < 400; i++)colorMap[i] = 0;
-                            for(cy = 1, colorMap[0] = imageData[0], cc = null; cy < height - 1; cy++)for(cx = 1, labelindex = 0, bc = colorMap[0]; cx < width - 1; cx++)if (0 === labelData[pos = cy * width + cx]) {
-                                if ((color = imageData[pos]) !== bc) {
-                                    if (0 === labelindex) colorMap[lc = connectedCount + 1] = color, bc = color, null !== (vertex = tracer.contourTracing(cy, cx, lc, color, Rasterizer.DIR.OUTSIDE_EDGE)) && (connectedCount++, labelindex = lc, (p = Rasterizer.createContour2D()).dir = Rasterizer.CONTOUR_DIR.CW_DIR, p.index = labelindex, p.firstVertex = vertex, p.nextpeer = cc, p.insideContours = null, null !== cc && (cc.prevpeer = p), cc = p);
-                                    else if (null !== (vertex = tracer.contourTracing(cy, cx, Rasterizer.DIR.INSIDE_EDGE, color, labelindex))) {
-                                        for((p = Rasterizer.createContour2D()).firstVertex = vertex, p.insideContours = null, 0 === depthlabel ? p.dir = Rasterizer.CONTOUR_DIR.CCW_DIR : p.dir = Rasterizer.CONTOUR_DIR.CW_DIR, p.index = depthlabel, sc = cc; null !== sc && sc.index !== labelindex;)sc = sc.nextpeer;
-                                        null !== sc && (p.nextpeer = sc.insideContours, null !== sc.insideContours && (sc.insideContours.prevpeer = p), sc.insideContours = p);
-                                    }
-                                } else labelData[pos] = labelindex;
-                            } else labelData[pos] === Rasterizer.DIR.OUTSIDE_EDGE || labelData[pos] === Rasterizer.DIR.INSIDE_EDGE ? (labelindex = 0, bc = labelData[pos] === Rasterizer.DIR.INSIDE_EDGE ? imageData[pos] : colorMap[0]) : bc = colorMap[labelindex = labelData[pos]];
+                            for(colorMap[0] = imageData[0], cc = null, cy = 1; cy < height - 1; cy++)for(labelindex = 0, bc = colorMap[0], cx = 1; cx < width - 1; cx++)if (0 === labelData[pos = cy * width + cx]) if ((color = imageData[pos]) !== bc) {
+                                if (0 === labelindex) colorMap[lc = connectedCount + 1] = color, bc = color, null !== (vertex = tracer.contourTracing(cy, cx, lc, color, Rasterizer.DIR.OUTSIDE_EDGE)) && (connectedCount++, labelindex = lc, (p = Rasterizer.createContour2D()).dir = Rasterizer.CONTOUR_DIR.CW_DIR, p.index = labelindex, p.firstVertex = vertex, p.nextpeer = cc, p.insideContours = null, null !== cc && (cc.prevpeer = p), cc = p);
+                                else if (null !== (vertex = tracer.contourTracing(cy, cx, Rasterizer.DIR.INSIDE_EDGE, color, labelindex))) {
+                                    for((p = Rasterizer.createContour2D()).firstVertex = vertex, p.insideContours = null, 0 === depthlabel ? p.dir = Rasterizer.CONTOUR_DIR.CCW_DIR : p.dir = Rasterizer.CONTOUR_DIR.CW_DIR, p.index = depthlabel, sc = cc; null !== sc && sc.index !== labelindex;)sc = sc.nextpeer;
+                                    null !== sc && (p.nextpeer = sc.insideContours, null !== sc.insideContours && (sc.insideContours.prevpeer = p), sc.insideContours = p);
+                                }
+                            } else labelData[pos] = labelindex;
+                            else labelData[pos] === Rasterizer.DIR.OUTSIDE_EDGE || labelData[pos] === Rasterizer.DIR.INSIDE_EDGE ? (labelindex = 0, bc = labelData[pos] === Rasterizer.DIR.INSIDE_EDGE ? imageData[pos] : colorMap[0]) : bc = colorMap[labelindex = labelData[pos]];
                             for(sc = cc; null !== sc;)sc.index = depthlabel, sc = sc.nextpeer;
                             return {
                                 cc: cc,
@@ -2107,8 +2068,11 @@
                             xStart1 = u - 1 | 0;
                             xStart2 = u + 1 | 0;
                             sum = (images[inImagePtr + yStart1 + xStart1 | 0] | 0) + (images[inImagePtr + yStart1 + xStart2 | 0] | 0) + (images[inImagePtr + offset + u | 0] | 0) + (images[inImagePtr + yStart2 + xStart1 | 0] | 0) + (images[inImagePtr + yStart2 + xStart2 | 0] | 0) | 0;
-                            if ((sum | 0) == 5) images[outImagePtr + offset + u | 0] = 1;
-                            else images[outImagePtr + offset + u | 0] = 0;
+                            if ((sum | 0) == (5 | 0)) {
+                                images[outImagePtr + offset + u | 0] = 1;
+                            } else {
+                                images[outImagePtr + offset + u | 0] = 0;
+                            }
                         }
                     }
                 }
@@ -2174,8 +2138,11 @@
                             xStart1 = u - 1 | 0;
                             xStart2 = u + 1 | 0;
                             sum = (images[inImagePtr + yStart1 + xStart1 | 0] | 0) + (images[inImagePtr + yStart1 + xStart2 | 0] | 0) + (images[inImagePtr + offset + u | 0] | 0) + (images[inImagePtr + yStart2 + xStart1 | 0] | 0) + (images[inImagePtr + yStart2 + xStart2 | 0] | 0) | 0;
-                            if ((sum | 0) > 0) images[outImagePtr + offset + u | 0] = 1;
-                            else images[outImagePtr + offset + u | 0] = 0;
+                            if ((sum | 0) > (0 | 0)) {
+                                images[outImagePtr + offset + u | 0] = 1;
+                            } else {
+                                images[outImagePtr + offset + u | 0] = 0;
+                            }
                         }
                     }
                 }
@@ -2481,8 +2448,7 @@
             };
         /***/ },
         /* 106 */ /***/ function(module1, exports1, __webpack_require__) {
-            /** Used to detect overreaching core-js shims. */ var coreJsData = __webpack_require__(17)["__core-js_shared__"];
-            module1.exports = coreJsData;
+            module1.exports = __webpack_require__(17)["__core-js_shared__"];
         /***/ },
         /* 107 */ /***/ function(module1, exports1) {
             /** Used to resolve the decompiled source of functions. */ var funcToString = Function.prototype.toString;
@@ -2573,7 +2539,7 @@
                  * @returns {boolean} Returns `true` if the entry was removed, else `false`.
                  */ function(key) {
                 var result = this.has(key) && delete this.__data__[key];
-                return this.size -= result ? 1 : 0, result;
+                return this.size -= !!result, result;
             };
         /***/ },
         /* 113 */ /***/ function(module1, exports1, __webpack_require__) {
@@ -2623,7 +2589,7 @@
                  * @returns {Object} Returns the hash instance.
                  */ function(key, value) {
                 var data = this.__data__;
-                return this.size += this.has(key) ? 0 : 1, data[key] = nativeCreate && void 0 === value ? "__lodash_hash_undefined__" : value, this;
+                return this.size += +!this.has(key), data[key] = nativeCreate && void 0 === value ? "__lodash_hash_undefined__" : value, this;
             };
         /***/ },
         /* 116 */ /***/ function(module1, exports1, __webpack_require__) {
@@ -2638,7 +2604,7 @@
                  * @returns {boolean} Returns `true` if the entry was removed, else `false`.
                  */ function(key) {
                 var result = getMapData(this, key).delete(key);
-                return this.size -= result ? 1 : 0, result;
+                return this.size -= !!result, result;
             };
         /***/ },
         /* 117 */ /***/ function(module1, exports1) {
@@ -2694,22 +2660,11 @@
                  * @returns {Object} Returns the map cache instance.
                  */ function(key, value) {
                 var data = getMapData(this, key), size = data.size;
-                return data.set(key, value), this.size += data.size == size ? 0 : 1, this;
+                return data.set(key, value), this.size += +(data.size != size), this;
             };
         /***/ },
         /* 121 */ /***/ function(module1, exports1, __webpack_require__) {
-            /**
-                 * The base implementation of `baseForOwn` which iterates over `object`
-                 * properties returned by `keysFunc` and invokes `iteratee` for each property.
-                 * Iteratee functions may exit iteration early by explicitly returning `false`.
-                 *
-                 * @private
-                 * @param {Object} object The object to iterate over.
-                 * @param {Function} iteratee The function invoked per iteration.
-                 * @param {Function} keysFunc The function to get the keys of `object`.
-                 * @returns {Object} Returns `object`.
-                 */ var baseFor = __webpack_require__(122)();
-            module1.exports = baseFor;
+            module1.exports = __webpack_require__(122)();
         /***/ },
         /* 122 */ /***/ function(module1, exports1) {
             module1.exports = /**
@@ -2746,10 +2701,7 @@
                  *  counterparts.
                  */ function(object, source, key, srcIndex, mergeFunc, customizer, stack) {
                 var objValue = safeGet(object, key), srcValue = safeGet(source, key), stacked = stack.get(srcValue);
-                if (stacked) {
-                    assignMergeValue(object, key, stacked);
-                    return;
-                }
+                if (stacked) return void assignMergeValue(object, key, stacked);
                 var newValue = customizer ? customizer(objValue, srcValue, key + "", object, source, stack) : void 0, isCommon = void 0 === newValue;
                 if (isCommon) {
                     var isArr = isArray(srcValue), isBuff = !isArr && isBuffer(srcValue), isTyped = !isArr && !isBuff && isTypedArray(srcValue);
@@ -2804,8 +2756,7 @@
             };
         /***/ },
         /* 127 */ /***/ function(module1, exports1, __webpack_require__) {
-            /** Built-in value references. */ var Uint8Array1 = __webpack_require__(17).Uint8Array;
-            module1.exports = Uint8Array1;
+            module1.exports = __webpack_require__(17).Uint8Array;
         /***/ },
         /* 128 */ /***/ function(module1, exports1) {
             module1.exports = /**
@@ -2834,7 +2785,8 @@
             };
         /***/ },
         /* 130 */ /***/ function(module1, exports1, __webpack_require__) {
-            var isObject = __webpack_require__(14), objectCreate = Object.create, baseCreate = function() {
+            var isObject = __webpack_require__(14), objectCreate = Object.create;
+            module1.exports = function() {
                 function object() {}
                 return function(proto) {
                     if (!isObject(proto)) return {};
@@ -2844,7 +2796,6 @@
                     return object.prototype = void 0, result;
                 };
             }();
-            module1.exports = baseCreate;
         /***/ },
         /* 131 */ /***/ function(module1, exports1) {
             module1.exports = /**
@@ -2983,7 +2934,8 @@
         /***/ },
         /* 138 */ /***/ function(module1, exports1, __webpack_require__) {
             /* WEBPACK VAR INJECTION */ (function(module1) {
-                var freeGlobal = __webpack_require__(45), freeExports = exports1 && !exports1.nodeType && exports1, freeModule = freeExports && "object" == typeof module1 && module1 && !module1.nodeType && module1, freeProcess = freeModule && freeModule.exports === freeExports && freeGlobal.process, nodeUtil = function() {
+                var freeGlobal = __webpack_require__(45), freeExports = exports1 && !exports1.nodeType && exports1, freeModule = freeExports && "object" == typeof module1 && module1 && !module1.nodeType && module1, freeProcess = freeModule && freeModule.exports === freeExports && freeGlobal.process;
+                module1.exports = function() {
                     try {
                         // Use `util.types` for Node.js 10+.
                         var types = freeModule && freeModule.require && freeModule.require("util").types;
@@ -2992,7 +2944,6 @@
                         return freeProcess && freeProcess.binding && freeProcess.binding("util");
                     } catch (e) {}
                 }();
-                module1.exports = nodeUtil;
             /* WEBPACK VAR INJECTION */ }).call(this, __webpack_require__(38)(module1));
         /***/ },
         /* 139 */ /***/ function(module1, exports1, __webpack_require__) {
@@ -3163,7 +3114,8 @@
             };
         /***/ },
         /* 148 */ /***/ function(module1, exports1, __webpack_require__) {
-            var constant = __webpack_require__(149), defineProperty = __webpack_require__(49), identity = __webpack_require__(57), baseSetToString = defineProperty ? function(func, string) {
+            var constant = __webpack_require__(149), defineProperty = __webpack_require__(49), identity = __webpack_require__(57);
+            module1.exports = defineProperty ? function(func, string) {
                 return defineProperty(func, "toString", {
                     configurable: !0,
                     enumerable: !1,
@@ -3171,7 +3123,6 @@
                     writable: !0
                 });
             } : identity;
-            module1.exports = baseSetToString;
         /***/ },
         /* 149 */ /***/ function(module1, exports1) {
             module1.exports = /**
@@ -3237,7 +3188,7 @@
             };
         /***/ },
         /* 152 */ /***/ function(module1, exports1) {
-            "undefined" == typeof window || window.requestAnimationFrame || (window.requestAnimationFrame = window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || function(/* function FrameRequestCallback */ callback) {
+            "u" > typeof window && !window.requestAnimationFrame && (window.requestAnimationFrame = window.webkitRequestAnimationFrame || window.mozRequestAnimationFrame || window.oRequestAnimationFrame || window.msRequestAnimationFrame || function(/* function FrameRequestCallback */ callback) {
                 window.setTimeout(callback, 1000 / 60);
             }), "function" != typeof Math.imul && /* eslint-disable no-bitwise */ (Math.imul = function(a, b) {
                 var al = 0xffff & a, bl = 0xffff & b;
@@ -3266,7 +3217,7 @@
         /***/ },
         /* 154 */ /***/ function(module1, exports1) {
             module1.exports = function(arr, i) {
-                var _s, _e, _i = null == arr ? null : "undefined" != typeof Symbol && arr[Symbol.iterator] || arr["@@iterator"];
+                var _s, _e, _i = null == arr ? null : "u" > typeof Symbol && arr[Symbol.iterator] || arr["@@iterator"];
                 if (null != _i) {
                     var _arr = [], _n = !0, _d = !1;
                     try {
@@ -4022,7 +3973,7 @@
         /***/ },
         /* 225 */ /***/ function(module1, exports1) {
             module1.exports = function(iter) {
-                if ("undefined" != typeof Symbol && null != iter[Symbol.iterator] || null != iter["@@iterator"]) return Array.from(iter);
+                if ("u" > typeof Symbol && null != iter[Symbol.iterator] || null != iter["@@iterator"]) return Array.from(iter);
             }, module1.exports.default = module1.exports, module1.exports.__esModule = !0;
         /***/ },
         /* 226 */ /***/ function(module1, exports1) {
@@ -4047,9 +3998,9 @@
                 "use strict";
                 var undefined, Op = Object.prototype, hasOwn = Op.hasOwnProperty, $Symbol = "function" == typeof Symbol ? Symbol : {}, iteratorSymbol = $Symbol.iterator || "@@iterator", asyncIteratorSymbol = $Symbol.asyncIterator || "@@asyncIterator", toStringTagSymbol = $Symbol.toStringTag || "@@toStringTag";
                 function wrap(innerFn, outerFn, self1, tryLocsList) {
-                    var state, generator = Object.create((outerFn && outerFn.prototype instanceof Generator ? outerFn : Generator).prototype), context = new Context(tryLocsList || []);
-                    return(// .throw, and .return methods.
-                    generator._invoke = (state = GenStateSuspendedStart, function(method, arg) {
+                    var context, state, generator = Object.create((outerFn && outerFn.prototype instanceof Generator ? outerFn : Generator).prototype);
+                    return context = new Context(tryLocsList || []), state = GenStateSuspendedStart, // .throw, and .return methods.
+                    generator._invoke = function(method, arg) {
                         if (state === GenStateExecuting) throw Error("Generator is already running");
                         if (state === GenStateCompleted) {
                             if ("throw" === method) throw arg;
@@ -4114,7 +4065,7 @@
                             "throw" === record.type && (state = GenStateCompleted, // context.dispatchException(context.arg) call above.
                             context.method = "throw", context.arg = record.arg);
                         }
-                    }), generator);
+                    }, generator;
                 }
                 // record like context.tryEntries[i].completion. This interface could
                 // have been (and was previously) designed to take a closure to be
@@ -4337,7 +4288,7 @@
                                 var hasCatch = hasOwn.call(entry, "catchLoc"), hasFinally = hasOwn.call(entry, "finallyLoc");
                                 if (hasCatch && hasFinally) {
                                     if (this.prev < entry.catchLoc) return handle(entry.catchLoc, !0);
-                                    if (this.prev < entry.finallyLoc) return handle(entry.finallyLoc);
+                                    else if (this.prev < entry.finallyLoc) return handle(entry.finallyLoc);
                                 } else if (hasCatch) {
                                     if (this.prev < entry.catchLoc) return handle(entry.catchLoc, !0);
                                 } else if (hasFinally) {
@@ -4395,11 +4346,7 @@
                         (this.arg = undefined), ContinueSentinel;
                     }
                 }, exports1;
-            }(// If this script is executing as a CommonJS module, use module.exports
-            // as the regeneratorRuntime namespace. Otherwise create a new empty
-            // object. Either way, the resulting object will be used to initialize
-            // the regeneratorRuntime variable at the top of this file.
-            module1.exports);
+            }(module1.exports);
             try {
                 regeneratorRuntime = runtime;
             } catch (accidentalStrictMode) {
@@ -4480,13 +4427,13 @@
             };
         /***/ },
         /* 233 */ /***/ function(module1, exports1, __webpack_require__) {
-            var memoizeCapped = __webpack_require__(234), rePropName = /[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|$))/g, reEscapeChar = /\\(\\)?/g, stringToPath = memoizeCapped(function(string) {
+            var memoizeCapped = __webpack_require__(234), rePropName = /[^.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|$))/g, reEscapeChar = /\\(\\)?/g;
+            module1.exports = memoizeCapped(function(string) {
                 var result = [];
                 return 46 === string.charCodeAt(0) && result.push(""), string.replace(rePropName, function(match, number, quote, subString) {
                     result.push(quote ? subString.replace(reEscapeChar, "$1") : number || match);
                 }), result;
             });
-            module1.exports = stringToPath;
         /***/ },
         /* 234 */ /***/ function(module1, exports1, __webpack_require__) {
             var memoize = __webpack_require__(235);
@@ -4808,7 +4755,7 @@
         /***/ },
         /* 250 */ /***/ function(module1, exports1) {
             module1.exports = function() {
-                if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                 if ("function" == typeof Proxy) return !0;
                 try {
                     return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {})), !0;
@@ -5030,12 +4977,7 @@
             var helpers_typeof = __webpack_require__(19), typeof_default = /*#__PURE__*/ __webpack_require__.n(helpers_typeof), merge = __webpack_require__(16), merge_default = /*#__PURE__*/ __webpack_require__.n(merge);
             __webpack_require__(152);
             // EXTERNAL MODULE: ./src/common/image_wrapper.ts
-            var image_wrapper = __webpack_require__(11), Bresenham = {}, Slope = {
-                DIR: {
-                    UP: 1,
-                    DOWN: -1
-                }
-            };
+            var image_wrapper = __webpack_require__(11), Bresenham = {};
             /**
                  * Scans a line of the given image from point p1 to p2 and returns a result object containing
                  * gray-scale values (0-255) of the underlying pixels in addition to the min
@@ -5065,10 +5007,10 @@
                  * @param {Object} result {line, min, max}
                  */ Bresenham.toBinaryLine = function(result) {
                 var slope, slope2, currentDir, dir, i, j, min = result.min, max = result.max, line = result.line, center = min + (max - min) / 2, extrema = [], threshold = (max - min) / 12, rThreshold = -threshold;
-                for(currentDir = line[0] > center ? Slope.DIR.UP : Slope.DIR.DOWN, extrema.push({
+                for(currentDir = line[0] > center ? 1 : -1, extrema.push({
                     pos: 0,
                     val: line[0]
-                }), i = 0; i < line.length - 2; i++)dir = (slope = line[i + 1] - line[i]) + (slope2 = line[i + 2] - line[i + 1]) < rThreshold && line[i + 1] < 1.5 * center ? Slope.DIR.DOWN : slope + slope2 > threshold && line[i + 1] > 0.5 * center ? Slope.DIR.UP : currentDir, currentDir !== dir && (extrema.push({
+                }), i = 0; i < line.length - 2; i++)dir = (slope = line[i + 1] - line[i]) + (slope2 = line[i + 2] - line[i + 1]) < rThreshold && line[i + 1] < 1.5 * center ? -1 : slope + slope2 > threshold && line[i + 1] > 0.5 * center ? 1 : currentDir, currentDir !== dir && (extrema.push({
                     pos: i,
                     val: line[i]
                 }), currentDir = dir);
@@ -5092,7 +5034,7 @@
                 },
                 printPattern: function(line, canvas) {
                     var i, ctx = canvas.getContext("2d");
-                    for(i = 0, canvas.width = line.length, ctx.fillColor = "black"; i < line.length; i++)1 === line[i] && ctx.fillRect(i, 0, 1, 100);
+                    for(canvas.width = line.length, ctx.fillColor = "black", i = 0; i < line.length; i++)1 === line[i] && ctx.fillRect(i, 0, 1, 100);
                 }
             };
             // EXTERNAL MODULE: ./src/common/image_debug.ts
@@ -5160,7 +5102,7 @@
                         value: function() {
                             var offset = arguments.length > 0 && void 0 !== arguments[0] ? arguments[0] : this._nextUnset(this._row), end = arguments.length > 1 && void 0 !== arguments[1] ? arguments[1] : this._row.length, isWhite = !(arguments.length > 2) || void 0 === arguments[2] || arguments[2], counters = [], counterPos = 0;
                             counters[0] = 0;
-                            for(var i = offset; i < end; i++)this._row[i] ^ (isWhite ? 1 : 0) ? counters[counterPos]++ : (counters[++counterPos] = 1, isWhite = !isWhite);
+                            for(var i = offset; i < end; i++)!!isWhite ^ this._row[i] ? counters[counterPos]++ : (counters[++counterPos] = 1, isWhite = !isWhite);
                             return counters;
                         }
                     },
@@ -5169,7 +5111,7 @@
                         value: function(start, counters) {
                             var numCounters = counters.length, end = this._row.length, isWhite = !this._row[start], counterPos = 0;
                             array_helper.a.init(counters, 0);
-                            for(var i = start; i < end; i++)if (this._row[i] ^ (isWhite ? 1 : 0)) counters[counterPos]++;
+                            for(var i = start; i < end; i++)if (!!isWhite ^ this._row[i]) counters[counterPos]++;
                             else {
                                 if (++counterPos === numCounters) break;
                                 counters[counterPos] = 1, isWhite = !isWhite;
@@ -5192,7 +5134,7 @@
             }(), code_128_reader = /*#__PURE__*/ function(_BarcodeReader) {
                 inherits_default()(Code128Reader, _BarcodeReader);
                 var hasNativeReflectConstruct, _super = (hasNativeReflectConstruct = function() {
-                    if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                    if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                     if ("function" == typeof Proxy) return !0;
                     try {
                         return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {})), !0;
@@ -6100,7 +6042,7 @@
                                 0,
                                 0,
                                 0
-                            ], isWhite = !this._row[start], counterPos = 0, i = start; i < this._row.length; i++)if (this._row[i] ^ (isWhite ? 1 : 0)) counter[counterPos]++;
+                            ], isWhite = !this._row[start], counterPos = 0, i = start; i < this._row.length; i++)if (!!isWhite ^ this._row[i]) counter[counterPos]++;
                             else {
                                 if (counterPos === counter.length - 1) {
                                     correction && this._correct(counter, correction);
@@ -6142,7 +6084,7 @@
                                     bar: 1,
                                     space: 1
                                 }
-                            }, isWhite = !1, counterPos = 0, i = offset; i < this._row.length; i++)if (this._row[i] ^ (isWhite ? 1 : 0)) counter[counterPos]++;
+                            }, isWhite = !1, counterPos = 0, i = offset; i < this._row.length; i++)if (!!isWhite ^ this._row[i]) counter[counterPos]++;
                             else {
                                 if (counterPos === counter.length - 1) {
                                     for(var sum = counter.reduce(function(prev, next) {
@@ -6447,7 +6389,7 @@
             ], ean_reader = /*#__PURE__*/ function(_BarcodeReader) {
                 inherits_default()(EANReader, _BarcodeReader);
                 var hasNativeReflectConstruct, _super = (hasNativeReflectConstruct = function() {
-                    if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                    if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                     if ("function" == typeof Proxy) return !0;
                     try {
                         return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {})), !0;
@@ -6480,7 +6422,7 @@
                             }, counterPos = 0;
                             offset || (offset = this._nextSet(this._row));
                             for(var found = !1, i = offset; i < this._row.length; i++)// console.warn(`* loop i=${offset} len=${this._row.length} isWhite=${isWhite} counterPos=${counterPos}`);
-                            if (this._row[i] ^ (isWhite ? 1 : 0)) counter[counterPos] += 1;
+                            if (!!isWhite ^ this._row[i]) counter[counterPos] += 1;
                             else {
                                 if (counterPos === counter.length - 1) {
                                     var error = this._matchPattern(counter, pattern); // console.warn('* matchPattern', error, counter, pattern);
@@ -6514,7 +6456,7 @@
                             }, isWhite = !this._row[start], counterPos = 0;
                             coderange || // console.warn('* decodeCode before length');
                             (coderange = CODE_PATTERN.length);
-                            for(var i = start; i < this._row.length; i++)if (this._row[i] ^ (isWhite ? 1 : 0)) counter[counterPos]++;
+                            for(var i = start; i < this._row.length; i++)if (!!isWhite ^ this._row[i]) counter[counterPos]++;
                             else {
                                 if (counterPos === counter.length - 1) {
                                     for(var code = 0; code < coderange; code++){
@@ -6720,7 +6662,7 @@
             ]), code_39_reader = /*#__PURE__*/ function(_BarcodeReader) {
                 inherits_default()(Code39Reader, _BarcodeReader);
                 var hasNativeReflectConstruct, _super = (hasNativeReflectConstruct = function() {
-                    if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                    if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                     if ("function" == typeof Proxy) return !0;
                     try {
                         return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {})), !0;
@@ -6753,7 +6695,7 @@
                                 0,
                                 0,
                                 0
-                            ]), counterPos = 0, isWhite = !1, i = offset; i < this._row.length; i++)if (this._row[i] ^ (isWhite ? 1 : 0)) counter[counterPos]++;
+                            ]), counterPos = 0, isWhite = !1, i = offset; i < this._row.length; i++)if (!!isWhite ^ this._row[i]) counter[counterPos]++;
                             else {
                                 if (counterPos === counter.length - 1) {
                                     // find start pattern
@@ -6844,7 +6786,7 @@
             }(barcode_reader), get = __webpack_require__(13), get_default = /*#__PURE__*/ __webpack_require__.n(get), patterns_IOQ = /[IOQ]/g, patterns_AZ09 = /[A-Z0-9]{17}/, code_39_vin_reader = /*#__PURE__*/ function(_Code39Reader) {
                 inherits_default()(Code39VINReader, _Code39Reader);
                 var hasNativeReflectConstruct, _super = (hasNativeReflectConstruct = function() {
-                    if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                    if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                     if ("function" == typeof Proxy) return !0;
                     try {
                         return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {})), !0;
@@ -6931,7 +6873,7 @@
             ], codabar_reader = /*#__PURE__*/ function(_BarcodeReader) {
                 inherits_default()(NewCodabarReader, _BarcodeReader);
                 var hasNativeReflectConstruct, _super = (hasNativeReflectConstruct = function() {
-                    if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                    if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                     if ("function" == typeof Proxy) return !0;
                     try {
                         return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {})), !0;
@@ -7117,7 +7059,7 @@
             }(barcode_reader), upc_reader = /*#__PURE__*/ function(_EANReader) {
                 inherits_default()(UPCReader, _EANReader);
                 var hasNativeReflectConstruct, _super = (hasNativeReflectConstruct = function() {
-                    if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                    if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                     if ("function" == typeof Proxy) return !0;
                     try {
                         return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {})), !0;
@@ -7148,7 +7090,7 @@
             }(ean_reader), ean_8_reader = /*#__PURE__*/ function(_EANReader) {
                 inherits_default()(EAN8Reader, _EANReader);
                 var hasNativeReflectConstruct, _super = (hasNativeReflectConstruct = function() {
-                    if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                    if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                     if ("function" == typeof Proxy) return !0;
                     try {
                         return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {})), !0;
@@ -7188,7 +7130,7 @@
             }(ean_reader), ean_2_reader = /*#__PURE__*/ function(_EANReader) {
                 inherits_default()(EAN2Reader, _EANReader);
                 var hasNativeReflectConstruct, _super = (hasNativeReflectConstruct = function() {
-                    if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                    if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                     if ("function" == typeof Proxy) return !0;
                     try {
                         return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {})), !0;
@@ -7245,7 +7187,7 @@
             ], ean_5_reader = /*#__PURE__*/ function(_EANReader) {
                 inherits_default()(EAN5Reader, _EANReader);
                 var hasNativeReflectConstruct, _super = (hasNativeReflectConstruct = function() {
-                    if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                    if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                     if ("function" == typeof Proxy) return !0;
                     try {
                         return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {})), !0;
@@ -7310,7 +7252,7 @@
             /* harmony default export */ var upc_e_reader = /*#__PURE__*/ function(_EANReader) {
                 inherits_default()(UPCEReader, _EANReader);
                 var hasNativeReflectConstruct, _super = (hasNativeReflectConstruct = function() {
-                    if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                    if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                     if ("function" == typeof Proxy) return !0;
                     try {
                         return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {})), !0;
@@ -7446,7 +7388,7 @@
             }(ean_reader), i2of5_reader = /*#__PURE__*/ function(_BarcodeReader) {
                 inherits_default()(I2of5Reader, _BarcodeReader);
                 var hasNativeReflectConstruct, _super = (hasNativeReflectConstruct = function() {
-                    if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                    if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                     if ("function" == typeof Proxy) return !0;
                     try {
                         return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {})), !0;
@@ -7576,7 +7518,7 @@
                                 end: 0
                             }, epsilon = this.AVG_CODE_ERROR;
                             isWhite = isWhite || !1, tryHarder = tryHarder || !1, offset || (offset = this._nextSet(this._row));
-                            for(var i = offset; i < this._row.length; i++)if (this._row[i] ^ (isWhite ? 1 : 0)) counter[counterPos]++;
+                            for(var i = offset; i < this._row.length; i++)if (!!isWhite ^ this._row[i]) counter[counterPos]++;
                             else {
                                 if (counterPos === counter.length - 1) {
                                     var sum = counter.reduce(function(prev, next) {
@@ -7787,7 +7729,7 @@
             }, 0), _2of5_reader = /*#__PURE__*/ function(_BarcodeReader) {
                 inherits_default()(TwoOfFiveReader, _BarcodeReader);
                 var hasNativeReflectConstruct, _super = (hasNativeReflectConstruct = function() {
-                    if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                    if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                     if ("function" == typeof Proxy) return !0;
                     try {
                         return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {})), !0;
@@ -7821,7 +7763,7 @@
                             }, sum = 0, error = 0, epsilon = this.AVG_CODE_ERROR;
                             offset || (offset = this._nextSet(this._row));
                             for(var i = 0; i < pattern.length; i++)counter[i] = 0;
-                            for(var _i = offset; _i < this._row.length; _i++)if (this._row[_i] ^ (isWhite ? 1 : 0)) counter[counterPos]++;
+                            for(var _i = offset; _i < this._row.length; _i++)if (!!isWhite ^ this._row[_i]) counter[counterPos]++;
                             else {
                                 if (counterPos === counter.length - 1) {
                                     sum = 0;
@@ -7981,7 +7923,7 @@
             ]), code_93_reader = /*#__PURE__*/ function(_BarcodeReader) {
                 inherits_default()(Code93Reader, _BarcodeReader);
                 var hasNativeReflectConstruct, _super = (hasNativeReflectConstruct = function() {
-                    if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                    if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                     if ("function" == typeof Proxy) return !0;
                     try {
                         return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {})), !0;
@@ -8032,7 +7974,7 @@
                                 0,
                                 0,
                                 0
-                            ]), counterPos = 0, isWhite = !1, i = offset; i < this._row.length; i++)if (this._row[i] ^ (isWhite ? 1 : 0)) counter[counterPos]++;
+                            ]), counterPos = 0, isWhite = !1, i = offset; i < this._row.length; i++)if (!!isWhite ^ this._row[i]) counter[counterPos]++;
                             else {
                                 if (counterPos === counter.length - 1) {
                                     // find start pattern
@@ -8148,7 +8090,7 @@
             }(barcode_reader), code_32_reader_patterns_AEIO = /[AEIO]/g, code_32_reader = /*#__PURE__*/ function(_Code39Reader) {
                 inherits_default()(Code32Reader, _Code39Reader);
                 var hasNativeReflectConstruct, _super = (hasNativeReflectConstruct = function() {
-                    if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                    if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                     if ("function" == typeof Proxy) return !0;
                     try {
                         return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {})), !0;
@@ -8215,17 +8157,14 @@
                     READERS[name] = reader;
                 },
                 create: function(config, inputImageWrapper) {
-                    var _canvas = {
-                        ctx: {
-                            frequency: null,
-                            pattern: null,
-                            overlay: null
-                        },
-                        dom: {
-                            frequency: null,
-                            pattern: null,
-                            overlay: null
-                        }
+                    var _canvas_ctx = {
+                        frequency: null,
+                        pattern: null,
+                        overlay: null
+                    }, _canvas_dom = {
+                        frequency: null,
+                        pattern: null,
+                        overlay: null
                     }, _barcodeReaders = [];
                     function initReaders() {
                         config.readers.forEach(function(readerConfig) {
@@ -8251,10 +8190,10 @@
                         for(config.debug.showFrequency && (image_debug.a.drawPath(line, {
                             x: "x",
                             y: "y"
-                        }, _canvas.ctx.overlay, {
+                        }, _canvas_ctx.overlay, {
                             color: "red",
                             lineWidth: 3
-                        }), Bresenham.debug.printFrequency(barcodeLine.line, _canvas.dom.frequency)), Bresenham.toBinaryLine(barcodeLine), config.debug.showPattern && Bresenham.debug.printPattern(barcodeLine.line, _canvas.dom.pattern), i = 0; i < _barcodeReaders.length && null === result; i++)result = _barcodeReaders[i].decodePattern(barcodeLine.line);
+                        }), Bresenham.debug.printFrequency(barcodeLine.line, _canvas_dom.frequency)), Bresenham.toBinaryLine(barcodeLine), config.debug.showPattern && Bresenham.debug.printPattern(barcodeLine.line, _canvas_dom.pattern), i = 0; i < _barcodeReaders.length && null === result; i++)result = _barcodeReaders[i].decodePattern(barcodeLine.line);
                         return null === result ? null : {
                             codeResult: result,
                             barcodeLine: barcodeLine
@@ -8266,7 +8205,7 @@
                          * @param {Object} box The area to search in
                          * @returns {Object} the result {codeResult, line, angle, pattern, threshold}
                          */ function _decodeFromBoundingBox(box) {
-                        var line, line1, result, ctx = _canvas.ctx.overlay;
+                        var line, line1, result, ctx = _canvas_ctx.overlay;
                         config.debug.drawBoundingBox && ctx && image_debug.a.drawPath(box, {
                             x: 0,
                             y: 1
@@ -8299,7 +8238,7 @@
                             for(extendLine(ext); ext > 1 && (!inputImageWrapper.inImageWithBorder(line[0]) || !inputImageWrapper.inImageWithBorder(line[1]));)extendLine(-// eslint-disable-next-line no-param-reassign
                             (ext -= Math.ceil(ext / 2)));
                             return line;
-                        }(line1, lineAngle, Math.floor(0.1 * lineLength))) ? null : (null === (result = tryDecode(line1)) && (result = /**
+                        }(line1, lineAngle, Math.floor(0.1 * lineLength))) || (null === (result = tryDecode(line1)) && (result = /**
                          * This method slices the given area apart and tries to detect a barcode-pattern
                          * for each slice. It returns the decoded barcode, or null if nothing was found
                          * @param {Array} box
@@ -8329,19 +8268,19 @@
                         });
                     }
                     return function() {
-                        if ("undefined" != typeof document) {
+                        if ("u" > typeof document) {
                             var $debug = document.querySelector("#debug.detection");
-                            _canvas.dom.frequency = document.querySelector("canvas.frequency"), !_canvas.dom.frequency && (_canvas.dom.frequency = document.createElement("canvas"), _canvas.dom.frequency.className = "frequency", $debug && $debug.appendChild(_canvas.dom.frequency)), _canvas.ctx.frequency = _canvas.dom.frequency.getContext("2d"), _canvas.dom.pattern = document.querySelector("canvas.patternBuffer"), !_canvas.dom.pattern && (_canvas.dom.pattern = document.createElement("canvas"), _canvas.dom.pattern.className = "patternBuffer", $debug && $debug.appendChild(_canvas.dom.pattern)), _canvas.ctx.pattern = _canvas.dom.pattern.getContext("2d"), _canvas.dom.overlay = document.querySelector("canvas.drawingBuffer"), _canvas.dom.overlay && (_canvas.ctx.overlay = _canvas.dom.overlay.getContext("2d"));
+                            _canvas_dom.frequency = document.querySelector("canvas.frequency"), !_canvas_dom.frequency && (_canvas_dom.frequency = document.createElement("canvas"), _canvas_dom.frequency.className = "frequency", $debug && $debug.appendChild(_canvas_dom.frequency)), _canvas_ctx.frequency = _canvas_dom.frequency.getContext("2d"), _canvas_dom.pattern = document.querySelector("canvas.patternBuffer"), !_canvas_dom.pattern && (_canvas_dom.pattern = document.createElement("canvas"), _canvas_dom.pattern.className = "patternBuffer", $debug && $debug.appendChild(_canvas_dom.pattern)), _canvas_ctx.pattern = _canvas_dom.pattern.getContext("2d"), _canvas_dom.overlay = document.querySelector("canvas.drawingBuffer"), _canvas_dom.overlay && (_canvas_ctx.overlay = _canvas_dom.overlay.getContext("2d"));
                         }
                     }(), initReaders(), function() {
-                        if ("undefined" != typeof document) {
+                        if ("u" > typeof document) {
                             var i, vis = [
                                 {
-                                    node: _canvas.dom.frequency,
+                                    node: _canvas_dom.frequency,
                                     prop: config.debug.showFrequency
                                 },
                                 {
-                                    node: _canvas.dom.pattern,
+                                    node: _canvas_dom.pattern,
                                     prop: config.debug.showPattern
                                 }
                             ];
@@ -8363,10 +8302,8 @@
                             };
                         },
                         decodeFromImage: function(inputImageWrapper) {
-                            return function(imageWrapper) {
-                                for(var result = null, i = 0; i < _barcodeReaders.length && null === result; i++)result = _barcodeReaders[i].decodeImage ? _barcodeReaders[i].decodeImage(imageWrapper) : null;
-                                return result;
-                            }(inputImageWrapper);
+                            for(var result = null, i = 0; i < _barcodeReaders.length && null === result; i++)result = _barcodeReaders[i].decodeImage ? _barcodeReaders[i].decodeImage(inputImageWrapper) : null;
+                            return result;
                         },
                         registerReader: function(name, reader) {
                             if (READERS[name]) throw Error("cannot register existing reader", name);
@@ -8435,7 +8372,7 @@
             }(), asyncToGenerator = __webpack_require__(20), asyncToGenerator_default = /*#__PURE__*/ __webpack_require__.n(asyncToGenerator), regenerator = __webpack_require__(12), regenerator_default = /*#__PURE__*/ __webpack_require__.n(regenerator), pick = __webpack_require__(85), pick_default = /*#__PURE__*/ __webpack_require__.n(pick), wrapNativeSuper = __webpack_require__(86), Exception_Exception = /*#__PURE__*/ function(_Error) {
                 inherits_default()(Exception, _Error);
                 var hasNativeReflectConstruct, _super = (hasNativeReflectConstruct = function() {
-                    if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                    if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                     if ("function" == typeof Proxy) return !0;
                     try {
                         return Boolean.prototype.valueOf.call(Reflect.construct(Boolean, [], function() {})), !0;
@@ -8458,13 +8395,12 @@
                     return regenerator_default.a.wrap(function(_context2) {
                         for(;;)switch(_context2.prev = _context2.next){
                             case 0:
-                                return _context2.next = 2, function(constraints) {
-                                    try {
-                                        return navigator.mediaDevices.getUserMedia(constraints);
-                                    } catch (err) {
-                                        return Promise.reject(new Exception_Exception("getUserMedia is not defined. ".concat(ERROR_DESC), -1));
-                                    }
-                                }(constraints);
+                                _context2.next = 2;
+                                try {
+                                    return navigator.mediaDevices.getUserMedia(constraints);
+                                } catch (err) {
+                                    return Promise.reject(new Exception_Exception("getUserMedia is not defined. ".concat(ERROR_DESC), -1));
+                                }
                             case 2:
                                 if (streamRef = stream = _context2.sent, !video) {
                                     _context2.next = 11;
@@ -8496,13 +8432,12 @@
                     return regenerator_default.a.wrap(function(_context3) {
                         for(;;)switch(_context3.prev = _context3.next){
                             case 0:
-                                return _context3.next = 2, function() {
-                                    try {
-                                        return navigator.mediaDevices.enumerateDevices();
-                                    } catch (err) {
-                                        return Promise.reject(new Exception_Exception("enumerateDevices is not defined. ".concat(ERROR_DESC), -1));
-                                    }
-                                }();
+                                _context3.next = 2;
+                                try {
+                                    return navigator.mediaDevices.enumerateDevices();
+                                } catch (err) {
+                                    return Promise.reject(new Exception_Exception("enumerateDevices is not defined. ".concat(ERROR_DESC), -1));
+                                }
                             case 2:
                                 return devices = _context3.sent, _context3.abrupt("return", devices.filter(function(device) {
                                     return "videoinput" === device.kind;
@@ -8578,7 +8513,7 @@
                 getActiveTrack: getActiveTrack
             }, camera_access = QuaggaJSCameraAccess, result_collector = {
                 create: function(config) {
-                    var _config$capacity, canvas = document.createElement("canvas"), ctx = canvas.getContext("2d"), results = [], capacity = null !== (_config$capacity = config.capacity) && void 0 !== _config$capacity ? _config$capacity : 20, capture = !0 === config.capture;
+                    var _config$capacity, canvas = document.createElement("canvas"), ctx = canvas.getContext("2d"), results = [], capacity = null != (_config$capacity = config.capacity) ? _config$capacity : 20, capture = !0 === config.capture;
                     return {
                         addResult: function(data, imageSize, codeResult) {
                             var list, filter, result = {}; // this is 'any' to avoid having to construct a whole QuaggaJSCodeResult :|
@@ -8652,7 +8587,7 @@
             }, barcode_locator = __webpack_require__(23);
             // CONCATENATED MODULE: ./src/quagga/getViewPort.ts
             function getViewPort_getViewPort(target) {
-                if ("undefined" == typeof document) return null;
+                if ("u" < typeof document) return null;
                  // Check if target is already a DOM element
                 if (target instanceof HTMLElement && target.nodeName && 1 === target.nodeType) return target;
                  // Use '#interactive.viewport' as a fallback selector (backwards compatibility)
@@ -8690,7 +8625,7 @@
                 var i, img, num, htmlImagesSrcArray = Array(size), htmlImagesArray = Array(htmlImagesSrcArray.length);
                 if (!1 === sequence) htmlImagesSrcArray[0] = directory;
                 else for(i = 0; i < htmlImagesSrcArray.length; i++)num = offset + i, htmlImagesSrcArray[i] = "".concat(directory, "image-").concat("00".concat(num).slice(-3), ".jpg");
-                for(i = 0, htmlImagesArray.notLoaded = [], htmlImagesArray.addImage = function(image) {
+                for(htmlImagesArray.notLoaded = [], htmlImagesArray.addImage = function(image) {
                     htmlImagesArray.notLoaded.push(image);
                 }, htmlImagesArray.loaded = function(loadedImg) {
                     for(var notloadedImgs = htmlImagesArray.notLoaded, x = 0; x < notloadedImgs.length; x++)if (notloadedImgs[x] === loadedImg) {
@@ -8724,10 +8659,10 @@
                                 if (0xff !== dataView.getUint8(0) || 0xd8 !== dataView.getUint8(1)) return !1;
                                 for(; offset < length && 0xff === dataView.getUint8(offset);){
                                     if (0xe1 === dataView.getUint8(offset + 1)) return function(file, start, exifTags) {
-                                        if ("Exif" !== function(buffer, start, length) {
+                                        if ("Exif" !== function(buffer, start) {
                                             for(var outstr = "", n = start; n < start + 4; n++)outstr += String.fromCharCode(buffer.getUint8(n));
                                             return outstr;
-                                        }(file, start, 0)) return !1;
+                                        }(file, start)) return !1;
                                         var bigEnd, tiffOffset = start + 6;
                                         if (0x4949 === file.getUint16(tiffOffset)) bigEnd = !1;
                                         else {
@@ -8736,16 +8671,16 @@
                                         }
                                         if (0x002a !== file.getUint16(tiffOffset + 2, !bigEnd)) return !1;
                                         var firstIFDOffset = file.getUint32(tiffOffset + 4, !bigEnd);
-                                        return !(firstIFDOffset < 0x00000008) && function(file, tiffStart, dirStart, strings, bigEnd) {
+                                        return !(firstIFDOffset < 0x00000008) && function(file, dirStart, strings, bigEnd) {
                                             for(var entries = file.getUint16(dirStart, !bigEnd), tags = {}, i = 0; i < entries; i++){
                                                 var entryOffset = dirStart + 12 * i + 2, tag = strings[file.getUint16(entryOffset, !bigEnd)];
-                                                tag && (tags[tag] = function(file, entryOffset, tiffStart, dirStart, bigEnd) {
+                                                tag && (tags[tag] = function(file, entryOffset, bigEnd) {
                                                     var type = file.getUint16(entryOffset + 2, !bigEnd), numValues = file.getUint32(entryOffset + 4, !bigEnd);
                                                     return 3 === type && 1 === numValues ? file.getUint16(entryOffset + 8, !bigEnd) : null;
-                                                }(file, entryOffset, 0, 0, bigEnd));
+                                                }(file, entryOffset, bigEnd));
                                             }
                                             return tags;
-                                        }(file, 0, tiffOffset + firstIFDOffset, exifTags, bigEnd);
+                                        }(file, tiffOffset + firstIFDOffset, exifTags, bigEnd);
                                     }(dataView, offset + 4, exifTags);
                                     offset += 2 + dataView.getUint16(offset + 2);
                                 }
@@ -8759,7 +8694,7 @@
                     }).catch(function(e) {
                         console.log(e), callback(htmlImagesArray);
                     }) : callback(htmlImagesArray));
-                }; i < htmlImagesSrcArray.length; i++)img = new Image(), htmlImagesArray.addImage(img), function(img, htmlImagesArray) {
+                }, i = 0; i < htmlImagesSrcArray.length; i++)img = new Image(), htmlImagesArray.addImage(img), function(img, htmlImagesArray) {
                     img.onload = function() {
                         htmlImagesArray.loaded(this);
                     };
@@ -8820,7 +8755,7 @@
                         },
                         setCurrentTime: function(time) {
                             var _config4;
-                            (null === (_config4 = _config) || void 0 === _config4 ? void 0 : _config4.type) !== "LiveStream" && this.setAttribute("currentTime", time.toString());
+                            (null == (_config4 = _config) ? void 0 : _config4.type) !== "LiveStream" && this.setAttribute("currentTime", time.toString());
                         },
                         addEventListener: function(event, f, bool) {
                             -1 !== _eventNames.indexOf(event) ? (_eventHandlers[event] || (_eventHandlers[event] = []), _eventHandlers[event].push(f)) : video.addEventListener(event, f, bool);
@@ -8835,7 +8770,7 @@
                         },
                         trigger: function(eventName, args) {
                             var _config2, _config3, width, height, j, handlers = _eventHandlers[eventName];
-                            if ("canrecord" === eventName && (width = video.videoWidth, height = video.videoHeight, _calculatedWidth = null !== (_config2 = _config) && void 0 !== _config2 && _config2.size ? width / height > 1 ? _config.size : Math.floor(width / height * _config.size) : width, _calculatedHeight = null !== (_config3 = _config) && void 0 !== _config3 && _config3.size ? width / height > 1 ? Math.floor(height / width * _config.size) : _config.size : height, _canvasSize.x = _calculatedWidth, _canvasSize.y = _calculatedHeight), handlers && handlers.length > 0) for(j = 0; j < handlers.length; j++)handlers[j].apply(inputStream, args);
+                            if ("canrecord" === eventName && (width = video.videoWidth, height = video.videoHeight, _calculatedWidth = null != (_config2 = _config) && _config2.size ? width / height > 1 ? _config.size : Math.floor(width / height * _config.size) : width, _calculatedHeight = null != (_config3 = _config) && _config3.size ? width / height > 1 ? Math.floor(height / width * _config.size) : _config.size : height, _canvasSize.x = _calculatedWidth, _canvasSize.y = _calculatedHeight), handlers && handlers.length > 0) for(j = 0; j < handlers.length; j++)handlers[j].apply(inputStream, args);
                         },
                         setTopRight: function(topRight) {
                             _topRight.x = topRight.x, _topRight.y = topRight.y;
@@ -8921,11 +8856,11 @@
                                 }
                                 else width = imgs[0].img.width, height = imgs[0].img.height;
                                  // eslint-disable-next-line no-nested-ternary
-                                calculatedWidth = null !== (_config5 = _config) && void 0 !== _config5 && _config5.size ? width / height > 1 ? _config.size : Math.floor(width / height * _config.size) : width, calculatedHeight = null !== (_config6 = _config) && void 0 !== _config6 && _config6.size ? width / height > 1 ? Math.floor(height / width * _config.size) : _config.size : height, _canvasSize.x = calculatedWidth, _canvasSize.y = calculatedHeight, loaded = !0, frameIdx = 0, setTimeout(function() {
+                                calculatedWidth = null != (_config5 = _config) && _config5.size ? width / height > 1 ? _config.size : Math.floor(width / height * _config.size) : width, calculatedHeight = null != (_config6 = _config) && _config6.size ? width / height > 1 ? Math.floor(height / width * _config.size) : _config.size : height, _canvasSize.x = calculatedWidth, _canvasSize.y = calculatedHeight, loaded = !0, frameIdx = 0, setTimeout(function() {
                                     // eslint-disable-next-line @typescript-eslint/no-use-before-define
                                     publishEvent("canrecord", []);
                                 }, 0);
-                            }, 1, size, null === (_config7 = _config) || void 0 === _config7 ? void 0 : _config7.sequence);
+                            }, 1, size, null == (_config7 = _config) ? void 0 : _config7.sequence);
                         },
                         ended: function() {
                             return _ended;
@@ -8966,7 +8901,7 @@
                         getFrame: function() {
                             var frame, _imgArray;
                             return loaded ? (!paused && (// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-                            frame = null === (_imgArray = imgArray) || void 0 === _imgArray ? void 0 : _imgArray[frameIdx], frameIdx < size - 1 ? frameIdx++ : setTimeout(function() {
+                            frame = null == (_imgArray = imgArray) ? void 0 : _imgArray[frameIdx], frameIdx < size - 1 ? frameIdx++ : setTimeout(function() {
                                 _ended = !0, publishEvent("ended", []);
                             }, 0)), frame) : null;
                         }
@@ -9039,14 +8974,11 @@
             function workerInterface(factory) {
                 if (factory) {
                     var imageWrapper, Quagga = factory().default;
-                    if (!Quagga) {
-                        // @ts-ignore
-                        self.postMessage({
-                            event: "error",
-                            message: "Quagga could not be created"
-                        });
-                        return;
-                    }
+                    if (!Quagga) return void // @ts-ignore
+                    self.postMessage({
+                        event: "error",
+                        message: "Quagga could not be created"
+                    });
                 } // @ts-ignore
                 function onProcessed(result) {
                     self.postMessage({
@@ -9089,7 +9021,7 @@
                         workerPool.push(workerThread), workerPool.length >= capacity && cb && cb();
                     };
                     if (config) for(var i = 0; i < increaseBy; i++)!function(config, inputStream, cb) {
-                        var blob, factorySource, blobURL = ("undefined" != typeof __factorySource__ && // @ts-ignore
+                        var blob, factorySource, blobURL = ("u" > typeof __factorySource__ && // @ts-ignore
                         (factorySource = __factorySource__), /* jshint ignore:end */ blob = new Blob([
                             "(" + workerInterface.toString() + ")(" + factorySource + ");"
                         ], {
@@ -9130,9 +9062,9 @@
                     var _this = this;
                     classCallCheck_default()(this, Quagga), defineProperty_default()(this, "context", new QuaggaContext_QuaggaContext()), defineProperty_default()(this, "canRecord", function(callback) {
                         var _this$context$config;
-                        _this.context.config && (barcode_locator.a.checkImageConstraints(_this.context.inputStream, null === (_this$context$config = _this.context.config) || void 0 === _this$context$config ? void 0 : _this$context$config.locator), _this.initCanvas(), _this.context.framegrabber = FrameGrabber.create(_this.context.inputStream, _this.context.canvasContainer.dom.image), void 0 === _this.context.config.numOfWorkers && (_this.context.config.numOfWorkers = 0), adjustWorkerPool(_this.context.config.numOfWorkers, _this.context.config, _this.context.inputStream, function() {
+                        _this.context.config && (barcode_locator.a.checkImageConstraints(_this.context.inputStream, null == (_this$context$config = _this.context.config) ? void 0 : _this$context$config.locator), _this.initCanvas(), _this.context.framegrabber = FrameGrabber.create(_this.context.inputStream, _this.context.canvasContainer.dom.image), void 0 === _this.context.config.numOfWorkers && (_this.context.config.numOfWorkers = 0), adjustWorkerPool(_this.context.config.numOfWorkers, _this.context.config, _this.context.inputStream, function() {
                             var _this$context$config2;
-                            (null === (_this$context$config2 = _this.context.config) || void 0 === _this$context$config2 ? void 0 : _this$context$config2.numOfWorkers) === 0 && _this.initializeData(), _this.ready(callback);
+                            (null == (_this$context$config2 = _this.context.config) ? void 0 : _this$context$config2.numOfWorkers) === 0 && _this.initializeData(), _this.ready(callback);
                         }));
                     }), defineProperty_default()(this, "update", function() {
                         if (_this.context.onUIThread) {
@@ -9144,8 +9076,8 @@
                             }, [
                                 availableWorker.imageData.buffer
                             ])), !0) : null);
-                            workersUpdated || (_this.context.framegrabber.attachData(null === (_this$context$inputIm = _this.context.inputImageWrapper) || void 0 === _this$context$inputIm ? void 0 : _this$context$inputIm.data), _this.context.framegrabber.grab() && !workersUpdated && _this.locateAndDecode());
-                        } else _this.context.framegrabber.attachData(null === (_this$context$inputIm2 = _this.context.inputImageWrapper) || void 0 === _this$context$inputIm2 ? void 0 : _this$context$inputIm2.data), _this.context.framegrabber.grab(), _this.locateAndDecode();
+                            workersUpdated || (_this.context.framegrabber.attachData(null == (_this$context$inputIm = _this.context.inputImageWrapper) ? void 0 : _this$context$inputIm.data), _this.context.framegrabber.grab() && !workersUpdated && _this.locateAndDecode());
+                        } else _this.context.framegrabber.attachData(null == (_this$context$inputIm2 = _this.context.inputImageWrapper) ? void 0 : _this$context$inputIm2.data), _this.context.framegrabber.grab(), _this.locateAndDecode();
                     });
                 }
                 return createClass_default()(Quagga, [
@@ -9204,10 +9136,10 @@
                         key: "initCanvas",
                         value: function() {
                             var container = function(context) {
-                                var _context$config, _context$config$input, _context$config2, _context$config2$inpu, viewport = getViewPort_getViewPort(null == context ? void 0 : null === (_context$config = context.config) || void 0 === _context$config ? void 0 : null === (_context$config$input = _context$config.inputStream) || void 0 === _context$config$input ? void 0 : _context$config$input.target), type = null == context ? void 0 : null === (_context$config2 = context.config) || void 0 === _context$config2 ? void 0 : null === (_context$config2$inpu = _context$config2.inputStream) || void 0 === _context$config2$inpu ? void 0 : _context$config2$inpu.type;
+                                var _context$config, _context$config$input, _context$config2, _context$config2$inpu, viewport = getViewPort_getViewPort(null == context || null == (_context$config = context.config) || null == (_context$config$input = _context$config.inputStream) ? void 0 : _context$config$input.target), type = null == context || null == (_context$config2 = context.config) || null == (_context$config2$inpu = _context$config2.inputStream) ? void 0 : _context$config2$inpu.type;
                                 if (!type) return null;
                                 var container = function(canvasSize) {
-                                    if ("undefined" != typeof document) {
+                                    if ("u" > typeof document) {
                                         var image = getCanvasAndContext("canvas.imgBuffer", "imgBuffer"), overlay = getCanvasAndContext("canvas.drawingBuffer", "drawingBuffer");
                                         return image.canvas.width = overlay.canvas.width = canvasSize.x, image.canvas.height = overlay.canvas.height = canvasSize.y, {
                                             dom: {
@@ -9233,7 +9165,7 @@
                                     }
                                 };
                                 var dom = container.dom;
-                                return "undefined" != typeof document && viewport && ("ImageStream" !== type || viewport.contains(dom.image) || viewport.appendChild(dom.image), viewport.contains(dom.overlay) || viewport.appendChild(dom.overlay)), container;
+                                return "u" > typeof document && viewport && ("ImageStream" !== type || viewport.contains(dom.image) || viewport.appendChild(dom.image), viewport.contains(dom.overlay) || viewport.appendChild(dom.overlay)), container;
                             }(this.context);
                             if (container) {
                                 var ctx = container.ctx, dom = container.dom;
@@ -9262,7 +9194,7 @@
                                             };
                                         case "LiveStream":
                                             var _video = null;
-                                            return !viewport || (_video = viewport.querySelector("video")) || (_video = document.createElement("video"), viewport.appendChild(_video)), {
+                                            return viewport && ((_video = viewport.querySelector("video")) || (_video = document.createElement("video"), viewport.appendChild(_video))), {
                                                 video: _video,
                                                 inputStream: InputStream.createLiveStream(_video)
                                             };
@@ -9285,7 +9217,7 @@
                         key: "getBoundingBoxes",
                         value: function() {
                             var _this$context$config3;
-                            return null !== (_this$context$config3 = this.context.config) && void 0 !== _this$context$config3 && _this$context$config3.locate ? barcode_locator.a.locate() : [
+                            return null != (_this$context$config3 = this.context.config) && _this$context$config3.locate ? barcode_locator.a.locate() : [
                                 [
                                     Object(gl_vec2.clone)(this.context.boxSize[0]),
                                     Object(gl_vec2.clone)(this.context.boxSize[1]),
@@ -9337,17 +9269,17 @@
                             var boxes = this.getBoundingBoxes();
                             if (boxes) {
                                 var _this$context$inputIm3, decodeResult = this.context.decoder.decodeFromBoundingBoxes(boxes) || {};
-                                decodeResult.boxes = boxes, this.publishResult(decodeResult, null === (_this$context$inputIm3 = this.context.inputImageWrapper) || void 0 === _this$context$inputIm3 ? void 0 : _this$context$inputIm3.data);
+                                decodeResult.boxes = boxes, this.publishResult(decodeResult, null == (_this$context$inputIm3 = this.context.inputImageWrapper) ? void 0 : _this$context$inputIm3.data);
                             } else {
                                 var _this$context$inputIm4, imageResult = this.context.decoder.decodeFromImage(this.context.inputImageWrapper);
-                                imageResult ? this.publishResult(imageResult, null === (_this$context$inputIm4 = this.context.inputImageWrapper) || void 0 === _this$context$inputIm4 ? void 0 : _this$context$inputIm4.data) : this.publishResult();
+                                imageResult ? this.publishResult(imageResult, null == (_this$context$inputIm4 = this.context.inputImageWrapper) ? void 0 : _this$context$inputIm4.data) : this.publishResult();
                             }
                         }
                     },
                     {
                         key: "startContinuousUpdate",
                         value: function() {
-                            var _this$context$config4, _this4 = this, next = null, delay = 1000 / ((null === (_this$context$config4 = this.context.config) || void 0 === _this$context$config4 ? void 0 : _this$context$config4.frequency) || 60);
+                            var _this$context$config4, _this4 = this, next = null, delay = 1000 / ((null == (_this$context$config4 = this.context.config) ? void 0 : _this$context$config4.frequency) || 60);
                             this.context.stopped = !1;
                             var context = this.context;
                             !function newFrame(timestamp) {
@@ -9359,7 +9291,7 @@
                         key: "start",
                         value: function() {
                             var _this$context$config5, _this$context$config6;
-                            this.context.onUIThread && (null === (_this$context$config5 = this.context.config) || void 0 === _this$context$config5 ? void 0 : null === (_this$context$config6 = _this$context$config5.inputStream) || void 0 === _this$context$config6 ? void 0 : _this$context$config6.type) === "LiveStream" ? this.startContinuousUpdate() : this.update();
+                            this.context.onUIThread && (null == (_this$context$config5 = this.context.config) || null == (_this$context$config6 = _this$context$config5.inputStream) ? void 0 : _this$context$config6.type) === "LiveStream" ? this.startContinuousUpdate() : this.update();
                         }
                     },
                     {
@@ -9369,7 +9301,7 @@
                             return regenerator_default.a.wrap(function(_context) {
                                 for(;;)switch(_context.prev = _context.next){
                                     case 0:
-                                        if (this.context.stopped = !0, adjustWorkerPool(0), !(null !== (_this$context$config7 = this.context.config) && void 0 !== _this$context$config7 && _this$context$config7.inputStream && "LiveStream" === this.context.config.inputStream.type)) {
+                                        if (this.context.stopped = !0, adjustWorkerPool(0), !(null != (_this$context$config7 = this.context.config) && _this$context$config7.inputStream && "LiveStream" === this.context.config.inputStream.type)) {
                                             _context.next = 6;
                                             break;
                                         }
@@ -9428,42 +9360,22 @@
                     quagga_context.stopped = !0;
                 },
                 onDetected: function(callback) {
-                    if (!callback || "function" != typeof callback && ("object" !== typeof_default()(callback) || !callback.callback)) {
-                        console.trace("* warning: Quagga.onDetected called with invalid callback, ignoring");
-                        return;
-                    }
-                    events.subscribe("detected", callback);
+                    callback && ("function" == typeof callback || "object" === typeof_default()(callback) && callback.callback) ? events.subscribe("detected", callback) : console.trace("* warning: Quagga.onDetected called with invalid callback, ignoring");
                 },
                 offDetected: function(callback) {
                     events.unsubscribe("detected", callback);
                 },
                 onProcessed: function(callback) {
-                    if (!callback || "function" != typeof callback && ("object" !== typeof_default()(callback) || !callback.callback)) {
-                        console.trace("* warning: Quagga.onProcessed called with invalid callback, ignoring");
-                        return;
-                    }
-                    events.subscribe("processed", callback);
+                    callback && ("function" == typeof callback || "object" === typeof_default()(callback) && callback.callback) ? events.subscribe("processed", callback) : console.trace("* warning: Quagga.onProcessed called with invalid callback, ignoring");
                 },
                 offProcessed: function(callback) {
                     events.unsubscribe("processed", callback);
                 },
                 setReaders: function(readers) {
-                    if (!readers) {
-                        console.trace("* warning: Quagga.setReaders called with no readers, ignoring");
-                        return;
-                    }
-                    instance.setReaders(readers);
+                    readers ? instance.setReaders(readers) : console.trace("* warning: Quagga.setReaders called with no readers, ignoring");
                 },
                 registerReader: function(name, reader) {
-                    if (!name) {
-                        console.trace("* warning: Quagga.registerReader called with no name, ignoring");
-                        return;
-                    }
-                    if (!reader) {
-                        console.trace("* warning: Quagga.registerReader called with no reader, ignoring");
-                        return;
-                    }
-                    instance.registerReader(name, reader);
+                    name ? reader ? instance.registerReader(name, reader) : console.trace("* warning: Quagga.registerReader called with no reader, ignoring") : console.trace("* warning: Quagga.registerReader called with no name, ignoring");
                 },
                 registerResultCollector: function(resultCollector) {
                     resultCollector && "function" == typeof resultCollector.addResult && (quagga_context.resultCollector = resultCollector);
@@ -9480,11 +9392,11 @@
                             size: 800,
                             src: config.src
                         },
-                        numOfWorkers: config.debug ? 0 : 1,
+                        numOfWorkers: +!config.debug,
                         locator: {
                             halfSample: !1
                         }
-                    }, config)).numOfWorkers > 0 && (config.numOfWorkers = 0), config.numOfWorkers > 0 && ("undefined" == typeof Blob || "undefined" == typeof Worker) && (console.warn("* no Worker and/or Blob support - forcing numOfWorkers to 0"), config.numOfWorkers = 0), new Promise(function(resolve, reject) {
+                    }, config)).numOfWorkers > 0 && (config.numOfWorkers = 0), config.numOfWorkers > 0 && ("u" < typeof Blob || "u" < typeof Worker) && (console.warn("* no Worker and/or Blob support - forcing numOfWorkers to 0"), config.numOfWorkers = 0), new Promise(function(resolve, reject) {
                         try {
                             _this.init(config, function() {
                                 events.once("processed", function(result) {

@@ -10,11 +10,11 @@
     // Save a reference to the global object (`window` in the browser, `exports`
     // on the server).
     var Backbone, root = this, previousBackbone = root.Backbone, slice = [].slice;
-    "undefined" != typeof exports ? Backbone = exports : Backbone = root.Backbone = {}, // Current version of the library. Keep in sync with `package.json`.
-    Backbone.VERSION = "1.1.0";
+    // Current version of the library. Keep in sync with `package.json`.
+    (Backbone = "u" > typeof exports ? exports : root.Backbone = {}).VERSION = "1.1.0";
     // Require Underscore, if we're on the server, and it's not already present.
     var _ = root._;
-    _ || "undefined" == typeof require || (_ = require("underscore")), // For Backbone's purposes, jQuery, Zepto, Ender, or My Library (kidding) owns
+    !_ && "u" > typeof require && (_ = require("underscore")), // For Backbone's purposes, jQuery, Zepto, Ender, or My Library (kidding) owns
     // the `$` variable.
     Backbone.$ = root.jQuery || root.Zepto || root.ender || root.$, // Runs Backbone.js in *noConflict* mode, returning the `Backbone` variable
     // to its previous owner. Returns a reference to this Backbone object.
@@ -451,13 +451,11 @@
                 toRemove.length && this.remove(toRemove, options);
             }
             // See if sorting is needed, update `length` and splice in new models.
-            if (toAdd.length || order && order.length) {
-                if (sortable && (sort = !0), this.length += toAdd.length, null != at) for(i = 0, l = toAdd.length; i < l; i++)this.models.splice(at + i, 0, toAdd[i]);
-                else {
-                    order && (this.models.length = 0);
-                    var orderedModels = order || toAdd;
-                    for(i = 0, l = orderedModels.length; i < l; i++)this.models.push(orderedModels[i]);
-                }
+            if (toAdd.length || order && order.length) if (sortable && (sort = !0), this.length += toAdd.length, null != at) for(i = 0, l = toAdd.length; i < l; i++)this.models.splice(at + i, 0, toAdd[i]);
+            else {
+                order && (this.models.length = 0);
+                var orderedModels = order || toAdd;
+                for(i = 0, l = orderedModels.length; i < l; i++)this.models.push(orderedModels[i]);
             }
             // Unless silenced, it's time to fire all appropriate add/sort events.
             if (sort && this.sort({
@@ -795,7 +793,7 @@
         var xhr = options.xhr = Backbone.ajax(_.extend(params, options));
         return model.trigger("request", model, xhr, options), xhr;
     };
-    var noXhrPatch = "undefined" != typeof window && !!window.ActiveXObject && !(window.XMLHttpRequest && new XMLHttpRequest().dispatchEvent), methodMap = {
+    var noXhrPatch = "u" > typeof window && !!window.ActiveXObject && !(window.XMLHttpRequest && new XMLHttpRequest().dispatchEvent), methodMap = {
         create: "POST",
         update: "PUT",
         patch: "PATCH",
@@ -873,7 +871,7 @@
     // and URL fragments. If the browser supports neither (old IE, natch),
     // falls back to polling.
     var History = Backbone.History = function() {
-        this.handlers = [], _.bindAll(this, "checkUrl"), "undefined" != typeof window && (this.location = window.location, this.history = window.history);
+        this.handlers = [], _.bindAll(this, "checkUrl"), "u" > typeof window && (this.location = window.location, this.history = window.history);
     }, routeStripper = /^[#\/]|\s+$/g, rootStripper = /^\/+|\/+$/g, isExplorer = /msie [\w.]+/, trailingSlash = /\/$/, pathStripper = /[?#].*$/;
     // Has the history handling already been started?
     History.started = !1, // Set up all inheritable **Backbone.History** properties and methods.
@@ -890,13 +888,11 @@
         // Get the cross-browser normalized URL fragment, either from the URL,
         // the hash, or the override.
         getFragment: function(fragment, forcePushState) {
-            if (null == fragment) {
-                if (this._hasPushState || !this._wantsHashChange || forcePushState) {
-                    fragment = this.location.pathname;
-                    var root = this.root.replace(trailingSlash, "");
-                    fragment.indexOf(root) || (fragment = fragment.slice(root.length));
-                } else fragment = this.getHash();
-            }
+            if (null == fragment) if (this._hasPushState || !this._wantsHashChange || forcePushState) {
+                fragment = this.location.pathname;
+                var root = this.root.replace(trailingSlash, "");
+                fragment.indexOf(root) || (fragment = fragment.slice(root.length));
+            } else fragment = this.getHash();
             return fragment.replace(routeStripper, "");
         },
         // Start the hash change handling, returning `true` if the current URL matches
@@ -916,13 +912,11 @@
             var loc = this.location, atRoot = loc.pathname.replace(/[^\/]$/, "$&/") === this.root;
             // Transition from hashChange to pushState or vice versa if both are
             // requested.
-            if (this._wantsHashChange && this._wantsPushState) {
-                // If we've started off with a route from a `pushState`-enabled
-                // browser, but we're currently in a browser that doesn't support it...
-                if (!this._hasPushState && !atRoot) // Return immediately as browser will do redirect to new url
-                return this.fragment = this.getFragment(null, !0), this.location.replace(this.root + this.location.search + "#" + this.fragment), !0;
-                this._hasPushState && atRoot && loc.hash && (this.fragment = this.getHash().replace(routeStripper, ""), this.history.replaceState({}, document.title, this.root + this.fragment + loc.search));
-            }
+            if (this._wantsHashChange && this._wantsPushState) // If we've started off with a route from a `pushState`-enabled
+            // browser, but we're currently in a browser that doesn't support it...
+            if (!this._hasPushState && !atRoot) // Return immediately as browser will do redirect to new url
+            return this.fragment = this.getFragment(null, !0), this.location.replace(this.root + this.location.search + "#" + this.fragment), !0;
+            else this._hasPushState && atRoot && loc.hash && (this.fragment = this.getHash().replace(routeStripper, ""), this.history.replaceState({}, document.title, this.root + this.fragment + loc.search));
             if (!this.options.silent) return this.loadUrl();
         },
         // Disable Backbone.history, perhaps temporarily. Not useful in a real app,

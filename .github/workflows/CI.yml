@@ -72,11 +72,30 @@ jobs:
       - name: Install cargo-deny
         uses: taiki-e/install-action@v2
         with:
-          tool: cargo-deny@0.14.15
+          tool: cargo-deny@0.18.9
 
       - name: Check licenses
         run: |
           cargo deny check
+
+  cargo-shear:
+    name: Cargo shear
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+
+      - name: Install cargo-shear
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-shear@1.3.3
+
+      - name: cargo-shear
+        run: cargo shear --fix
 
   cargo-check:
     name: Check
@@ -108,7 +127,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "20"
           cache: "yarn"
 
       - name: Install node dependencies
@@ -133,6 +152,7 @@ jobs:
           - binding_core_wasm
           - binding_minifier_wasm
           - binding_typescript_wasm
+          - binding_es_ast_viewer
     steps:
       - uses: actions/checkout@v4
 
@@ -144,19 +164,12 @@ jobs:
         with:
           profile: minimal
 
-      - name: Patch
-        shell: bash
-        run: |
-          echo '[patch.crates-io]' >> bindings/Cargo.toml
-          ./scripts/cargo/patch-section.sh >> bindings/Cargo.toml
-          cd bindings && cargo update -p swc_core -p swc_fast_ts_strip
-
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "18"
+          node-version: "20"
           cache: "yarn"
 
       - name: Install node dependencies
@@ -178,8 +191,15 @@ jobs:
       settings: ${{ steps.list-tests.outputs.settings }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: ./.github/actions/setup-node
+
+      - name: Install cargo-mono
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-mono@0.6.7
 
       - name: List crates
         id: list-tests
@@ -195,41 +215,52 @@ jobs:
       matrix:
         settings: ${{fromJson(needs.list-cargo-tests.outputs.settings)}}
     steps:
+      - name: No-op when no changed crates
+        if: matrix.settings.crate == '__noop__'
+        run: |
+          echo "No affected crates detected. Skipping cargo-test matrix run."
+
       - name: Handle line endings
         shell: bash
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.settings.crate != '__noop__'
         run: |
           git config --system core.autocrlf false
           git config --system core.eol lf
 
       - uses: actions/checkout@v4
+        if: matrix.settings.crate != '__noop__'
         with:
           submodules: true
 
       - run: corepack enable
+        if: matrix.settings.crate != '__noop__'
 
       # Source map format
       - uses: actions/setup-node@v4
+        if: matrix.settings.crate != '__noop__'
         with:
-          node-version: "18"
+          node-version: "20"
           cache: "yarn"
 
       # We explicitly do this to cache properly.
       - name: Install Rust
         uses: actions-rs/toolchain@v1
+        if: matrix.settings.crate != '__noop__'
         with:
           profile: minimal
-          target: wasm32-wasi
+          target: wasm32-wasip1
+          components: rustfmt
           # MSRV is current stable for ES crates and nightly for other languages
           # toolchain: stable
           # override: true
 
       - uses: denoland/setup-deno@v1
-        if: matrix.settings.crate == 'swc_bundler'
+        if: matrix.settings.crate != '__noop__' && matrix.settings.crate == 'swc_bundler'
         with:
           deno-version: v1.x
 
       - name: Install node dependencies
+        if: matrix.settings.crate != '__noop__'
         shell: bash
         run: |
           corepack enable
@@ -246,16 +277,18 @@ jobs:
 
       - name: Configure path (windows)
         shell: bash
-        if: runner.os == 'Windows'
+        if: runner.os == 'Windows' && matrix.settings.crate != '__noop__'
         run: |
           echo $(yarn global bin) >> $GITHUB_PATH
 
       - name: Verify dependencies
+        if: matrix.settings.crate != '__noop__'
         shell: bash
         run: |
           yarn jest --version && yarn mocha --version
 
       - name: Configure execution cache
+        if: matrix.settings.crate != '__noop__'
         shell: bash
         run: |
           mkdir -p .swc-exec-cache
@@ -263,16 +296,14 @@ jobs:
 
       - name: Cache execution results
         uses: actions/cache@v3
-        if: ${{ matrix.settings.crate }} == 'swc' || ${{ startsWith(matrix.settings.crate, 'swc_ecma_transforms_') }}
+        if: matrix.settings.crate != '__noop__' && (matrix.settings.crate == 'swc' || startsWith(matrix.settings.crate, 'swc_ecma_transforms_'))
         with:
           path: |
             .swc-exec-cache
           key: swc-exec-cache-${{ matrix.settings.crate }}-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            swc-exec-cache-${{ matrix.settings.crate }}
 
       - name: Run cargo test
-        if: matrix.settings.crate != 'swc_plugin_runner' && matrix.settings.crate != 'swc_ecma_parser' && matrix.settings.crate != 'swc_ecma_minifier' && matrix.settings.crate != 'swc_core' && matrix.settings.crate != 'swc_ecma_quote' && matrix.settings.crate != 'swc_cli' && matrix.settings.crate != 'binding_core_wasm'
+        if: matrix.settings.crate != '__noop__' && matrix.settings.crate != 'swc_plugin_backend_tests' && matrix.settings.crate != 'swc_ecma_parser' && matrix.settings.crate != 'swc_ecma_minifier' && matrix.settings.crate != 'swc_core' && matrix.settings.crate != 'swc_ecma_quote' && matrix.settings.crate != 'swc_cli' && matrix.settings.crate != 'binding_core_wasm' && matrix.settings.crate != 'hstr'
         run: |
           cargo test -p ${{ matrix.settings.crate }}
 
@@ -293,15 +324,20 @@ jobs:
           cargo test --manifest-path ./bindings/swc_cli/Cargo.toml --features plugin
 
       - name: Run cargo test (plugin)
-        if: matrix.settings.crate == 'swc_plugin_runner'
+        if: matrix.settings.crate == 'swc_plugin_backend_tests'
         run: |
           # export CARGO_TARGET_DIR=$(pwd)/target
-          cargo test -p swc_plugin_runner --release --features plugin_transform_schema_v1 --features rkyv-impl --features ecma --features css
+          cargo test -p swc_plugin_backend_tests --release
+
+      - name: Run cargo test (hstr)
+        if: matrix.settings.crate == 'hstr'
+        run: |
+          cargo test -p hstr --features serde
 
       - name: Run cargo test (swc_ecma_minifier)
         if: matrix.settings.crate == 'swc_ecma_minifier'
         run: |
-          cargo test -p swc_ecma_minifier --features concurrent
+          cargo test -p swc_ecma_minifier --features concurrent --features par-core/chili
 
       - name: Run cargo test (swc_ecma_parser)
         if: matrix.settings.crate == 'swc_ecma_parser'
@@ -319,21 +355,26 @@ jobs:
           cargo test -p ${{ matrix.settings.crate }} --all-features --features swc_ecma_utils/stacker
 
       - name: Run cargo test (concurrent)
-        if: runner.os == 'Linux' && matrix.settings.crate != 'swc_ecma_minifier'
+        if: runner.os == 'Linux' && matrix.settings.crate != '__noop__' && matrix.settings.crate != 'swc_ecma_minifier'
         shell: bash
         run: |
           ./scripts/github/test-concurrent.sh ${{ matrix.settings.crate }}
 
       - name: Install cargo-hack
         uses: taiki-e/install-action@v2
-        if: matrix.settings.os == 'ubuntu-latest'
+        if: matrix.settings.os == 'ubuntu-latest' && matrix.settings.crate != '__noop__'
         with:
           tool: cargo-hack@0.5.29
 
       - name: Check compilation
-        if: matrix.settings.os == 'ubuntu-latest'
+        if: matrix.settings.os == 'ubuntu-latest' && matrix.settings.crate != '__noop__'
         run: |
           ./scripts/github/run-cargo-hack.sh ${{ matrix.settings.crate }}
+
+      - name: Check unknown variant with transforms
+        if: matrix.settings.crate == 'swc_ecma_transforms'
+        run: |
+          env RUSTFLAGS="--cfg swc_ast_unknown" cargo check -p ${{ matrix.settings.crate }} --features typescript,react,proposal,optimization,module,compat
 
   node-test:
     name: Test node bindings - ${{ matrix.os }}
@@ -362,14 +403,6 @@ jobs:
           node-version: 18
           cache: "yarn"
 
-      - name: Patch
-        shell: bash
-        run: |
-          echo '[patch.crates-io]' >> bindings/Cargo.toml
-          ./scripts/cargo/patch-section.sh
-          ./scripts/cargo/patch-section.sh >> bindings/Cargo.toml
-          cd bindings && cargo update -p swc_core -p swc_fast_ts_strip
-
       - name: Set platform name
         run: |
           export NODE_PLATFORM_NAME=$(node -e "console.log(require('os').platform())")
@@ -381,7 +414,7 @@ jobs:
 
       - name: Prepare
         run: |
-          rustup target add wasm32-wasi
+          rustup target add wasm32-wasip1
           corepack enable
           yarn
 
@@ -420,16 +453,9 @@ jobs:
       - name: Install wasm-pack
         run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
 
-      - name: Patch
-        shell: bash
-        run: |
-          echo '[patch.crates-io]' >> bindings/Cargo.toml
-          ./scripts/cargo/patch-section.sh >> bindings/Cargo.toml
-          cd bindings && cargo update -p swc_core -p swc_fast_ts_strip
-
       - name: Prepare
         run: |
-          rustup target add wasm32-wasi
+          rustup target add wasm32-wasip1
           corepack enable
           yarn
 
@@ -488,63 +514,12 @@ jobs:
           export NODE_OPTIONS="--unhandled-rejections=warn"
           (cd crates/swc_node_bundler/tests/integration/react && npm install && npx spack)
 
-  miri:
-    name: Miri
-    runs-on: ubuntu-latest
-    if: >-
-      ${{ !contains(github.event.head_commit.message, 'chore: ') }}
-    strategy:
-      fail-fast: false
-      matrix:
-        crate:
-          - better_scoped_tls
-          - string_enum
-          - swc
-          - swc_bundler
-          # - swc_ecma_codegen
-          # - swc_ecma_minifier
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: true
-
-      - shell: bash
-        run: corepack enable
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "18"
-          cache: "yarn"
-
-      - name: Install node dependencies
-        shell: bash
-        run: |
-          corepack enable
-          yarn
-
-      - name: Print rustup toolchain version
-        shell: bash
-        id: rustup-version
-        run: |
-          export RUST_TOOLCHAIN="$(cat rust-toolchain | tr -d '\n')"
-          echo "Rust toolchain: $RUST_TOOLCHAIN"
-          echo "RUST_TOOLCHAIN=$RUST_TOOLCHAIN" >> "$GITHUB_OUTPUT"
-
-      - name: Install
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: "${{ steps.rustup-version.outputs.RUST_TOOLCHAIN }}"
-          components: miri
-
-      - run: cargo miri test -p ${{ matrix.crate }} --no-fail-fast
-        continue-on-error: true
-        env:
-          MIRIFLAGS: "-Zmiri-disable-isolation"
   done:
     needs:
       - cargo-fmt
       - cargo-clippy
       - cargo-deny
+      - cargo-shear
       - cargo-check
       - test-wasm
       - cargo-test

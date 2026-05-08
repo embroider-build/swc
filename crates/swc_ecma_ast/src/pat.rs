@@ -12,6 +12,7 @@ use crate::{
 #[ast_node(no_clone)]
 #[derive(Eq, Hash, Is, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum Pat {
     #[tag("Identifier")]
     Ident(BindingIdent),
@@ -42,6 +43,8 @@ impl Clone for Pat {
     fn clone(&self) -> Self {
         use Pat::*;
         match self {
+            #[cfg(all(swc_ast_unknown, feature = "encoding-impl"))]
+            Unknown(tag, v) => Unknown(*tag, v.clone()),
             Ident(p) => Ident(p.clone()),
             Array(p) => Array(p.clone()),
             Rest(p) => Rest(p.clone()),
@@ -85,10 +88,15 @@ pat_to_other!(Box<Expr>);
 #[ast_node("ArrayPattern")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ArrayPat {
     pub span: Span,
 
     #[cfg_attr(feature = "serde-impl", serde(rename = "elements"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "swc_common::serializer::ArrayOption")
+    )]
     pub elems: Vec<Option<Pat>>,
 
     /// Only in an ambient context
@@ -96,12 +104,17 @@ pub struct ArrayPat {
     pub optional: bool,
 
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "typeAnnotation"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub type_ann: Option<Box<TsTypeAnn>>,
 }
 
 #[ast_node("ObjectPattern")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ObjectPat {
     pub span: Span,
 
@@ -113,12 +126,17 @@ pub struct ObjectPat {
     pub optional: bool,
 
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "typeAnnotation"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub type_ann: Option<Box<TsTypeAnn>>,
 }
 
 #[ast_node("AssignmentPattern")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct AssignPat {
     pub span: Span,
 
@@ -131,6 +149,7 @@ pub struct AssignPat {
 #[ast_node("RestElement")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct RestPat {
     pub span: Span,
 
@@ -141,12 +160,17 @@ pub struct RestPat {
     pub arg: Box<Pat>,
 
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "typeAnnotation"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub type_ann: Option<Box<TsTypeAnn>>,
 }
 
 #[ast_node]
 #[derive(Eq, Hash, Is, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum ObjectPatProp {
     #[tag("KeyValuePatternProperty")]
     KeyValue(KeyValuePatProp),
@@ -162,6 +186,7 @@ pub enum ObjectPatProp {
 #[ast_node("KeyValuePatternProperty")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct KeyValuePatProp {
     #[span(lo)]
     pub key: PropName,
@@ -173,6 +198,7 @@ pub struct KeyValuePatProp {
 #[ast_node("AssignmentPatternProperty")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct AssignPatProp {
     pub span: Span,
     /// Note: This type is to help implementing visitor and the field `type_ann`
@@ -180,5 +206,9 @@ pub struct AssignPatProp {
     pub key: BindingIdent,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub value: Option<Box<Expr>>,
 }

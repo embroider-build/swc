@@ -6,7 +6,7 @@ use std::{
 };
 
 use is_macro::Is;
-use swc_atoms::JsWord;
+use swc_atoms::Atom;
 use swc_common::{
     comments::Comments, util::take::Take, BytePos, EqIgnoreSpan, Mark, Span, Spanned,
     SyntaxContext, DUMMY_SP,
@@ -227,7 +227,7 @@ impl CodeBlock {
         }
     }
 
-    fn label_text(&self) -> Option<JsWord> {
+    fn label_text(&self) -> Option<Atom> {
         match self {
             Self::Labeled(s) => Some(s.label_text.clone()),
             _ => None,
@@ -266,7 +266,7 @@ struct ExceptionBlock {
 /// LabeledStatement.
 #[derive(Debug)]
 struct LabeledBlock {
-    label_text: JsWord,
+    label_text: Atom,
     is_script: bool,
     break_label: Label,
 }
@@ -623,6 +623,8 @@ impl VisitMut for Generator {
                                     expr: prop.into(),
                                 });
                             }
+                            #[cfg(swc_ast_unknown)]
+                            _ => panic!("unable to access unknown nodes"),
                         }
                         // [source]
                     }
@@ -631,16 +633,52 @@ impl VisitMut for Generator {
                     }
                 }
                 if node.op != op!("=") {
-                    let left_of_right =
+                    // Compound assignment: a.b += yield -> a.b = cache(a.b) + yield
+                    // Following TypeScript's visitRightAssociativeBinaryExpression
+
+                    // 1. Save target (the already-processed left, e.g., _._value)
+                    let target = node.left.clone();
+
+                    // 2. Cache target's value for right-side computation
+                    let cached_value =
                         self.cache_expression(node.left.take().expect_simple().into());
 
+                    // 3. Visit right expression
                     node.right.visit_mut_with(self);
 
+                    // 4. Convert compound assignment to normal assignment
+                    let bin_op = match node.op {
+                        op!("+=") => op!(bin, "+"),
+                        op!("-=") => op!(bin, "-"),
+                        op!("*=") => op!("*"),
+                        op!("/=") => op!("/"),
+                        op!("%=") => op!("%"),
+                        op!("**=") => op!("**"),
+                        op!("<<=") => op!("<<"),
+                        op!(">>=") => op!(">>"),
+                        op!(">>>=") => op!(">>>"),
+                        op!("&=") => op!("&"),
+                        op!("|=") => op!("|"),
+                        op!("^=") => op!("^"),
+                        op!("&&=") => op!("&&"),
+                        op!("||=") => op!("||"),
+                        op!("??=") => op!("??"),
+                        _ => {
+                            unreachable!("unknown compound assignment operator")
+                        }
+                    };
+
                     *e = AssignExpr {
-                        span: node.right.span(),
-                        op: node.op,
-                        left: left_of_right.into(),
-                        right: node.right.take(),
+                        span: node.span,
+                        op: op!("="),
+                        left: target,
+                        right: BinExpr {
+                            span: DUMMY_SP,
+                            op: bin_op,
+                            left: cached_value.into(),
+                            right: node.right.take(),
+                        }
+                        .into(),
                     }
                     .into();
                 } else {
@@ -735,6 +773,8 @@ impl VisitMut for Generator {
                                     props.push(CompiledProp::Prop(p));
                                 }
                             },
+                            #[cfg(swc_ast_unknown)]
+                            _ => panic!("unable to access unknown nodes"),
                         }
 
                         props
@@ -974,7 +1014,7 @@ impl VisitMut for Generator {
         }
     }
 
-    #[tracing::instrument(skip_all)]
+    #[tracing::instrument(level = "debug", skip_all)]
     fn visit_mut_stmt(&mut self, node: &mut Stmt) {
         match node {
             Stmt::Break(b) => {
@@ -1112,7 +1152,7 @@ impl Generator {
             );
         }
 
-        let expressions = elements
+        let mut expressions = elements
             .iter_mut()
             .skip(num_initial_elements)
             .map(|v| v.take())
@@ -1128,7 +1168,17 @@ impl Generator {
                     spread: None,
                     expr: Box::new(Expr::Array(ArrayLit {
                         span: DUMMY_SP,
-                        elems: expressions,
+                        elems: expressions
+                            .take()
+                            .into_iter()
+                            .map(|expr| match expr {
+                                Some(expr_or_spread) => match &*expr_or_spread.expr {
+                                    Expr::Invalid(_) => None,
+                                    _ => Some(expr_or_spread),
+                                },
+                                None => None,
+                            })
+                            .collect(),
                     })),
                 }],
                 ..Default::default()
@@ -1141,7 +1191,13 @@ impl Generator {
                     .take()
                     .into_iter()
                     .map(Some)
-                    .chain(expressions)
+                    .chain(expressions.take().into_iter().map(|expr| match expr {
+                        Some(expr_or_spread) => match &*expr_or_spread.expr {
+                            Expr::Invalid(_) => None,
+                            _ => Some(expr_or_spread),
+                        },
+                        None => None,
+                    }))
                     .collect(),
             }
             .into()
@@ -1173,7 +1229,17 @@ impl Generator {
                             .as_callee(),
                         args: vec![Box::new(Expr::Array(ArrayLit {
                             span: DUMMY_SP,
-                            elems: expressions.take(),
+                            elems: expressions
+                                .take()
+                                .into_iter()
+                                .map(|expr| match expr {
+                                    Some(expr_or_spread) => match &*expr_or_spread.expr {
+                                        Expr::Invalid(_) => None,
+                                        _ => Some(expr_or_spread),
+                                    },
+                                    None => None,
+                                })
+                                .collect(),
                         }))
                         .as_arg()],
                         ..Default::default()
@@ -1187,7 +1253,13 @@ impl Generator {
                                 .take()
                                 .into_iter()
                                 .map(Some)
-                                .chain(expressions.take())
+                                .chain(expressions.take().into_iter().map(|expr| match expr {
+                                    Some(expr_or_spread) => match &*expr_or_spread.expr {
+                                        Expr::Invalid(_) => None,
+                                        _ => Some(expr_or_spread),
+                                    },
+                                    None => None,
+                                }))
                                 .collect(),
                         }
                         .into(),
@@ -1199,9 +1271,7 @@ impl Generator {
         }
 
         element.visit_mut_with(self);
-        if element.is_some() {
-            expressions.push(element);
-        }
+        expressions.push(element);
         expressions
     }
 
@@ -1214,7 +1284,7 @@ impl Generator {
         if match &property {
             CompiledProp::Prop(p) => contains_yield(p),
             CompiledProp::Accessor(g, s) => {
-                g.as_ref().map_or(false, contains_yield) || s.as_ref().map_or(false, contains_yield)
+                g.as_ref().is_some_and(contains_yield) || s.as_ref().is_some_and(contains_yield)
             }
         } && !expressions.is_empty()
         {
@@ -1271,6 +1341,8 @@ impl Generator {
                     right: p.function.into(),
                 }
                 .into(),
+                #[cfg(swc_ast_unknown)]
+                _ => panic!("unable to access unknown nodes"),
             },
             CompiledProp::Accessor(getter, setter) => {
                 let key = getter
@@ -1704,6 +1776,8 @@ impl Generator {
                             .into(),
                         );
                     }
+                    #[cfg(swc_ast_unknown)]
+                    _ => panic!("unable to access unknown nodes"),
                 }
             }
 
@@ -1746,26 +1820,34 @@ impl Generator {
             //      }
             //
             // [intermediate]
-            //  .local _a, _b, _i
-            //      _a = [];
-            //      for (_b in o) _a.push(_b);
+            //  .local _obj, _keys, _key, _i
+            //      _obj = o;
+            //      _keys = [];
+            //      for (_key in _obj) _keys.push(_key);
             //      _i = 0;
             //  .loop incrementLabel, endLoopLabel
             //  .mark conditionLabel
-            //  .brfalse endLoopLabel, (_i < _a.length)
-            //      p = _a[_i];
+            //  .brfalse endLoopLabel, (_i < _keys.length)
+            //      _key = _keys[_i];
+            //  .brfalse incrementLabel, (_key in _obj)
+            //      p = _key;
             //      /*body*/
             //  .mark incrementLabel
-            //      _b++;
+            //      _i++;
             //  .br conditionLabel
             //  .endloop
             //  .mark endLoopLabel
 
+            let obj = self.declare_local(None);
             let keys_array = self.declare_local(None);
             let key = self.declare_local(None);
             let keys_index = private_ident!("_i");
 
             self.hoist_variable_declaration(&keys_index);
+
+            // Cache the object expression
+            node.right.visit_mut_with(self);
+            self.emit_assignment(obj.clone().into(), node.right.take(), None);
 
             self.emit_assignment(
                 keys_array.clone().into(),
@@ -1773,12 +1855,11 @@ impl Generator {
                 None,
             );
 
-            node.right.visit_mut_with(self);
             self.emit_stmt(
                 ForInStmt {
                     span: DUMMY_SP,
                     left: ForHead::Pat(key.clone().into()),
-                    right: node.right.take(),
+                    right: Box::new(obj.clone().into()),
                     body: Box::new(Stmt::Expr(ExprStmt {
                         span: DUMMY_SP,
                         expr: CallExpr {
@@ -1787,7 +1868,7 @@ impl Generator {
                                 .clone()
                                 .make_member(quote_ident!("push"))
                                 .as_callee(),
-                            args: vec![key.as_arg()],
+                            args: vec![key.clone().as_arg()],
                             ..Default::default()
                         }
                         .into(),
@@ -1812,6 +1893,30 @@ impl Generator {
                 None,
             );
 
+            // Assign current key from array
+            self.emit_assignment(
+                key.clone().into(),
+                MemberExpr {
+                    span: DUMMY_SP,
+                    obj: Box::new(keys_array.into()),
+                    prop: MemberProp::Computed(ComputedPropName {
+                        span: DUMMY_SP,
+                        expr: Box::new(keys_index.clone().into()),
+                    }),
+                }
+                .into(),
+                None,
+            );
+
+            // Check if key still exists in object (handles property deletion during
+            // iteration)
+            self.emit_break_when_false(
+                increment_label,
+                Box::new(key.clone().make_bin(op!("in"), obj)),
+                None,
+            );
+
+            // Assign to user's variable
             let variable = match node.left {
                 ForHead::VarDecl(initializer) => {
                     for variable in initializer.decls.iter() {
@@ -1830,20 +1935,11 @@ impl Generator {
                 ForHead::UsingDecl(..) => {
                     unreachable!("using declaration must be removed by previous pass")
                 }
+
+                #[cfg(swc_ast_unknown)]
+                _ => panic!("unable to access unknown nodes"),
             };
-            self.emit_assignment(
-                variable.try_into().unwrap(),
-                MemberExpr {
-                    span: DUMMY_SP,
-                    obj: Box::new(keys_array.into()),
-                    prop: MemberProp::Computed(ComputedPropName {
-                        span: DUMMY_SP,
-                        expr: Box::new(keys_index.clone().into()),
-                    }),
-                }
-                .into(),
-                None,
-            );
+            self.emit_assignment(variable.try_into().unwrap(), Box::new(key.into()), None);
             self.transform_and_emit_embedded_stmt(*node.body);
 
             self.mark_label(increment_label);
@@ -2149,7 +2245,7 @@ impl Generator {
         }
     }
 
-    fn declare_local(&mut self, name: Option<JsWord>) -> Ident {
+    fn declare_local(&mut self, name: Option<Atom>) -> Ident {
         let temp = name
             .map(|name| private_ident!(name))
             .unwrap_or_else(|| private_ident!("_tmp"));
@@ -2212,6 +2308,7 @@ impl Generator {
             self.block_stack = Some(Default::default());
         }
 
+        #[cfg(debug_assertions)]
         let index = self.block_actions.as_ref().unwrap().len();
 
         #[cfg(debug_assertions)]
@@ -2236,6 +2333,7 @@ impl Generator {
     fn end_block(&mut self) -> Ptr<CodeBlock> {
         let block = self.peek_block().expect("beginBlock was never called.");
 
+        #[cfg(debug_assertions)]
         let index = self.block_actions.as_ref().unwrap().len();
 
         #[cfg(debug_assertions)]
@@ -2489,7 +2587,7 @@ impl Generator {
         }
     }
 
-    fn begin_script_labeled_block(&mut self, label_text: JsWord) {
+    fn begin_script_labeled_block(&mut self, label_text: Atom) {
         self.begin_block(CodeBlock::Labeled(LabeledBlock {
             is_script: true,
             label_text,
@@ -2497,7 +2595,7 @@ impl Generator {
         }));
     }
 
-    fn begin_labeled_block(&mut self, label_text: JsWord) {
+    fn begin_labeled_block(&mut self, label_text: Atom) {
         let break_label = self.define_label();
         self.begin_block(CodeBlock::Labeled(LabeledBlock {
             is_script: false,
@@ -2533,7 +2631,7 @@ impl Generator {
         matches!(block, CodeBlock::Loop(..))
     }
 
-    fn has_immediate_containing_labeled_block(&self, label_text: &JsWord, start: usize) -> bool {
+    fn has_immediate_containing_labeled_block(&self, label_text: &Atom, start: usize) -> bool {
         for i in (0..=start).rev() {
             let block = self.block_stack.as_ref().unwrap()[i].clone();
             if self.supports_labeled_break_or_continue(&block.borrow()) {
@@ -2555,25 +2653,27 @@ impl Generator {
     /// Finds the label that is the target for a `break` statement.
     ///
     ///  - `label_text`: An optional name of a containing labeled statement.
-    fn find_break_target(&self, label_text: Option<JsWord>) -> Label {
+    fn find_break_target(&self, label_text: Option<Atom>) -> Label {
         #[cfg(debug_assertions)]
         debug!("find_break_target: label_text={:?}", label_text);
 
         if let Some(block_stack) = &self.block_stack {
             if let Some(label_text) = label_text {
-                for i in (0..=block_stack.len() - 1).rev() {
-                    let block = &block_stack[i];
-                    if (self.supports_labeled_break_or_continue(&block.borrow())
-                        && block.borrow().label_text().unwrap() == label_text)
-                        || (self.supports_unlabeled_break(&block.borrow())
-                            && self.has_immediate_containing_labeled_block(&label_text, i - 1))
+                // For labeled break, only match LabeledBlocks.
+                // Unlike `continue`, we don't need to check Switch/Loop blocks
+                // because LabeledBlocks always have break_label, and the labeled
+                // break should exit to the LabeledBlock's end, not the inner
+                // Switch/Loop's end.
+                for block in block_stack.iter().rev() {
+                    if self.supports_labeled_break_or_continue(&block.borrow())
+                        && block.borrow().label_text().unwrap() == label_text
                     {
                         return block.borrow().break_label().unwrap();
                     }
                 }
             } else {
-                for i in (0..=block_stack.len() - 1).rev() {
-                    let block = &block_stack[i];
+                // For unlabeled break, match the innermost Switch/Loop
+                for block in block_stack.iter().rev() {
                     if self.supports_unlabeled_break(&block.borrow()) {
                         return block.borrow().break_label().unwrap();
                     }
@@ -2587,7 +2687,7 @@ impl Generator {
     /// Finds the label that is the target for a `continue` statement.
     ///
     /// - `labelText` An optional name of a containing labeled statement.
-    fn find_continue_target(&self, label_text: Option<JsWord>) -> Label {
+    fn find_continue_target(&self, label_text: Option<Atom>) -> Label {
         if let Some(block_stack) = &self.block_stack {
             if let Some(label_text) = label_text {
                 for i in (0..=block_stack.len() - 1).rev() {
@@ -2640,7 +2740,7 @@ impl Generator {
                         .push(expr);
                 }
                 return Invalid {
-                    span: Span::new(BytePos(label.0 as _), BytePos(label.0 as _)),
+                    span: Span::new_with_checked(BytePos(label.0 as _), BytePos(label.0 as _)),
                 }
                 .into();
             }
@@ -2965,19 +3065,12 @@ impl Generator {
 
         #[allow(clippy::manual_unwrap_or_default)]
         let stmts = if let Some(mut stmts) = self.stmts.take() {
-            if self.with_block_stack.is_some() {
+            if let Some(with_block_stack) = self.with_block_stack.as_ref() {
                 // The previous label was nested inside one or more `with`
                 // blocks, so we surround the statements in
                 // generated `with` blocks to create the same environment.
 
-                for (_i, with_block) in self
-                    .with_block_stack
-                    .as_ref()
-                    .unwrap()
-                    .iter()
-                    .enumerate()
-                    .rev()
-                {
+                for (_i, with_block) in with_block_stack.iter().enumerate().rev() {
                     let b = with_block.borrow();
                     let with_block = match &*b {
                         CodeBlock::With(v) => v,
@@ -3087,7 +3180,7 @@ impl Generator {
         });
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(level = "debug", skip(self))]
     fn try_enter_label(&mut self, op_index: usize) {
         if self.label_offsets.is_none() {
             return;
@@ -3124,10 +3217,12 @@ impl Generator {
 
     /// Updates literal expressions for labels with actual label numbers.
     fn update_label_expression(&mut self) {
-        if self.label_exprs.is_some() && self.label_numbers.is_some() {
-            for (label_number, labels) in self.label_numbers.as_ref().unwrap().iter().enumerate() {
+        if let (Some(label_exprs), Some(label_numbers)) =
+            (&mut self.label_exprs, &self.label_numbers)
+        {
+            for (label_number, labels) in label_numbers.iter().enumerate() {
                 for &label in labels {
-                    let exprs = self.label_exprs.as_mut().unwrap().get_mut(label);
+                    let exprs = label_exprs.get_mut(label);
                     if let Some(exprs) = exprs {
                         for expr in exprs {
                             expr.value = label_number as _;
@@ -3141,7 +3236,7 @@ impl Generator {
     }
 
     /// Tries to enter or leave a code block.
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(level = "debug", skip(self))]
     fn try_enter_or_leave_block(&mut self, op_index: usize) {
         if let Some(blocks) = &self.blocks {
             while self.block_index < self.block_actions.as_ref().unwrap().len()
@@ -3208,7 +3303,7 @@ impl Generator {
 
     /// Writes an operation as a statement to the current label's statement
     /// list.
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(level = "debug", skip(self))]
     fn write_operation(&mut self, op_index: usize) {
         if cfg!(debug_assertions) {
             debug!("Writing operation {}", op_index);
@@ -3579,7 +3674,7 @@ impl Generator {
                 }
 
                 let this_arg = self.create_temp_variable();
-                *obj = Box::new(obj.take().make_assign_to(op!("="), this_arg.clone().into()));
+                **obj = obj.take().make_assign_to(op!("="), this_arg.clone().into());
 
                 (callee, this_arg.into())
             }

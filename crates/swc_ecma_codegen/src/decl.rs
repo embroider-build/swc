@@ -1,58 +1,20 @@
 use swc_common::{SourceMapper, Spanned};
 use swc_ecma_ast::*;
-use swc_ecma_codegen_macros::emitter;
+use swc_ecma_codegen_macros::node_impl;
 
 use super::{Emitter, Result};
-use crate::text_writer::WriteJs;
+#[cfg(swc_ast_unknown)]
+use crate::unknown_error;
+use crate::{
+    scope_helpers::{for_each_param_binding, for_each_var_decl_binding},
+    text_writer::{BindingStorage, ScopeKind, WriteJs},
+};
 
 impl<W, S: SourceMapper> Emitter<'_, W, S>
 where
     W: WriteJs,
     S: SourceMapperExt,
 {
-    #[emitter]
-    fn emit_decl(&mut self, node: &Decl) -> Result {
-        match node {
-            Decl::Class(ref n) => emit!(n),
-            Decl::Fn(ref n) => emit!(n),
-
-            Decl::Var(ref n) => {
-                self.emit_var_decl_inner(n)?;
-                formatting_semi!();
-                srcmap!(n, false);
-            }
-            Decl::Using(n) => emit!(n),
-            Decl::TsEnum(ref n) => emit!(n),
-            Decl::TsInterface(ref n) => emit!(n),
-            Decl::TsModule(ref n) => emit!(n),
-            Decl::TsTypeAlias(ref n) => emit!(n),
-        }
-    }
-
-    #[emitter]
-    fn emit_class_decl(&mut self, node: &ClassDecl) -> Result {
-        self.emit_class_decl_inner(node, false)?;
-    }
-
-    #[emitter]
-    fn emit_using_decl(&mut self, node: &UsingDecl) -> Result {
-        self.emit_leading_comments_of_span(node.span(), false)?;
-
-        if node.is_await {
-            keyword!("await");
-            space!();
-        }
-
-        keyword!("using");
-        space!();
-
-        self.emit_list(
-            node.span,
-            Some(&node.decls),
-            ListFormat::VariableDeclarationList,
-        )?;
-    }
-
     pub(super) fn emit_class_decl_inner(
         &mut self,
         node: &ClassDecl,
@@ -88,48 +50,25 @@ where
         Ok(())
     }
 
-    #[emitter]
-    fn emit_fn_decl(&mut self, node: &FnDecl) -> Result {
-        self.emit_leading_comments_of_span(node.span(), false)?;
-
-        self.wr.commit_pending_semi()?;
-
-        srcmap!(node, true);
-
-        if node.declare {
-            keyword!("declare");
-            space!();
-        }
-
-        if node.function.is_async {
-            keyword!("async");
-            space!();
-        }
-
-        keyword!("function");
-        if node.function.is_generator {
-            punct!("*");
-            formatting_space!();
-        } else {
-            space!();
-        }
-
-        emit!(node.ident);
-
-        self.emit_fn_trailing(&node.function)?;
-    }
-
-    #[emitter]
-    fn emit_var_decl(&mut self, node: &VarDecl) -> Result {
-        self.emit_var_decl_inner(node)?;
-    }
-
     fn emit_var_decl_inner(&mut self, node: &VarDecl) -> Result {
         self.emit_leading_comments_of_span(node.span, false)?;
 
         self.wr.commit_pending_semi()?;
 
         srcmap!(self, node, true);
+
+        if self.scope_tracking_enabled() {
+            let storage = if matches!(node.kind, VarDeclKind::Var) {
+                BindingStorage::Hoisted
+            } else {
+                BindingStorage::Lexical
+            };
+            let mut names = vec![];
+            for_each_var_decl_binding(node, &mut |name| names.push(name.to_string()));
+            for name in names {
+                self.add_scope_variable(&name, Some(&name), storage)?;
+            }
+        }
 
         if node.declare {
             keyword!(self, "declare");
@@ -159,21 +98,144 @@ where
 
         Ok(())
     }
+}
 
-    #[emitter]
-    fn emit_var_declarator(&mut self, node: &VarDeclarator) -> Result {
-        self.emit_leading_comments_of_span(node.span(), false)?;
+#[node_impl]
+impl MacroNode for Decl {
+    fn emit(&mut self, emitter: &mut Macro) -> Result {
+        match self {
+            Decl::Class(n) => emit!(n),
+            Decl::Fn(n) => emit!(n),
+            Decl::Var(n) => {
+                emitter.emit_var_decl_inner(n)?;
+                formatting_semi!(emitter);
+                srcmap!(emitter, self, false);
+            }
+            Decl::Using(n) => emit!(n),
+            Decl::TsEnum(n) => emit!(n),
+            Decl::TsInterface(n) => emit!(n),
+            Decl::TsModule(n) => emit!(n),
+            Decl::TsTypeAlias(n) => emit!(n),
+            #[cfg(swc_ast_unknown)]
+            _ => return Err(unknown_error()),
+        }
 
-        srcmap!(node, true);
+        Ok(())
+    }
+}
 
-        emit!(node.name);
+#[node_impl]
+impl MacroNode for ClassDecl {
+    fn emit(&mut self, emitter: &mut Macro) -> Result {
+        let name = self.ident.sym.as_ref();
+        emitter.add_scope_variable(name, Some(name), BindingStorage::Lexical)?;
+        emitter.emit_class_decl_inner(self, false)?;
+        Ok(())
+    }
+}
 
-        if let Some(ref init) = node.init {
-            formatting_space!();
-            punct!("=");
-            formatting_space!();
+#[node_impl]
+impl MacroNode for UsingDecl {
+    fn emit(&mut self, emitter: &mut Macro) -> Result {
+        emitter.emit_leading_comments_of_span(self.span(), false)?;
+
+        if self.is_await {
+            keyword!(emitter, "await");
+            space!(emitter);
+        }
+
+        keyword!(emitter, "using");
+        space!(emitter);
+
+        emitter.emit_list(
+            self.span,
+            Some(&self.decls),
+            ListFormat::VariableDeclarationList,
+        )?;
+
+        Ok(())
+    }
+}
+
+#[node_impl]
+impl MacroNode for FnDecl {
+    fn emit(&mut self, emitter: &mut Macro) -> Result {
+        emitter.emit_leading_comments_of_span(self.span(), false)?;
+
+        emitter.wr.commit_pending_semi()?;
+
+        srcmap!(emitter, self, true);
+        let fn_name = self.ident.sym.as_ref();
+        emitter.add_scope_variable(fn_name, Some(fn_name), BindingStorage::Hoisted)?;
+        emitter.start_scope(
+            Some(fn_name),
+            ScopeKind::Function,
+            true,
+            false,
+            Some(self.function.span),
+        )?;
+        if emitter.scope_tracking_enabled() {
+            let mut names = vec![];
+            for_each_param_binding(&self.function.params, &mut |name| {
+                names.push(name.to_string())
+            });
+            for name in names {
+                emitter.add_scope_variable(&name, Some(&name), BindingStorage::Lexical)?;
+            }
+        }
+
+        if self.declare {
+            keyword!(emitter, "declare");
+            space!(emitter);
+        }
+
+        if self.function.is_async {
+            keyword!(emitter, "async");
+            space!(emitter);
+        }
+
+        keyword!(emitter, "function");
+        if self.function.is_generator {
+            punct!(emitter, "*");
+            formatting_space!(emitter);
+        } else {
+            space!(emitter);
+        }
+
+        emit!(self.ident);
+
+        emitter.emit_fn_trailing(&self.function)?;
+        emitter.end_scope()?;
+
+        Ok(())
+    }
+}
+
+#[node_impl]
+impl MacroNode for VarDecl {
+    fn emit(&mut self, emitter: &mut Macro) -> Result {
+        emitter.emit_var_decl_inner(self)?;
+        Ok(())
+    }
+}
+
+#[node_impl]
+impl MacroNode for VarDeclarator {
+    fn emit(&mut self, emitter: &mut Macro) -> Result {
+        emitter.emit_leading_comments_of_span(self.span(), false)?;
+
+        srcmap!(emitter, self, true);
+
+        emit!(self.name);
+
+        if let Some(ref init) = self.init {
+            formatting_space!(emitter);
+            punct!(emitter, "=");
+            formatting_space!(emitter);
             emit!(init);
         }
+
+        Ok(())
     }
 }
 

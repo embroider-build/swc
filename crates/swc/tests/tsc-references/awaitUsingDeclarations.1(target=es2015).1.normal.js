@@ -10,71 +10,12 @@ const env = {
     hasError: false
 };
 try {
-    const d1 = _ts_add_disposable_resource(env, {
+    var d1 = _ts_add_disposable_resource(env, {
         [Symbol.asyncDispose] () {
             return _async_to_generator(function*() {})();
         }
     }, true);
-    ;
-    function af() {
-        return _af.apply(this, arguments);
-    }
-    function _af() {
-        _af = _async_to_generator(function*() {
-            const env = {
-                stack: [],
-                error: void 0,
-                hasError: false
-            };
-            try {
-                const d3 = _ts_add_disposable_resource(env, {
-                    [Symbol.asyncDispose] () {
-                        return _async_to_generator(function*() {})();
-                    }
-                }, true);
-                ;
-                yield null;
-            } catch (e) {
-                env.error = e;
-                env.hasError = true;
-            } finally{
-                const result = _ts_dispose_resources(env);
-                if (result) yield result;
-            }
-        });
-        return _af.apply(this, arguments);
-    }
-    function ag() {
-        return _ag.apply(this, arguments);
-    }
-    function _ag() {
-        _ag = _wrap_async_generator(function*() {
-            const env = {
-                stack: [],
-                error: void 0,
-                hasError: false
-            };
-            try {
-                const d5 = _ts_add_disposable_resource(env, {
-                    [Symbol.asyncDispose] () {
-                        return _async_to_generator(function*() {})();
-                    }
-                }, true);
-                ;
-                yield;
-                yield _await_async_generator(null);
-            } catch (e) {
-                env.error = e;
-                env.hasError = true;
-            } finally{
-                const result = _ts_dispose_resources(env);
-                if (result) yield _await_async_generator(result);
-            }
-        });
-        return _ag.apply(this, arguments);
-    }
-    const a = /*#__PURE__*/ function() {
-        var _ref = _async_to_generator(function*() {
+    var a = ()=>_async_to_generator(function*() {
             const env = {
                 stack: [],
                 error: void 0,
@@ -86,7 +27,6 @@ try {
                         return _async_to_generator(function*() {})();
                     }
                 }, true);
-                ;
             } catch (e) {
                 env.error = e;
                 env.hasError = true;
@@ -94,12 +34,8 @@ try {
                 const result = _ts_dispose_resources(env);
                 if (result) yield result;
             }
-        });
-        return function a() {
-            return _ref.apply(this, arguments);
-        };
-    }();
-    class C1 {
+        })();
+    var C1 = class C1 {
         am() {
             return _async_to_generator(function*() {
                 const env = {
@@ -113,7 +49,6 @@ try {
                             return _async_to_generator(function*() {})();
                         }
                     }, true);
-                    ;
                     yield null;
                 } catch (e) {
                     env.error = e;
@@ -137,7 +72,6 @@ try {
                             return _async_to_generator(function*() {})();
                         }
                     }, true);
-                    ;
                     yield;
                     yield _await_async_generator(null);
                 } catch (e) {
@@ -150,29 +84,28 @@ try {
             })();
         }
         constructor(){
-            this.a = /*#__PURE__*/ _async_to_generator(function*() {
-                const env = {
-                    stack: [],
-                    error: void 0,
-                    hasError: false
-                };
-                try {
-                    const d7 = _ts_add_disposable_resource(env, {
-                        [Symbol.asyncDispose] () {
-                            return _async_to_generator(function*() {})();
-                        }
-                    }, true);
-                    ;
-                } catch (e) {
-                    env.error = e;
-                    env.hasError = true;
-                } finally{
-                    const result = _ts_dispose_resources(env);
-                    if (result) yield result;
-                }
-            });
+            this.a = ()=>_async_to_generator(function*() {
+                    const env = {
+                        stack: [],
+                        error: void 0,
+                        hasError: false
+                    };
+                    try {
+                        const d7 = _ts_add_disposable_resource(env, {
+                            [Symbol.asyncDispose] () {
+                                return _async_to_generator(function*() {})();
+                            }
+                        }, true);
+                    } catch (e) {
+                        env.error = e;
+                        env.hasError = true;
+                    } finally{
+                        const result = _ts_dispose_resources(env);
+                        if (result) yield result;
+                    }
+                })();
         }
-    }
+    };
     {
         const env = {
             stack: [],
@@ -185,7 +118,6 @@ try {
                     return _async_to_generator(function*() {})();
                 }
             }, true);
-            ;
         } catch (e) {
             env.error = e;
             env.hasError = true;
@@ -207,7 +139,6 @@ try {
                         return _async_to_generator(function*() {})();
                     }
                 }, true);
-                ;
                 break;
             } catch (e) {
                 env1.error = e;
@@ -228,7 +159,6 @@ try {
                         return _async_to_generator(function*() {})();
                     }
                 }, true);
-                ;
                 break;
             } catch (e) {
                 env2.error = e;
@@ -251,7 +181,6 @@ try {
                         return _async_to_generator(function*() {})();
                     }
                 }, true);
-                ;
                 break;
             } catch (e) {
                 env3.error = e;
@@ -273,7 +202,6 @@ try {
                     return _async_to_generator(function*() {})();
                 }
             }, true);
-            ;
         } catch (e) {
             env.error = e;
             env.hasError = true;
@@ -281,7 +209,7 @@ try {
             const result = _ts_dispose_resources(env);
             if (result) await result;
         }
-    } catch (e) {
+    } catch (unused) {
         const env = {
             stack: [],
             error: void 0,
@@ -293,7 +221,6 @@ try {
                     return _async_to_generator(function*() {})();
                 }
             }, true);
-            ;
         } catch (e) {
             env.error = e;
             env.hasError = true;
@@ -313,7 +240,6 @@ try {
                     return _async_to_generator(function*() {})();
                 }
             }, true);
-            ;
         } catch (e) {
             env.error = e;
             env.hasError = true;
@@ -334,7 +260,6 @@ try {
                     return _async_to_generator(function*() {})();
                 }
             }, true);
-            ;
         } catch (e) {
             env.error = e;
             env.hasError = true;
@@ -354,7 +279,6 @@ try {
                     return _async_to_generator(function*() {})();
                 }
             }, true);
-            ;
         } catch (e) {
             env.error = e;
             env.hasError = true;
@@ -375,7 +299,6 @@ try {
                     return _async_to_generator(function*() {})();
                 }
             }, true);
-            ;
             break;
         } catch (e) {
             env.error = e;
@@ -397,7 +320,6 @@ try {
                     return _async_to_generator(function*() {})();
                 }
             }, true);
-            ;
             break;
         } catch (e) {
             env.error = e;
@@ -419,7 +341,6 @@ try {
                     return _async_to_generator(function*() {})();
                 }
             }, true);
-            ;
             break;
         } catch (e) {
             env.error = e;
@@ -441,7 +362,6 @@ try {
                     return _async_to_generator(function*() {})();
                 }
             }, true);
-            ;
         } catch (e) {
             env.error = e;
             env.hasError = true;
@@ -462,7 +382,6 @@ try {
                     return _async_to_generator(function*() {})();
                 }
             }, true);
-            ;
         } catch (e) {
             env.error = e;
             env.hasError = true;
@@ -477,5 +396,52 @@ try {
 } finally{
     const result = _ts_dispose_resources(env);
     if (result) await result;
+}
+function af() {
+    return _async_to_generator(function*() {
+        const env = {
+            stack: [],
+            error: void 0,
+            hasError: false
+        };
+        try {
+            const d3 = _ts_add_disposable_resource(env, {
+                [Symbol.asyncDispose] () {
+                    return _async_to_generator(function*() {})();
+                }
+            }, true);
+            yield null;
+        } catch (e) {
+            env.error = e;
+            env.hasError = true;
+        } finally{
+            const result = _ts_dispose_resources(env);
+            if (result) yield result;
+        }
+    })();
+}
+function ag() {
+    return _wrap_async_generator(function*() {
+        const env = {
+            stack: [],
+            error: void 0,
+            hasError: false
+        };
+        try {
+            const d5 = _ts_add_disposable_resource(env, {
+                [Symbol.asyncDispose] () {
+                    return _async_to_generator(function*() {})();
+                }
+            }, true);
+            yield;
+            yield _await_async_generator(null);
+        } catch (e) {
+            env.error = e;
+            env.hasError = true;
+        } finally{
+            const result = _ts_dispose_resources(env);
+            if (result) yield _await_async_generator(result);
+        }
+    })();
 }
 export { };

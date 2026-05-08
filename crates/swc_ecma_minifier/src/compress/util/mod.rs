@@ -2,7 +2,7 @@ use std::{cmp::Ordering, f64};
 
 use swc_common::{util::take::Take, DUMMY_SP};
 use swc_ecma_ast::*;
-use swc_ecma_utils::{number::JsNumber, ExprCtx, ExprExt, IdentUsageFinder, Value};
+use swc_ecma_utils::{number::JsNumber, ExprCtx, ExprExt, IdentUsageFinder, Type, Value};
 use swc_ecma_visit::{
     noop_visit_mut_type, noop_visit_type, Visit, VisitMut, VisitMutWith, VisitWith,
 };
@@ -23,17 +23,12 @@ mod tests;
 /// This method returns `!e` if `!!e` is given as a argument.
 ///
 /// TODO: Handle special cases like !1 or !0
-pub(super) fn negate(
-    expr_ctx: &ExprCtx,
-    e: &mut Expr,
-    in_bool_ctx: bool,
-    is_ret_val_ignored: bool,
-) {
+pub(super) fn negate(expr_ctx: ExprCtx, e: &mut Expr, in_bool_ctx: bool, is_ret_val_ignored: bool) {
     negate_inner(expr_ctx, e, in_bool_ctx, is_ret_val_ignored);
 }
 
 fn negate_inner(
-    expr_ctx: &ExprCtx,
+    expr_ctx: ExprCtx,
     e: &mut Expr,
     in_bool_ctx: bool,
     is_ret_val_ignored: bool,
@@ -75,7 +70,7 @@ fn negate_inner(
         }) if is_ok_to_negate_rhs(expr_ctx, right) => {
             trace_op!("negate: a && b => !a || !b");
 
-            let a = negate_inner(expr_ctx, left, in_bool_ctx, false);
+            let a = negate_inner(expr_ctx, left, in_bool_ctx || is_ret_val_ignored, false);
             let b = negate_inner(expr_ctx, right, in_bool_ctx, is_ret_val_ignored);
             *op = op!("||");
             return a || b;
@@ -89,7 +84,7 @@ fn negate_inner(
         }) if is_ok_to_negate_rhs(expr_ctx, right) => {
             trace_op!("negate: a || b => !a && !b");
 
-            let a = negate_inner(expr_ctx, left, in_bool_ctx, false);
+            let a = negate_inner(expr_ctx, left, in_bool_ctx || is_ret_val_ignored, false);
             let b = negate_inner(expr_ctx, right, in_bool_ctx, is_ret_val_ignored);
             *op = op!("&&");
             return a || b;
@@ -178,7 +173,7 @@ pub(crate) fn is_ok_to_negate_for_cond(e: &Expr) -> bool {
     !matches!(e, Expr::Update(..))
 }
 
-pub(crate) fn is_ok_to_negate_rhs(expr_ctx: &ExprCtx, rhs: &Expr) -> bool {
+pub(crate) fn is_ok_to_negate_rhs(expr_ctx: ExprCtx, rhs: &Expr) -> bool {
     match rhs {
         Expr::Member(..) => true,
         Expr::Bin(BinExpr {
@@ -236,18 +231,21 @@ pub(crate) fn is_ok_to_negate_rhs(expr_ctx: &ExprCtx, rhs: &Expr) -> bool {
 }
 
 /// A negative value means that it's efficient to negate the expression.
-#[cfg_attr(feature = "debug", tracing::instrument(skip(e)))]
+#[cfg_attr(
+    feature = "debug",
+    tracing::instrument(level = "debug", skip(e, expr_ctx))
+)]
 #[allow(clippy::let_and_return)]
 pub(crate) fn negate_cost(
-    expr_ctx: &ExprCtx,
+    expr_ctx: ExprCtx,
     e: &Expr,
     in_bool_ctx: bool,
     is_ret_val_ignored: bool,
 ) -> isize {
     #[allow(clippy::only_used_in_recursion)]
-    #[cfg_attr(test, tracing::instrument(skip(e)))]
+    #[cfg_attr(test, tracing::instrument(level = "debug", skip(e)))]
     fn cost(
-        expr_ctx: &ExprCtx,
+        expr_ctx: ExprCtx,
         e: &Expr,
         in_bool_ctx: bool,
         bin_op: Option<BinaryOp>,
@@ -305,7 +303,13 @@ pub(crate) fn negate_cost(
                     right,
                     ..
                 }) => {
-                    let l_cost = cost(expr_ctx, left, in_bool_ctx, Some(*op), false);
+                    let l_cost = cost(
+                        expr_ctx,
+                        left,
+                        in_bool_ctx || is_ret_val_ignored,
+                        Some(*op),
+                        false,
+                    );
 
                     if !is_ret_val_ignored && !is_ok_to_negate_rhs(expr_ctx, right) {
                         return l_cost + 3;
@@ -352,10 +356,13 @@ pub(crate) fn negate_cost(
 
     let cost = cost(expr_ctx, e, in_bool_ctx, None, is_ret_val_ignored);
 
+    #[cfg(feature = "debug")]
+    trace_op!("negate_cost of `{}`: {}", dump(e, false), cost);
+
     cost
 }
 
-pub(crate) fn is_pure_undefined(expr_ctx: &ExprCtx, e: &Expr) -> bool {
+pub(crate) fn is_pure_undefined(expr_ctx: ExprCtx, e: &Expr) -> bool {
     match e {
         Expr::Unary(UnaryExpr {
             op: UnaryOp::Void,
@@ -367,7 +374,7 @@ pub(crate) fn is_pure_undefined(expr_ctx: &ExprCtx, e: &Expr) -> bool {
     }
 }
 
-pub(crate) fn is_primitive<'a>(expr_ctx: &ExprCtx, e: &'a Expr) -> Option<&'a Expr> {
+pub(crate) fn is_primitive(expr_ctx: ExprCtx, e: &Expr) -> Option<&Expr> {
     if is_pure_undefined(expr_ctx, e) {
         Some(e)
     } else {
@@ -398,15 +405,29 @@ pub(crate) fn is_directive(e: &Stmt) -> bool {
     }
 }
 
-pub(crate) fn is_pure_undefined_or_null(expr_ctx: &ExprCtx, e: &Expr) -> bool {
+pub(crate) fn is_pure_undefined_or_null(expr_ctx: ExprCtx, e: &Expr) -> bool {
     is_pure_undefined(expr_ctx, e) || matches!(e, Expr::Lit(Lit::Null(..)))
+}
+
+pub(crate) fn eval_to_undefined(expr_ctx: ExprCtx, e: &Expr) -> bool {
+    match e {
+        Expr::Unary(UnaryExpr {
+            op: UnaryOp::Void, ..
+        }) => true,
+        Expr::Seq(s) => eval_to_undefined(expr_ctx, s.exprs.last().as_ref().unwrap()),
+        Expr::Cond(c) => {
+            eval_to_undefined(expr_ctx, &c.cons) && eval_to_undefined(expr_ctx, &c.alt)
+        }
+
+        _ => e.is_undefined(expr_ctx),
+    }
 }
 
 /// This method does **not** modifies `e`.
 ///
 /// This method is used to test if a whole call can be replaced, while
 /// preserving standalone constants.
-pub(crate) fn eval_as_number(expr_ctx: &ExprCtx, e: &Expr) -> Option<f64> {
+pub(crate) fn eval_as_number(expr_ctx: ExprCtx, e: &Expr) -> Option<f64> {
     match e {
         Expr::Bin(BinExpr {
             op: op!(bin, "-"),
@@ -528,11 +549,11 @@ pub(crate) fn eval_as_number(expr_ctx: &ExprCtx, e: &Expr) -> Option<f64> {
     None
 }
 
-pub(crate) fn is_ident_used_by<N>(id: Id, node: &N) -> bool
+pub(crate) fn is_ident_used_by<N>(id: &Ident, node: &N) -> bool
 where
     N: for<'aa> VisitWith<IdentUsageFinder<'aa>>,
 {
-    IdentUsageFinder::find(&id, node)
+    IdentUsageFinder::find(id, node)
 }
 
 pub struct ExprReplacer<F>
@@ -546,7 +567,7 @@ impl<F> VisitMut for ExprReplacer<F>
 where
     F: FnMut(&mut Expr),
 {
-    noop_visit_mut_type!();
+    noop_visit_mut_type!(fail);
 
     fn visit_mut_expr(&mut self, e: &mut Expr) {
         e.visit_mut_children_with(self);
@@ -665,7 +686,7 @@ impl UnreachableHandler {
 }
 
 impl VisitMut for UnreachableHandler {
-    noop_visit_mut_type!();
+    noop_visit_mut_type!(fail);
 
     fn visit_mut_arrow_expr(&mut self, _: &mut ArrowExpr) {}
 
@@ -715,7 +736,7 @@ pub struct SuperFinder {
 }
 
 impl Visit for SuperFinder {
-    noop_visit_type!();
+    noop_visit_type!(fail);
 
     /// Don't recurse into constructor
     fn visit_constructor(&mut self, _: &Constructor) {}
@@ -748,4 +769,25 @@ fn cmp_num(a: f64, b: f64) -> Ordering {
     }
 
     a.partial_cmp(&b).unwrap()
+}
+
+pub(crate) fn is_eq(op: BinaryOp) -> bool {
+    matches!(op, op!("==") | op!("===") | op!("!=") | op!("!=="))
+}
+
+pub(crate) fn can_absorb_negate(e: &Expr, expr_ctx: ExprCtx) -> bool {
+    match e {
+        Expr::Lit(_) => true,
+        Expr::Bin(BinExpr {
+            op: op!("&&") | op!("||"),
+            left,
+            right,
+            ..
+        }) => can_absorb_negate(left, expr_ctx) && can_absorb_negate(right, expr_ctx),
+        Expr::Bin(BinExpr { op, .. }) if is_eq(*op) => true,
+        Expr::Unary(UnaryExpr {
+            op: op!("!"), arg, ..
+        }) => arg.get_type(expr_ctx) == Value::Known(Type::Bool),
+        _ => false,
+    }
 }

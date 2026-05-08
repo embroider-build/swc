@@ -1,15 +1,20 @@
 use std::{
-    mem::take,
+    borrow::Borrow,
+    mem::{self, take},
     ops::{Deref, DerefMut},
 };
 
 use rustc_hash::{FxHashMap, FxHashSet};
-use swc_atoms::JsWord;
-use swc_common::{collections::AHashSet, util::take::Take, Mark, SyntaxContext, DUMMY_SP};
+use swc_atoms::{Atom, Wtf8Atom};
+use swc_common::{util::take::Take, Mark, SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_transforms_base::perf::{Parallel, ParallelExt};
-use swc_ecma_utils::{collect_decls, ExprCtx, ExprExt, Remapper};
-use swc_ecma_visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
+use swc_ecma_utils::{
+    collect_decls, prop_name_from_ident, ExprCtx, ExprExt, IdentUsageFinder, Remapper,
+};
+use swc_ecma_visit::{
+    noop_visit_mut_type, noop_visit_type, Visit, VisitMut, VisitMutWith, VisitWith,
+};
 use tracing::debug;
 
 use super::{Ctx, Optimizer};
@@ -89,9 +94,9 @@ impl<'b> Optimizer<'b> {
 
             #[cfg(debug_assertions)]
             {
-                self.data.scopes.get(&scope_ctxt).unwrap_or_else(|| {
-                    panic!("scope not found: {:?}; {:#?}", scope_ctxt, self.data.scopes)
-                });
+                self.data
+                    .get_scope(scope_ctxt)
+                    .unwrap_or_else(|| panic!("scope not found: {scope_ctxt:?}"));
             }
         }
 
@@ -161,35 +166,64 @@ impl Drop for WithCtx<'_, '_> {
     }
 }
 
-pub(crate) fn extract_class_side_effect(expr_ctx: &ExprCtx, c: Class) -> Vec<Box<Expr>> {
+pub(crate) fn extract_class_side_effect<'a>(
+    expr_ctx: ExprCtx,
+    ident: Option<&'a Ident>,
+    c: &'a mut Class,
+) -> Option<Vec<&'a mut Box<Expr>>> {
     let mut res = Vec::new();
-    if let Some(e) = c.super_class {
+    let mut value = Vec::new();
+    if let Some(e) = &mut c.super_class {
         if e.may_have_side_effects(expr_ctx) {
             res.push(e);
         }
     }
 
-    for m in c.body {
+    let mut visitor = ClassEffectVisitor {
+        found: false,
+        private_ident: FxHashSet::default(),
+    };
+
+    for m in &mut c.body {
+        if let ClassMember::PrivateProp(PrivateProp { key, .. })
+        | ClassMember::PrivateMethod(PrivateMethod { key, .. }) = m
+        {
+            visitor.private_ident.insert(key.name.clone());
+        }
+    }
+
+    for m in &mut c.body {
         match m {
             ClassMember::Method(ClassMethod {
                 key: PropName::Computed(key),
                 ..
             }) => {
                 if key.expr.may_have_side_effects(expr_ctx) {
-                    res.push(key.expr);
+                    res.push(&mut key.expr);
                 }
             }
 
             ClassMember::ClassProp(p) => {
-                if let PropName::Computed(key) = p.key {
+                if let PropName::Computed(key) = &mut p.key {
                     if key.expr.may_have_side_effects(expr_ctx) {
-                        res.push(key.expr);
+                        res.push(&mut key.expr);
                     }
                 }
 
-                if let Some(v) = p.value {
+                if let Some(v) = &mut p.value {
                     if p.is_static && v.may_have_side_effects(expr_ctx) {
-                        res.push(v);
+                        v.visit_with(&mut visitor);
+                        if visitor.found {
+                            return None;
+                        }
+
+                        if let Some(id) = ident {
+                            if IdentUsageFinder::find(id, v) {
+                                return None;
+                            }
+                        }
+
+                        value.push(v);
                     }
                 }
             }
@@ -199,7 +233,44 @@ pub(crate) fn extract_class_side_effect(expr_ctx: &ExprCtx, c: Class) -> Vec<Box
                 ..
             }) => {
                 if v.may_have_side_effects(expr_ctx) {
-                    res.push(v);
+                    v.visit_with(&mut visitor);
+                    if visitor.found {
+                        return None;
+                    }
+
+                    if let Some(id) = ident {
+                        if IdentUsageFinder::find(id, v) {
+                            return None;
+                        }
+                    }
+
+                    value.push(v);
+                }
+            }
+            ClassMember::StaticBlock(s) => {
+                if s.body.stmts.len() > 1 {
+                    return None;
+                }
+
+                let first = if let Some(stmt) = s.body.stmts.get_mut(0) {
+                    &mut stmt.as_mut_expr()?.expr
+                } else {
+                    continue;
+                };
+
+                if first.may_have_side_effects(expr_ctx) {
+                    first.visit_with(&mut visitor);
+                    if visitor.found {
+                        return None;
+                    }
+
+                    if let Some(id) = ident {
+                        if IdentUsageFinder::find(id, first) {
+                            return None;
+                        }
+                    }
+
+                    value.push(first);
                 }
             }
 
@@ -207,7 +278,87 @@ pub(crate) fn extract_class_side_effect(expr_ctx: &ExprCtx, c: Class) -> Vec<Box
         }
     }
 
-    res
+    res.append(&mut value);
+
+    Some(res)
+}
+
+struct ClassEffectVisitor {
+    found: bool,
+    private_ident: FxHashSet<Atom>,
+}
+
+impl Visit for ClassEffectVisitor {
+    noop_visit_type!();
+
+    /// Don't recurse into constructor
+    fn visit_constructor(&mut self, _: &Constructor) {}
+
+    /// Don't recurse into fn
+    fn visit_fn_decl(&mut self, _: &FnDecl) {}
+
+    /// Don't recurse into fn
+    fn visit_fn_expr(&mut self, _: &FnExpr) {}
+
+    /// Don't recurse into fn
+    fn visit_function(&mut self, _: &Function) {}
+
+    /// Don't recurse into fn
+    fn visit_getter_prop(&mut self, n: &GetterProp) {
+        n.key.visit_with(self);
+    }
+
+    /// Don't recurse into fn
+    fn visit_method_prop(&mut self, n: &MethodProp) {
+        n.key.visit_with(self);
+        n.function.visit_with(self);
+    }
+
+    /// Don't recurse into fn
+    fn visit_setter_prop(&mut self, n: &SetterProp) {
+        n.key.visit_with(self);
+        n.param.visit_with(self);
+    }
+
+    fn visit_this_expr(&mut self, _: &ThisExpr) {
+        self.found = true;
+    }
+
+    fn visit_prop(&mut self, n: &Prop) {
+        n.visit_children_with(self);
+
+        if let Prop::Shorthand(Ident { sym, .. }) = n {
+            if &**sym == "arguments" {
+                self.found = true;
+            }
+        }
+    }
+
+    fn visit_super(&mut self, _: &Super) {
+        self.found = true;
+    }
+
+    fn visit_private_name(&mut self, n: &PrivateName) {
+        if self.private_ident.contains(&n.name) {
+            self.found = true
+        }
+    }
+
+    fn visit_class(&mut self, n: &Class) {
+        let mut new_set = FxHashSet::default();
+
+        for m in &n.body {
+            if let ClassMember::PrivateProp(PrivateProp { key, .. })
+            | ClassMember::PrivateMethod(PrivateMethod { key, .. }) = m
+            {
+                new_set.insert(key.name.clone());
+            }
+        }
+
+        let old_set = mem::replace(&mut self.private_ident, new_set);
+        n.visit_children_with(self);
+        self.private_ident = old_set;
+    }
 }
 
 pub(crate) fn is_valid_for_lhs(e: &Expr) -> bool {
@@ -223,7 +374,7 @@ pub(crate) struct Finalizer<'a> {
     pub lits: &'a FxHashMap<Id, Box<Expr>>,
     pub lits_for_cmp: &'a FxHashMap<Id, Box<Expr>>,
     pub lits_for_array_access: &'a FxHashMap<Id, Box<Expr>>,
-    pub hoisted_props: &'a FxHashMap<(Id, JsWord), Ident>,
+    pub hoisted_props: &'a FxHashMap<(Id, Wtf8Atom), Ident>,
 
     pub vars_to_remove: &'a FxHashSet<Id>,
 
@@ -247,7 +398,7 @@ impl Finalizer<'_> {
                 let mut value = self.simple_functions.get(i).cloned()?;
                 let mut cache = FxHashMap::default();
                 let mut remap = FxHashMap::default();
-                let bindings: AHashSet<Id> = collect_decls(&*value);
+                let bindings: FxHashSet<Id> = collect_decls(&*value);
                 let new_mark = Mark::new();
 
                 // at this point, var usage no longer matter
@@ -306,25 +457,7 @@ enum FinalizerMode {
 }
 
 impl VisitMut for Finalizer<'_> {
-    noop_visit_mut_type!();
-
-    fn visit_mut_callee(&mut self, e: &mut Callee) {
-        e.visit_mut_children_with(self);
-
-        if let Callee::Expr(e) = e {
-            self.check(e, FinalizerMode::Callee);
-        }
-    }
-
-    fn visit_mut_member_expr(&mut self, e: &mut MemberExpr) {
-        e.visit_mut_children_with(self);
-
-        if let MemberProp::Computed(ref mut prop) = e.prop {
-            if let Expr::Lit(Lit::Num(..)) = &*prop.expr {
-                self.check(&mut e.obj, FinalizerMode::MemberAccess);
-            }
-        }
-    }
+    noop_visit_mut_type!(fail);
 
     fn visit_mut_bin_expr(&mut self, e: &mut BinExpr) {
         e.visit_mut_children_with(self);
@@ -342,65 +475,17 @@ impl VisitMut for Finalizer<'_> {
         }
     }
 
-    fn visit_mut_var_declarators(&mut self, n: &mut Vec<VarDeclarator>) {
-        n.visit_mut_children_with(self);
+    fn visit_mut_callee(&mut self, e: &mut Callee) {
+        e.visit_mut_children_with(self);
 
-        n.retain(|v| !v.name.is_invalid());
-    }
-
-    fn visit_mut_var_declarator(&mut self, n: &mut VarDeclarator) {
-        n.visit_mut_children_with(self);
-
-        if n.init.is_none() {
-            if let Pat::Ident(i) = &n.name {
-                if self.vars_to_remove.contains(&i.to_id()) {
-                    n.name.take();
-                }
-            }
+        if let Callee::Expr(e) = e {
+            self.check(e, FinalizerMode::Callee);
         }
     }
 
-    fn visit_mut_opt_var_decl_or_expr(&mut self, n: &mut Option<VarDeclOrExpr>) {
-        n.visit_mut_children_with(self);
-
-        if let Some(VarDeclOrExpr::VarDecl(v)) = n {
-            if v.decls.is_empty() {
-                *n = None;
-            }
-        }
-    }
-
-    fn visit_mut_stmt(&mut self, n: &mut Stmt) {
-        n.visit_mut_children_with(self);
-
-        if let Stmt::Decl(Decl::Var(v)) = n {
-            if v.decls.is_empty() {
-                n.take();
-            }
-        }
-    }
-
-    fn visit_mut_prop_or_spreads(&mut self, n: &mut Vec<PropOrSpread>) {
-        self.maybe_par(*HEAVY_TASK_PARALLELS, n, |v, n| {
-            n.visit_mut_with(v);
-        });
-    }
-
-    fn visit_mut_expr_or_spreads(&mut self, n: &mut Vec<ExprOrSpread>) {
-        self.maybe_par(*HEAVY_TASK_PARALLELS, n, |v, n| {
-            n.visit_mut_with(v);
-        });
-    }
-
-    fn visit_mut_opt_vec_expr_or_spreads(&mut self, n: &mut Vec<Option<ExprOrSpread>>) {
-        self.maybe_par(*HEAVY_TASK_PARALLELS, n, |v, n| {
-            n.visit_mut_with(v);
-        });
-    }
-
-    fn visit_mut_exprs(&mut self, n: &mut Vec<Box<Expr>>) {
-        self.maybe_par(*HEAVY_TASK_PARALLELS, n, |v, n| {
-            n.visit_mut_with(v);
+    fn visit_mut_class_members(&mut self, members: &mut Vec<ClassMember>) {
+        self.maybe_par(*HEAVY_TASK_PARALLELS, members, |v, member| {
+            member.visit_mut_with(v);
         });
     }
 
@@ -412,15 +497,16 @@ impl VisitMut for Finalizer<'_> {
                     return;
                 }
             }
-            Expr::Member(e) => {
+            Expr::Member(e) => 'a: {
                 if let Expr::Ident(obj) = &*e.obj {
                     let sym = match &e.prop {
-                        MemberProp::Ident(i) => &i.sym,
+                        MemberProp::Ident(i) => i.sym.borrow(),
                         MemberProp::Computed(e) => match &*e.expr {
+                            Expr::Ident(ident) => ident.sym.borrow(),
                             Expr::Lit(Lit::Str(s)) => &s.value,
-                            _ => return,
+                            _ => break 'a,
                         },
-                        _ => return,
+                        MemberProp::PrivateName(_) => break 'a,
                     };
 
                     if let Some(ident) = self.hoisted_props.get(&(obj.to_id(), sym.clone())) {
@@ -436,10 +522,26 @@ impl VisitMut for Finalizer<'_> {
         n.visit_mut_children_with(self);
     }
 
-    fn visit_mut_stmts(&mut self, n: &mut Vec<Stmt>) {
+    fn visit_mut_expr_or_spreads(&mut self, n: &mut Vec<ExprOrSpread>) {
         self.maybe_par(*HEAVY_TASK_PARALLELS, n, |v, n| {
             n.visit_mut_with(v);
         });
+    }
+
+    fn visit_mut_exprs(&mut self, n: &mut Vec<Box<Expr>>) {
+        self.maybe_par(*HEAVY_TASK_PARALLELS, n, |v, n| {
+            n.visit_mut_with(v);
+        });
+    }
+
+    fn visit_mut_member_expr(&mut self, e: &mut MemberExpr) {
+        e.visit_mut_children_with(self);
+
+        if let MemberProp::Computed(prop) = &mut e.prop {
+            if let Expr::Lit(Lit::Num(..)) = &*prop.expr {
+                self.check(&mut e.obj, FinalizerMode::MemberAccess);
+            }
+        }
     }
 
     fn visit_mut_module_items(&mut self, n: &mut Vec<ModuleItem>) {
@@ -447,18 +549,91 @@ impl VisitMut for Finalizer<'_> {
             n.visit_mut_with(v);
         });
     }
+
+    fn visit_mut_opt_var_decl_or_expr(&mut self, n: &mut Option<VarDeclOrExpr>) {
+        n.visit_mut_children_with(self);
+
+        if let Some(VarDeclOrExpr::VarDecl(v)) = n {
+            if v.decls.is_empty() {
+                *n = None;
+            }
+        }
+    }
+
+    fn visit_mut_opt_vec_expr_or_spreads(&mut self, n: &mut Vec<Option<ExprOrSpread>>) {
+        self.maybe_par(*HEAVY_TASK_PARALLELS, n, |v, n| {
+            n.visit_mut_with(v);
+        });
+    }
+
+    fn visit_mut_prop_or_spreads(&mut self, n: &mut Vec<PropOrSpread>) {
+        self.maybe_par(*HEAVY_TASK_PARALLELS, n, |v, n| {
+            n.visit_mut_with(v);
+        });
+    }
+
+    fn visit_mut_stmt(&mut self, n: &mut Stmt) {
+        n.visit_mut_children_with(self);
+
+        if let Stmt::Decl(Decl::Var(v)) = n {
+            if v.decls.is_empty() {
+                n.take();
+            }
+        }
+    }
+
+    fn visit_mut_stmts(&mut self, n: &mut Vec<Stmt>) {
+        self.maybe_par(*HEAVY_TASK_PARALLELS, n, |v, n| {
+            n.visit_mut_with(v);
+        });
+    }
+
+    fn visit_mut_var_declarator(&mut self, n: &mut VarDeclarator) {
+        n.visit_mut_children_with(self);
+
+        if n.init.is_none() {
+            if let Pat::Ident(i) = &n.name {
+                if self.vars_to_remove.contains(&i.to_id()) {
+                    n.name.take();
+                }
+            }
+        }
+    }
+
+    fn visit_mut_var_declarators(&mut self, n: &mut Vec<VarDeclarator>) {
+        n.visit_mut_children_with(self);
+
+        n.retain(|v| !v.name.is_invalid());
+    }
+
+    fn visit_mut_prop(&mut self, n: &mut Prop) {
+        n.visit_mut_children_with(self);
+
+        if let Prop::Shorthand(i) = n {
+            if let Some(expr) = self.lits.get(&i.to_id()) {
+                let key = prop_name_from_ident(i.take());
+                *n = Prop::KeyValue(KeyValueProp {
+                    key,
+                    value: expr.clone(),
+                });
+                self.changed = true;
+            }
+        }
+    }
 }
 
 pub(crate) struct NormalMultiReplacer<'a> {
     pub vars: &'a mut FxHashMap<Id, Box<Expr>>,
     pub changed: bool,
+    should_consume: bool,
 }
 
 impl<'a> NormalMultiReplacer<'a> {
     /// `worked` will be changed to `true` if any replacement is done
-    pub fn new(vars: &'a mut FxHashMap<Id, Box<Expr>>) -> Self {
+    pub fn new(vars: &'a mut FxHashMap<Id, Box<Expr>>, should_consume: bool) -> Self {
         NormalMultiReplacer {
             vars,
+            should_consume,
             changed: false,
         }
     }
@@ -467,6 +642,15 @@ impl<'a> NormalMultiReplacer<'a> {
         let mut e = self.vars.remove(i)?;
 
         e.visit_mut_children_with(self);
+
+        let e = if self.should_consume {
+            e
+        } else {
+            let new_e = e.clone();
+            self.vars.insert(i.clone(), e);
+
+            new_e
+        };
 
         match &*e {
             Expr::Ident(Ident { sym, .. }) if &**sym == "eval" => Some(
@@ -482,7 +666,7 @@ impl<'a> NormalMultiReplacer<'a> {
 }
 
 impl VisitMut for NormalMultiReplacer<'_> {
-    noop_visit_mut_type!();
+    noop_visit_mut_type!(fail);
 
     fn visit_mut_expr(&mut self, e: &mut Expr) {
         if self.vars.is_empty() {
@@ -525,10 +709,8 @@ impl VisitMut for NormalMultiReplacer<'_> {
                 debug!("multi-replacer: Replaced `{}` as shorthand", i);
                 self.changed = true;
 
-                *p = Prop::KeyValue(KeyValueProp {
-                    key: PropName::Ident(IdentName::new(i.sym.clone(), i.span)),
-                    value,
-                });
+                let key = prop_name_from_ident(i.take());
+                *p = Prop::KeyValue(KeyValueProp { key, value });
             }
         }
     }
@@ -575,7 +757,7 @@ impl ExprReplacer {
 }
 
 impl VisitMut for ExprReplacer {
-    noop_visit_mut_type!();
+    noop_visit_mut_type!(fail);
 
     fn visit_mut_expr(&mut self, e: &mut Expr) {
         e.visit_mut_children_with(self);
@@ -601,10 +783,8 @@ impl VisitMut for ExprReplacer {
                 } else {
                     unreachable!("`{}` is already taken", i)
                 };
-                *p = Prop::KeyValue(KeyValueProp {
-                    key: PropName::Ident(i.clone().into()),
-                    value,
-                });
+                let key = prop_name_from_ident(i.take());
+                *p = Prop::KeyValue(KeyValueProp { key, value });
             }
         }
     }
@@ -665,7 +845,7 @@ impl Drop for SynthesizedStmts {
 
 #[derive(Default)]
 struct LabelAnalyzer {
-    label: JsWord,
+    label: Atom,
     /// If top level is a normal block, labelled break must be preserved
     top_breakable: bool,
     count: usize,
@@ -745,4 +925,41 @@ impl VisitMut for LabelAnalyzer {
             }
         }
     }
+}
+
+pub fn get_ids_of_pat(pat: &Pat) -> Vec<Id> {
+    fn append(pat: &Pat, ids: &mut Vec<Id>) {
+        match pat {
+            Pat::Ident(binding_ident) => ids.push(binding_ident.id.to_id()),
+            Pat::Array(array_pat) => {
+                for pat in array_pat.elems.iter().flatten() {
+                    append(pat, ids);
+                }
+            }
+            Pat::Rest(rest_pat) => append(&rest_pat.arg, ids),
+            Pat::Object(object_pat) => {
+                for pat in &object_pat.props {
+                    match pat {
+                        ObjectPatProp::KeyValue(key_value_pat_prop) => {
+                            append(&key_value_pat_prop.value, ids)
+                        }
+                        ObjectPatProp::Assign(assign_pat_prop) => {
+                            ids.push(assign_pat_prop.key.to_id())
+                        }
+                        ObjectPatProp::Rest(rest_pat) => append(&rest_pat.arg, ids),
+                        #[cfg(swc_ast_unknown)]
+                        _ => panic!("unable to access unknown nodes"),
+                    }
+                }
+            }
+            Pat::Assign(assign_pat) => append(&assign_pat.left, ids),
+            Pat::Invalid(_) | Pat::Expr(_) => {}
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
+        }
+    }
+
+    let mut idents = vec![];
+    append(pat, &mut idents);
+    idents
 }

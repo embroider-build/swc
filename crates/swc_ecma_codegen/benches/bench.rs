@@ -1,8 +1,7 @@
 extern crate swc_malloc;
 
 use codspeed_criterion_compat::{black_box, criterion_group, criterion_main, Bencher, Criterion};
-use swc_allocator::{maybe::vec::Vec, Allocator};
-use swc_common::FileName;
+use swc_common::{source_map::DefaultSourceMapGenConfig, FileName};
 use swc_ecma_codegen::Emitter;
 use swc_ecma_parser::{Parser, StringInput, Syntax};
 
@@ -80,9 +79,9 @@ module.exports = {
 
 const LARGE_PARTIAL_JS: &str = include_str!("large-partial.js");
 
-fn bench_emitter(b: &mut Bencher, s: &str) {
+fn bench_emitter(b: &mut Bencher, s: &'static str) {
     let _ = ::testing::run_test(true, |cm, handler| {
-        let fm = cm.new_source_file(FileName::Anon.into(), s.into());
+        let fm = cm.new_source_file(FileName::Anon.into(), s);
         let mut parser = Parser::new(Syntax::default(), StringInput::from(&*fm), None);
 
         let module = parser
@@ -95,9 +94,6 @@ fn bench_emitter(b: &mut Bencher, s: &str) {
         }
 
         b.iter(|| {
-            let alloc = Allocator::default();
-            let mut _guard = unsafe { alloc.guard() };
-
             let mut src_map_buf = Vec::new();
             let mut buf = Vec::new();
             {
@@ -116,7 +112,7 @@ fn bench_emitter(b: &mut Bencher, s: &str) {
                 let _ = emitter.emit_module(&module);
             }
             black_box(buf);
-            let srcmap = cm.build_source_map(&src_map_buf);
+            let srcmap = cm.build_source_map(&src_map_buf, None, DefaultSourceMapGenConfig);
             black_box(srcmap);
         });
         Ok(())

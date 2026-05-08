@@ -1,9 +1,12 @@
-use std::{fmt::Debug, sync::Arc};
+use std::{fmt::Debug, mem::take, sync::Arc};
 
 use auto_impl::auto_impl;
+use par_core::join;
 use parking_lot::Mutex;
-use rayon::prelude::*;
-use swc_common::errors::{Diagnostic, DiagnosticBuilder, Emitter, Handler, HANDLER};
+use swc_common::{
+    errors::{Diagnostic, DiagnosticBuilder, Emitter, Handler, HANDLER},
+    GLOBALS,
+};
 use swc_ecma_ast::{Module, Script};
 use swc_ecma_visit::{Visit, VisitWith};
 
@@ -18,55 +21,83 @@ pub trait Rule: Debug + Send + Sync {
     fn lint_script(&mut self, program: &Script);
 }
 
-macro_rules! for_vec {
-    ($name:ident, $program:ident, $s:expr) => {{
-        if $s.is_empty() {
-            return;
+trait LintNode<R: Rule>: Send + Sync {
+    fn lint(&self, rule: &mut R);
+}
+
+impl<R: Rule> LintNode<R> for Module {
+    #[inline]
+    fn lint(&self, rule: &mut R) {
+        rule.lint_module(self);
+    }
+}
+
+impl<R: Rule> LintNode<R> for Script {
+    #[inline]
+    fn lint(&self, rule: &mut R) {
+        rule.lint_script(self);
+    }
+}
+
+fn join_lint_rules<N: LintNode<R>, R: Rule>(rules: &mut [R], program: &N) {
+    let len = rules.len();
+    if len == 0 {
+        return;
+    }
+    if len == 1 {
+        program.lint(&mut rules[0]);
+        return;
+    }
+
+    let (ra, rb) = rules.split_at_mut(len / 2);
+
+    GLOBALS.with(|globals| {
+        HANDLER.with(|handler| {
+            join(
+                || {
+                    GLOBALS.set(globals, || {
+                        HANDLER.set(handler, || join_lint_rules(ra, program))
+                    })
+                },
+                || {
+                    GLOBALS.set(globals, || {
+                        HANDLER.set(handler, || join_lint_rules(rb, program))
+                    })
+                },
+            )
+        })
+    });
+}
+
+fn lint_rules<N: LintNode<R>, R: Rule>(rules: &mut Vec<R>, program: &N) {
+    if rules.is_empty() {
+        return;
+    }
+
+    if cfg!(target_arch = "wasm32") {
+        for rule in rules {
+            program.lint(rule);
         }
+    } else {
+        let capturing = Capturing::default();
 
-        let program = $program;
-        if cfg!(target_arch = "wasm32") {
-            for rule in $s {
-                rule.$name(program);
-            }
-        } else {
-            let errors = $s
-                .par_iter_mut()
-                .flat_map(|rule| {
-                    let emitter = Capturing::default();
-                    {
-                        let handler = Handler::with_emitter(true, false, Box::new(emitter.clone()));
-                        HANDLER.set(&handler, || {
-                            rule.$name(program);
-                        });
-                    }
+        {
+            HANDLER.set(
+                &Handler::with_emitter(true, false, Box::new(capturing.clone())),
+                || {
+                    join_lint_rules(rules, program);
+                },
+            );
 
-                    let errors = Arc::try_unwrap(emitter.errors).unwrap().into_inner();
-
-                    errors
-                })
-                .collect::<Vec<_>>();
+            let mut errors = take(&mut *capturing.errors.lock());
+            errors.sort_by_key(|error| error.span.primary_span());
 
             HANDLER.with(|handler| {
                 for error in errors {
-                    DiagnosticBuilder::new_diagnostic(&handler, error).emit();
+                    DiagnosticBuilder::new_diagnostic(handler, error).emit();
                 }
             });
         }
-    }};
-}
-
-/// This preserves the order of errors.
-impl<R> Rule for Vec<R>
-where
-    R: Rule,
-{
-    fn lint_module(&mut self, program: &Module) {
-        for_vec!(lint_module, program, self)
-    }
-
-    fn lint_script(&mut self, program: &Script) {
-        for_vec!(lint_script, program, self)
     }
 }
 
@@ -76,8 +107,22 @@ struct Capturing {
 }
 
 impl Emitter for Capturing {
-    fn emit(&mut self, db: &DiagnosticBuilder<'_>) {
-        self.errors.lock().push((**db).clone());
+    fn emit(&mut self, db: &mut DiagnosticBuilder<'_>) {
+        self.errors.lock().push(db.take());
+    }
+}
+
+/// This preserves the order of errors.
+impl<R> Rule for Vec<R>
+where
+    R: Rule,
+{
+    fn lint_module(&mut self, program: &Module) {
+        lint_rules(self, program)
+    }
+
+    fn lint_script(&mut self, program: &Script) {
+        lint_rules(self, program)
     }
 }
 

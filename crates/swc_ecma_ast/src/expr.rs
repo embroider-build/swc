@@ -1,9 +1,9 @@
 #![allow(clippy::vec_box)]
-use std::{borrow::Cow, mem::transmute};
+use std::mem::transmute;
 
 use is_macro::Is;
 use string_enum::StringEnum;
-use swc_atoms::Atom;
+use swc_atoms::{Atom, Wtf8Atom};
 use swc_common::{
     ast_node, util::take::Take, BytePos, EqIgnoreSpan, Span, Spanned, SyntaxContext, DUMMY_SP,
 };
@@ -29,6 +29,7 @@ use crate::{
 #[ast_node(no_clone)]
 #[derive(Eq, Hash, Is, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum Expr {
     #[tag("ThisExpression")]
     This(ThisExpr),
@@ -140,6 +141,9 @@ pub enum Expr {
     #[tag("JSXFragment")]
     JSXFragment(JSXFragment),
 
+    #[tag("ContentTag")]
+    ContentTagExpression(ContentTagExpression),
+
     #[tag("TsTypeAssertion")]
     TsTypeAssertion(TsTypeAssertion),
 
@@ -191,6 +195,10 @@ impl Expr {
         .into()
     }
 
+    pub fn is_null(&self) -> bool {
+        matches!(self, Expr::Lit(Lit::Null(_)))
+    }
+
     pub fn leftmost(&self) -> Option<&Ident> {
         match self {
             Expr::Ident(i) => Some(i),
@@ -200,9 +208,13 @@ impl Expr {
         }
     }
 
-    pub fn is_ident_ref_to(&self, ident: &str) -> bool {
+    pub fn is_ident_ref_to<S>(&self, ident: &S) -> bool
+    where
+        S: ?Sized,
+        Atom: PartialEq<S>,
+    {
         match self {
-            Expr::Ident(i) => i.sym == ident,
+            Expr::Ident(i) => i.sym == *ident,
             _ => false,
         }
     }
@@ -310,8 +322,13 @@ impl Expr {
         }
     }
 
-    /// Returns true for `eval` and member expressions.
+    #[deprecated(note = "Use `directness_matters` instead")]
     pub fn directness_maters(&self) -> bool {
+        self.directness_matters()
+    }
+
+    /// Returns true for `eval` and member expressions.
+    pub fn directness_matters(&self) -> bool {
         self.is_ident_ref_to("eval") || matches!(self, Expr::Member(..))
     }
 
@@ -359,9 +376,12 @@ impl Expr {
             Expr::JSXEmpty(e) => e.span = span,
             Expr::JSXElement(e) => e.span = span,
             Expr::JSXFragment(e) => e.span = span,
+            Expr::ContentTagExpression(e) => e.span = span,
             Expr::PrivateName(e) => e.span = span,
             Expr::OptChain(e) => e.span = span,
             Expr::Lit(e) => e.set_span(span),
+            #[cfg(all(swc_ast_unknown, feature = "encoding-impl"))]
+            _ => swc_common::unknown!(),
         }
     }
 }
@@ -372,6 +392,8 @@ impl Clone for Expr {
     fn clone(&self) -> Self {
         use Expr::*;
         match self {
+            #[cfg(all(swc_ast_unknown, feature = "encoding-impl"))]
+            Unknown(tag, v) => Unknown(*tag, v.clone()),
             This(e) => This(e.clone()),
             Array(e) => Array(e.clone()),
             Object(e) => Object(e.clone()),
@@ -401,6 +423,7 @@ impl Clone for Expr {
             JSXEmpty(e) => JSXEmpty(e.clone()),
             JSXElement(e) => JSXElement(e.clone()),
             JSXFragment(e) => JSXFragment(e.clone()),
+            ContentTagExpression(e) => ContentTagExpression(e.clone()),
             TsTypeAssertion(e) => TsTypeAssertion(e.clone()),
             TsConstAssertion(e) => TsConstAssertion(e.clone()),
             TsNonNull(e) => TsNonNull(e.clone()),
@@ -479,6 +502,7 @@ boxed_expr!(Invalid);
 #[ast_node("ThisExpression")]
 #[derive(Eq, Hash, Copy, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ThisExpr {
     pub span: Span,
 }
@@ -493,10 +517,15 @@ impl Take for ThisExpr {
 #[ast_node("ArrayExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ArrayLit {
     pub span: Span,
 
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "elements"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "swc_common::serializer::ArrayOption")
+    )]
     pub elems: Vec<Option<ExprOrSpread>>,
 }
 
@@ -513,6 +542,7 @@ impl Take for ArrayLit {
 #[ast_node("ObjectExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ObjectLit {
     pub span: Span,
 
@@ -533,7 +563,10 @@ impl ObjectLit {
                     Prop::KeyValue(kv) => {
                         let key = match &kv.key {
                             PropName::Ident(i) => i.clone(),
-                            PropName::Str(s) => IdentName::new(s.value.clone(), s.span),
+                            PropName::Str(s) => {
+                                let name = s.value.as_str()?;
+                                IdentName::new(name.to_string().into(), s.span)
+                            }
                             _ => return None,
                         };
 
@@ -547,6 +580,8 @@ impl ObjectLit {
                     }
                     _ => return None,
                 },
+                #[cfg(all(swc_ast_unknown, feature = "encoding-impl"))]
+                _ => swc_common::unknown!(),
             }
         }
 
@@ -615,6 +650,7 @@ impl Take for ObjectLit {
 #[ast_node]
 #[derive(Eq, Hash, Is, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum PropOrSpread {
     /// Spread properties, e.g., `{a: 1, ...obj, b: 2}`.
     #[tag("SpreadElement")]
@@ -638,6 +674,7 @@ impl Take for PropOrSpread {
 #[ast_node("SpreadElement")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct SpreadElement {
     #[cfg_attr(feature = "serde-impl", serde(rename = "spread"))]
     #[span(lo)]
@@ -660,6 +697,7 @@ impl Take for SpreadElement {
 #[ast_node("UnaryExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct UnaryExpr {
     pub span: Span,
 
@@ -683,6 +721,7 @@ impl Take for UnaryExpr {
 #[ast_node("UpdateExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct UpdateExpr {
     pub span: Span,
 
@@ -709,6 +748,7 @@ impl Take for UpdateExpr {
 #[ast_node("BinaryExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct BinExpr {
     pub span: Span,
 
@@ -735,8 +775,13 @@ impl Take for BinExpr {
 #[ast_node("FunctionExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct FnExpr {
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "identifier"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub ident: Option<Ident>,
 
     #[cfg_attr(feature = "serde-impl", serde(flatten))]
@@ -769,8 +814,13 @@ bridge_expr_from!(FnExpr, Box<Function>);
 #[ast_node("ClassExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ClassExpr {
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "identifier"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub ident: Option<Ident>,
 
     #[cfg_attr(feature = "serde-impl", serde(flatten))]
@@ -799,6 +849,7 @@ bridge_expr_from!(ClassExpr, Box<Class>);
 #[ast_node("AssignmentExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct AssignExpr {
     pub span: Span,
 
@@ -830,6 +881,7 @@ impl AssignExpr {
 #[ast_node("MemberExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct MemberExpr {
     pub span: Span,
 
@@ -843,6 +895,7 @@ pub struct MemberExpr {
 #[ast_node]
 #[derive(Eq, Hash, Is, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum MemberProp {
     #[tag("Identifier")]
     Ident(IdentName),
@@ -861,6 +914,7 @@ impl MemberProp {
 #[ast_node("SuperPropExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct SuperPropExpr {
     pub span: Span,
 
@@ -873,6 +927,7 @@ pub struct SuperPropExpr {
 #[ast_node]
 #[derive(Eq, Hash, Is, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum SuperProp {
     #[tag("Identifier")]
     Ident(IdentName),
@@ -917,6 +972,7 @@ impl Default for SuperProp {
 #[ast_node("ConditionalExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct CondExpr {
     pub span: Span,
 
@@ -943,6 +999,7 @@ impl Take for CondExpr {
 #[ast_node("CallExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct CallExpr {
     pub span: Span,
     pub ctxt: SyntaxContext,
@@ -953,6 +1010,10 @@ pub struct CallExpr {
     pub args: Vec<ExprOrSpread>,
 
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "typeArguments"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub type_args: Option<Box<TsTypeParamInstantiation>>,
     // pub type_params: Option<TsTypeParamInstantiation>,
 }
@@ -966,6 +1027,7 @@ impl Take for CallExpr {
 #[ast_node("NewExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct NewExpr {
     pub span: Span,
 
@@ -974,9 +1036,17 @@ pub struct NewExpr {
     pub callee: Box<Expr>,
 
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "arguments"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "::cbor4ii::core::types::Maybe")
+    )]
     pub args: Option<Vec<ExprOrSpread>>,
 
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "typeArguments"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "::cbor4ii::core::types::Maybe")
+    )]
     pub type_args: Option<Box<TsTypeParamInstantiation>>,
     // pub type_params: Option<TsTypeParamInstantiation>,
 }
@@ -990,6 +1060,7 @@ impl Take for NewExpr {
 #[ast_node("SequenceExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct SeqExpr {
     pub span: Span,
 
@@ -1009,6 +1080,7 @@ impl Take for SeqExpr {
 #[ast_node("ArrowFunctionExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ArrowExpr {
     pub span: Span,
 
@@ -1026,9 +1098,17 @@ pub struct ArrowExpr {
     pub is_generator: bool,
 
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "typeParameters"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub type_params: Option<Box<TsTypeParamDecl>>,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub return_type: Option<Box<TsTypeAnn>>,
 }
 
@@ -1043,10 +1123,15 @@ impl Take for ArrowExpr {
 #[ast_node("YieldExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct YieldExpr {
     pub span: Span,
 
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "argument"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub arg: Option<Box<Expr>>,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
@@ -1066,6 +1151,7 @@ impl Take for YieldExpr {
 #[ast_node("MetaProperty")]
 #[derive(Eq, Hash, EqIgnoreSpan, Copy)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct MetaPropExpr {
     pub span: Span,
     pub kind: MetaPropKind,
@@ -1077,8 +1163,14 @@ pub struct MetaPropExpr {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(u32)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(u32))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::swc_common::Encode, ::swc_common::Decode)
+)]
+#[cfg_attr(swc_ast_unknown, non_exhaustive)]
 pub enum MetaPropKind {
     /// `new.target`
     NewTarget,
@@ -1089,6 +1181,7 @@ pub enum MetaPropKind {
 #[ast_node("AwaitExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct AwaitExpr {
     pub span: Span,
 
@@ -1099,6 +1192,7 @@ pub struct AwaitExpr {
 #[ast_node("TemplateLiteral")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct Tpl {
     pub span: Span,
 
@@ -1121,6 +1215,7 @@ impl Take for Tpl {
 #[ast_node("TaggedTemplateExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct TaggedTpl {
     pub span: Span,
 
@@ -1129,6 +1224,10 @@ pub struct TaggedTpl {
     pub tag: Box<Expr>,
 
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "typeParameters"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub type_params: Option<Box<TsTypeParamInstantiation>>,
 
     /// This is boxed to reduce the type size of [Expr].
@@ -1144,6 +1243,7 @@ impl Take for TaggedTpl {
 
 #[ast_node("TemplateElement")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct TplElement {
     pub span: Span,
     pub tail: bool,
@@ -1153,7 +1253,11 @@ pub struct TplElement {
     ///
     /// If you are going to use codegen right after creating a [TplElement], you
     /// don't have to worry about this value.
-    pub cooked: Option<Atom>,
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
+    pub cooked: Option<Wtf8Atom>,
 
     /// You may need to perform. `.replace("\r\n", "\n").replace('\r', "\n")` on
     /// this value.
@@ -1176,7 +1280,7 @@ impl Take for TplElement {
 impl<'a> arbitrary::Arbitrary<'a> for TplElement {
     fn arbitrary(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Self> {
         let span = u.arbitrary()?;
-        let cooked = Some(u.arbitrary::<String>()?.into());
+        let cooked = Some(u.arbitrary::<Wtf8Atom>()?.into());
         let raw = u.arbitrary::<String>()?.into();
 
         Ok(Self {
@@ -1191,6 +1295,7 @@ impl<'a> arbitrary::Arbitrary<'a> for TplElement {
 #[ast_node("ParenthesisExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ParenExpr {
     pub span: Span,
 
@@ -1209,6 +1314,7 @@ impl Take for ParenExpr {
 #[ast_node]
 #[derive(Eq, Hash, Is, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum Callee {
     #[tag("Super")]
     #[is(name = "super_")]
@@ -1236,6 +1342,7 @@ impl Take for Callee {
 #[ast_node("Super")]
 #[derive(Eq, Hash, Copy, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct Super {
     pub span: Span,
 }
@@ -1249,6 +1356,7 @@ impl Take for Super {
 #[ast_node("Import")]
 #[derive(Eq, Hash, Copy, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct Import {
     pub span: Span,
     pub phase: ImportPhase,
@@ -1265,31 +1373,44 @@ impl Take for Import {
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 #[cfg_attr(
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
 #[cfg_attr(
     feature = "rkyv",
-    archive(bound(serialize = "__S: rkyv::ser::ScratchSpace + rkyv::ser::Serializer"))
+    rkyv(serialize_bounds(__S: rkyv::ser::Writer + rkyv::ser::Allocator,
+        __S::Error: rkyv::rancor::Source))
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
 #[cfg_attr(
     feature = "rkyv-impl",
-    archive_attr(check_bytes(bound = "__C: rkyv::validation::ArchiveContext, <__C as \
-                                      rkyv::Fallible>::Error: std::error::Error"))
+    rkyv(deserialize_bounds(__D::Error: rkyv::rancor::Source))
 )]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(
+                    feature = "rkyv-impl",
+                    rkyv(bytecheck(bounds(
+                        __C: rkyv::validation::ArchiveContext,
+                        __C::Error: rkyv::rancor::Source
+                    )))
+                )]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
 #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::swc_common::Encode, ::swc_common::Decode)
+)]
 pub struct ExprOrSpread {
     #[cfg_attr(feature = "serde-impl", serde(default))]
-    #[cfg_attr(feature = "__rkyv", omit_bounds)]
-    #[cfg_attr(feature = "__rkyv", archive_attr(omit_bounds))]
+    #[cfg_attr(feature = "__rkyv", rkyv(omit_bounds))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub spread: Option<Span>,
 
     #[cfg_attr(feature = "serde-impl", serde(rename = "expression"))]
-    #[cfg_attr(feature = "__rkyv", omit_bounds)]
-    #[cfg_attr(feature = "__rkyv", archive_attr(omit_bounds))]
+    #[cfg_attr(feature = "__rkyv", rkyv(omit_bounds))]
     pub expr: Box<Expr>,
 }
 
@@ -1329,6 +1450,7 @@ bridge_from!(ExprOrSpread, Box<Expr>, Expr);
 #[derive(Eq, Hash, Is, EqIgnoreSpan)]
 #[allow(variant_size_differences)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum BlockStmtOrExpr {
     #[tag("BlockStatement")]
     BlockStmt(BlockStmt),
@@ -1360,6 +1482,7 @@ impl Take for BlockStmtOrExpr {
 #[ast_node]
 #[derive(Is, Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum AssignTarget {
     #[tag("Identifier")]
     #[tag("MemberExpression")]
@@ -1388,10 +1511,7 @@ impl TryFrom<Pat> for AssignTarget {
             Pat::Ident(i) => SimpleAssignTarget::Ident(i).into(),
             Pat::Invalid(i) => SimpleAssignTarget::Invalid(i).into(),
 
-            Pat::Expr(e) => match Self::try_from(e) {
-                Ok(v) => v,
-                Err(e) => return Err(e.into()),
-            },
+            Pat::Expr(e) => Self::try_from(e).map_err(|e| -> Pat { e.into() })?,
 
             _ => return Err(p),
         })
@@ -1416,6 +1536,7 @@ impl TryFrom<Box<Expr>> for AssignTarget {
 #[ast_node]
 #[derive(Is, Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum AssignTargetPat {
     #[tag("ArrayPattern")]
     Array(ArrayPat),
@@ -1443,6 +1564,8 @@ impl From<AssignTargetPat> for Pat {
             AssignTargetPat::Array(a) => a.into(),
             AssignTargetPat::Object(o) => o.into(),
             AssignTargetPat::Invalid(i) => i.into(),
+            #[cfg(all(swc_ast_unknown, feature = "encoding-impl"))]
+            _ => swc_common::unknown!(),
         }
     }
 }
@@ -1470,6 +1593,7 @@ impl TryFrom<Pat> for AssignTargetPat {
 #[ast_node]
 #[derive(Is, Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum SimpleAssignTarget {
     /// Note: This type is to help implementing visitor and the field `type_ann`
     /// is always [None].
@@ -1521,12 +1645,10 @@ impl TryFrom<Box<Expr>> for SimpleAssignTarget {
 bridge_from!(SimpleAssignTarget, BindingIdent, Ident);
 
 impl SimpleAssignTarget {
-    pub fn leftmost(&self) -> Option<Cow<Ident>> {
+    pub fn leftmost(&self) -> Option<&Ident> {
         match self {
-            SimpleAssignTarget::Ident(i) => {
-                Some(Cow::Owned(Ident::new(i.sym.clone(), i.span, i.ctxt)))
-            }
-            SimpleAssignTarget::Member(MemberExpr { obj, .. }) => obj.leftmost().map(Cow::Borrowed),
+            SimpleAssignTarget::Ident(i) => Some(&i.id),
+            SimpleAssignTarget::Member(MemberExpr { obj, .. }) => obj.leftmost(),
             _ => None,
         }
     }
@@ -1565,6 +1687,8 @@ impl From<SimpleAssignTarget> for Box<Expr> {
             SimpleAssignTarget::TsTypeAssertion(a) => a.into(),
             SimpleAssignTarget::TsInstantiation(a) => a.into(),
             SimpleAssignTarget::Invalid(i) => i.into(),
+            #[cfg(all(swc_ast_unknown, feature = "encoding-impl"))]
+            _ => swc_common::unknown!(),
         }
     }
 }
@@ -1594,6 +1718,7 @@ impl Take for AssignTarget {
 #[ast_node("OptionalChainingExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct OptChainExpr {
     pub span: Span,
     pub optional: bool,
@@ -1604,6 +1729,7 @@ pub struct OptChainExpr {
 #[ast_node]
 #[derive(Eq, Hash, Is, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum OptChainBase {
     #[tag("MemberExpression")]
     Member(MemberExpr),
@@ -1620,6 +1746,7 @@ impl Default for OptChainBase {
 #[ast_node("CallExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct OptCall {
     pub span: Span,
 
@@ -1631,6 +1758,10 @@ pub struct OptCall {
     pub args: Vec<ExprOrSpread>,
 
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "typeArguments"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub type_args: Option<Box<TsTypeParamInstantiation>>,
     // pub type_params: Option<TsTypeParamInstantiation>,
 }
@@ -1662,6 +1793,8 @@ impl From<OptChainBase> for Expr {
                 ctxt,
             }),
             OptChainBase::Member(member) => Self::Member(member),
+            #[cfg(all(swc_ast_unknown, feature = "encoding-impl"))]
+            _ => swc_common::unknown!(),
         }
     }
 }
@@ -1729,3 +1862,40 @@ test_de!(
       "closing": null
     }"#
 );
+
+#[ast_node("ContentTagExpression")]
+#[derive(Eq, Hash, EqIgnoreSpan)]
+pub struct ContentTagExpression {
+    pub span: Span,
+
+    #[cfg_attr(feature = "serde-impl", serde(flatten))]
+    #[span]
+    pub opening: Box<ContentTagStart>,
+
+    #[cfg_attr(feature = "serde-impl", serde(flatten))]
+    #[span]
+    pub contents: Box<ContentTagContent>,
+
+    #[cfg_attr(feature = "serde-impl", serde(flatten))]
+    #[span]
+    pub closing: Box<ContentTagEnd>,
+}
+
+#[ast_node("ContentTagStart")]
+#[derive(Eq, Hash, EqIgnoreSpan, Copy)]
+pub struct ContentTagStart {
+    pub span: Span,
+}
+
+#[ast_node("ContentTagEnd")]
+#[derive(Eq, Hash, EqIgnoreSpan, Copy)]
+pub struct ContentTagEnd {
+    pub span: Span,
+}
+
+#[ast_node("ContentTagContent")]
+#[derive(Eq, Hash, EqIgnoreSpan)]
+pub struct ContentTagContent {
+    pub span: Span,
+    pub value: Atom,
+}

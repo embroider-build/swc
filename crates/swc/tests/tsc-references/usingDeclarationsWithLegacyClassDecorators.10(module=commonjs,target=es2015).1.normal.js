@@ -18,16 +18,15 @@ const env = {
     hasError: false
 };
 try {
+    var _class = class _class {
+    };
     _class = _ts_decorate._([
         dec
     ], _class);
-    const after = _ts_add_disposable_resource._(env, null, false);
-    ;
+    var after = _ts_add_disposable_resource._(env, null, false);
 } catch (e) {
     env.error = e;
     env.hasError = true;
 } finally{
     _ts_dispose_resources._(env);
-}
-class _class {
 }

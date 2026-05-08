@@ -1,28 +1,19 @@
 // #[plugin_transform] macro
 #[cfg(any(
-    docsrs,
+    all(
+        docsrs,
+        any(
+            feature = "__common_plugin_transform",
+            feature = "__ecma_plugin_transform"
+        )
+    ),
     feature = "__common_plugin_transform",
-    feature = "__css_plugin_transform",
-))]
-#[cfg_attr(
-    docsrs,
-    doc(cfg(any(
-        feature = "__common_plugin_transform",
-        feature = "__css_plugin_transform"
-    )))
-)]
-pub use swc_plugin_macro::css_plugin_transform;
-#[cfg(any(
-    docsrs,
-    feature = "__common_plugin_transform",
-    feature = "__css_plugin_transform",
     feature = "__ecma_plugin_transform"
 ))]
 #[cfg_attr(
     docsrs,
     doc(cfg(any(
         feature = "__common_plugin_transform",
-        feature = "__css_plugin_transform",
         feature = "__ecma_plugin_transform"
     )))
 )]
@@ -39,16 +30,20 @@ pub mod memory {
 /// Global HANDLER implementation for the plugin
 /// for error reporting.
 #[cfg(any(
-    docsrs,
+    all(
+        docsrs,
+        any(
+            feature = "__common_plugin_transform",
+            feature = "__ecma_plugin_transform"
+        )
+    ),
     feature = "__common_plugin_transform",
-    feature = "__css_plugin_transform",
     feature = "__ecma_plugin_transform"
 ))]
 #[cfg_attr(
     docsrs,
     doc(cfg(any(
         feature = "__common_plugin_transform",
-        feature = "__css_plugin_transform",
         feature = "__ecma_plugin_transform"
     )))
 )]
@@ -58,16 +53,20 @@ pub mod errors {
 
 /// Plugin's environment metadata context.
 #[cfg(any(
-    docsrs,
+    all(
+        docsrs,
+        any(
+            feature = "__common_plugin_transform",
+            feature = "__ecma_plugin_transform"
+        )
+    ),
     feature = "__common_plugin_transform",
-    feature = "__css_plugin_transform",
     feature = "__ecma_plugin_transform"
 ))]
 #[cfg_attr(
     docsrs,
     doc(cfg(any(
         feature = "__common_plugin_transform",
-        feature = "__css_plugin_transform",
         feature = "__ecma_plugin_transform"
     )))
 )]
@@ -79,7 +78,13 @@ pub mod metadata {
 /// Proxy to the host's data not attached to the AST, like sourcemap / comments.
 /// Or interfaces to setup the plugin's environment from the host.
 #[cfg(any(
-    docsrs,
+    all(
+        docsrs,
+        any(
+            feature = "__common_plugin_transform",
+            feature = "__plugin_transform_host"
+        )
+    ),
     feature = "__common_plugin_transform",
     feature = "__plugin_transform_host"
 ))]

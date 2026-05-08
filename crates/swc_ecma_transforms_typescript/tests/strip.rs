@@ -83,16 +83,14 @@ fn tsxr(t: &Tester) -> impl Pass {
 }
 
 fn properties(_: &Tester, loose: bool) -> impl Pass {
-    let static_blocks_mark = Mark::new();
     let unresolved_mark = Mark::new();
     let top_level_mark = Mark::new();
 
     (
         resolver(unresolved_mark, top_level_mark, false),
-        static_blocks(static_blocks_mark),
+        static_blocks(),
         class_properties(
             class_properties::Config {
-                static_blocks_mark,
                 set_public_fields: loose,
                 ..Default::default()
             },
@@ -352,6 +350,43 @@ to!(
     "enum FlexSize {
   md,
   lg,
+}"
+);
+
+to!(
+    ts_enum_with_type_assertion,
+    "enum RefType {
+  property = '11' as any,
+  event = '22' as any,
+}"
+);
+
+to!(
+    ts_enum_with_opaque_expr,
+    "enum Foo {
+    a = foo('x' as any),
+}"
+);
+
+to!(
+    ts_enum_with_nested_class,
+    "enum Foo {
+    a = (class {
+        constructor(public b: string) { }
+    }, 0)
+}"
+);
+
+to!(
+    ts_enum_with_nested_enum,
+    "enum Foo {
+    a = (() => {
+        enum Bar {
+            a = 'a',
+            b = 'b',
+        }
+        return 0;
+    })(),
 }"
 );
 

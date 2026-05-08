@@ -1,15 +1,17 @@
+use rustc_hash::FxHashMap;
+use swc_atoms::{atom, Atom};
 use swc_common::{
-    collections::AHashMap, errors::HANDLER, source_map::PURE_SP, util::take::Take, Mark, Spanned,
-    SyntaxContext, DUMMY_SP,
+    errors::HANDLER, source_map::PURE_SP, util::take::Take, Mark, Span, Spanned, SyntaxContext,
+    DUMMY_SP,
 };
 use swc_ecma_ast::*;
 use swc_ecma_transforms_base::{helper, perf::Check};
 use swc_ecma_transforms_classes::super_field::SuperFieldAccessFolder;
 use swc_ecma_transforms_macros::fast_path;
 use swc_ecma_utils::{
-    alias_ident_for, alias_if_required, constructor::inject_after_super, default_constructor,
-    is_literal, prepend_stmt, private_ident, quote_ident, replace_ident, ExprFactory,
-    ModuleItemLike, StmtLike,
+    alias_ident_for, alias_if_required, constructor::inject_after_super,
+    default_constructor_with_span, is_literal, prepend_stmt, private_ident, quote_ident,
+    replace_ident, ExprFactory, ModuleItemLike, StmtLike,
 };
 use swc_ecma_visit::{
     noop_visit_mut_type, noop_visit_type, visit_mut_pass, Visit, VisitMut, VisitMutWith, VisitWith,
@@ -49,27 +51,13 @@ pub fn class_properties(config: Config, unresolved_mark: Mark) -> impl Pass {
     })
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub struct Config {
     pub private_as_properties: bool,
     pub set_public_fields: bool,
     pub constant_super: bool,
     pub no_document_all: bool,
     pub pure_getter: bool,
-    pub static_blocks_mark: Mark,
-}
-
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            private_as_properties: false,
-            set_public_fields: false,
-            constant_super: false,
-            no_document_all: false,
-            pure_getter: false,
-            static_blocks_mark: Mark::new(),
-        }
-    }
 }
 
 struct ClassProperties {
@@ -207,8 +195,8 @@ impl VisitMut for ClassProperties {
         {
             let ident = private_ident!(orig_ident
                 .clone()
-                .map(|id| format!("_{}", id.sym))
-                .unwrap_or_else(|| "_class".into()));
+                .map(|id| Atom::from(format!("_{}", id.sym)))
+                .unwrap_or(atom!("_class")));
             let (decl, ClassExtra { lets, vars, stmts }) =
                 self.visit_mut_class_as_decl(ident.clone(), class.take());
 
@@ -443,7 +431,7 @@ impl ClassProperties {
             mark: Mark::fresh(Mark::root()),
             class_name: class_ident.clone(),
             ident: {
-                let mut private_map = AHashMap::default();
+                let mut private_map = FxHashMap::default();
 
                 for member in class.body.iter() {
                     match member {
@@ -460,6 +448,8 @@ impl ClassProperties {
                                         MethodKind::Getter => kind.has_getter = true,
                                         MethodKind::Setter => kind.has_setter = true,
                                         MethodKind::Method => unreachable!(),
+                                        #[cfg(swc_ast_unknown)]
+                                        _ => panic!("unable to access unknown nodes"),
                                     }
                                 }
                             } else {
@@ -492,6 +482,11 @@ impl ClassProperties {
                                     },
                                 );
                             };
+                        }
+
+                        ClassMember::AutoAccessor(_) => {
+                            // AutoAccessor is preserved as-is, no private field
+                            // registration needed
                         }
 
                         _ => (),
@@ -528,14 +523,18 @@ impl ClassProperties {
             ClassMember::Constructor(_)
             | ClassMember::PrivateMethod(_)
             | ClassMember::TsIndexSignature(_)
-            | ClassMember::Empty(_) => false,
+            | ClassMember::Empty(_)
+            | ClassMember::AutoAccessor(_) => false,
 
             ClassMember::Method(m) => contains_super(&m.key),
 
             ClassMember::ClassProp(_)
-            | ClassMember::AutoAccessor(_)
             | ClassMember::PrivateProp(_)
+            | ClassMember::ContentTagMember(_)
             | ClassMember::StaticBlock(_) => true,
+
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         });
 
         for member in class.body {
@@ -734,7 +733,7 @@ impl ClassProperties {
 
                     let value = prop.value.unwrap_or_else(|| Expr::undefined(prop_span));
 
-                    if prop.is_static && prop.ctxt.has_mark(self.c.static_blocks_mark) {
+                    if prop.is_static && prop.key.span.is_placeholder() {
                         let init = MemberInit::StaticBlock(value);
                         extra_inits.push(init);
                         continue;
@@ -803,6 +802,8 @@ impl ClassProperties {
                                     method.key.name.clone()
                                 }
                             }
+                            #[cfg(swc_ast_unknown)]
+                            _ => panic!("unable to access unknown nodes"),
                         },
                         method.span,
                         SyntaxContext::empty().apply_mark(self.private.cur_mark()),
@@ -891,6 +892,8 @@ impl ClassProperties {
                                 None
                             }
                         }
+                        #[cfg(swc_ast_unknown)]
+                        _ => panic!("unable to access unknown nodes"),
                     };
 
                     if let Some(extra) = extra_collect {
@@ -946,13 +949,23 @@ impl ClassProperties {
                     unreachable!("static_blocks pass should remove this")
                 }
 
-                ClassMember::AutoAccessor(..) => {
-                    unreachable!("auto_accessor pass should remove this")
+                ClassMember::ContentTagMember(..) => {}
+
+                ClassMember::AutoAccessor(accessor) => {
+                    // AutoAccessor nodes should be handled by the decorator transform.
+                    // If we encounter them here, it means decorators are not enabled,
+                    // so we preserve the AutoAccessor as-is. The output environment
+                    // is expected to support auto-accessors natively.
+                    members.push(ClassMember::AutoAccessor(accessor));
                 }
+
+                #[cfg(swc_ast_unknown)]
+                _ => panic!("unable to access unknown nodes"),
             }
         }
 
-        let constructor = self.process_constructor(constructor, has_super, constructor_inits);
+        let constructor =
+            self.process_constructor(class.span, constructor, has_super, constructor_inits);
         if let Some(c) = constructor {
             members.push(ClassMember::Constructor(c));
         }
@@ -1029,6 +1042,7 @@ impl ClassProperties {
     #[allow(clippy::vec_box)]
     fn process_constructor(
         &mut self,
+        class_span: Span,
         constructor: Option<Constructor>,
         has_super: bool,
         constructor_exprs: MemberInitRecord,
@@ -1037,7 +1051,7 @@ impl ClassProperties {
             if constructor_exprs.record.is_empty() {
                 None
             } else {
-                Some(default_constructor(has_super))
+                Some(default_constructor_with_span(has_super, class_span))
             }
         });
 
@@ -1079,6 +1093,12 @@ impl Visit for ShouldWork {
 
     fn visit_constructor(&mut self, _: &Constructor) {
         self.found = true;
+    }
+
+    // AutoAccessor is preserved as-is, doesn't require transformation
+    fn visit_auto_accessor(&mut self, _: &AutoAccessor) {
+        // No-op: AutoAccessor is handled by decorator transform, not
+        // class_properties
     }
 }
 

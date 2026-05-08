@@ -1,4 +1,7 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", {
+    value: !0
+});
 var _instanceof = require("@swc/helpers/_/_instanceof");
 Object.defineProperty(exports, "__esModule", {
     value: !0
@@ -77,34 +80,30 @@ function _defineProperty(obj, key, value) {
         writable: !0
     }) : obj[key] = value, obj;
 }
-var ItemsList = /*#__PURE__*/ function(_Component) {
-    !function(subClass, superClass) {
-        if ("function" != typeof superClass && null !== superClass) throw TypeError("Super expression must either be null or a function");
-        subClass.prototype = Object.create(superClass && superClass.prototype, {
-            constructor: {
-                value: subClass,
-                writable: !0,
-                configurable: !0
-            }
-        }), superClass && _setPrototypeOf(subClass, superClass);
-    }(ItemsList, _Component);
+var ItemsList = function(_Component) {
+    if ("function" != typeof _Component && null !== _Component) throw TypeError("Super expression must either be null or a function");
+    ItemsList.prototype = Object.create(_Component && _Component.prototype, {
+        constructor: {
+            value: ItemsList,
+            writable: !0,
+            configurable: !0
+        }
+    }), _Component && _setPrototypeOf(ItemsList, _Component);
     var protoProps, _super = function() {
-        var result, Super = _getPrototypeOf(ItemsList);
+        var self, call, result, Super = _getPrototypeOf(ItemsList);
         return result = !function() {
-            if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+            if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
             if ("function" == typeof Proxy) return !0;
             try {
                 return Date.prototype.toString.call(Reflect.construct(Date, [], function() {})), !0;
             } catch (e) {
                 return !1;
             }
-        }() ? Super.apply(this, arguments) : Reflect.construct(Super, arguments, _getPrototypeOf(this).constructor), result && ("object" === _typeof(result) || "function" == typeof result) ? result : _assertThisInitialized(this);
+        }() ? Super.apply(this, arguments) : Reflect.construct(Super, arguments, _getPrototypeOf(this).constructor), self = this, (call = result) && ("object" === _typeof(call) || "function" == typeof call) ? call : _assertThisInitialized(self);
     };
     function ItemsList() {
         var _this;
-        !function(instance, Constructor) {
-            if (!_instanceof._(instance, Constructor)) throw TypeError("Cannot call a class as a function");
-        }(this, ItemsList);
+        if (!_instanceof._(this, ItemsList)) throw TypeError("Cannot call a class as a function");
         for(var _len = arguments.length, args = Array(_len), _key = 0; _key < _len; _key++)args[_key] = arguments[_key];
         return _defineProperty(_assertThisInitialized(_this = _super.call.apply(_super, [
             this
@@ -125,7 +124,7 @@ var ItemsList = /*#__PURE__*/ function(_Component) {
             key: "render",
             value: function() {
                 var _this2 = this, _this$props = this.props, items = _this$props.items, itemProps = _this$props.itemProps, renderItem = _this$props.renderItem, renderItemData = _this$props.renderItemData, sectionIndex = _this$props.sectionIndex, highlightedItemIndex = _this$props.highlightedItemIndex, getItemId = _this$props.getItemId, theme = _this$props.theme, keyPrefix = _this$props.keyPrefix, sectionPrefix = null === sectionIndex ? keyPrefix : "".concat(keyPrefix, "section-").concat(sectionIndex, "-"), isItemPropsFunction = "function" == typeof itemProps;
-                return /*#__PURE__*/ _react.default.createElement("ul", _extends({
+                return _react.default.createElement("ul", _extends({
                     role: "listbox"
                 }, theme("".concat(sectionPrefix, "items-list"), "itemsList")), items.map(function(item, itemIndex) {
                     var isFirst = 0 === itemIndex, isHighlighted = itemIndex === highlightedItemIndex, itemKey = "".concat(sectionPrefix, "item-").concat(itemIndex), itemPropsObj = isItemPropsFunction ? itemProps({
@@ -145,7 +144,7 @@ var ItemsList = /*#__PURE__*/ function(_Component) {
                         id: getItemId(sectionIndex, itemIndex),
                         "aria-selected": isHighlighted
                     }, theme(itemKey, "item", isFirst && "itemFirst", isHighlighted && "itemHighlighted"), {}, itemPropsObj);
-                    return isHighlighted && (allItemProps.ref = _this2.storeHighlightedItemReference), /*#__PURE__*/ _react.default.createElement(_Item.default, _extends({}, allItemProps, {
+                    return isHighlighted && (allItemProps.ref = _this2.storeHighlightedItemReference), _react.default.createElement(_Item.default, _extends({}, allItemProps, {
                         sectionIndex: sectionIndex,
                         isHighlighted: isHighlighted,
                         itemIndex: itemIndex,

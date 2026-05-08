@@ -4,6 +4,7 @@ use anyhow::{Context, Error};
 use is_macro::Is;
 #[cfg(feature = "rayon")]
 use rayon::iter::ParallelIterator;
+use swc_atoms::atom;
 use swc_common::{
     sync::{Lock, Lrc},
     FileName, SourceFile, SyntaxContext,
@@ -121,7 +122,7 @@ where
             let data = self
                 .loader
                 .load(file_name)
-                .with_context(|| format!("Bundler.loader.load({}) failed", file_name))?;
+                .with_context(|| format!("Bundler.loader.load({file_name}) failed"))?;
             self.scope.mark_as_loaded(module_id);
             Ok((module_id, data))
         })
@@ -236,7 +237,7 @@ where
                     self.run(|| {
                         let info = match src {
                             Some(src) => {
-                                let name = self.resolve(base, &src.value)?;
+                                let name = self.resolve(base, &src.value.to_string_lossy())?;
                                 let (id, local_mark, export_mark) =
                                     self.scope.module_id_gen.gen(&name);
                                 Some((id, local_mark, export_mark, name, src))
@@ -313,7 +314,7 @@ where
                 .map(|(decl, dynamic, unconditional)| -> Result<_, Error> {
                     self.run(|| {
                         //
-                        let file_name = self.resolve(base, &decl.src.value)?;
+                        let file_name = self.resolve(base, &decl.src.value.to_string_lossy())?;
                         let (id, local_mark, export_mark) =
                             self.scope.module_id_gen.gen(&file_name);
 
@@ -364,7 +365,7 @@ where
                         }
                         ImportSpecifier::Default(s) => specifiers.push(Specifier::Specific {
                             local: s.local.into(),
-                            alias: Some(Id::new("default".into(), SyntaxContext::empty())),
+                            alias: Some(Id::new(atom!("default"), SyntaxContext::empty())),
                         }),
                         ImportSpecifier::Namespace(s) => {
                             specifiers.push(Specifier::Namespace {
@@ -372,6 +373,8 @@ where
                                 all: forced_ns.contains(&src.src.value),
                             });
                         }
+                        #[cfg(swc_ast_unknown)]
+                        _ => panic!("unable to access unknown nodes"),
                     }
                 }
 
@@ -437,6 +440,8 @@ impl Visit for Es6ModuleDetector {
                 }
             }
             Callee::Super(_) | Callee::Import(_) => {}
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         }
     }
 
@@ -479,6 +484,8 @@ impl Visit for Es6ModuleDetector {
             ModuleDecl::TsImportEquals(_) => {}
             ModuleDecl::TsExportAssignment(_) => {}
             ModuleDecl::TsNamespaceExport(_) => {}
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         }
     }
 }

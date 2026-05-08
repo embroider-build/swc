@@ -1,4 +1,3 @@
-use swc_allocator::maybe::vec::Vec;
 use swc_common::{comments::SingleThreadedComments, sync::Lrc, FileName, Mark, SourceMap};
 use swc_ecma_codegen::{text_writer::JsWriter, Emitter};
 use swc_ecma_parser::{Parser, StringInput};
@@ -16,7 +15,7 @@ fn parse(
         ..Default::default()
     });
     let source_map = Lrc::new(SourceMap::default());
-    let source_file = source_map.new_source_file(FileName::Anon.into(), src.into());
+    let source_file = source_map.new_source_file(FileName::Anon.into(), src.to_string());
 
     let comments = Lrc::new(SingleThreadedComments::default());
     let program = {
@@ -83,8 +82,8 @@ fn run_test(input: &str, expected: &str) {
         let expected_src = emit(expected_sm, expected_comments, &expected);
 
         if actual_src != expected_src {
-            println!(">>>>> Orig <<<<<\n{}", input);
-            println!(">>>>> Code <<<<<\n{}", actual_src);
+            println!(">>>>> Orig <<<<<\n{input}");
+            println!(">>>>> Code <<<<<\n{actual_src}");
             panic!(
                 r#"assertion failed: `(left == right)`
     {}"#,

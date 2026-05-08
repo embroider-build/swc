@@ -3,18 +3,13 @@ use swc_atoms::Atom;
 use swc_common::SyntaxContext;
 use swc_ecma_ast::{Expr, Lit, MemberExpr, MemberProp, Number, Regex, Str, TaggedTpl, Tpl};
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum QuotesType {
     Single,
+    #[default]
     Double,
     Backtick,
-}
-
-impl Default for QuotesType {
-    fn default() -> Self {
-        Self::Double
-    }
 }
 
 impl QuotesType {
@@ -52,7 +47,7 @@ pub enum ArgValue {
 pub fn extract_arg_val(unresolved_ctxt: SyntaxContext, expr: &Expr) -> ArgValue {
     match expr {
         Expr::Ident(_) => ArgValue::Ident,
-        Expr::Lit(Lit::Str(Str { value, .. })) => ArgValue::Str(Atom::new(&**value)),
+        Expr::Lit(Lit::Str(Str { value, .. })) => ArgValue::Str(Atom::new(value.to_string_lossy())),
         Expr::Lit(Lit::Num(Number { value, .. })) => ArgValue::Number(*value),
         Expr::Lit(Lit::Regex(Regex { exp, flags, .. })) => ArgValue::RegExp {
             exp: exp.clone(),

@@ -1,69 +1,133 @@
-use either::Either;
-use swc_common::Spanned;
+use swc_atoms::Atom;
+use swc_common::{BytePos, Span, Spanned};
+use swc_ecma_ast::*;
 
-use super::*;
-
-#[cfg(test)]
-mod tests;
+use super::{input::Tokens, Parser};
+use crate::{
+    error::SyntaxError,
+    lexer::{Token, TokenFlags},
+    Context, PResult,
+};
 
 impl<I: Tokens> Parser<I> {
-    /// Parse next token as JSX identifier
-    pub(super) fn parse_jsx_ident(&mut self) -> PResult<Ident> {
-        debug_assert!(self.input.syntax().jsx());
-        trace_cur!(self, parse_jsx_ident);
+    /// Parses JSX expression enclosed into curly brackets.
+    fn parse_jsx_expr_container(&mut self) -> PResult<JSXExprContainer> {
+        debug_assert!(self.input().syntax().jsx());
+        debug_assert!(self.input().is(Token::LBrace));
 
-        let ctx = self.ctx();
-        match *cur!(self, true) {
-            Token::JSXName { .. } => match bump!(self) {
-                Token::JSXName { name } => {
-                    let span = self.input.prev_span();
-                    Ok(Ident::new_no_ctxt(name, span))
-                }
-                _ => unreachable!(),
-            },
-            _ if ctx.in_forced_jsx_context => self.parse_ident_ref(),
-            _ => unexpected!(self, "jsx identifier"),
+        let start = self.input().cur_pos();
+        self.bump(); // bump "{"
+        let expr = if self.input().is(Token::RBrace) {
+            JSXExpr::JSXEmptyExpr(self.parse_jsx_empty_expr())
+        } else {
+            self.parse_expr().map(JSXExpr::Expr)?
+        };
+        expect!(self, Token::RBrace);
+        Ok(JSXExprContainer {
+            span: self.span(start),
+            expr,
+        })
+    }
+
+    /// JSXEmptyExpression is unique type since it doesn't actually parse
+    /// anything, and so it should start at the end of last read token (left
+    /// brace) and finish at the beginning of the next one (right brace).
+    fn parse_jsx_empty_expr(&mut self) -> JSXEmptyExpr {
+        debug_assert!(self.input().syntax().jsx());
+        let start = self.input().cur_pos();
+        JSXEmptyExpr {
+            span: Span::new_with_checked(start, start),
         }
     }
 
-    /// Parse namespaced identifier.
-    pub(super) fn parse_jsx_namespaced_name(&mut self) -> PResult<JSXAttrName> {
-        debug_assert!(self.input.syntax().jsx());
-        trace_cur!(self, parse_jsx_namespaced_name);
-        let start = cur_pos!(self);
+    fn jsx_expr_container_to_jsx_attr_value(
+        &mut self,
+        start: BytePos,
+        node: JSXExprContainer,
+    ) -> PResult<JSXAttrValue> {
+        match node.expr {
+            JSXExpr::JSXEmptyExpr(..) => {
+                syntax_error!(self, self.span(start), SyntaxError::EmptyJSXAttr)
+            }
+            JSXExpr::Expr(..) => Ok(node.into()),
+            #[cfg(swc_ast_unknown)]
+            _ => unreachable!(),
+        }
+    }
+
+    fn parse_jsx_text(&mut self) -> JSXText {
+        debug_assert!(self.input().syntax().jsx());
+        let cur = self.input.cur();
+        debug_assert!(cur == Token::JSXText);
+
+        let value = self.input.expect_jsx_text_token_value();
+        let raw = Atom::new(self.input.cur_string());
+
+        self.input.scan_jsx_token();
+        let span = self.input().prev_span();
+        JSXText { span, value, raw }
+    }
+
+    fn parse_jsx_ident(&mut self) -> PResult<Ident> {
+        debug_assert!(self.input().syntax().jsx());
+        trace_cur!(self, parse_jsx_ident);
+        let cur = self.input().cur();
+        if cur == Token::JSXName || cur == Token::Ident {
+            if self.input().token_flags().contains(TokenFlags::UNICODE) {
+                syntax_error!(
+                    self,
+                    self.input().cur_span(),
+                    SyntaxError::InvalidUnicodeEscape
+                );
+            }
+            let name = cur.take_jsx_name(self.input_mut());
+            self.bump();
+            let span = self.input().prev_span();
+            Ok(Ident::new_no_ctxt(name, span))
+        } else {
+            unexpected!(self, "jsx identifier")
+        }
+    }
+
+    fn parse_jsx_tag_name(&mut self) -> PResult<JSXAttrName> {
+        debug_assert!(self.input().syntax().jsx());
+        trace_cur!(self, parse_jsx_tag_name);
+        let start = self.input().cur_pos();
+        self.input_mut().scan_jsx_identifier();
 
         let ns = self.parse_jsx_ident()?.into();
-        if !eat!(self, ':') {
-            return Ok(JSXAttrName::Ident(ns));
-        }
-
-        let name = self.parse_jsx_ident().map(IdentName::from)?;
-        Ok(JSXAttrName::JSXNamespacedName(JSXNamespacedName {
-            span: Span::new(start, name.span.hi),
-            ns,
-            name,
-        }))
+        Ok(if self.input_mut().eat(Token::Colon) {
+            self.input_mut().scan_jsx_identifier();
+            let name: IdentName = self.parse_jsx_ident()?.into();
+            JSXAttrName::JSXNamespacedName(JSXNamespacedName {
+                span: Span::new_with_checked(start, name.span.hi),
+                ns,
+                name,
+            })
+        } else {
+            JSXAttrName::Ident(ns)
+        })
     }
 
-    /// Parses element name in any form - namespaced, member or single
-    /// identifier.
-    pub(super) fn parse_jsx_element_name(&mut self) -> PResult<JSXElementName> {
-        debug_assert!(self.input.syntax().jsx());
+    fn parse_jsx_element_name(&mut self) -> PResult<JSXElementName> {
+        debug_assert!(self.input().syntax().jsx());
         trace_cur!(self, parse_jsx_element_name);
-        let start = cur_pos!(self);
-
-        let mut node = match self.parse_jsx_namespaced_name()? {
+        let start = self.input().cur_pos();
+        let mut node = match self.parse_jsx_tag_name()? {
             JSXAttrName::Ident(i) => JSXElementName::Ident(i.into()),
             JSXAttrName::JSXNamespacedName(i) => JSXElementName::JSXNamespacedName(i),
+            #[cfg(swc_ast_unknown)]
+            _ => unreachable!(),
         };
-        while eat!(self, '.') {
-            let prop = self.parse_jsx_ident().map(IdentName::from)?;
+        while self.input_mut().eat(Token::Dot) {
+            self.input_mut().scan_jsx_identifier();
+            let prop: IdentName = self.parse_jsx_ident()?.into();
             let new_node = JSXElementName::JSXMemberExpr(JSXMemberExpr {
-                span: span!(self, start),
+                span: self.span(start),
                 obj: match node {
                     JSXElementName::Ident(i) => JSXObject::Ident(i),
                     JSXElementName::JSXMemberExpr(i) => JSXObject::JSXMemberExpr(Box::new(i)),
-                    _ => unimplemented!("JSXNamespacedName -> JSXObject"),
+                    _ => unreachable!("JSXNamespacedName -> JSXObject"),
                 },
                 prop,
             });
@@ -72,374 +136,335 @@ impl<I: Tokens> Parser<I> {
         Ok(node)
     }
 
-    /// Parses any type of JSX attribute value.
-    ///
-    /// TODO(kdy1): Change return type to JSXAttrValue
-    pub(super) fn parse_jsx_attr_value(&mut self) -> PResult<JSXAttrValue> {
-        debug_assert!(self.input.syntax().jsx());
-        trace_cur!(self, parse_jsx_attr_value);
+    fn parse_jsx_closing_element(
+        &mut self,
+        in_expr_context: bool,
+        open_name: &JSXElementName,
+    ) -> PResult<JSXClosingElement> {
+        let start = self.cur_pos();
+        self.expect(Token::LessSlash)?;
+        let tagname = self.parse_jsx_element_name()?;
 
-        let start = cur_pos!(self);
+        // Handle JSX closing tag followed by '=': '</tag>='
+        // When lexer sees '>=' it combines into GtEq, but JSX only needs '>'
+        // Use rescan_jsx_open_el_terminal_token to split >= back into >
+        self.input_mut().rescan_jsx_open_el_terminal_token();
+        self.expect_without_advance(Token::Gt)?;
 
-        match *cur!(self, true) {
-            tok!('{') => {
-                let node = self.parse_jsx_expr_container(start)?;
-
-                match node.expr {
-                    JSXExpr::JSXEmptyExpr(..) => {
-                        syntax_error!(self, span!(self, start), SyntaxError::EmptyJSXAttr)
-                    }
-                    JSXExpr::Expr(..) => Ok(node.into()),
-                }
-            }
-            Token::Str { .. } => {
-                let lit = self.parse_lit()?;
-                Ok(JSXAttrValue::Lit(lit))
-            }
-            Token::JSXTagStart => {
-                let expr = self.parse_jsx_element()?;
-                match expr {
-                    Either::Left(n) => Ok(JSXAttrValue::JSXFragment(n)),
-                    Either::Right(n) => Ok(JSXAttrValue::JSXElement(Box::new(n))),
-                }
-            }
-
-            _ => {
-                let span = self.input.cur_span();
-                syntax_error!(self, span, SyntaxError::InvalidJSXValue)
-            }
-        }
-    }
-
-    /// JSXEmptyExpression is unique type since it doesn't actually parse
-    /// anything, and so it should start at the end of last read token (left
-    /// brace) and finish at the beginning of the next one (right brace).
-    pub(super) fn parse_jsx_empty_expr(&mut self) -> PResult<JSXEmptyExpr> {
-        debug_assert!(self.input.syntax().jsx());
-        let start = cur_pos!(self);
-
-        Ok(JSXEmptyExpr {
-            span: Span::new(start, start),
-        })
-    }
-
-    /// Parse JSX spread child
-    pub(super) fn parse_jsx_spread_child(&mut self) -> PResult<JSXSpreadChild> {
-        debug_assert!(self.input.syntax().jsx());
-        let start = cur_pos!(self);
-        expect!(self, '{');
-        expect!(self, "...");
-        let expr = self.parse_expr()?;
-        expect!(self, '}');
-
-        Ok(JSXSpreadChild {
-            span: span!(self, start),
-            expr,
-        })
-    }
-
-    /// Parses JSX expression enclosed into curly brackets.
-    pub(super) fn parse_jsx_expr_container(&mut self, _: BytePos) -> PResult<JSXExprContainer> {
-        debug_assert!(self.input.syntax().jsx());
-
-        let start = cur_pos!(self);
-        bump!(self);
-        let expr = if is!(self, '}') {
-            self.parse_jsx_empty_expr().map(JSXExpr::JSXEmptyExpr)?
+        if in_expr_context {
+            self.bump();
         } else {
-            if is!(self, "...") {
-                bump!(self);
-            }
-            self.parse_expr().map(JSXExpr::Expr)?
-        };
-        expect!(self, '}');
-        Ok(JSXExprContainer {
-            span: span!(self, start),
-            expr,
+            self.input_mut().scan_jsx_token();
+        }
+
+        if get_qualified_jsx_name(open_name) != get_qualified_jsx_name(&tagname) {
+            syntax_error!(
+                self,
+                tagname.span(),
+                SyntaxError::JSXExpectedClosingTag {
+                    tag: get_qualified_jsx_name(open_name),
+                }
+            )
+        }
+
+        let span = self.span(start);
+        Ok(JSXClosingElement {
+            span,
+            name: tagname,
         })
     }
 
-    /// Parses following JSX attribute name-value pair.
-    pub(super) fn parse_jsx_attr(&mut self) -> PResult<JSXAttrOrSpread> {
-        debug_assert!(self.input.syntax().jsx());
-        let start = cur_pos!(self);
+    fn parse_jsx_closing_fragment(&mut self, in_expr_context: bool) -> PResult<JSXClosingFragment> {
+        let start = self.cur_pos();
+        self.expect(Token::LessSlash)?;
 
-        let _tracing = debug_tracing!(self, "parse_jsx_attr");
+        // Handle JSX closing fragment followed by '=': '</>=
+        // When lexer sees '>=' it combines into GtEq, but JSX only needs '>'
+        // Use rescan_jsx_open_el_terminal_token to split >= back into >
+        self.input_mut().rescan_jsx_open_el_terminal_token();
+        self.expect_without_advance(Token::Gt)?;
 
-        if eat!(self, '{') {
-            let dot3_start = cur_pos!(self);
-            expect!(self, "...");
-            let dot3_token = span!(self, dot3_start);
-            let expr = self.parse_assignment_expr()?;
-            expect!(self, '}');
-            return Ok(SpreadElement { dot3_token, expr }.into());
+        if in_expr_context {
+            self.bump();
+        } else {
+            self.input_mut().scan_jsx_token();
         }
+        let span = self.span(start);
+        Ok(JSXClosingFragment { span })
+    }
 
-        let name = self.parse_jsx_namespaced_name()?;
-        let value = if eat!(self, '=') {
-            let ctx = Context {
-                in_cond_expr: false,
-                will_expect_colon_for_cond: false,
-                ..self.ctx()
+    fn parse_jsx_children(&mut self) -> Vec<JSXElementChild> {
+        let mut list = Vec::with_capacity(8);
+        loop {
+            self.input_mut().rescan_jsx_token();
+            let Ok(Some(child)) = self.parse_jsx_child(self.input().get_cur().token) else {
+                break;
             };
-
-            self.with_ctx(ctx).parse_jsx_attr_value().map(Some)?
-        } else {
-            None
-        };
-
-        Ok(JSXAttr {
-            span: span!(self, start),
-            name,
-            value,
+            list.push(child);
         }
-        .into())
+        list
     }
 
-    /// Parses JSX opening tag starting after "<".
-    pub(super) fn parse_jsx_opening_element_at(
-        &mut self,
-        start: BytePos,
-    ) -> PResult<Either<JSXOpeningFragment, JSXOpeningElement>> {
-        debug_assert!(self.input.syntax().jsx());
+    fn parse_jsx_child(&mut self, t: Token) -> PResult<Option<JSXElementChild>> {
+        debug_assert!(self.input().syntax().jsx());
 
-        if eat!(self, JSXTagEnd) {
-            return Ok(Either::Left(JSXOpeningFragment {
-                span: span!(self, start),
-            }));
+        match t {
+            Token::LessSlash => Ok(None),
+            Token::LBrace => Ok(Some({
+                self.do_outside_of_context(
+                    Context::InCondExpr.union(Context::WillExpectColonForCond),
+                    |p| {
+                        let start = p.cur_pos();
+                        p.bump(); // bump "{"
+                        let ret = if p.input().cur() == Token::DotDotDot {
+                            p.bump(); // bump "..."
+                            let expr = p.parse_expr()?;
+                            p.expect_without_advance(Token::RBrace)?;
+                            p.input_mut().scan_jsx_token();
+                            JSXElementChild::JSXSpreadChild(JSXSpreadChild {
+                                span: p.span(start),
+                                expr,
+                            })
+                        } else {
+                            let expr = if p.input().cur() == Token::RBrace {
+                                JSXExpr::JSXEmptyExpr(p.parse_jsx_empty_expr())
+                            } else {
+                                p.parse_expr().map(JSXExpr::Expr)?
+                            };
+                            p.expect_without_advance(Token::RBrace)?;
+                            p.input_mut().scan_jsx_token();
+                            JSXElementChild::JSXExprContainer(JSXExprContainer {
+                                span: p.span(start),
+                                expr,
+                            })
+                        };
+                        Ok(ret)
+                    },
+                )?
+            })),
+            Token::Lt => {
+                let ele = self.parse_jsx_element(false)?;
+                match ele {
+                    either::Either::Left(frag) => Ok(Some(JSXElementChild::JSXFragment(frag))),
+                    either::Either::Right(ele) => {
+                        Ok(Some(JSXElementChild::JSXElement(Box::new(ele))))
+                    }
+                }
+            }
+            Token::JSXText => Ok(Some(JSXElementChild::JSXText(self.parse_jsx_text()))),
+            Token::Eof => {
+                unexpected!(self, "< (jsx tag start), jsx text or {")
+            }
+            _ => unreachable!(),
         }
-
-        let ctx = Context {
-            should_not_lex_lt_or_gt_as_type: false,
-            ..self.ctx()
-        };
-        let name = self.with_ctx(ctx).parse_jsx_element_name()?;
-        self.parse_jsx_opening_element_after_name(start, name)
-            .map(Either::Right)
     }
 
-    /// `jsxParseOpeningElementAfterName`
-    pub(super) fn parse_jsx_opening_element_after_name(
-        &mut self,
-        start: BytePos,
-        name: JSXElementName,
-    ) -> PResult<JSXOpeningElement> {
-        debug_assert!(self.input.syntax().jsx());
+    fn parse_jsx_attr_name(&mut self) -> PResult<JSXAttrName> {
+        debug_assert!(self.input().syntax().jsx());
+        trace_cur!(self, parse_jsx_attr_name);
+        let start = self.input().cur_pos();
+        self.input_mut().scan_jsx_identifier();
 
-        let type_args = if self.input.syntax().typescript() && is!(self, '<') {
-            self.try_parse_ts(|p| p.parse_ts_type_args().map(Some))
+        let attr_name = self.parse_jsx_ident()?;
+        if self.input_mut().eat(Token::Colon) {
+            self.input_mut().scan_jsx_identifier();
+            let name = self.parse_jsx_ident()?;
+            Ok(JSXAttrName::JSXNamespacedName(JSXNamespacedName {
+                span: Span::new_with_checked(start, name.span.hi),
+                ns: attr_name.into(),
+                name: name.into(),
+            }))
         } else {
-            None
-        };
+            Ok(JSXAttrName::Ident(attr_name.into()))
+        }
+    }
 
-        let mut attrs = Vec::new();
-        while cur!(self, false).is_ok() {
+    fn parse_jsx_attr_value(&mut self) -> PResult<Option<JSXAttrValue>> {
+        debug_assert!(self.input().syntax().jsx());
+        trace_cur!(self, parse_jsx_attr_value);
+        if self.input().is(Token::Eq) {
+            self.input_mut().scan_jsx_attribute_value();
+            let cur = self.input().get_cur();
+            match cur.token {
+                Token::Str => {
+                    let value = self.parse_str_lit();
+                    Ok(Some(JSXAttrValue::Str(value)))
+                }
+                Token::LBrace => {
+                    let start = self.cur_pos();
+                    let node = self.parse_jsx_expr_container()?;
+                    self.jsx_expr_container_to_jsx_attr_value(start, node)
+                        .map(Some)
+                }
+                Token::Lt => match self.parse_jsx_element(true)? {
+                    either::Either::Left(frag) => Ok(Some(JSXAttrValue::JSXFragment(frag))),
+                    either::Either::Right(ele) => Ok(Some(JSXAttrValue::JSXElement(Box::new(ele)))),
+                },
+                _ => {
+                    let span = self.input().cur_span();
+                    syntax_error!(self, span, SyntaxError::InvalidJSXValue)
+                }
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn parse_jsx_attr(&mut self) -> PResult<JSXAttrOrSpread> {
+        debug_assert!(self.input().syntax().jsx());
+        trace_cur!(self, parse_jsx_attr);
+        if self.input_mut().eat(Token::LBrace) {
+            let dot3_start = self.input().cur_pos();
+            self.expect(Token::DotDotDot)?;
+            let dot3_token = self.span(dot3_start);
+            let expr = self.parse_assignment_expr()?;
+            self.expect(Token::RBrace)?;
+            Ok(JSXAttrOrSpread::SpreadElement(SpreadElement {
+                dot3_token,
+                expr,
+            }))
+        } else {
+            let start = self.input().cur_pos();
+            let name = self.parse_jsx_attr_name()?;
+            let value = self.do_outside_of_context(
+                Context::InCondExpr.union(Context::WillExpectColonForCond),
+                |p| p.parse_jsx_attr_value(),
+            )?;
+            Ok(JSXAttrOrSpread::JSXAttr(JSXAttr {
+                span: self.span(start),
+                name,
+                value,
+            }))
+        }
+    }
+
+    fn parse_jsx_attrs(&mut self) -> PResult<Vec<JSXAttrOrSpread>> {
+        let mut attrs = Vec::with_capacity(8);
+
+        loop {
             trace_cur!(self, parse_jsx_opening__attrs_loop);
-
-            if is!(self, '/') || is!(self, JSXTagEnd) {
+            self.input_mut().rescan_jsx_open_el_terminal_token();
+            let cur = self.input().get_cur();
+            if matches!(cur.token, Token::Gt | Token::Slash) {
                 break;
             }
-
             let attr = self.parse_jsx_attr()?;
             attrs.push(attr);
         }
-        let self_closing = eat!(self, '/');
-        if !eat!(self, JSXTagEnd) & !(self.ctx().in_forced_jsx_context && eat!(self, '>')) {
-            unexpected!(self, "> (jsx closing tag)");
-        }
-        Ok(JSXOpeningElement {
-            span: span!(self, start),
-            name,
-            attrs,
-            self_closing,
-            type_args,
-        })
+
+        Ok(attrs)
     }
 
-    /// Parses JSX closing tag starting after "</".
-    fn parse_jsx_closing_element_at(
+    pub(crate) fn parse_jsx_element(
         &mut self,
-        start: BytePos,
-    ) -> PResult<Either<JSXClosingFragment, JSXClosingElement>> {
-        debug_assert!(self.input.syntax().jsx());
+        in_expr_context: bool,
+    ) -> PResult<either::Either<JSXFragment, JSXElement>> {
+        debug_assert!(self.input().syntax().jsx());
+        trace_cur!(self, parse_jsx_element);
 
-        if eat!(self, JSXTagEnd) {
-            return Ok(Either::Left(JSXClosingFragment {
-                span: span!(self, start),
-            }));
-        }
+        let start = self.cur_pos();
 
-        let name = self.parse_jsx_element_name()?;
-        expect!(self, JSXTagEnd);
-        Ok(Either::Right(JSXClosingElement {
-            span: span!(self, start),
-            name,
-        }))
-    }
+        self.do_outside_of_context(Context::ShouldNotLexLtOrGtAsType, |p| {
+            p.expect(Token::Lt)?;
 
-    /// Parses entire JSX element, including it"s opening tag
-    /// (starting after "<"), attributes, contents and closing tag.
-    ///
-    /// babel: `jsxParseElementAt`
-    pub(super) fn parse_jsx_element_at(
-        &mut self,
-        start_pos: BytePos,
-    ) -> PResult<Either<JSXFragment, JSXElement>> {
-        debug_assert!(self.input.syntax().jsx());
+            // Handle JSX fragment opening followed by '=': '<>='
+            // When lexer sees '>=' it combines into GtEq, but JSX fragment only needs '>'
+            // Use rescan_jsx_open_el_terminal_token to split >= back into >
+            p.input_mut().rescan_jsx_open_el_terminal_token();
 
-        let _ = cur!(self, true);
-        let start = cur_pos!(self);
-        let forced_jsx_context = match bump!(self) {
-            tok!('<') => true,
-            Token::JSXTagStart => false,
-            _ => unreachable!(),
-        };
-
-        let ctx = Context {
-            in_forced_jsx_context: forced_jsx_context,
-            should_not_lex_lt_or_gt_as_type: false,
-            ..self.ctx()
-        };
-        self.with_ctx(ctx).parse_with(|p| {
-            let _tracing = debug_tracing!(p, "parse_jsx_element");
-
-            let opening_element = p.parse_jsx_opening_element_at(start_pos)?;
-
-            trace_cur!(p, parse_jsx_element__after_opening_element);
-
-            let mut children = Vec::new();
-            let mut closing_element = None;
-
-            let self_closing = match opening_element {
-                Either::Right(ref el) => el.self_closing,
-                _ => false,
-            };
-
-            if !self_closing {
-                'contents: loop {
-                    match *cur!(p, true) {
-                        Token::JSXTagStart => {
-                            let start = cur_pos!(p);
-
-                            if peeked_is!(p, '/') {
-                                bump!(p); // JSXTagStart
-                                let _ = cur!(p, true);
-                                assert_and_bump!(p, '/');
-
-                                closing_element =
-                                    p.parse_jsx_closing_element_at(start).map(Some)?;
-                                break 'contents;
-                            }
-
-                            children.push(p.parse_jsx_element_at(start).map(|e| match e {
-                                Either::Left(e) => JSXElementChild::from(e),
-                                Either::Right(e) => JSXElementChild::from(Box::new(e)),
-                            })?);
-                        }
-                        Token::JSXText { .. } => {
-                            children.push(p.parse_jsx_text().map(JSXElementChild::from)?)
-                        }
-                        tok!('{') => {
-                            let start = cur_pos!(p);
-                            if peeked_is!(p, "...") {
-                                children
-                                    .push(p.parse_jsx_spread_child().map(JSXElementChild::from)?);
-                            } else {
-                                children.push(
-                                    p.parse_jsx_expr_container(start)
-                                        .map(JSXElementChild::from)?,
-                                );
-                            }
-                        }
-                        _ => unexpected!(p, "< (jsx tag start), jsx text or {"),
-                    }
-                }
-            }
-            let span = span!(p, start);
-
-            Ok(match (opening_element, closing_element) {
-                (Either::Left(..), Some(Either::Right(closing))) => {
-                    syntax_error!(p, closing.span(), SyntaxError::JSXExpectedClosingTagForLtGt);
-                }
-                (Either::Right(opening), Some(Either::Left(closing))) => {
-                    syntax_error!(
-                        p,
-                        closing.span(),
-                        SyntaxError::JSXExpectedClosingTag {
-                            tag: get_qualified_jsx_name(&opening.name)
-                        }
-                    );
-                }
-                (Either::Left(opening), Some(Either::Left(closing))) => Either::Left(JSXFragment {
+            if p.input().cur() == Token::Gt {
+                // <>xxxxxx</>
+                p.input_mut().scan_jsx_token();
+                let opening = JSXOpeningFragment {
+                    span: p.span(start),
+                };
+                let children = p.parse_jsx_children();
+                let closing = p.parse_jsx_closing_fragment(in_expr_context)?;
+                let span = p.span(start);
+                Ok(either::Either::Left(JSXFragment {
                     span,
                     opening,
                     children,
                     closing,
-                }),
-                (Either::Right(opening), None) => Either::Right(JSXElement {
-                    span,
-                    opening,
-                    children,
-                    closing: None,
-                }),
-                (Either::Right(opening), Some(Either::Right(closing))) => {
-                    if get_qualified_jsx_name(&closing.name)
-                        != get_qualified_jsx_name(&opening.name)
-                    {
-                        syntax_error!(
-                            p,
-                            closing.span(),
-                            SyntaxError::JSXExpectedClosingTag {
-                                tag: get_qualified_jsx_name(&opening.name)
-                            }
-                        );
-                    }
-                    Either::Right(JSXElement {
+                }))
+            } else {
+                let name = p.do_outside_of_context(Context::ShouldNotLexLtOrGtAsType, |p| {
+                    p.parse_jsx_element_name()
+                })?;
+                let type_args = if p.input().syntax().typescript() && p.input().is(Token::Lt) {
+                    p.try_parse_ts(|p| {
+                        let ret = p.parse_ts_type_args()?;
+                        p.assert_and_bump(Token::Gt);
+                        Ok(Some(ret))
+                    })
+                } else {
+                    None
+                };
+                let attrs = p.parse_jsx_attrs()?;
+                if p.input().cur() == Token::Gt {
+                    // <xxxxx>xxxxx</xxxxx>
+                    p.input_mut().scan_jsx_token();
+                    let span = Span::new_with_checked(start, p.input.get_cur().span.lo);
+                    let opening = JSXOpeningElement {
+                        span,
+                        name,
+                        type_args,
+                        attrs,
+                        self_closing: false,
+                    };
+                    let children = p.parse_jsx_children();
+                    let closing = p.parse_jsx_closing_element(in_expr_context, &opening.name)?;
+                    let span = if in_expr_context {
+                        Span::new_with_checked(start, p.last_pos())
+                    } else {
+                        Span::new_with_checked(start, p.cur_pos())
+                    };
+                    Ok(either::Either::Right(JSXElement {
                         span,
                         opening,
                         children,
                         closing: Some(closing),
-                    })
+                    }))
+                } else {
+                    // <xxxxx/>
+                    p.expect(Token::Slash)?;
+
+                    // Handle JSX self-closing tag followed by '=': '<tag/>='
+                    // When lexer sees '>=' it combines into GtEq, but JSX only needs '>'
+                    // Use rescan_jsx_open_el_terminal_token to split >= back into >
+                    p.input_mut().rescan_jsx_open_el_terminal_token();
+                    p.expect_without_advance(Token::Gt)?;
+
+                    if in_expr_context {
+                        p.bump();
+                    } else {
+                        p.input_mut().scan_jsx_token();
+                    }
+                    let span = if in_expr_context {
+                        p.span(start)
+                    } else {
+                        Span::new_with_checked(start, p.cur_pos())
+                    };
+                    Ok(either::Either::Right(JSXElement {
+                        span,
+                        opening: JSXOpeningElement {
+                            span,
+                            name,
+                            type_args,
+                            attrs,
+                            self_closing: true,
+                        },
+                        children: Vec::new(),
+                        closing: None,
+                    }))
                 }
-                _ => unreachable!(),
-            })
+            }
         })
-    }
-
-    /// Parses entire JSX element from current position.
-    ///
-    /// babel: `jsxParseElement`
-    pub(super) fn parse_jsx_element(&mut self) -> PResult<Either<JSXFragment, JSXElement>> {
-        trace_cur!(self, parse_jsx_element);
-
-        debug_assert!(self.input.syntax().jsx());
-        debug_assert!({ matches!(*cur!(self, true), Token::JSXTagStart | tok!('<')) });
-
-        let start_pos = cur_pos!(self);
-
-        let ctx = Context {
-            in_cond_expr: false,
-            will_expect_colon_for_cond: false,
-            ..self.ctx()
-        };
-
-        self.with_ctx(ctx).parse_jsx_element_at(start_pos)
-    }
-
-    pub(super) fn parse_jsx_text(&mut self) -> PResult<JSXText> {
-        debug_assert!(self.input.syntax().jsx());
-        debug_assert!(matches!(cur!(self, false), Ok(&Token::JSXText { .. })));
-        let token = bump!(self);
-        let span = self.input.prev_span();
-        match token {
-            Token::JSXText { raw, value } => Ok(JSXText { span, value, raw }),
-            _ => unreachable!(),
-        }
     }
 }
 
-fn get_qualified_jsx_name(name: &JSXElementName) -> JsWord {
-    fn get_qualified_obj_name(obj: &JSXObject) -> JsWord {
+fn get_qualified_jsx_name(name: &JSXElementName) -> Atom {
+    fn get_qualified_obj_name(obj: &JSXObject) -> Atom {
         match *obj {
             JSXObject::Ident(ref i) => i.sym.clone(),
             JSXObject::JSXMemberExpr(ref member) => format!(
@@ -448,6 +473,8 @@ fn get_qualified_jsx_name(name: &JSXElementName) -> JsWord {
                 member.prop.sym
             )
             .into(),
+            #[cfg(swc_ast_unknown)]
+            _ => unreachable!(),
         }
     }
     match *name {
@@ -458,5 +485,129 @@ fn get_qualified_jsx_name(name: &JSXElementName) -> JsWord {
         JSXElementName::JSXMemberExpr(JSXMemberExpr {
             ref obj, ref prop, ..
         }) => format!("{}.{}", get_qualified_obj_name(obj), prop.sym).into(),
+        #[cfg(swc_ast_unknown)]
+        _ => unreachable!(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use swc_atoms::atom;
+    use swc_common::DUMMY_SP as span;
+    use swc_ecma_visit::assert_eq_ignore_span;
+
+    use super::super::*;
+
+    fn jsx(src: &'static str) -> Box<Expr> {
+        test_parser(
+            src,
+            crate::Syntax::Es(crate::EsSyntax {
+                jsx: true,
+                ..Default::default()
+            }),
+            |p| p.parse_expr(),
+        )
+    }
+
+    #[test]
+    fn self_closing_01() {
+        assert_eq_ignore_span!(
+            jsx("<a />"),
+            Box::new(Expr::JSXElement(Box::new(JSXElement {
+                span,
+                opening: JSXOpeningElement {
+                    span,
+                    name: JSXElementName::Ident(Ident::new_no_ctxt(atom!("a"), span)),
+                    self_closing: true,
+                    attrs: Vec::new(),
+                    type_args: None,
+                },
+                children: Vec::new(),
+                closing: None,
+            })))
+        );
+    }
+
+    #[test]
+    fn normal_01() {
+        assert_eq_ignore_span!(
+            jsx("<a>foo</a>"),
+            Box::new(Expr::JSXElement(Box::new(JSXElement {
+                span,
+                opening: JSXOpeningElement {
+                    span,
+                    name: JSXElementName::Ident(Ident::new_no_ctxt(atom!("a"), span)),
+                    self_closing: false,
+                    attrs: Vec::new(),
+                    type_args: None,
+                },
+                children: vec![JSXElementChild::JSXText(JSXText {
+                    span,
+                    raw: atom!("foo"),
+                    value: atom!("foo"),
+                })],
+                closing: Some(JSXClosingElement {
+                    span,
+                    name: JSXElementName::Ident(Ident::new_no_ctxt(atom!("a"), span)),
+                })
+            })))
+        );
+    }
+
+    #[test]
+    fn escape_in_attr() {
+        assert_eq_ignore_span!(
+            jsx(r#"<div id="w &lt; w" />;"#),
+            Box::new(Expr::JSXElement(Box::new(JSXElement {
+                span,
+                opening: JSXOpeningElement {
+                    span,
+                    attrs: vec![JSXAttrOrSpread::JSXAttr(JSXAttr {
+                        span,
+                        name: JSXAttrName::Ident(IdentName::new(atom!("id"), span)),
+                        value: Some(JSXAttrValue::Str(Str {
+                            span,
+                            value: atom!("w < w").into(),
+                            raw: Some(atom!("\"w &lt; w\"")),
+                        })),
+                    })],
+                    name: JSXElementName::Ident(Ident::new_no_ctxt(atom!("div"), span)),
+                    self_closing: true,
+                    type_args: None,
+                },
+                children: Vec::new(),
+                closing: None
+            })))
+        );
+    }
+
+    #[test]
+    fn issue_584() {
+        assert_eq_ignore_span!(
+            jsx(r#"<test other={4} />;"#),
+            Box::new(Expr::JSXElement(Box::new(JSXElement {
+                span,
+                opening: JSXOpeningElement {
+                    span,
+                    name: JSXElementName::Ident(Ident::new_no_ctxt(atom!("test"), span)),
+                    attrs: vec![JSXAttrOrSpread::JSXAttr(JSXAttr {
+                        span,
+                        name: JSXAttrName::Ident(IdentName::new(atom!("other"), span)),
+                        value: Some(JSXAttrValue::JSXExprContainer(JSXExprContainer {
+                            span,
+                            expr: JSXExpr::Expr(Box::new(Expr::Lit(Lit::Num(Number {
+                                span,
+                                value: 4.0,
+                                raw: Some(atom!("4"))
+                            }))))
+                        })),
+                    })],
+                    self_closing: true,
+                    type_args: None,
+                },
+                children: Vec::new(),
+                closing: None
+            })))
+        );
     }
 }

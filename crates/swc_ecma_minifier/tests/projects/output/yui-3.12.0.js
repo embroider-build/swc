@@ -54,7 +54,7 @@ available.
 **/ /*global YUI*/ /*global YUI_config*/ var YUI = function() {
     var i = 0, Y = this, args = arguments, l = args.length, instanceOf = function(o, type) {
         return o && o.hasOwnProperty && o instanceof type;
-    }, gconf = "undefined" != typeof YUI_config && YUI_config;
+    }, gconf = "u" > typeof YUI_config && YUI_config;
     if (instanceOf(Y, YUI) ? (// set up the core environment
     Y._init(), YUI.GlobalConfig && Y.applyConfig(YUI.GlobalConfig), gconf && Y.applyConfig(gconf), l || Y._setup()) : Y = new YUI(), l) {
         // Each instance can accept one or more configuration objects.
@@ -75,7 +75,7 @@ available.
         "io.xdrReady": 1,
         "io.xdrResponse": 1,
         "SWF.eventHandler": 1
-    }, hasWin = "undefined" != typeof window, win = hasWin ? window : null, doc = hasWin ? win.document : null, docEl = doc && doc.documentElement, docClass = docEl && docEl.className, instances = {}, time = new Date().getTime(), add = function(el, type, fn, capture) {
+    }, hasWin = "u" > typeof window, win = hasWin ? window : null, doc = hasWin ? win.document : null, docEl = doc && doc.documentElement, docClass = docEl && docEl.className, instances = {}, time = new Date().getTime(), add = function(el, type, fn, capture) {
         el && el.addEventListener ? el.addEventListener(type, fn, capture) : el && el.attachEvent && el.attachEvent("on" + type, fn);
     }, remove = function(el, type, fn, capture) {
         if (el && el.removeEventListener) // this can throw an uncaught exception in FF
@@ -97,7 +97,7 @@ available.
         success: !0
     };
     // inheritance utilities are not available yet
-    for(prop in docEl && -1 == docClass.indexOf(DOC_LABEL) && (docClass && (docClass += " "), docClass += DOC_LABEL, docEl.className = docClass), VERSION.indexOf("@") > -1 && (VERSION = "3.5.0"), proto = {
+    for(prop in docEl && -1 == docClass.indexOf(DOC_LABEL) && (docClass && (docClass += " "), docEl.className = docClass += DOC_LABEL), VERSION.indexOf("@") > -1 && (VERSION = "3.5.0"), proto = {
         /**
     Applies a new configuration object to the config of this YUI instance. This
     will merge new group/module definitions, and will also update the loader
@@ -263,7 +263,7 @@ available.
             if (!(method in APPLY_TO_AUTH)) return this.log(method + ": applyTo not allowed", "warn", "yui"), null;
             var nest, m, i, instance = instances[id];
             if (instance) {
-                for(i = 0, nest = method.split("."), m = instance; i < nest.length; i += 1)(m = m[nest[i]]) || this.log("applyTo not found: " + method, "warn", "yui");
+                for(nest = method.split("."), m = instance, i = 0; i < nest.length; i += 1)(m = m[nest[i]]) || this.log("applyTo not found: " + method, "warn", "yui");
                 return m && m.apply(instance, args);
             }
             return null;
@@ -340,7 +340,7 @@ with any configuration info required for the module.
             //Check for conditional modules (in a second+ instance) and add their requirements
             //TODO I hate this entire method, it needs to be fixed ASAP (3.5.0) ^davglass
             for(i = 0; i < len; i++)if (mod = mods[name = r[i]], c.push(name), loader && loader.conditions[name]) for(j in loader.conditions[name])loader.conditions[name].hasOwnProperty(j) && (def = loader.conditions[name][j]) && (def.ua && this.UA[def.ua] || def.test && def.test(this)) && c.push(def.name);
-            for(i = 0, len = (r = c).length; i < len; i++)if (!done[r[i]]) {
+            for(len = (r = c).length, i = 0; i < len; i++)if (!done[r[i]]) {
                 if (mod = mods[name = r[i]], aliases && aliases[name] && !mod) {
                     this._attach(aliases[name]);
                     continue;
@@ -348,7 +348,7 @@ with any configuration info required for the module.
                 if (mod) {
                     //Don't like this, but in case a mod was asked for once, then we fetch it
                     //We need to remove it from the missed list ^davglass
-                    for(j = 0, done[name] = !0; j < this.Env._missed.length; j++)this.Env._missed[j] === name && (this.message("Found: " + name + " (was reported as missing earlier)", "warn", "yui"), this.Env._missed.splice(j, 1));
+                    for(done[name] = !0, j = 0; j < this.Env._missed.length; j++)this.Env._missed[j] === name && (this.message("Found: " + name + " (was reported as missing earlier)", "warn", "yui"), this.Env._missed.splice(j, 1));
                     /*
                         If it's a temp module, we need to redo it's requirements if it's already loaded
                         since it may have been loaded by another instance and it's dependencies might
@@ -369,13 +369,11 @@ with any configuration info required for the module.
                             break;
                         }
                     }
-                    if (mod.fn) {
-                        if (this.config.throwFail) mod.fn(this, name);
-                        else try {
-                            mod.fn(this, name);
-                        } catch (e) {
-                            return this.error("Attach error: " + name, e, name), !1;
-                        }
+                    if (mod.fn) if (this.config.throwFail) mod.fn(this, name);
+                    else try {
+                        mod.fn(this, name);
+                    } catch (e) {
+                        return this.error("Attach error: " + name, e, name), !1;
                     }
                     if (use) {
                         for(j = 0; j < use.length; j++)if (!done[use[j]]) {
@@ -500,13 +498,11 @@ with any configuration info required for the module.
     @private
     **/ _notify: function(callback, response, args) {
             if (!response.success && this.config.loadErrorFn) this.config.loadErrorFn.call(this, this, callback, response, args);
-            else if (callback) {
-                if (this.Env._missed && this.Env._missed.length && (response.msg = "Missing modules: " + this.Env._missed.join(), response.success = !1), this.config.throwFail) callback(this, response);
-                else try {
-                    callback(this, response);
-                } catch (e) {
-                    this.error("use callback error", e, args);
-                }
+            else if (callback) if (this.Env._missed && this.Env._missed.length && (response.msg = "Missing modules: " + this.Env._missed.join(), response.success = !1), this.config.throwFail) callback(this, response);
+            else try {
+                callback(this, response);
+            } catch (e) {
+                this.error("use callback error", e, args);
             }
         },
         /**
@@ -522,15 +518,14 @@ with any configuration info required for the module.
             this.Array || this._attach([
                 "yui-base"
             ]);
-            var len, loader, handleBoot, i, Y = this, G_ENV = YUI.Env, mods = G_ENV.mods, Env = Y.Env, used = Env._used, aliases = G_ENV.aliases, queue = G_ENV._loaderQueue, firstArg = args[0], YArray = Y.Array, config = Y.config, boot = config.bootstrap, missing = [], r = [], ret = !0, fetchCSS = config.fetchCSS, process1 = function(names, skip) {
+            var len, loader, handleBoot, i, Y = this, G_ENV = YUI.Env, mods = G_ENV.mods, Env = Y.Env, used = Env._used, aliases = G_ENV.aliases, queue = G_ENV._loaderQueue, firstArg = args[0], YArray = Y.Array, config = Y.config, boot = config.bootstrap, missing = [], r = [], fetchCSS = config.fetchCSS, process1 = function(names, skip) {
                 var name, len, m, req, use, i = 0, a = [];
                 if (names.length) {
                     if (aliases) {
-                        for(i = 0, len = names.length; i < len; i++)aliases[names[i]] && !mods[names[i]] ? a = [].concat(a, aliases[names[i]]) : a.push(names[i]);
+                        for(len = names.length, i = 0; i < len; i++)aliases[names[i]] && !mods[names[i]] ? a = [].concat(a, aliases[names[i]]) : a.push(names[i]);
                         names = a;
                     }
-                    for(i = 0, len = names.length; i < len; i++)// only attach a module once
-                    name = names[i], skip || r.push(name), !used[name] && (m = mods[name], req = null, use = null, m ? (used[name] = !0, req = m.details.requires, use = m.details.use) : G_ENV._loaded[VERSION][name] ? used[name] = !0 : missing.push(name), req && req.length && process1(req), use && use.length && process1(use, 1));
+                    for(len = names.length, i = 0; i < len; i++)name = names[i], skip || r.push(name), !used[name] && (m = mods[name], req = null, use = null, m ? (used[name] = !0, req = m.details.requires, use = m.details.use) : G_ENV._loaded[VERSION][name] ? used[name] = !0 : missing.push(name), req && req.length && process1(req), use && use.length && process1(use, 1));
                 }
             }, handleLoader = function(fromLoader) {
                 var redo, origMissing, response = fromLoader || {
@@ -595,8 +590,8 @@ with any configuration info required for the module.
     @param {String} namespace* One or more namespaces to create.
     @return {Object} Reference to the last namespace object created.
     **/ namespace: function() {
-            for(var o, j, d, arg, a = arguments, i = 0; i < a.length; i++)if (o = this, (arg = a[i]).indexOf(".") > -1) for(j = "YAHOO" == //Skip this if no "." is present
-            (d = arg.split("."))[0] ? 1 : 0; j < d.length; j++)o[d[j]] = o[d[j]] || {}, o = o[d[j]];
+            for(var o, j, d, arg, a = arguments, i = 0; i < a.length; i++)if (o = this, (arg = a[i]).indexOf(".") > -1) for(j = +("YAHOO" == //Skip this if no "." is present
+            (d = arg.split("."))[0]); j < d.length; j++)o[d[j]] = o[d[j]] || {}, o = o[d[j]];
             else o[arg] = o[arg] || {}, o = o[arg];
             return o;
         },
@@ -1609,12 +1604,7 @@ properties are not copied). The following copying modes are available:
         } else from = supplier, to = receiver;
         if (// If `overwrite` is truthy and `merge` is falsy, then we can skip a
         // property existence check on each iteration and save some time.
-        alwaysOverwrite = overwrite && !merge, whitelist) for(i = 0, len = whitelist.length; i < len; ++i)// We call `Object.prototype.hasOwnProperty` instead of calling
-        // `hasOwnProperty` on the object itself, since the object's
-        // `hasOwnProperty` method may have been overridden or removed.
-        // Also, some native objects don't implement a `hasOwnProperty`
-        // method.
-        key = whitelist[i], hasOwn.call(from, key) && (// The `key in to` check here is (sadly) intentional for backwards
+        alwaysOverwrite = overwrite && !merge, whitelist) for(i = 0, len = whitelist.length; i < len; ++i)key = whitelist[i], hasOwn.call(from, key) && (// The `key in to` check here is (sadly) intentional for backwards
         // compatibility reasons. It prevents undesired shadowing of
         // prototype members on `to`.
         exists = !alwaysOverwrite && key in to, merge && exists && isObject(to[key], !0) && isObject(from[key], !0) ? // If we're in merge mode, and the key is present on both
@@ -2108,7 +2098,7 @@ properties are not copied). The following copying modes are available:
            * @property winjs
            * @type Boolean
            * @static
-           */ winjs: !!("undefined" != typeof Windows && Windows.System),
+           */ winjs: !!("u" > typeof Windows && Windows.System),
             /**
            * Are touch/msPointer events available on this device
            * @property touchEnabled
@@ -2150,7 +2140,7 @@ non-numeric characters, like `"535.8.beta"`, may produce unexpected results.
 **/ Y.UA.compareVersions = function(a, b) {
         var aPart, aParts, bPart, bParts, i, len;
         if (a === b) return 0;
-        for(i = 0, aParts = (a + "").split("."), bParts = (b + "").split("."), len = Math.max(aParts.length, bParts.length); i < len; ++i){
+        for(aParts = (a + "").split("."), bParts = (b + "").split("."), i = 0, len = Math.max(aParts.length, bParts.length); i < len; ++i){
             if (aPart = parseInt(aParts[i], 10), bPart = parseInt(bParts[i], 10), /*jshint expr: true*/ isNaN(aPart) && (aPart = 0), isNaN(bPart) && (bPart = 0), aPart < bPart) return -1;
             if (aPart > bPart) return 1;
         }
@@ -3086,7 +3076,7 @@ Id of the most recent transaction.
         _finish: function() {
             var data, i, len, errors = this.errors.length ? this.errors : null, options = this.options, thisObj = options.context || this;
             if ("done" !== this._state) {
-                for(i = 0, this._state = "done", len = this._callbacks.length; i < len; ++i)this._callbacks[i].call(thisObj, errors, this);
+                for(this._state = "done", i = 0, len = this._callbacks.length; i < len; ++i)this._callbacks[i].call(thisObj, errors, this);
                 data = this._getEventData(), errors ? (options.onTimeout && "Timeout" === errors[errors.length - 1].error && options.onTimeout.call(thisObj, data), options.onFailure && options.onFailure.call(thisObj, data)) : options.onSuccess && options.onSuccess.call(thisObj, data), options.onEnd && options.onEnd.call(thisObj, data), options._onFinish && options._onFinish();
             }
         },
@@ -3153,7 +3143,7 @@ Id of the most recent transaction.
                 // Note: in both the WebKit and Gecko hacks below, a CSS URL that 404s
                 // will still be treated as a success. There's no good workaround for
                 // this.
-                for(i = 0, self._pollTimer = null; i < pendingCSS.length; ++i)if (req = pendingCSS[i], isWebKit) {
+                for(self._pollTimer = null, i = 0; i < pendingCSS.length; ++i)if (req = pendingCSS[i], isWebKit) {
                     for(j = // Look for a stylesheet matching the pending URL.
                     (sheets = req.doc.styleSheets).length, nodeHref = req.node.href; --j >= 0;)if (sheets[j].href === nodeHref) {
                         pendingCSS.splice(i, 1), i -= 1, self._progress(null, req);
@@ -3237,7 +3227,7 @@ Contains the core of YUI's feature test architecture.
             var cat_o = feature_tests[cat], // results = {};
             result = [];
             return cat_o && Y.Object.each(cat_o, function(v, k) {
-                result.push(k + ":" + (Y.Features.test(cat, k, args) ? 1 : 0));
+                result.push(k + ":" + +!!Y.Features.test(cat, k, args));
             }), result.length ? result.join(";") : "";
         },
         /**
@@ -3297,7 +3287,7 @@ Contains the core of YUI's feature test architecture.
     add("load", "3", {
         name: "dom-style-ie",
         test: function(Y) {
-            var testFeature = Y.Features.test, addFeature = Y.Features.add, WINDOW = Y.config.win, DOCUMENT = Y.config.doc, ret = !1;
+            var testFeature = Y.Features.test, addFeature = Y.Features.add, WINDOW = Y.config.win, DOCUMENT = Y.config.doc;
             return addFeature("style", "computedStyle", {
                 test: function() {
                     return WINDOW && "getComputedStyle" in WINDOW;
@@ -3635,7 +3625,7 @@ Contains the core of YUI's feature test architecture.
         "yui-base"
     ]
 }), YUI.add("loader-base", function(Y, NAME) {
-    VERSION = Y.version, BUILD = "/build/", COMBO_BASE = (CDN_BASE = Y.Env.base) + "combo?", groups = (META = {
+    VERSION = Y.version, COMBO_BASE = (CDN_BASE = Y.Env.base) + "combo?", groups = (META = {
         version: VERSION,
         root: VERSION + "/",
         base: Y.Env.base,
@@ -3656,10 +3646,10 @@ Contains the core of YUI's feature test architecture.
         groups: {},
         patterns: {}
     }).groups, yui2Update = function(tnt, yui2, config) {
-        var root = "2in3." + (tnt || "4") + "/" + (yui2 || "2.9.0") + BUILD, base = config && config.base ? config.base : CDN_BASE, combo = config && config.comboBase ? config.comboBase : COMBO_BASE;
+        var root = "2in3." + (tnt || "4") + "/" + (yui2 || "2.9.0") + "/build/", base = config && config.base ? config.base : CDN_BASE, combo = config && config.comboBase ? config.comboBase : COMBO_BASE;
         groups.yui2.base = base + root, groups.yui2.root = root, groups.yui2.comboBase = combo;
     }, galleryUpdate = function(tag, config) {
-        var root = (tag || "gallery-2013.08.22-21-03") + BUILD, base = config && config.base ? config.base : CDN_BASE, combo = config && config.comboBase ? config.comboBase : COMBO_BASE;
+        var root = (tag || "gallery-2013.08.22-21-03") + "/build/", base = config && config.base ? config.base : CDN_BASE, combo = config && config.comboBase ? config.comboBase : COMBO_BASE;
         groups.gallery.base = base + root, groups.gallery.root = root, groups.gallery.comboBase = combo;
     }, groups[VERSION] = {}, groups.gallery = {
         ext: !1,
@@ -3703,7 +3693,7 @@ Contains the core of YUI's feature test architecture.
      * @module loader
      * @main loader
      * @submodule loader-base
-     */ var VERSION, BUILD, CDN_BASE, COMBO_BASE, META, groups, yui2Update, galleryUpdate, NOT_FOUND = {}, NO_REQUIREMENTS = [], GLOBAL_ENV = YUI.Env, GLOBAL_LOADED = GLOBAL_ENV._loaded, INTL = "intl", VERSION1 = Y.version, YObject = Y.Object, oeach = YObject.each, yArray = Y.Array, _queue = GLOBAL_ENV._loaderQueue, META1 = GLOBAL_ENV[VERSION1], L = Y.Lang, ON_PAGE = GLOBAL_ENV.mods, _path = function(dir, file, type, nomin) {
+     */ var VERSION, CDN_BASE, COMBO_BASE, META, groups, yui2Update, galleryUpdate, NOT_FOUND = {}, NO_REQUIREMENTS = [], GLOBAL_ENV = YUI.Env, GLOBAL_LOADED = GLOBAL_ENV._loaded, INTL = "intl", VERSION1 = Y.version, YObject = Y.Object, oeach = YObject.each, yArray = Y.Array, _queue = GLOBAL_ENV._loaderQueue, META1 = GLOBAL_ENV[VERSION1], L = Y.Lang, ON_PAGE = GLOBAL_ENV.mods, _path = function(dir, file, type, nomin) {
         var path = dir + "/" + file;
         return nomin || (path += "-min"), path += "." + (type || "css");
     };
@@ -4118,22 +4108,20 @@ Contains the core of YUI's feature test architecture.
             var i, j, val, a, f, group, mod, self = this, mods = [];
             // apply config values
             if (o) {
-                for(i in o)if (o.hasOwnProperty(i)) {
-                    //TODO This should be a case
-                    if (val = o[i], "require" === i) self.require(val);
-                    else if ("skin" === i) "string" == typeof val && (self.skin.defaultSkin = o.skin, val = {
-                        defaultSkin: val
-                    }), Y.mix(self.skin, val, !0);
-                    else if ("groups" === i) {
-                        for(j in val)if (val.hasOwnProperty(j) && (group = val[j], self.addGroup(group, j), group.aliases)) for(a in group.aliases)group.aliases.hasOwnProperty(a) && self.addAlias(group.aliases[a], a);
-                    } else if ("modules" === i) // add a hash of module definitions
-                    for(j in val)val.hasOwnProperty(j) && self.addModule(val[j], j);
-                    else if ("aliases" === i) for(j in val)val.hasOwnProperty(j) && self.addAlias(val[j], j);
-                    else "gallery" === i ? this.groups.gallery.update && this.groups.gallery.update(val, o) : "yui2" === i || "2in3" === i ? this.groups.yui2.update && this.groups.yui2.update(o["2in3"], o.yui2, o) : self[i] = val;
-                }
+                for(i in o)if (o.hasOwnProperty(i)) //TODO This should be a case
+                if (val = o[i], "require" === i) self.require(val);
+                else if ("skin" === i) "string" == typeof val && (self.skin.defaultSkin = o.skin, val = {
+                    defaultSkin: val
+                }), Y.mix(self.skin, val, !0);
+                else if ("groups" === i) {
+                    for(j in val)if (val.hasOwnProperty(j) && (group = val[j], self.addGroup(group, j), group.aliases)) for(a in group.aliases)group.aliases.hasOwnProperty(a) && self.addAlias(group.aliases[a], a);
+                } else if ("modules" === i) // add a hash of module definitions
+                for(j in val)val.hasOwnProperty(j) && self.addModule(val[j], j);
+                else if ("aliases" === i) for(j in val)val.hasOwnProperty(j) && self.addAlias(val[j], j);
+                else "gallery" === i ? this.groups.gallery.update && this.groups.gallery.update(val, o) : "yui2" === i || "2in3" === i ? this.groups.yui2.update && this.groups.yui2.update(o["2in3"], o.yui2, o) : self[i] = val;
             }
             if (// fix filter
-            f = self.filter, L.isString(f) && (f = f.toUpperCase(), self.filterName = f, self.filter = self.FILTER_DEFS[f], "DEBUG" === f && self.require("yui-log", "dump")), self.filterName && self.coverage && "COVERAGE" === self.filterName && L.isArray(self.coverage) && self.coverage.length) {
+            f = self.filter, L.isString(f) && (self.filterName = f = f.toUpperCase(), self.filter = self.FILTER_DEFS[f], "DEBUG" === f && self.require("yui-log", "dump")), self.filterName && self.coverage && "COVERAGE" === self.filterName && L.isArray(self.coverage) && self.coverage.length) {
                 for(i = 0; i < self.coverage.length; i++)mod = self.coverage[i], self.moduleInfo[mod] && self.moduleInfo[mod].use ? mods = [].concat(mods, self.moduleInfo[mod].use) : mods.push(mod);
                 self.filters = self.filters || {}, Y.Array.each(mods, function(mod) {
                     self.filters[mod] = self.FILTER_DEFS.COVERAGE;
@@ -4163,7 +4151,7 @@ Contains the core of YUI's feature test architecture.
        * @private
        */ _addSkin: function(skin, mod, parent) {
             var mdef, pkg, name, nmod, info = this.moduleInfo, sinf = this.skin, ext = info[mod] && info[mod].ext;
-            return mod && !info[name = this.formatSkin(skin, mod)] && (pkg = (mdef = info[mod]).pkg || mod, nmod = {
+            return mod && (info[name = this.formatSkin(skin, mod)] || (pkg = (mdef = info[mod]).pkg || mod, nmod = {
                 skin: !0,
                 name: name,
                 group: mdef.group,
@@ -4171,7 +4159,7 @@ Contains the core of YUI's feature test architecture.
                 after: sinf.after,
                 path: (parent || pkg) + "/" + sinf.base + skin + "/" + mod + ".css",
                 ext: ext
-            }, mdef.base && (nmod.base = mdef.base), mdef.configFn && (nmod.configFn = mdef.configFn), this.addModule(nmod, name)), name;
+            }, mdef.base && (nmod.base = mdef.base), mdef.configFn && (nmod.configFn = mdef.configFn), this.addModule(nmod, name))), name;
         },
         /**
        * Adds an alias module to the system
@@ -4275,7 +4263,7 @@ Contains the core of YUI's feature test architecture.
                 requires: o.requires ? [].concat(o.requires) : null,
                 supersedes: o.supersedes ? [].concat(o.supersedes) : null,
                 optional: o.optional ? [].concat(o.optional) : null
-            }), o.skinnable && o.ext && o.temp && (skinname = this._addSkin(this.skin.defaultSkin, name), o.requires.unshift(skinname)), o.requires.length && (o.requires = this.filterRequires(o.requires) || []), !o.langPack && o.lang) for(j = 0, langs = yArray(o.lang); j < langs.length; j++)lang = langs[j], packName = this.getLangPackName(lang, name), (smod = this.moduleInfo[packName]) || (smod = this._addLangPack(lang, o, packName));
+            }), o.skinnable && o.ext && o.temp && (skinname = this._addSkin(this.skin.defaultSkin, name), o.requires.unshift(skinname)), o.requires.length && (o.requires = this.filterRequires(o.requires) || []), !o.langPack && o.lang) for(langs = yArray(o.lang), j = 0; j < langs.length; j++)lang = langs[j], packName = this.getLangPackName(lang, name), (smod = this.moduleInfo[packName]) || (smod = this._addLangPack(lang, o, packName));
             if (subs) {
                 for(i in sup = o.supersedes || [], l = 0, subs)if (subs.hasOwnProperty(i)) {
                     if ((s = subs[i]).path = s.path || _path(name, i, o.type), s.pkg = name, s.group = o.group, s.supersedes && (sup = sup.concat(s.supersedes)), smod = this.addModule(s, i), sup.push(i), smod.skinnable) {
@@ -4285,7 +4273,7 @@ Contains the core of YUI's feature test architecture.
                     // looks like we are expected to work out the metadata
                     // for the parent module language packs from what is
                     // specified in the child modules.
-                    if (s.lang && s.lang.length) for(j = 0, langs = yArray(s.lang); j < langs.length; j++)lang = langs[j], packName = this.getLangPackName(lang, name), supName = this.getLangPackName(lang, i), (smod = this.moduleInfo[packName]) || (smod = this._addLangPack(lang, o, packName)), supName in (flatSup = flatSup || yArray.hash(smod.supersedes)) || smod.supersedes.push(supName), o.lang = o.lang || [], lang in (flatLang = flatLang || yArray.hash(o.lang)) || o.lang.push(lang), // Add rollup file, need to add to supersedes list too
+                    if (s.lang && s.lang.length) for(langs = yArray(s.lang), j = 0; j < langs.length; j++)lang = langs[j], packName = this.getLangPackName(lang, name), supName = this.getLangPackName(lang, i), (smod = this.moduleInfo[packName]) || (smod = this._addLangPack(lang, o, packName)), supName in (flatSup = flatSup || yArray.hash(smod.supersedes)) || smod.supersedes.push(supName), o.lang = o.lang || [], lang in (flatLang = flatLang || yArray.hash(o.lang)) || o.lang.push(lang), // Add rollup file, need to add to supersedes list too
                     // default packages
                     packName = this.getLangPackName("", name), supName = this.getLangPackName("", i), (smod = this.moduleInfo[packName]) || (smod = this._addLangPack(lang, o, packName)), supName in flatSup || smod.supersedes.push(supName);
                     l++;
@@ -4320,7 +4308,7 @@ Contains the core of YUI's feature test architecture.
        */ _explodeRollups: function() {
             var m, m2, i, a, v, len, len2, r = this.required;
             if (!this.allowRollup) {
-                for(i in r)if (r.hasOwnProperty(i) && (m = this.getModule(i)) && m.use) for(a = 0, len = m.use.length; a < len; a++)if ((m2 = this.getModule(m.use[a])) && m2.use) for(v = 0, len2 = m2.use.length; v < len2; v++)r[m2.use[v]] = !0;
+                for(i in r)if (r.hasOwnProperty(i) && (m = this.getModule(i)) && m.use) for(len = m.use.length, a = 0; a < len; a++)if ((m2 = this.getModule(m.use[a])) && m2.use) for(len2 = m2.use.length, v = 0; v < len2; v++)r[m2.use[v]] = !0;
                 else r[m.use[a]] = !0;
                 this.required = r;
             }
@@ -4360,13 +4348,13 @@ Contains the core of YUI's feature test architecture.
             //If a skin or a lang is different, reparse..
             reparse = !((!this.lang || mod.langCache === this.lang) && mod.skinCache === this.skin.defaultSkin), mod.expanded && !reparse) return mod.expanded;
             for(d = [], hash = {}, r = this.filterRequires(mod.requires), mod.lang && (//If a module has a lang attribute, auto add the intl requirement.
-            d.unshift("intl"), r.unshift("intl"), intl = !0), o = this.filterRequires(mod.optional), mod._parsed = !0, mod.langCache = this.lang, mod.skinCache = this.skin.defaultSkin, i = 0; i < r.length; i++)if (!hash[r[i]] && (d.push(r[i]), hash[r[i]] = !0, m = this.getModule(r[i]))) for(j = 0, add = this.getRequires(m), intl = intl || m.expanded_map && (INTL in m.expanded_map); j < add.length; j++)d.push(add[j]);
+            d.unshift("intl"), r.unshift("intl"), intl = !0), o = this.filterRequires(mod.optional), mod._parsed = !0, mod.langCache = this.lang, mod.skinCache = this.skin.defaultSkin, i = 0; i < r.length; i++)if (!hash[r[i]] && (d.push(r[i]), hash[r[i]] = !0, m = this.getModule(r[i]))) for(add = this.getRequires(m), intl = intl || m.expanded_map && (INTL in m.expanded_map), j = 0; j < add.length; j++)d.push(add[j]);
             if (// get the requirements from superseded modules, if any
             r = this.filterRequires(mod.supersedes)) {
-                for(i = 0; i < r.length; i++)if (!hash[r[i]] && (mod.submodules && d.push(r[i]), hash[r[i]] = !0, m = this.getModule(r[i]))) for(j = 0, add = this.getRequires(m), intl = intl || m.expanded_map && (INTL in m.expanded_map); j < add.length; j++)d.push(add[j]);
+                for(i = 0; i < r.length; i++)if (!hash[r[i]] && (mod.submodules && d.push(r[i]), hash[r[i]] = !0, m = this.getModule(r[i]))) for(add = this.getRequires(m), intl = intl || m.expanded_map && (INTL in m.expanded_map), j = 0; j < add.length; j++)d.push(add[j]);
             }
             if (o && this.loadOptional) {
-                for(i = 0; i < o.length; i++)if (!hash[o[i]] && (d.push(o[i]), hash[o[i]] = !0, m = info[o[i]])) for(j = 0, add = this.getRequires(m), intl = intl || m.expanded_map && (INTL in m.expanded_map); j < add.length; j++)d.push(add[j]);
+                for(i = 0; i < o.length; i++)if (!hash[o[i]] && (d.push(o[i]), hash[o[i]] = !0, m = info[o[i]])) for(add = this.getRequires(m), intl = intl || m.expanded_map && (INTL in m.expanded_map), j = 0; j < add.length; j++)d.push(add[j]);
             }
             if (cond = this.conditions[name]) {
                 if (//Set the module to not parsed since we have conditionals and this could change the dependency tree.
@@ -4374,7 +4362,7 @@ Contains the core of YUI's feature test architecture.
                     var condmod = ftests[id].name;
                     !hash[condmod] && ftests[id].trigger === name && result && ftests[id] && (hash[condmod] = !0, d.push(condmod));
                 });
-                else for(i in cond)if (cond.hasOwnProperty(i) && !hash[i] && (def = cond[i]) && (!def.ua && !def.test || def.ua && Y.UA[def.ua] || def.test && def.test(Y, r)) && (hash[i] = !0, d.push(i), m = this.getModule(i))) for(j = 0, add = this.getRequires(m); j < add.length; j++)d.push(add[j]);
+                else for(i in cond)if (cond.hasOwnProperty(i) && !hash[i] && (def = cond[i]) && (!def.ua && !def.test || def.ua && Y.UA[def.ua] || def.test && def.test(Y, r)) && (hash[i] = !0, d.push(i), m = this.getModule(i))) for(add = this.getRequires(m), j = 0; j < add.length; j++)d.push(add[j]);
             }
             // Create skin modules
             if (mod.skinnable) {
@@ -4653,7 +4641,7 @@ Contains the core of YUI's feature test architecture.
                 if (actions === comp) {
                     if (self._loading = null, self._refetch.length) {
                         //Get the deps for the new meta-data and reprocess
-                        for(i = 0; i < self._refetch.length; i++)for(o = 0, deps = self.getRequires(self.getModule(self._refetch[i])); o < deps.length; o++)self.inserted[deps[o]] || //We wouldn't be to this point without the module being here
+                        for(i = 0; i < self._refetch.length; i++)for(deps = self.getRequires(self.getModule(self._refetch[i])), o = 0; o < deps.length; o++)self.inserted[deps[o]] || //We wouldn't be to this point without the module being here
                         (mods[deps[o]] = deps[o]);
                         if ((mods = Y.Object.keys(mods)).length) {
                             if (self.require(mods), (resMods = self.resolve(!0)).cssMods.length) {
@@ -4822,12 +4810,10 @@ Contains the core of YUI's feature test architecture.
             }, url = j, len = (mods = comboSources[j]).length)) for(i = 0; i < len; i++)!inserted[mods[i]] && ((m = mods[i]) && (m.combine || !m.ext) ? (resCombos[j].comboSep = m.comboSep, resCombos[j].group = m.group, resCombos[j].maxURLLength = m.maxURLLength, frag = (L.isValue(m.root) ? m.root : self.root) + (m.path || m.fullpath), frag = self._filter(frag, m.name), resCombos[j][m.type].push(frag), resCombos[j][m.type + "Mods"].push(m)) : mods[i] && addSingle(mods[i]));
             for(j in resCombos)if (resCombos.hasOwnProperty(j)) {
                 for(type in comboSep = resCombos[j].comboSep || self.comboSep, maxURLLength = resCombos[j].maxURLLength || self.maxURLLength, resCombos[j])if ("js" === type || "css" === type) {
-                    if (urls = resCombos[j][type], mods = resCombos[j][type + "Mods"], len = urls.length, baseLen = (tmpBase = j + urls.join(comboSep)).length, maxURLLength <= j.length && (maxURLLength = 1024), len) {
-                        if (baseLen > maxURLLength) {
-                            for(s = 0, u = []; s < len; s++)u.push(urls[s]), (tmpBase = j + u.join(comboSep)).length > maxURLLength && (m = u.pop(), tmpBase = j + u.join(comboSep), resolved[type].push(self._filter(tmpBase, null, resCombos[j].group)), u = [], m && u.push(m));
-                            u.length && (tmpBase = j + u.join(comboSep), resolved[type].push(self._filter(tmpBase, null, resCombos[j].group)));
-                        } else resolved[type].push(self._filter(tmpBase, null, resCombos[j].group));
-                    }
+                    if (urls = resCombos[j][type], mods = resCombos[j][type + "Mods"], len = urls.length, baseLen = (tmpBase = j + urls.join(comboSep)).length, maxURLLength <= j.length && (maxURLLength = 1024), len) if (baseLen > maxURLLength) {
+                        for(s = 0, u = []; s < len; s++)u.push(urls[s]), (tmpBase = j + u.join(comboSep)).length > maxURLLength && (m = u.pop(), tmpBase = j + u.join(comboSep), resolved[type].push(self._filter(tmpBase, null, resCombos[j].group)), u = [], m && u.push(m));
+                        u.length && (tmpBase = j + u.join(comboSep), resolved[type].push(self._filter(tmpBase, null, resCombos[j].group)));
+                    } else resolved[type].push(self._filter(tmpBase, null, resCombos[j].group));
                     resolved[type + "Mods"] = resolved[type + "Mods"].concat(mods);
                 }
             }
@@ -6146,7 +6132,7 @@ Contains the core of YUI's feature test architecture.
             condition: {
                 name: "dom-style-ie",
                 test: function(Y) {
-                    var testFeature = Y.Features.test, addFeature = Y.Features.add, WINDOW = Y.config.win, DOCUMENT = Y.config.doc, ret = !1;
+                    var testFeature = Y.Features.test, addFeature = Y.Features.add, WINDOW = Y.config.win, DOCUMENT = Y.config.doc;
                     return addFeature("style", "computedStyle", {
                         test: function() {
                             return WINDOW && "getComputedStyle" in WINDOW;

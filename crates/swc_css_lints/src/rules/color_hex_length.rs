@@ -6,17 +6,12 @@ use crate::rule::{visitor_rule, LintRule, LintRuleContext};
 
 pub type ColorHexLengthConfig = Option<HexForm>;
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum HexForm {
+    #[default]
     Long,
     Short,
-}
-
-impl Default for HexForm {
-    fn default() -> Self {
-        Self::Long
-    }
 }
 
 pub fn color_hex_length(ctx: LintRuleContext<ColorHexLengthConfig>) -> Box<dyn LintRule> {
@@ -32,10 +27,7 @@ struct ColorHexLength {
 
 impl ColorHexLength {
     fn build_message(&self, actual: &str, expected: &str) -> String {
-        format!(
-            "Hex color value '#{}' should be written into: '#{}'.",
-            actual, expected
-        )
+        format!("Hex color value '#{actual}' should be written into: '#{expected}'.")
     }
 }
 
@@ -76,14 +68,8 @@ fn shorten(hex: &str) -> Option<String> {
 fn lengthen(hex: &str) -> Option<String> {
     let chars = hex.chars().collect::<Vec<_>>();
     match &*chars {
-        [c1, c2, c3] => Some(format!("{r}{r}{g}{g}{b}{b}", r = c1, g = c2, b = c3)),
-        [c1, c2, c3, c4] => Some(format!(
-            "{r}{r}{g}{g}{b}{b}{a}{a}",
-            r = c1,
-            g = c2,
-            b = c3,
-            a = c4
-        )),
+        [c1, c2, c3] => Some(format!("{c1}{c1}{c2}{c2}{c3}{c3}")),
+        [c1, c2, c3, c4] => Some(format!("{c1}{c1}{c2}{c2}{c3}{c3}{c4}{c4}")),
         _ => None,
     }
 }

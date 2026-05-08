@@ -667,8 +667,8 @@ mod tests {
 
     use super::*;
 
-    fn input(s: &str) -> Input {
-        Input::new(BytePos(0), BytePos(s.as_bytes().len() as _), s)
+    fn input(s: &str) -> Input<'_> {
+        Input::new(BytePos(0), BytePos(s.len() as _), s)
     }
 
     #[test]

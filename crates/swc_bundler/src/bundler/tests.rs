@@ -3,7 +3,8 @@ use std::path::PathBuf;
 
 use anyhow::Error;
 use indexmap::IndexMap;
-use swc_common::{collections::ARandomState, sync::Lrc, FileName, SourceMap, Span, GLOBALS};
+use rustc_hash::FxBuildHasher;
+use swc_common::{sync::Lrc, FileName, SourceMap, Span, GLOBALS};
 use swc_ecma_ast::*;
 use swc_ecma_loader::resolve::Resolution;
 use swc_ecma_parser::{lexer::Lexer, Parser, StringInput};
@@ -20,12 +21,12 @@ pub(crate) struct Tester<'a> {
 
 pub struct Loader {
     cm: Lrc<SourceMap>,
-    files: IndexMap<String, String, ARandomState>,
+    files: IndexMap<String, String, FxBuildHasher>,
 }
 
 impl Load for Loader {
     fn load(&self, f: &FileName) -> Result<ModuleData, Error> {
-        eprintln!("load: {}", f);
+        eprintln!("load: {f}");
         let v = self.files.get(&f.to_string());
         let v = v.unwrap();
 
@@ -74,14 +75,15 @@ impl Tester<'_> {
         self.bundler
             .scope
             .get_module_by_path(&FileName::Real(name.to_string().into()))
-            .unwrap_or_else(|| panic!("failed to find module named {}", name))
+            .unwrap_or_else(|| panic!("failed to find module named {name}"))
     }
 
     #[allow(dead_code)]
     pub fn parse(&self, s: &str) -> Module {
-        let fm = self
-            .cm
-            .new_source_file(FileName::Real(PathBuf::from("input.js")).into(), s.into());
+        let fm = self.cm.new_source_file(
+            FileName::Real(PathBuf::from("input.js")).into(),
+            s.to_string(),
+        );
 
         let lexer = Lexer::new(
             Default::default(),
@@ -112,7 +114,7 @@ pub(crate) fn suite() -> TestBuilder {
 
 #[derive(Default)]
 pub(crate) struct TestBuilder {
-    files: IndexMap<String, String, ARandomState>,
+    files: IndexMap<String, String, FxBuildHasher>,
 }
 
 impl TestBuilder {

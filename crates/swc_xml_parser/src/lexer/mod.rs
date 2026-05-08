@@ -1,7 +1,8 @@
 use std::{collections::VecDeque, mem::take};
 
-use swc_atoms::JsWord;
-use swc_common::{collections::AHashSet, input::Input, BytePos, Span};
+use rustc_hash::FxHashSet;
+use swc_atoms::Atom;
+use swc_common::{input::Input, BytePos, Span};
 use swc_xml_ast::{AttributeToken, Token, TokenAndSpan};
 
 use crate::{
@@ -118,9 +119,9 @@ struct Cdata {
 
 pub(crate) type LexResult<T> = Result<T, ErrorKind>;
 
-pub struct Lexer<I>
+pub struct Lexer<'a, I>
 where
-    I: Input,
+    I: Input<'a>,
 {
     input: I,
     cur: Option<char>,
@@ -139,11 +140,12 @@ where
     current_tag_token: Option<Tag>,
     current_cdata_token: Option<Cdata>,
     attribute_start_position: Option<BytePos>,
+    phantom: std::marker::PhantomData<&'a ()>,
 }
 
-impl<I> Lexer<I>
+impl<'a, I> Lexer<'a, I>
 where
-    I: Input,
+    I: Input<'a>,
 {
     pub fn new(input: I) -> Self {
         let start_pos = input.last_pos();
@@ -166,14 +168,15 @@ where
             current_tag_token: None,
             current_cdata_token: None,
             attribute_start_position: None,
+            phantom: std::marker::PhantomData,
         };
 
         // A leading Byte Order Mark (BOM) causes the character encoding argument to be
         // ignored and will itself be skipped.
-        if lexer.input.is_at_start() && lexer.input.cur() == Some('\u{feff}') {
+        if lexer.input.is_at_start() && lexer.input.cur_as_char() == Some('\u{feff}') {
             unsafe {
-                // Safety: cur() is Some('\u{feff}')
-                lexer.input.bump();
+                // Safety: cur_as_char() is Some('\u{feff}'), which is 3 bytes (EF BB BF)
+                lexer.input.bump_bytes(3);
             }
         }
 
@@ -181,7 +184,7 @@ where
     }
 }
 
-impl<I: Input> Iterator for Lexer<I> {
+impl<'a, I: Input<'a>> Iterator for Lexer<'a, I> {
     type Item = TokenAndSpan;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -198,9 +201,9 @@ impl<I: Input> Iterator for Lexer<I> {
     }
 }
 
-impl<I> ParserInput for Lexer<I>
+impl<'a, I> ParserInput for Lexer<'a, I>
 where
-    I: Input,
+    I: Input<'a>,
 {
     fn start_pos(&mut self) -> swc_common::BytePos {
         self.input.cur_pos()
@@ -215,13 +218,13 @@ where
     }
 }
 
-impl<I> Lexer<I>
+impl<'a, I> Lexer<'a, I>
 where
-    I: Input,
+    I: Input<'a>,
 {
     #[inline(always)]
     fn next(&mut self) -> Option<char> {
-        self.input.cur()
+        self.input.cur_as_char()
     }
 
     // Any occurrences of surrogates are surrogate-in-input-stream parse errors. Any
@@ -246,13 +249,13 @@ where
 
     #[inline(always)]
     fn consume(&mut self) {
-        self.cur = self.input.cur();
+        self.cur = self.input.cur_as_char();
         self.cur_pos = self.input.cur_pos();
 
-        if self.cur.is_some() {
+        if let Some(c) = self.cur {
             unsafe {
-                // Safety: cur() is Some(c)
-                self.input.bump();
+                // Safety: cur_as_char() is Some(c)
+                self.input.bump_bytes(c.len_utf8());
             }
         }
     }
@@ -305,7 +308,7 @@ where
 
     fn consume_character_reference(&mut self) -> Option<(char, String)> {
         let cur_pos = self.input.cur_pos();
-        let anything_else = |lexer: &mut Lexer<I>| {
+        let anything_else = |lexer: &mut Lexer<'a, I>| {
             lexer.emit_error(ErrorKind::InvalidEntityCharacter);
             lexer.cur_pos = cur_pos;
             unsafe {
@@ -570,10 +573,10 @@ where
 
                 raw.push(c);
 
-                if self.input.cur() == Some('\n') {
+                if self.input.cur() == Some(b'\n') {
                     unsafe {
-                        // Safety: cur() is Some('\n')
-                        self.input.bump();
+                        // Safety: cur() is Some(b'\n')
+                        self.input.bump_bytes(1);
                     }
 
                     raw.push('\n');
@@ -651,10 +654,10 @@ where
         };
 
         let token = Token::Doctype {
-            name: current_doctype_token.name.map(JsWord::from),
-            public_id: current_doctype_token.public_id.map(JsWord::from),
-            system_id: current_doctype_token.system_id.map(JsWord::from),
-            raw: Some(JsWord::from(raw)),
+            name: current_doctype_token.name.map(Atom::from),
+            public_id: current_doctype_token.public_id.map(Atom::from),
+            system_id: current_doctype_token.system_id.map(Atom::from),
+            raw: Some(Atom::from(raw)),
         };
 
         self.emit_token(token);
@@ -804,13 +807,13 @@ where
                 current_tag_token.kind = kind;
             }
 
-            let mut already_seen: AHashSet<JsWord> = Default::default();
+            let mut already_seen: FxHashSet<Atom> = Default::default();
 
             let attributes = current_tag_token
                 .attributes
                 .drain(..)
                 .map(|attribute| {
-                    let name = JsWord::from(attribute.name);
+                    let name = Atom::from(attribute.name);
 
                     if already_seen.contains(&name) {
                         self.errors
@@ -822,9 +825,9 @@ where
                     AttributeToken {
                         span: attribute.span,
                         name,
-                        raw_name: attribute.raw_name.map(JsWord::from),
-                        value: attribute.value.map(JsWord::from),
-                        raw_value: attribute.raw_value.map(JsWord::from),
+                        raw_name: attribute.raw_name.map(Atom::from),
+                        value: attribute.value.map(Atom::from),
+                        raw_value: attribute.raw_value.map(Atom::from),
                     }
                 })
                 .collect();
@@ -892,10 +895,10 @@ where
 
                 raw_c.push(c);
 
-                if self.input.cur() == Some('\n') {
+                if self.input.cur() == Some(b'\n') {
                     unsafe {
-                        // Safety: cur() is Some('\n')
-                        self.input.bump();
+                        // Safety: cur() is Some(b'\n')
+                        self.input.bump_bytes(1);
                     }
 
                     raw_c.push('\n');
@@ -959,10 +962,10 @@ where
 
             raw.push(c);
 
-            if self.input.cur() == Some('\n') {
+            if self.input.cur() == Some(b'\n') {
                 unsafe {
-                    // Safety: cur() is Some('\n')
-                    self.input.bump();
+                    // Safety: cur() is Some(b'\n')
+                    self.input.bump_bytes(1);
                 }
 
                 raw.push('\n');
@@ -1252,7 +1255,7 @@ where
             }
             State::MarkupDeclaration => {
                 let cur_pos = self.input.cur_pos();
-                let anything_else = |lexer: &mut Lexer<I>| {
+                let anything_else = |lexer: &mut Lexer<'a, I>| {
                     lexer.emit_error(ErrorKind::IncorrectlyOpenedComment);
                     lexer.create_comment_token(None, "<!");
                     lexer.state = State::BogusComment;
@@ -3101,10 +3104,10 @@ where
 
     #[inline(always)]
     fn skip_next_lf(&mut self, c: char) {
-        if c == '\r' && self.input.cur() == Some('\n') {
+        if c == '\r' && self.input.cur() == Some(b'\n') {
             unsafe {
-                // Safety: cur() is Some('\n')
-                self.input.bump();
+                // Safety: cur() is Some(b'\n')
+                self.input.bump_bytes(1);
             }
         }
     }

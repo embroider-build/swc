@@ -37,12 +37,10 @@
                     return newInterval(function(date) {
                         if (date >= date) for(; floori(date), !test(date);)date.setTime(date - 1);
                     }, function(date, step) {
-                        if (date >= date) {
-                            if (step < 0) for(; ++step <= 0;)for(; offseti(date, -1), !test(date););
-                             // eslint-disable-line no-empty
-                            else for(; --step >= 0;)for(; offseti(date, 1), !test(date););
-                             // eslint-disable-line no-empty
-                        }
+                        if (date >= date) if (step < 0) for(; ++step <= 0;)for(; offseti(date, -1), !test(date););
+                         // eslint-disable-line no-empty
+                        else for(; --step >= 0;)for(; offseti(date, 1), !test(date););
+                         // eslint-disable-line no-empty
                     });
                 }, count && (interval.count = function(start, end) {
                     return t0.setTime(+start), t1.setTime(+end), floori(t0), floori(t1), Math.floor(count(t0, t1));
@@ -202,7 +200,7 @@
                 return date.getUTCFullYear();
             });
             function ticker(year, month, week, day, hour, minute) {
-                const tickIntervals = [
+                let tickIntervals = [
                     [
                         second,
                         1,
@@ -295,20 +293,20 @@
                     ]
                 ];
                 function tickInterval(start, stop, count) {
-                    const target = Math.abs(stop - start) / count, i = (0, bisector /* default */ .Z)(([, , step])=>step).right(tickIntervals, target);
+                    let target = Math.abs(stop - start) / count, i = (0, bisector /* default */ .Z)(([, , step])=>step).right(tickIntervals, target);
                     if (i === tickIntervals.length) return year.every((0, src_ticks /* tickStep */ .ly)(start / 31536000000, stop / 31536000000, count));
                     if (0 === i) return millisecond.every(Math.max((0, src_ticks /* tickStep */ .ly)(start, stop, count), 1));
-                    const [t, step] = tickIntervals[target / tickIntervals[i - 1][2] < tickIntervals[i][2] / target ? i - 1 : i];
+                    let [t, step] = tickIntervals[target / tickIntervals[i - 1][2] < tickIntervals[i][2] / target ? i - 1 : i];
                     return t.every(step);
                 }
                 return [
                     function(start, stop, count) {
-                        const reverse = stop < start;
+                        let reverse = stop < start;
                         reverse && ([start, stop] = [
                             stop,
                             start
                         ]);
-                        const interval = count && "function" == typeof count.range ? count : tickInterval(start, stop, count), ticks = interval ? interval.range(start, +stop + 1) : [];
+                        let interval = count && "function" == typeof count.range ? count : tickInterval(start, stop, count), ticks = interval ? interval.range(start, +stop + 1) : [];
                         return reverse ? ticks.reverse() : ticks;
                     },
                     tickInterval
@@ -322,7 +320,7 @@
                     date.setUTCFullYear(date.getUTCFullYear() + step * k);
                 }) : null;
             }, utcYear.range;
-            const [utcTicks, utcTickInterval] = ticker(utcYear, utcMonth, utcSunday, utcDay, utcHour, utcMinute), [timeTicks, timeTickInterval] = ticker(year, month, sunday, day, hour, minute);
+            let [utcTicks, utcTickInterval] = ticker(utcYear, utcMonth, utcSunday, utcDay, utcHour, utcMinute), [timeTicks, timeTickInterval] = ticker(year, month, sunday, day, hour, minute);
             function localDate(d) {
                 if (0 <= d.y && d.y < 100) {
                     var date = new Date(-1, d.m, d.d, d.H, d.M, d.S, d.L);
@@ -583,7 +581,7 @@
                 return +d;
             }
             function formatUnixTimestampSeconds(d) {
-                return Math.floor(+d / 1000);
+                return Math.floor(d / 1000);
             } // CONCATENATED MODULE: ../node_modules/d3-time-format/src/defaultLocale.js
             (locale = function(locale) {
                 var locale_dateTime = locale.dateTime, locale_date = locale.date, locale_time = locale.time, locale_periods = locale.periods, locale_weekdays = locale.days, locale_shortWeekdays = locale.shortDays, locale_months = locale.months, locale_shortMonths = locale.shortMonths, periodRe = formatRe(locale_periods), periodLookup = formatLookup(locale_periods), weekdayRe = formatRe(locale_weekdays), weekdayLookup = formatLookup(locale_weekdays), shortWeekdayRe = formatRe(locale_shortWeekdays), shortWeekdayLookup = formatLookup(locale_shortWeekdays), monthRe = formatRe(locale_months), monthLookup = formatLookup(locale_months), shortMonthRe = formatRe(locale_shortMonths), shortMonthLookup = formatLookup(locale_shortMonths), formats = {
@@ -749,7 +747,7 @@
                         if (!Z || "Z" in d || (d.Z = 0), "p" in d && (d.H = d.H % 12 + 12 * d.p), void 0 === d.m && (d.m = "q" in d ? d.q : 0), "V" in d) {
                             if (d.V < 1 || d.V > 53) return null;
                             "w" in d || (d.w = 1), "Z" in d ? (week = (day1 = (week = utcDate(newDate(d.y, 0, 1))).getUTCDay()) > 4 || 0 === day1 ? utcMonday.ceil(week) : utcMonday(week), week = utcDay.offset(week, (d.V - 1) * 7), d.y = week.getUTCFullYear(), d.m = week.getUTCMonth(), d.d = week.getUTCDate() + (d.w + 6) % 7) : (week = (day1 = (week = localDate(newDate(d.y, 0, 1))).getDay()) > 4 || 0 === day1 ? monday.ceil(week) : monday(week), week = day.offset(week, (d.V - 1) * 7), d.y = week.getFullYear(), d.m = week.getMonth(), d.d = week.getDate() + (d.w + 6) % 7);
-                        } else ("W" in d || "U" in d) && ("w" in d || (d.w = "u" in d ? d.u % 7 : "W" in d ? 1 : 0), day1 = "Z" in d ? utcDate(newDate(d.y, 0, 1)).getUTCDay() : localDate(newDate(d.y, 0, 1)).getDay(), d.m = 0, d.d = "W" in d ? (d.w + 6) % 7 + 7 * d.W - (day1 + 5) % 7 : d.w + 7 * d.U - (day1 + 6) % 7);
+                        } else ("W" in d || "U" in d) && ("w" in d || (d.w = "u" in d ? d.u % 7 : +("W" in d)), day1 = "Z" in d ? utcDate(newDate(d.y, 0, 1)).getUTCDay() : localDate(newDate(d.y, 0, 1)).getDay(), d.m = 0, d.d = "W" in d ? (d.w + 6) % 7 + 7 * d.W - (day1 + 5) % 7 : d.w + 7 * d.U - (day1 + 6) % 7);
                         return(// If a time zone is specified, all fields are interpreted as UTC and then
                         // offset according to the specified time zone.
                         "Z" in d ? (d.H += d.Z / 100 | 0, d.M += d.Z % 100, utcDate(d)) : localDate(d));

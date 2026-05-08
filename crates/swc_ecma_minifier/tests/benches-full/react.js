@@ -175,7 +175,7 @@
  * @final
  * @protected
  */ Component.prototype.setState = function(partialState, callback) {
-        if (!('object' == typeof partialState || 'function' == typeof partialState || null == partialState)) throw Error("setState(...): takes an object of state variables to update or a function which returns an object of state variables.");
+        if ('object' != typeof partialState && 'function' != typeof partialState && null != partialState) throw Error("setState(...): takes an object of state variables to update or a function which returns an object of state variables.");
         this.updater.enqueueSetState(this, partialState, callback, 'setState');
     }, /**
  * Forces an update. This should only be invoked when it is known with
@@ -343,13 +343,13 @@
  * See https://reactjs.org/docs/react-api.html#createelement
  */ function createElement(type, config, children) {
         var propName, props = {}, key = null, ref = null, self = null, source = null;
-        if (null != config) for(propName in hasValidRef(config) && (ref = config.ref, function(config) {
-            if ('string' == typeof config.ref && ReactCurrentOwner.current && config.__self && ReactCurrentOwner.current.stateNode !== config.__self) {
+        if (null != config) {
+            if (hasValidRef(config) && (ref = config.ref, 'string' == typeof config.ref && ReactCurrentOwner.current && config.__self && ReactCurrentOwner.current.stateNode !== config.__self)) {
                 var componentName = getComponentName(ReactCurrentOwner.current.type);
                 didWarnAboutStringRefs[componentName] || (error('Component "%s" contains the string ref "%s". Support for string refs will be removed in a future major release. This case cannot be automatically converted to an arrow function. We ask you to manually fix this case by using useRef() or createRef() instead. Learn more about using refs safely here: https://reactjs.org/link/strict-mode-string-ref', componentName, config.ref), didWarnAboutStringRefs[componentName] = !0);
             }
-        }(config)), hasValidKey(config) && (key = '' + config.key), self = void 0 === config.__self ? null : config.__self, source = void 0 === config.__source ? null : config.__source, config)hasOwnProperty.call(config, propName) && !RESERVED_PROPS.hasOwnProperty(propName) && (props[propName] = config[propName]);
-         // Children can be more than one argument, and those are transferred onto
+            for(propName in hasValidKey(config) && (key = '' + config.key), self = void 0 === config.__self ? null : config.__self, source = void 0 === config.__source ? null : config.__source, config)hasOwnProperty.call(config, propName) && !RESERVED_PROPS.hasOwnProperty(propName) && (props[propName] = config[propName]);
+        } // Children can be more than one argument, and those are transferred onto
         // the newly allocated props object.
         var childrenLength = arguments.length - 2;
         if (1 === childrenLength) props.children = children;
@@ -381,7 +381,7 @@
  * Clone and return a new ReactElement using element as the starting point.
  * See https://reactjs.org/docs/react-api.html#cloneelement
  */ function cloneElement(element, config, children) {
-        if (!(null != element)) throw Error("React.cloneElement(...): The argument must be a React element, but you passed " + element + ".");
+        if (null == element) throw Error("React.cloneElement(...): The argument must be a React element, but you passed " + element + ".");
         var propName, defaultProps, props = _assign({}, element.props), key = element.key, ref = element.ref, self = element._self, source = element._source, owner = element._owner; // Reserved names are extracted
         if (null != config) for(propName in hasValidRef(config) && (// Silently steal the ref from the parent.
         ref = config.ref, owner = ReactCurrentOwner.current), hasValidKey(config) && (key = '' + config.key), element.type && element.type.defaultProps && (defaultProps = element.type.defaultProps), config)hasOwnProperty.call(config, propName) && !RESERVED_PROPS.hasOwnProperty(propName) && (void 0 === config[propName] && void 0 !== defaultProps ? // Resolve default props
@@ -421,9 +421,9 @@
  */ function getElementKey(element, index) {
         // Do some typechecking here since we call this blindly. We want to ensure
         // that we don't block potential future ES APIs.
-        if ('object' == typeof element && null !== element && null != element.key) {
+        if ('object' == typeof element && null !== element && null != element.key) // Explicit key
+        {
             var key, escaperLookup;
-            // Explicit key
             return key = '' + element.key, escaperLookup = {
                 '=': '=0',
                 ':': '=2'
@@ -512,11 +512,12 @@
         throw payload._result;
     }
     function isValidElementType(type) {
-        return 'string' == typeof type || 'function' == typeof type || type === exports.Fragment || type === exports.Profiler || type === REACT_DEBUG_TRACING_MODE_TYPE || type === exports.StrictMode || type === exports.Suspense || type === REACT_SUSPENSE_LIST_TYPE || type === REACT_LEGACY_HIDDEN_TYPE || 'object' == typeof type && null !== type && (type.$$typeof === REACT_LAZY_TYPE || type.$$typeof === REACT_MEMO_TYPE || type.$$typeof === REACT_PROVIDER_TYPE || type.$$typeof === REACT_CONTEXT_TYPE || type.$$typeof === REACT_FORWARD_REF_TYPE || type.$$typeof === REACT_FUNDAMENTAL_TYPE || type.$$typeof === REACT_BLOCK_TYPE || type[0] === REACT_SERVER_BLOCK_TYPE);
+        return 'string' == typeof type || 'function' == typeof type || type === exports.Fragment || type === exports.Profiler || type === REACT_DEBUG_TRACING_MODE_TYPE || type === exports.StrictMode || type === exports.Suspense || type === REACT_SUSPENSE_LIST_TYPE || type === REACT_LEGACY_HIDDEN_TYPE || 'object' == typeof type && null !== type && (type.$$typeof === REACT_LAZY_TYPE || type.$$typeof === REACT_MEMO_TYPE || type.$$typeof === REACT_PROVIDER_TYPE || type.$$typeof === REACT_CONTEXT_TYPE || type.$$typeof === REACT_FORWARD_REF_TYPE || type.$$typeof === REACT_FUNDAMENTAL_TYPE || type.$$typeof === REACT_BLOCK_TYPE || type[0] === REACT_SERVER_BLOCK_TYPE) || !1 // Note: typeof might be other than 'symbol' or 'number' (e.g. if it's a polyfill).
+        ;
     }
     function resolveDispatcher() {
         var dispatcher = ReactCurrentDispatcher.current;
-        if (!(null !== dispatcher)) throw Error("Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:\n1. You might have mismatching versions of React and the renderer (such as React DOM)\n2. You might be breaking the Rules of Hooks\n3. You might have more than one copy of React in the same app\nSee https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.");
+        if (null === dispatcher) throw Error("Invalid hook call. Hooks can only be called inside of the body of a function component. This could happen for one of the following reasons:\n1. You might have mismatching versions of React and the renderer (such as React DOM)\n2. You might be breaking the Rules of Hooks\n3. You might have more than one copy of React in the same app\nSee https://reactjs.org/link/invalid-hook-call for tips about how to debug and fix this problem.");
         return dispatcher;
     }
     // Helpers to patch console.logs to avoid logging during side-effect free
@@ -546,28 +547,26 @@
         if (void 0 !== frame) return frame;
         reentry = !0;
         var previousPrepareStackTrace = Error.prepareStackTrace; // $FlowFixMe It does accept undefined.
-        Error.prepareStackTrace = void 0, previousDispatcher = ReactCurrentDispatcher$1.current, // for warnings.
-        ReactCurrentDispatcher$1.current = null, function() {
-            if (0 === disabledDepth) {
-                /* eslint-disable react-internal/no-production-logging */ prevLog = console.log, prevInfo = console.info, prevWarn = console.warn, prevError = console.error, prevGroup = console.group, prevGroupCollapsed = console.groupCollapsed, prevGroupEnd = console.groupEnd;
-                var props = {
-                    configurable: !0,
-                    enumerable: !0,
-                    value: disabledLog,
-                    writable: !0
-                }; // $FlowFixMe Flow thinks console is immutable.
-                Object.defineProperties(console, {
-                    info: props,
-                    log: props,
-                    warn: props,
-                    error: props,
-                    group: props,
-                    groupCollapsed: props,
-                    groupEnd: props
-                });
-            /* eslint-enable react-internal/no-production-logging */ }
-            disabledDepth++;
-        }();
+        if (Error.prepareStackTrace = void 0, previousDispatcher = ReactCurrentDispatcher$1.current, // for warnings.
+        ReactCurrentDispatcher$1.current = null, 0 === disabledDepth) {
+            /* eslint-disable react-internal/no-production-logging */ prevLog = console.log, prevInfo = console.info, prevWarn = console.warn, prevError = console.error, prevGroup = console.group, prevGroupCollapsed = console.groupCollapsed, prevGroupEnd = console.groupEnd;
+            var props = {
+                configurable: !0,
+                enumerable: !0,
+                value: disabledLog,
+                writable: !0
+            }; // $FlowFixMe Flow thinks console is immutable.
+            Object.defineProperties(console, {
+                info: props,
+                log: props,
+                warn: props,
+                error: props,
+                group: props,
+                groupCollapsed: props,
+                groupEnd: props
+            });
+        /* eslint-enable react-internal/no-production-logging */ }
+        disabledDepth++;
         try {
             // This should throw.
             if (construct) {
@@ -637,46 +636,47 @@
                 }
             }
         } finally{
-            reentry = !1, ReactCurrentDispatcher$1.current = previousDispatcher, function() {
-                if (0 == --disabledDepth) {
-                    /* eslint-disable react-internal/no-production-logging */ var props = {
-                        configurable: !0,
-                        enumerable: !0,
-                        writable: !0
-                    }; // $FlowFixMe Flow thinks console is immutable.
-                    Object.defineProperties(console, {
-                        log: _assign({}, props, {
-                            value: prevLog
-                        }),
-                        info: _assign({}, props, {
-                            value: prevInfo
-                        }),
-                        warn: _assign({}, props, {
-                            value: prevWarn
-                        }),
-                        error: _assign({}, props, {
-                            value: prevError
-                        }),
-                        group: _assign({}, props, {
-                            value: prevGroup
-                        }),
-                        groupCollapsed: _assign({}, props, {
-                            value: prevGroupCollapsed
-                        }),
-                        groupEnd: _assign({}, props, {
-                            value: prevGroupEnd
-                        })
-                    });
-                /* eslint-enable react-internal/no-production-logging */ }
-                disabledDepth < 0 && error("disabledDepth fell below zero. This is a bug in React. Please file an issue.");
-            }(), Error.prepareStackTrace = previousPrepareStackTrace;
+            if (reentry = !1, ReactCurrentDispatcher$1.current = previousDispatcher, 0 == --disabledDepth) {
+                /* eslint-disable react-internal/no-production-logging */ var props1 = {
+                    configurable: !0,
+                    enumerable: !0,
+                    writable: !0
+                }; // $FlowFixMe Flow thinks console is immutable.
+                Object.defineProperties(console, {
+                    log: _assign({}, props1, {
+                        value: prevLog
+                    }),
+                    info: _assign({}, props1, {
+                        value: prevInfo
+                    }),
+                    warn: _assign({}, props1, {
+                        value: prevWarn
+                    }),
+                    error: _assign({}, props1, {
+                        value: prevError
+                    }),
+                    group: _assign({}, props1, {
+                        value: prevGroup
+                    }),
+                    groupCollapsed: _assign({}, props1, {
+                        value: prevGroupCollapsed
+                    }),
+                    groupEnd: _assign({}, props1, {
+                        value: prevGroupEnd
+                    })
+                });
+            /* eslint-enable react-internal/no-production-logging */ }
+            disabledDepth < 0 && error("disabledDepth fell below zero. This is a bug in React. Please file an issue."), Error.prepareStackTrace = previousPrepareStackTrace;
         } // Fallback to just using the name if we couldn't make it throw.
         var name = fn ? fn.displayName || fn.name : '', syntheticFrame = name ? describeBuiltInComponentFrame(name) : '';
         return 'function' == typeof fn && componentFrameCache.set(fn, syntheticFrame), syntheticFrame;
     }
     function describeUnknownElementTypeFrameInDEV(type, source, ownerFn) {
         if (null == type) return '';
-        if ('function' == typeof type) return describeNativeComponentFrame(type, !!((prototype = type.prototype) && prototype.isReactComponent));
+        if ('function' == typeof type) {
+            var prototype;
+            return describeNativeComponentFrame(type, !!((prototype = type.prototype) && prototype.isReactComponent));
+        }
         if ('string' == typeof type) return describeBuiltInComponentFrame(type);
         switch(type){
             case exports.Suspense:
@@ -693,7 +693,7 @@
             case REACT_BLOCK_TYPE:
                 return describeNativeComponentFrame(type._render, !1);
             case REACT_LAZY_TYPE:
-                var prototype, payload = type._payload, init = type._init;
+                var payload = type._payload, init = type._init;
                 try {
                     // Lazy may contain any component type so we recursively resolve it.
                     return describeUnknownElementTypeFrameInDEV(init(payload), source, ownerFn);
@@ -850,19 +850,17 @@
         // (Rendering will throw with a helpful message and as soon as the type is
         // fixed, the key warnings will appear.)
         if (validType) for(var i = 2; i < arguments.length; i++)validateChildKeys(arguments[i], type);
-        return type === exports.Fragment ? /**
- * Given a fragment, validate that it can only be provided with fragment props
- * @param {ReactElement} fragment
- */ function(fragment) {
-            for(var keys = Object.keys(fragment.props), i = 0; i < keys.length; i++){
-                var key = keys[i];
+        if (type === exports.Fragment) {
+            for(var keys = Object.keys(element.props), i1 = 0; i1 < keys.length; i1++){
+                var key = keys[i1];
                 if ('children' !== key && 'key' !== key) {
-                    setCurrentlyValidatingElement$1(fragment), error("Invalid prop `%s` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.", key), setCurrentlyValidatingElement$1(null);
+                    setCurrentlyValidatingElement$1(element), error("Invalid prop `%s` supplied to `React.Fragment`. React.Fragment can only have `key` and `children` props.", key), setCurrentlyValidatingElement$1(null);
                     break;
                 }
             }
-            null !== fragment.ref && (setCurrentlyValidatingElement$1(fragment), error('Invalid attribute `ref` supplied to `React.Fragment`.'), setCurrentlyValidatingElement$1(null));
-        }(element) : validatePropTypes(element), element;
+            null !== element.ref && (setCurrentlyValidatingElement$1(element), error('Invalid attribute `ref` supplied to `React.Fragment`.'), setCurrentlyValidatingElement$1(null));
+        } else validatePropTypes(element);
+        return element;
     }
     var didWarnAboutDeprecatedCreateFactory = !1;
     try {

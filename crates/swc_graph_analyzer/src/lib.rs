@@ -1,8 +1,8 @@
 use std::{fmt::Debug, hash::Hash, marker::PhantomData};
 
 use auto_impl::auto_impl;
-use swc_common::collections::AHashSet;
-use swc_fast_graph::digraph::FastDiGraphMap;
+use petgraph::{prelude::GraphMap, Directed};
+use rustc_hash::{FxBuildHasher, FxHashSet};
 
 #[auto_impl(&, Box, Rc, Arc)]
 pub trait DepGraph {
@@ -17,7 +17,7 @@ where
     G: DepGraph,
 {
     /// `(src, dst)`
-    tracked: AHashSet<(G::ModuleId, G::ModuleId)>,
+    tracked: FxHashSet<(G::ModuleId, G::ModuleId)>,
     dep_graph: G,
     data: GraphResult<G>,
 }
@@ -112,7 +112,7 @@ where
     G: DepGraph,
 {
     pub all: Vec<G::ModuleId>,
-    pub graph: FastDiGraphMap<G::ModuleId, ()>,
+    pub graph: GraphMap<G::ModuleId, (), Directed, FxBuildHasher>,
     pub cycles: Vec<Vec<G::ModuleId>>,
 
     _marker: PhantomData<G>,

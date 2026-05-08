@@ -253,6 +253,41 @@ pub trait Visit {
     fn visit_constructor(&mut self, node: &Constructor) {
         <Constructor as VisitWith<Self>>::visit_children_with(node, self)
     }
+    #[doc = "Visit a node of type `ContentTagContent`.\n\nBy default, this method calls \
+             [`ContentTagContent::visit_children_with`]. If you want to recurse, you need to call \
+             it manually."]
+    #[inline]
+    fn visit_content_tag_content(&mut self, node: &ContentTagContent) {
+        <ContentTagContent as VisitWith<Self>>::visit_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagEnd`.\n\nBy default, this method calls \
+             [`ContentTagEnd::visit_children_with`]. If you want to recurse, you need to call it \
+             manually."]
+    #[inline]
+    fn visit_content_tag_end(&mut self, node: &ContentTagEnd) {
+        <ContentTagEnd as VisitWith<Self>>::visit_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagExpression`.\n\nBy default, this method calls \
+             [`ContentTagExpression::visit_children_with`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn visit_content_tag_expression(&mut self, node: &ContentTagExpression) {
+        <ContentTagExpression as VisitWith<Self>>::visit_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagMember`.\n\nBy default, this method calls \
+             [`ContentTagMember::visit_children_with`]. If you want to recurse, you need to call \
+             it manually."]
+    #[inline]
+    fn visit_content_tag_member(&mut self, node: &ContentTagMember) {
+        <ContentTagMember as VisitWith<Self>>::visit_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagStart`.\n\nBy default, this method calls \
+             [`ContentTagStart::visit_children_with`]. If you want to recurse, you need to call it \
+             manually."]
+    #[inline]
+    fn visit_content_tag_start(&mut self, node: &ContentTagStart) {
+        <ContentTagStart as VisitWith<Self>>::visit_children_with(node, self)
+    }
     #[doc = "Visit a node of type `ContinueStmt`.\n\nBy default, this method calls \
              [`ContinueStmt::visit_children_with`]. If you want to recurse, you need to call it \
              manually."]
@@ -1023,6 +1058,13 @@ pub trait Visit {
     fn visit_opt_ts_entity_name(&mut self, node: &Option<TsEntityName>) {
         <Option<TsEntityName> as VisitWith<Self>>::visit_children_with(node, self)
     }
+    #[doc = "Visit a node of type `Option < TsImportCallOptions >`.\n\nBy default, this method \
+             calls [`Option < TsImportCallOptions >::visit_children_with`]. If you want to \
+             recurse, you need to call it manually."]
+    #[inline]
+    fn visit_opt_ts_import_call_options(&mut self, node: &Option<TsImportCallOptions>) {
+        <Option<TsImportCallOptions> as VisitWith<Self>>::visit_children_with(node, self)
+    }
     #[doc = "Visit a node of type `Option < TsNamespaceBody >`.\n\nBy default, this method calls \
              [`Option < TsNamespaceBody >::visit_children_with`]. If you want to recurse, you need \
              to call it manually."]
@@ -1081,6 +1123,13 @@ pub trait Visit {
     #[inline]
     fn visit_opt_vec_pats(&mut self, node: &[Option<Pat>]) {
         <[Option<Pat>] as VisitWith<Self>>::visit_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `Option < swc_atoms :: Wtf8Atom >`.\n\nBy default, this method \
+             calls [`Option < swc_atoms :: Wtf8Atom >::visit_children_with`]. If you want to \
+             recurse, you need to call it manually."]
+    #[inline]
+    fn visit_opt_wtf_8_atom(&mut self, node: &Option<swc_atoms::Wtf8Atom>) {
+        <Option<swc_atoms::Wtf8Atom> as VisitWith<Self>>::visit_children_with(node, self)
     }
     #[doc = "Visit a node of type `Param`.\n\nBy default, this method calls \
              [`Param::visit_children_with`]. If you want to recurse, you need to call it manually."]
@@ -1517,6 +1566,13 @@ pub trait Visit {
     #[inline]
     fn visit_ts_getter_signature(&mut self, node: &TsGetterSignature) {
         <TsGetterSignature as VisitWith<Self>>::visit_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `TsImportCallOptions`.\n\nBy default, this method calls \
+             [`TsImportCallOptions::visit_children_with`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn visit_ts_import_call_options(&mut self, node: &TsImportCallOptions) {
+        <TsImportCallOptions as VisitWith<Self>>::visit_children_with(node, self)
     }
     #[doc = "Visit a node of type `TsImportEqualsDecl`.\n\nBy default, this method calls \
              [`TsImportEqualsDecl::visit_children_with`]. If you want to recurse, you need to call \
@@ -2006,6 +2062,13 @@ pub trait Visit {
     fn visit_with_stmt(&mut self, node: &WithStmt) {
         <WithStmt as VisitWith<Self>>::visit_children_with(node, self)
     }
+    #[doc = "Visit a node of type `swc_atoms :: Wtf8Atom`.\n\nBy default, this method calls \
+             [`swc_atoms :: Wtf8Atom::visit_children_with`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn visit_wtf_8_atom(&mut self, node: &swc_atoms::Wtf8Atom) {
+        <swc_atoms::Wtf8Atom as VisitWith<Self>>::visit_children_with(node, self)
+    }
     #[doc = "Visit a node of type `YieldExpr`.\n\nBy default, this method calls \
              [`YieldExpr::visit_children_with`]. If you want to recurse, you need to call it \
              manually."]
@@ -2199,6 +2262,31 @@ where
     }
 
     #[inline]
+    fn visit_content_tag_content(&mut self, node: &ContentTagContent) {
+        <V as Visit>::visit_content_tag_content(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_end(&mut self, node: &ContentTagEnd) {
+        <V as Visit>::visit_content_tag_end(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_expression(&mut self, node: &ContentTagExpression) {
+        <V as Visit>::visit_content_tag_expression(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_member(&mut self, node: &ContentTagMember) {
+        <V as Visit>::visit_content_tag_member(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_start(&mut self, node: &ContentTagStart) {
+        <V as Visit>::visit_content_tag_start(&mut **self, node)
+    }
+
+    #[inline]
     fn visit_continue_stmt(&mut self, node: &ContinueStmt) {
         <V as Visit>::visit_continue_stmt(&mut **self, node)
     }
@@ -2759,6 +2847,11 @@ where
     }
 
     #[inline]
+    fn visit_opt_ts_import_call_options(&mut self, node: &Option<TsImportCallOptions>) {
+        <V as Visit>::visit_opt_ts_import_call_options(&mut **self, node)
+    }
+
+    #[inline]
     fn visit_opt_ts_namespace_body(&mut self, node: &Option<TsNamespaceBody>) {
         <V as Visit>::visit_opt_ts_namespace_body(&mut **self, node)
     }
@@ -2799,6 +2892,11 @@ where
     #[inline]
     fn visit_opt_vec_pats(&mut self, node: &[Option<Pat>]) {
         <V as Visit>::visit_opt_vec_pats(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_opt_wtf_8_atom(&mut self, node: &Option<swc_atoms::Wtf8Atom>) {
+        <V as Visit>::visit_opt_wtf_8_atom(&mut **self, node)
     }
 
     #[inline]
@@ -3119,6 +3217,11 @@ where
     #[inline]
     fn visit_ts_getter_signature(&mut self, node: &TsGetterSignature) {
         <V as Visit>::visit_ts_getter_signature(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_ts_import_call_options(&mut self, node: &TsImportCallOptions) {
+        <V as Visit>::visit_ts_import_call_options(&mut **self, node)
     }
 
     #[inline]
@@ -3469,6 +3572,11 @@ where
     #[inline]
     fn visit_with_stmt(&mut self, node: &WithStmt) {
         <V as Visit>::visit_with_stmt(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_wtf_8_atom(&mut self, node: &swc_atoms::Wtf8Atom) {
+        <V as Visit>::visit_wtf_8_atom(&mut **self, node)
     }
 
     #[inline]
@@ -3661,6 +3769,31 @@ where
     }
 
     #[inline]
+    fn visit_content_tag_content(&mut self, node: &ContentTagContent) {
+        <V as Visit>::visit_content_tag_content(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_end(&mut self, node: &ContentTagEnd) {
+        <V as Visit>::visit_content_tag_end(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_expression(&mut self, node: &ContentTagExpression) {
+        <V as Visit>::visit_content_tag_expression(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_member(&mut self, node: &ContentTagMember) {
+        <V as Visit>::visit_content_tag_member(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_start(&mut self, node: &ContentTagStart) {
+        <V as Visit>::visit_content_tag_start(&mut **self, node)
+    }
+
+    #[inline]
     fn visit_continue_stmt(&mut self, node: &ContinueStmt) {
         <V as Visit>::visit_continue_stmt(&mut **self, node)
     }
@@ -4221,6 +4354,11 @@ where
     }
 
     #[inline]
+    fn visit_opt_ts_import_call_options(&mut self, node: &Option<TsImportCallOptions>) {
+        <V as Visit>::visit_opt_ts_import_call_options(&mut **self, node)
+    }
+
+    #[inline]
     fn visit_opt_ts_namespace_body(&mut self, node: &Option<TsNamespaceBody>) {
         <V as Visit>::visit_opt_ts_namespace_body(&mut **self, node)
     }
@@ -4261,6 +4399,11 @@ where
     #[inline]
     fn visit_opt_vec_pats(&mut self, node: &[Option<Pat>]) {
         <V as Visit>::visit_opt_vec_pats(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_opt_wtf_8_atom(&mut self, node: &Option<swc_atoms::Wtf8Atom>) {
+        <V as Visit>::visit_opt_wtf_8_atom(&mut **self, node)
     }
 
     #[inline]
@@ -4581,6 +4724,11 @@ where
     #[inline]
     fn visit_ts_getter_signature(&mut self, node: &TsGetterSignature) {
         <V as Visit>::visit_ts_getter_signature(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_ts_import_call_options(&mut self, node: &TsImportCallOptions) {
+        <V as Visit>::visit_ts_import_call_options(&mut **self, node)
     }
 
     #[inline]
@@ -4931,6 +5079,11 @@ where
     #[inline]
     fn visit_with_stmt(&mut self, node: &WithStmt) {
         <V as Visit>::visit_with_stmt(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_wtf_8_atom(&mut self, node: &swc_atoms::Wtf8Atom) {
+        <V as Visit>::visit_wtf_8_atom(&mut **self, node)
     }
 
     #[inline]
@@ -5228,6 +5381,46 @@ where
         match self {
             swc_visit::Either::Left(visitor) => Visit::visit_constructor(visitor, node),
             swc_visit::Either::Right(visitor) => Visit::visit_constructor(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_content(&mut self, node: &ContentTagContent) {
+        match self {
+            swc_visit::Either::Left(visitor) => Visit::visit_content_tag_content(visitor, node),
+            swc_visit::Either::Right(visitor) => Visit::visit_content_tag_content(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_end(&mut self, node: &ContentTagEnd) {
+        match self {
+            swc_visit::Either::Left(visitor) => Visit::visit_content_tag_end(visitor, node),
+            swc_visit::Either::Right(visitor) => Visit::visit_content_tag_end(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_expression(&mut self, node: &ContentTagExpression) {
+        match self {
+            swc_visit::Either::Left(visitor) => Visit::visit_content_tag_expression(visitor, node),
+            swc_visit::Either::Right(visitor) => Visit::visit_content_tag_expression(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_member(&mut self, node: &ContentTagMember) {
+        match self {
+            swc_visit::Either::Left(visitor) => Visit::visit_content_tag_member(visitor, node),
+            swc_visit::Either::Right(visitor) => Visit::visit_content_tag_member(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_start(&mut self, node: &ContentTagStart) {
+        match self {
+            swc_visit::Either::Left(visitor) => Visit::visit_content_tag_start(visitor, node),
+            swc_visit::Either::Right(visitor) => Visit::visit_content_tag_start(visitor, node),
         }
     }
 
@@ -6146,6 +6339,18 @@ where
     }
 
     #[inline]
+    fn visit_opt_ts_import_call_options(&mut self, node: &Option<TsImportCallOptions>) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                Visit::visit_opt_ts_import_call_options(visitor, node)
+            }
+            swc_visit::Either::Right(visitor) => {
+                Visit::visit_opt_ts_import_call_options(visitor, node)
+            }
+        }
+    }
+
+    #[inline]
     fn visit_opt_ts_namespace_body(&mut self, node: &Option<TsNamespaceBody>) {
         match self {
             swc_visit::Either::Left(visitor) => Visit::visit_opt_ts_namespace_body(visitor, node),
@@ -6215,6 +6420,14 @@ where
         match self {
             swc_visit::Either::Left(visitor) => Visit::visit_opt_vec_pats(visitor, node),
             swc_visit::Either::Right(visitor) => Visit::visit_opt_vec_pats(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_opt_wtf_8_atom(&mut self, node: &Option<swc_atoms::Wtf8Atom>) {
+        match self {
+            swc_visit::Either::Left(visitor) => Visit::visit_opt_wtf_8_atom(visitor, node),
+            swc_visit::Either::Right(visitor) => Visit::visit_opt_wtf_8_atom(visitor, node),
         }
     }
 
@@ -6739,6 +6952,14 @@ where
         match self {
             swc_visit::Either::Left(visitor) => Visit::visit_ts_getter_signature(visitor, node),
             swc_visit::Either::Right(visitor) => Visit::visit_ts_getter_signature(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_ts_import_call_options(&mut self, node: &TsImportCallOptions) {
+        match self {
+            swc_visit::Either::Left(visitor) => Visit::visit_ts_import_call_options(visitor, node),
+            swc_visit::Either::Right(visitor) => Visit::visit_ts_import_call_options(visitor, node),
         }
     }
 
@@ -7315,6 +7536,14 @@ where
     }
 
     #[inline]
+    fn visit_wtf_8_atom(&mut self, node: &swc_atoms::Wtf8Atom) {
+        match self {
+            swc_visit::Either::Left(visitor) => Visit::visit_wtf_8_atom(visitor, node),
+            swc_visit::Either::Right(visitor) => Visit::visit_wtf_8_atom(visitor, node),
+        }
+    }
+
+    #[inline]
     fn visit_yield_expr(&mut self, node: &YieldExpr) {
         match self {
             swc_visit::Either::Left(visitor) => Visit::visit_yield_expr(visitor, node),
@@ -7610,6 +7839,46 @@ where
     fn visit_constructor(&mut self, node: &Constructor) {
         if self.enabled {
             <V as Visit>::visit_constructor(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_content(&mut self, node: &ContentTagContent) {
+        if self.enabled {
+            <V as Visit>::visit_content_tag_content(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_end(&mut self, node: &ContentTagEnd) {
+        if self.enabled {
+            <V as Visit>::visit_content_tag_end(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_expression(&mut self, node: &ContentTagExpression) {
+        if self.enabled {
+            <V as Visit>::visit_content_tag_expression(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_member(&mut self, node: &ContentTagMember) {
+        if self.enabled {
+            <V as Visit>::visit_content_tag_member(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_start(&mut self, node: &ContentTagStart) {
+        if self.enabled {
+            <V as Visit>::visit_content_tag_start(&mut self.visitor, node)
         } else {
         }
     }
@@ -8511,6 +8780,14 @@ where
     }
 
     #[inline]
+    fn visit_opt_ts_import_call_options(&mut self, node: &Option<TsImportCallOptions>) {
+        if self.enabled {
+            <V as Visit>::visit_opt_ts_import_call_options(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
     fn visit_opt_ts_namespace_body(&mut self, node: &Option<TsNamespaceBody>) {
         if self.enabled {
             <V as Visit>::visit_opt_ts_namespace_body(&mut self.visitor, node)
@@ -8573,6 +8850,14 @@ where
     fn visit_opt_vec_pats(&mut self, node: &[Option<Pat>]) {
         if self.enabled {
             <V as Visit>::visit_opt_vec_pats(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_opt_wtf_8_atom(&mut self, node: &Option<swc_atoms::Wtf8Atom>) {
+        if self.enabled {
+            <V as Visit>::visit_opt_wtf_8_atom(&mut self.visitor, node)
         } else {
         }
     }
@@ -9085,6 +9370,14 @@ where
     fn visit_ts_getter_signature(&mut self, node: &TsGetterSignature) {
         if self.enabled {
             <V as Visit>::visit_ts_getter_signature(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_ts_import_call_options(&mut self, node: &TsImportCallOptions) {
+        if self.enabled {
+            <V as Visit>::visit_ts_import_call_options(&mut self.visitor, node)
         } else {
         }
     }
@@ -9650,6 +9943,14 @@ where
     }
 
     #[inline]
+    fn visit_wtf_8_atom(&mut self, node: &swc_atoms::Wtf8Atom) {
+        if self.enabled {
+            <V as Visit>::visit_wtf_8_atom(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
     fn visit_yield_expr(&mut self, node: &YieldExpr) {
         if self.enabled {
             <V as Visit>::visit_yield_expr(&mut self.visitor, node)
@@ -9675,6 +9976,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for Accessibility {
             Accessibility::Public => {}
             Accessibility::Protected => {}
             Accessibility::Private => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -9818,6 +10121,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for AssignOp {
             AssignOp::AndAssign => {}
             AssignOp::OrAssign => {}
             AssignOp::NullishAssign => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -9901,6 +10206,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for AssignTarget {
             AssignTarget::Pat { 0: _field_0 } => {
                 <AssignTargetPat as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -9921,6 +10228,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for AssignTargetPat {
             AssignTargetPat::Invalid { 0: _field_0 } => {
                 <Invalid as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -10070,6 +10379,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for BinaryOp {
             BinaryOp::InstanceOf => {}
             BinaryOp::Exp => {}
             BinaryOp::NullishCoalescing => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -10128,6 +10439,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for BlockStmtOrExpr {
             BlockStmtOrExpr::Expr { 0: _field_0 } => {
                 <Box<Expr> as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -10219,6 +10532,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for Callee {
             Callee::Expr { 0: _field_0 } => {
                 <Box<Expr> as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -10371,6 +10686,11 @@ impl<V: ?Sized + Visit> VisitWith<V> for ClassMember {
             ClassMember::AutoAccessor { 0: _field_0 } => {
                 <AutoAccessor as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            ClassMember::ContentTagMember { 0: _field_0 } => {
+                <ContentTagMember as VisitWith<V>>::visit_with(_field_0, visitor);
+            }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -10545,6 +10865,117 @@ impl<V: ?Sized + Visit> VisitWith<V> for Constructor {
         }
     }
 }
+impl<V: ?Sized + Visit> VisitWith<V> for ContentTagContent {
+    #[doc = "Calls [Visit`::visit_content_tag_content`] with `self`."]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit>::visit_content_tag_content(visitor, self)
+    }
+
+    fn visit_children_with(&self, visitor: &mut V) {
+        match self {
+            ContentTagContent { span, value } => {
+                {
+                    <swc_common::Span as VisitWith<V>>::visit_with(span, visitor)
+                };
+                {
+                    <swc_atoms::Atom as VisitWith<V>>::visit_with(value, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + Visit> VisitWith<V> for ContentTagEnd {
+    #[doc = "Calls [Visit`::visit_content_tag_end`] with `self`."]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit>::visit_content_tag_end(visitor, self)
+    }
+
+    fn visit_children_with(&self, visitor: &mut V) {
+        match self {
+            ContentTagEnd { span } => {
+                {
+                    <swc_common::Span as VisitWith<V>>::visit_with(span, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + Visit> VisitWith<V> for ContentTagExpression {
+    #[doc = "Calls [Visit`::visit_content_tag_expression`] with `self`."]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit>::visit_content_tag_expression(visitor, self)
+    }
+
+    fn visit_children_with(&self, visitor: &mut V) {
+        match self {
+            ContentTagExpression {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                {
+                    <swc_common::Span as VisitWith<V>>::visit_with(span, visitor)
+                };
+                {
+                    <Box<ContentTagStart> as VisitWith<V>>::visit_with(opening, visitor)
+                };
+                {
+                    <Box<ContentTagContent> as VisitWith<V>>::visit_with(contents, visitor)
+                };
+                {
+                    <Box<ContentTagEnd> as VisitWith<V>>::visit_with(closing, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + Visit> VisitWith<V> for ContentTagMember {
+    #[doc = "Calls [Visit`::visit_content_tag_member`] with `self`."]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit>::visit_content_tag_member(visitor, self)
+    }
+
+    fn visit_children_with(&self, visitor: &mut V) {
+        match self {
+            ContentTagMember {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                {
+                    <swc_common::Span as VisitWith<V>>::visit_with(span, visitor)
+                };
+                {
+                    <Box<ContentTagStart> as VisitWith<V>>::visit_with(opening, visitor)
+                };
+                {
+                    <Box<ContentTagContent> as VisitWith<V>>::visit_with(contents, visitor)
+                };
+                {
+                    <Box<ContentTagEnd> as VisitWith<V>>::visit_with(closing, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + Visit> VisitWith<V> for ContentTagStart {
+    #[doc = "Calls [Visit`::visit_content_tag_start`] with `self`."]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit>::visit_content_tag_start(visitor, self)
+    }
+
+    fn visit_children_with(&self, visitor: &mut V) {
+        match self {
+            ContentTagStart { span } => {
+                {
+                    <swc_common::Span as VisitWith<V>>::visit_with(span, visitor)
+                };
+            }
+        }
+    }
+}
 impl<V: ?Sized + Visit> VisitWith<V> for ContinueStmt {
     #[doc = "Calls [Visit`::visit_continue_stmt`] with `self`."]
     fn visit_with(&self, visitor: &mut V) {
@@ -10612,6 +11043,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for Decl {
             Decl::TsModule { 0: _field_0 } => {
                 <Box<TsModuleDecl> as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -10651,6 +11084,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for DefaultDecl {
             DefaultDecl::TsInterfaceDecl { 0: _field_0 } => {
                 <Box<TsInterfaceDecl> as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -10855,6 +11290,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for ExportSpecifier {
             ExportSpecifier::Named { 0: _field_0 } => {
                 <ExportNamedSpecifier as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -10953,6 +11390,9 @@ impl<V: ?Sized + Visit> VisitWith<V> for Expr {
             Expr::JSXFragment { 0: _field_0 } => {
                 <JSXFragment as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            Expr::ContentTagExpression { 0: _field_0 } => {
+                <ContentTagExpression as VisitWith<V>>::visit_with(_field_0, visitor);
+            }
             Expr::TsTypeAssertion { 0: _field_0 } => {
                 <TsTypeAssertion as VisitWith<V>>::visit_with(_field_0, visitor);
             }
@@ -10980,6 +11420,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for Expr {
             Expr::Invalid { 0: _field_0 } => {
                 <Invalid as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -11080,6 +11522,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for ForHead {
             ForHead::Pat { 0: _field_0 } => {
                 <Box<Pat> as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -11439,6 +11883,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for ImportPhase {
             ImportPhase::Evaluation => {}
             ImportPhase::Source => {}
             ImportPhase::Defer => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -11459,6 +11905,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for ImportSpecifier {
             ImportSpecifier::Namespace { 0: _field_0 } => {
                 <ImportStarAsSpecifier as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -11571,6 +12019,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for JSXAttrName {
             JSXAttrName::JSXNamespacedName { 0: _field_0 } => {
                 <JSXNamespacedName as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -11588,6 +12038,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for JSXAttrOrSpread {
             JSXAttrOrSpread::SpreadElement { 0: _field_0 } => {
                 <SpreadElement as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -11599,8 +12051,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for JSXAttrValue {
 
     fn visit_children_with(&self, visitor: &mut V) {
         match self {
-            JSXAttrValue::Lit { 0: _field_0 } => {
-                <Lit as VisitWith<V>>::visit_with(_field_0, visitor);
+            JSXAttrValue::Str { 0: _field_0 } => {
+                <Str as VisitWith<V>>::visit_with(_field_0, visitor);
             }
             JSXAttrValue::JSXExprContainer { 0: _field_0 } => {
                 <JSXExprContainer as VisitWith<V>>::visit_with(_field_0, visitor);
@@ -11611,6 +12063,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for JSXAttrValue {
             JSXAttrValue::JSXFragment { 0: _field_0 } => {
                 <JSXFragment as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -11702,6 +12156,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for JSXElementChild {
             JSXElementChild::JSXFragment { 0: _field_0 } => {
                 <JSXFragment as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -11722,6 +12178,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for JSXElementName {
             JSXElementName::JSXNamespacedName { 0: _field_0 } => {
                 <JSXNamespacedName as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -11755,6 +12213,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for JSXExpr {
             JSXExpr::Expr { 0: _field_0 } => {
                 <Box<Expr> as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -11865,6 +12325,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for JSXObject {
             JSXObject::Ident { 0: _field_0 } => {
                 <Ident as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -11972,6 +12434,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for Key {
             Key::Public { 0: _field_0 } => {
                 <PropName as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -12064,6 +12528,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for Lit {
             Lit::JSXText { 0: _field_0 } => {
                 <JSXText as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -12106,6 +12572,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for MemberProp {
             MemberProp::Computed { 0: _field_0 } => {
                 <ComputedPropName as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -12138,6 +12606,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for MetaPropKind {
         match self {
             MetaPropKind::NewTarget => {}
             MetaPropKind::ImportMeta => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -12152,6 +12622,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for MethodKind {
             MethodKind::Method => {}
             MethodKind::Getter => {}
             MethodKind::Setter => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -12235,6 +12707,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for ModuleDecl {
             ModuleDecl::TsNamespaceExport { 0: _field_0 } => {
                 <TsNamespaceExportDecl as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -12252,6 +12726,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for ModuleExportName {
             ModuleExportName::Str { 0: _field_0 } => {
                 <Str as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -12269,6 +12745,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for ModuleItem {
             ModuleItem::Stmt { 0: _field_0 } => {
                 <Stmt as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -12437,6 +12915,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for ObjectPatProp {
             ObjectPatProp::Rest { 0: _field_0 } => {
                 <RestPat as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -12490,6 +12970,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for OptChainBase {
             OptChainBase::Call { 0: _field_0 } => {
                 <OptCall as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -12556,6 +13038,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for ParamOrTsParamProp {
             ParamOrTsParamProp::Param { 0: _field_0 } => {
                 <Param as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -12607,6 +13091,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for Pat {
             Pat::Expr { 0: _field_0 } => {
                 <Box<Expr> as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -12728,6 +13214,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for Program {
             Program::Script { 0: _field_0 } => {
                 <Script as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -12757,6 +13245,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for Prop {
             Prop::Method { 0: _field_0 } => {
                 <MethodProp as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -12783,6 +13273,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for PropName {
             PropName::BigInt { 0: _field_0 } => {
                 <BigInt as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -12800,6 +13292,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for PropOrSpread {
             PropOrSpread::Prop { 0: _field_0 } => {
                 <Box<Prop> as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -12994,6 +13488,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for SimpleAssignTarget {
             SimpleAssignTarget::Invalid { 0: _field_0 } => {
                 <Invalid as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -13100,6 +13596,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for Stmt {
             Stmt::Expr { 0: _field_0 } => {
                 <ExprStmt as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -13116,7 +13614,7 @@ impl<V: ?Sized + Visit> VisitWith<V> for Str {
                     <swc_common::Span as VisitWith<V>>::visit_with(span, visitor)
                 };
                 {
-                    <swc_atoms::Atom as VisitWith<V>>::visit_with(value, visitor)
+                    <swc_atoms::Wtf8Atom as VisitWith<V>>::visit_with(value, visitor)
                 };
                 {
                     <Option<swc_atoms::Atom> as VisitWith<V>>::visit_with(raw, visitor)
@@ -13155,6 +13653,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for SuperProp {
             SuperProp::Computed { 0: _field_0 } => {
                 <ComputedPropName as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -13344,7 +13844,7 @@ impl<V: ?Sized + Visit> VisitWith<V> for TplElement {
                     <swc_common::Span as VisitWith<V>>::visit_with(span, visitor)
                 };
                 {
-                    <Option<swc_atoms::Atom> as VisitWith<V>>::visit_with(cooked, visitor)
+                    <Option<swc_atoms::Wtf8Atom> as VisitWith<V>>::visit_with(cooked, visitor)
                 };
                 {
                     <swc_atoms::Atom as VisitWith<V>>::visit_with(raw, visitor)
@@ -13364,6 +13864,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TruePlusMinus {
             TruePlusMinus::True => {}
             TruePlusMinus::Plus => {}
             TruePlusMinus::Minus => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -13600,6 +14102,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsEntityName {
             TsEntityName::Ident { 0: _field_0 } => {
                 <Ident as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -13667,6 +14171,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsEnumMemberId {
             TsEnumMemberId::Str { 0: _field_0 } => {
                 <Str as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -13750,6 +14256,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsFnOrConstructorType {
             TsFnOrConstructorType::TsConstructorType { 0: _field_0 } => {
                 <TsConstructorType as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -13773,6 +14281,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsFnParam {
             TsFnParam::Object { 0: _field_0 } => {
                 <ObjectPat as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -13833,6 +14343,25 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsGetterSignature {
         }
     }
 }
+impl<V: ?Sized + Visit> VisitWith<V> for TsImportCallOptions {
+    #[doc = "Calls [Visit`::visit_ts_import_call_options`] with `self`."]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit>::visit_ts_import_call_options(visitor, self)
+    }
+
+    fn visit_children_with(&self, visitor: &mut V) {
+        match self {
+            TsImportCallOptions { span, with } => {
+                {
+                    <swc_common::Span as VisitWith<V>>::visit_with(span, visitor)
+                };
+                {
+                    <Box<ObjectLit> as VisitWith<V>>::visit_with(with, visitor)
+                };
+            }
+        }
+    }
+}
 impl<V: ?Sized + Visit> VisitWith<V> for TsImportEqualsDecl {
     #[doc = "Calls [Visit`::visit_ts_import_equals_decl`] with `self`."]
     fn visit_with(&self, visitor: &mut V) {
@@ -13874,6 +14403,7 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsImportType {
                 arg,
                 qualifier,
                 type_args,
+                attributes,
             } => {
                 {
                     <swc_common::Span as VisitWith<V>>::visit_with(span, visitor)
@@ -13888,6 +14418,9 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsImportType {
                     <Option<Box<TsTypeParamInstantiation>> as VisitWith<V>>::visit_with(
                         type_args, visitor,
                     )
+                };
+                {
+                    <Option<TsImportCallOptions> as VisitWith<V>>::visit_with(attributes, visitor)
                 };
             }
         }
@@ -14106,6 +14639,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsKeywordTypeKind {
             TsKeywordTypeKind::TsNullKeyword => {}
             TsKeywordTypeKind::TsNeverKeyword => {}
             TsKeywordTypeKind::TsIntrinsicKeyword => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -14132,6 +14667,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsLit {
             TsLit::Tpl { 0: _field_0 } => {
                 <TsTplLitType as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -14259,6 +14796,7 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsModuleDecl {
                 span,
                 declare,
                 global,
+                namespace,
                 id,
                 body,
             } => {
@@ -14289,6 +14827,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsModuleName {
             TsModuleName::Str { 0: _field_0 } => {
                 <Str as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -14306,6 +14846,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsModuleRef {
             TsModuleRef::TsExternalModuleRef { 0: _field_0 } => {
                 <TsExternalModuleRef as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -14323,6 +14865,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsNamespaceBody {
             TsNamespaceBody::TsNamespaceDecl { 0: _field_0 } => {
                 <TsNamespaceDecl as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -14457,6 +15001,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsParamPropParam {
             TsParamPropParam::Assign { 0: _field_0 } => {
                 <AssignPat as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -14632,6 +15178,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsThisTypeOrIdent {
             TsThisTypeOrIdent::Ident { 0: _field_0 } => {
                 <Ident as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -14770,6 +15318,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsType {
             TsType::TsImportType { 0: _field_0 } => {
                 <TsImportType as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -14878,6 +15428,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsTypeElement {
             TsTypeElement::TsIndexSignature { 0: _field_0 } => {
                 <TsIndexSignature as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -14933,6 +15485,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsTypeOperatorOp {
             TsTypeOperatorOp::KeyOf => {}
             TsTypeOperatorOp::Unique => {}
             TsTypeOperatorOp::ReadOnly => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -15076,6 +15630,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsTypeQueryExpr {
             TsTypeQueryExpr::Import { 0: _field_0 } => {
                 <TsImportType as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -15122,6 +15678,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for TsUnionOrIntersectionType {
             TsUnionOrIntersectionType::TsIntersectionType { 0: _field_0 } => {
                 <TsIntersectionType as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -15181,6 +15739,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for UnaryOp {
             UnaryOp::TypeOf => {}
             UnaryOp::Void => {}
             UnaryOp::Delete => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -15221,6 +15781,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for UpdateOp {
         match self {
             UpdateOp::PlusPlus => {}
             UpdateOp::MinusMinus => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -15289,6 +15851,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for VarDeclKind {
             VarDeclKind::Var => {}
             VarDeclKind::Let => {}
             VarDeclKind::Const => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -15306,6 +15870,8 @@ impl<V: ?Sized + Visit> VisitWith<V> for VarDeclOrExpr {
             VarDeclOrExpr::Expr { 0: _field_0 } => {
                 <Box<Expr> as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -15840,6 +16406,21 @@ impl<V: ?Sized + Visit> VisitWith<V> for Option<TsEntityName> {
         }
     }
 }
+impl<V: ?Sized + Visit> VisitWith<V> for Option<TsImportCallOptions> {
+    #[doc = "Calls [Visit`::visit_opt_ts_import_call_options`] with `self`. (Extra impl)"]
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit>::visit_opt_ts_import_call_options(visitor, self)
+    }
+
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        match self {
+            Some(inner) => <TsImportCallOptions as VisitWith<V>>::visit_with(inner, visitor),
+            None => {}
+        }
+    }
+}
 impl<V: ?Sized + Visit> VisitWith<V> for Option<TsNamespaceBody> {
     #[doc = "Calls [Visit`::visit_opt_ts_namespace_body`] with `self`. (Extra impl)"]
     #[inline]
@@ -15956,6 +16537,21 @@ impl<V: ?Sized + Visit> VisitWith<V> for [Option<Pat>] {
     fn visit_children_with(&self, visitor: &mut V) {
         self.iter()
             .for_each(|item| <Option<Pat> as VisitWith<V>>::visit_with(item, visitor))
+    }
+}
+impl<V: ?Sized + Visit> VisitWith<V> for Option<swc_atoms::Wtf8Atom> {
+    #[doc = "Calls [Visit`::visit_opt_wtf_8_atom`] with `self`. (Extra impl)"]
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit>::visit_opt_wtf_8_atom(visitor, self)
+    }
+
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        match self {
+            Some(inner) => <swc_atoms::Wtf8Atom as VisitWith<V>>::visit_with(inner, visitor),
+            None => {}
+        }
     }
 }
 impl<V: ?Sized + Visit> VisitWith<V> for [ParamOrTsParamProp] {
@@ -16175,6 +16771,18 @@ impl<V: ?Sized + Visit> VisitWith<V> for [VarDeclarator] {
     fn visit_children_with(&self, visitor: &mut V) {
         self.iter()
             .for_each(|item| <VarDeclarator as VisitWith<V>>::visit_with(item, visitor))
+    }
+}
+impl<V: ?Sized + Visit> VisitWith<V> for swc_atoms::Wtf8Atom {
+    #[doc = "Calls [Visit`::visit_wtf_8_atom`] with `self`. (Extra impl)"]
+    #[inline]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit>::visit_wtf_8_atom(visitor, self)
+    }
+
+    #[inline]
+    fn visit_children_with(&self, visitor: &mut V) {
+        {}
     }
 }
 impl<V, T> VisitWith<V> for std::boxed::Box<T>
@@ -16626,6 +17234,71 @@ pub trait VisitAstPath {
         __ast_path: &mut AstNodePath<'r>,
     ) {
         <Constructor as VisitWithAstPath<Self>>::visit_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagContent`.\n\nBy default, this method calls \
+             [`ContentTagContent::visit_children_with_ast_path`]. If you want to recurse, you need \
+             to call it manually."]
+    #[inline]
+    fn visit_content_tag_content<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagContent,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <ContentTagContent as VisitWithAstPath<Self>>::visit_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagEnd`.\n\nBy default, this method calls \
+             [`ContentTagEnd::visit_children_with_ast_path`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn visit_content_tag_end<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagEnd,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <ContentTagEnd as VisitWithAstPath<Self>>::visit_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagExpression`.\n\nBy default, this method calls \
+             [`ContentTagExpression::visit_children_with_ast_path`]. If you want to recurse, you \
+             need to call it manually."]
+    #[inline]
+    fn visit_content_tag_expression<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagExpression,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <ContentTagExpression as VisitWithAstPath<Self>>::visit_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagMember`.\n\nBy default, this method calls \
+             [`ContentTagMember::visit_children_with_ast_path`]. If you want to recurse, you need \
+             to call it manually."]
+    #[inline]
+    fn visit_content_tag_member<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagMember,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <ContentTagMember as VisitWithAstPath<Self>>::visit_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagStart`.\n\nBy default, this method calls \
+             [`ContentTagStart::visit_children_with_ast_path`]. If you want to recurse, you need \
+             to call it manually."]
+    #[inline]
+    fn visit_content_tag_start<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagStart,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <ContentTagStart as VisitWithAstPath<Self>>::visit_children_with_ast_path(
             node, self, __ast_path,
         )
     }
@@ -17965,6 +18638,19 @@ pub trait VisitAstPath {
             node, self, __ast_path,
         )
     }
+    #[doc = "Visit a node of type `Option < TsImportCallOptions >`.\n\nBy default, this method \
+             calls [`Option < TsImportCallOptions >::visit_children_with_ast_path`]. If you want \
+             to recurse, you need to call it manually."]
+    #[inline]
+    fn visit_opt_ts_import_call_options<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast Option<TsImportCallOptions>,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <Option<TsImportCallOptions> as VisitWithAstPath<Self>>::visit_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
     #[doc = "Visit a node of type `Option < TsNamespaceBody >`.\n\nBy default, this method calls \
              [`Option < TsNamespaceBody >::visit_children_with_ast_path`]. If you want to recurse, \
              you need to call it manually."]
@@ -18065,6 +18751,19 @@ pub trait VisitAstPath {
         __ast_path: &mut AstNodePath<'r>,
     ) {
         <[Option<Pat>] as VisitWithAstPath<Self>>::visit_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `Option < swc_atoms :: Wtf8Atom >`.\n\nBy default, this method \
+             calls [`Option < swc_atoms :: Wtf8Atom >::visit_children_with_ast_path`]. If you want \
+             to recurse, you need to call it manually."]
+    #[inline]
+    fn visit_opt_wtf_8_atom<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast Option<swc_atoms::Wtf8Atom>,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <Option<swc_atoms::Wtf8Atom> as VisitWithAstPath<Self>>::visit_children_with_ast_path(
             node, self, __ast_path,
         )
     }
@@ -18791,6 +19490,19 @@ pub trait VisitAstPath {
         __ast_path: &mut AstNodePath<'r>,
     ) {
         <TsGetterSignature as VisitWithAstPath<Self>>::visit_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `TsImportCallOptions`.\n\nBy default, this method calls \
+             [`TsImportCallOptions::visit_children_with_ast_path`]. If you want to recurse, you \
+             need to call it manually."]
+    #[inline]
+    fn visit_ts_import_call_options<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast TsImportCallOptions,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <TsImportCallOptions as VisitWithAstPath<Self>>::visit_children_with_ast_path(
             node, self, __ast_path,
         )
     }
@@ -19668,6 +20380,19 @@ pub trait VisitAstPath {
     ) {
         <WithStmt as VisitWithAstPath<Self>>::visit_children_with_ast_path(node, self, __ast_path)
     }
+    #[doc = "Visit a node of type `swc_atoms :: Wtf8Atom`.\n\nBy default, this method calls \
+             [`swc_atoms :: Wtf8Atom::visit_children_with_ast_path`]. If you want to recurse, you \
+             need to call it manually."]
+    #[inline]
+    fn visit_wtf_8_atom<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast swc_atoms::Wtf8Atom,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <swc_atoms::Wtf8Atom as VisitWithAstPath<Self>>::visit_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
     #[doc = "Visit a node of type `YieldExpr`.\n\nBy default, this method calls \
              [`YieldExpr::visit_children_with_ast_path`]. If you want to recurse, you need to call \
              it manually."]
@@ -19999,6 +20724,51 @@ where
     }
 
     #[inline]
+    fn visit_content_tag_content<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagContent,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_content(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_end<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagEnd,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_end(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_expression<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagExpression,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_expression(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_member<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagMember,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_member(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_start<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagStart,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_start(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
     fn visit_continue_stmt<'ast: 'r, 'r>(
         &mut self,
         node: &'ast ContinueStmt,
@@ -20971,6 +21741,15 @@ where
     }
 
     #[inline]
+    fn visit_opt_ts_import_call_options<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast Option<TsImportCallOptions>,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_opt_ts_import_call_options(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
     fn visit_opt_ts_namespace_body<'ast: 'r, 'r>(
         &mut self,
         node: &'ast Option<TsNamespaceBody>,
@@ -21040,6 +21819,15 @@ where
         __ast_path: &mut AstNodePath<'r>,
     ) {
         <V as VisitAstPath>::visit_opt_vec_pats(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_opt_wtf_8_atom<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast Option<swc_atoms::Wtf8Atom>,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_opt_wtf_8_atom(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -21572,6 +22360,15 @@ where
         __ast_path: &mut AstNodePath<'r>,
     ) {
         <V as VisitAstPath>::visit_ts_getter_signature(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_ts_import_call_options<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast TsImportCallOptions,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_ts_import_call_options(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -22198,6 +22995,15 @@ where
         __ast_path: &mut AstNodePath<'r>,
     ) {
         <V as VisitAstPath>::visit_with_stmt(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_wtf_8_atom<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast swc_atoms::Wtf8Atom,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_wtf_8_atom(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -22528,6 +23334,51 @@ where
     }
 
     #[inline]
+    fn visit_content_tag_content<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagContent,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_content(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_end<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagEnd,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_end(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_expression<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagExpression,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_expression(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_member<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagMember,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_member(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_start<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagStart,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_start(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
     fn visit_continue_stmt<'ast: 'r, 'r>(
         &mut self,
         node: &'ast ContinueStmt,
@@ -23500,6 +24351,15 @@ where
     }
 
     #[inline]
+    fn visit_opt_ts_import_call_options<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast Option<TsImportCallOptions>,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_opt_ts_import_call_options(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
     fn visit_opt_ts_namespace_body<'ast: 'r, 'r>(
         &mut self,
         node: &'ast Option<TsNamespaceBody>,
@@ -23569,6 +24429,15 @@ where
         __ast_path: &mut AstNodePath<'r>,
     ) {
         <V as VisitAstPath>::visit_opt_vec_pats(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_opt_wtf_8_atom<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast Option<swc_atoms::Wtf8Atom>,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_opt_wtf_8_atom(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -24101,6 +24970,15 @@ where
         __ast_path: &mut AstNodePath<'r>,
     ) {
         <V as VisitAstPath>::visit_ts_getter_signature(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_ts_import_call_options<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast TsImportCallOptions,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_ts_import_call_options(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -24727,6 +25605,15 @@ where
         __ast_path: &mut AstNodePath<'r>,
     ) {
         <V as VisitAstPath>::visit_with_stmt(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_wtf_8_atom<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast swc_atoms::Wtf8Atom,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_wtf_8_atom(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -25301,6 +26188,86 @@ where
             }
             swc_visit::Either::Right(visitor) => {
                 VisitAstPath::visit_constructor(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_content<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagContent,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitAstPath::visit_content_tag_content(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitAstPath::visit_content_tag_content(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_end<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagEnd,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitAstPath::visit_content_tag_end(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitAstPath::visit_content_tag_end(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_expression<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagExpression,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitAstPath::visit_content_tag_expression(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitAstPath::visit_content_tag_expression(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_member<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagMember,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitAstPath::visit_content_tag_member(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitAstPath::visit_content_tag_member(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_start<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagStart,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitAstPath::visit_content_tag_start(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitAstPath::visit_content_tag_start(visitor, node, __ast_path)
             }
         }
     }
@@ -27048,6 +28015,22 @@ where
     }
 
     #[inline]
+    fn visit_opt_ts_import_call_options<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast Option<TsImportCallOptions>,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitAstPath::visit_opt_ts_import_call_options(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitAstPath::visit_opt_ts_import_call_options(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
     fn visit_opt_ts_namespace_body<'ast: 'r, 'r>(
         &mut self,
         node: &'ast Option<TsNamespaceBody>,
@@ -27171,6 +28154,22 @@ where
             }
             swc_visit::Either::Right(visitor) => {
                 VisitAstPath::visit_opt_vec_pats(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_opt_wtf_8_atom<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast Option<swc_atoms::Wtf8Atom>,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitAstPath::visit_opt_wtf_8_atom(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitAstPath::visit_opt_wtf_8_atom(visitor, node, __ast_path)
             }
         }
     }
@@ -28131,6 +29130,22 @@ where
             }
             swc_visit::Either::Right(visitor) => {
                 VisitAstPath::visit_ts_getter_signature(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_ts_import_call_options<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast TsImportCallOptions,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitAstPath::visit_ts_import_call_options(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitAstPath::visit_ts_import_call_options(visitor, node, __ast_path)
             }
         }
     }
@@ -29252,6 +30267,22 @@ where
     }
 
     #[inline]
+    fn visit_wtf_8_atom<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast swc_atoms::Wtf8Atom,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitAstPath::visit_wtf_8_atom(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitAstPath::visit_wtf_8_atom(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
     fn visit_yield_expr<'ast: 'r, 'r>(
         &mut self,
         node: &'ast YieldExpr,
@@ -29689,6 +30720,66 @@ where
     ) {
         if self.enabled {
             <V as VisitAstPath>::visit_constructor(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_content<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagContent,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        if self.enabled {
+            <V as VisitAstPath>::visit_content_tag_content(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_end<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagEnd,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        if self.enabled {
+            <V as VisitAstPath>::visit_content_tag_end(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_expression<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagExpression,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        if self.enabled {
+            <V as VisitAstPath>::visit_content_tag_expression(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_member<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagMember,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        if self.enabled {
+            <V as VisitAstPath>::visit_content_tag_member(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_start<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagStart,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        if self.enabled {
+            <V as VisitAstPath>::visit_content_tag_start(&mut self.visitor, node, __ast_path)
         } else {
         }
     }
@@ -31006,6 +32097,22 @@ where
     }
 
     #[inline]
+    fn visit_opt_ts_import_call_options<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast Option<TsImportCallOptions>,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        if self.enabled {
+            <V as VisitAstPath>::visit_opt_ts_import_call_options(
+                &mut self.visitor,
+                node,
+                __ast_path,
+            )
+        } else {
+        }
+    }
+
+    #[inline]
     fn visit_opt_ts_namespace_body<'ast: 'r, 'r>(
         &mut self,
         node: &'ast Option<TsNamespaceBody>,
@@ -31101,6 +32208,18 @@ where
     ) {
         if self.enabled {
             <V as VisitAstPath>::visit_opt_vec_pats(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_opt_wtf_8_atom<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast Option<swc_atoms::Wtf8Atom>,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        if self.enabled {
+            <V as VisitAstPath>::visit_opt_wtf_8_atom(&mut self.visitor, node, __ast_path)
         } else {
         }
     }
@@ -31833,6 +32952,18 @@ where
     ) {
         if self.enabled {
             <V as VisitAstPath>::visit_ts_getter_signature(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_ts_import_call_options<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast TsImportCallOptions,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        if self.enabled {
+            <V as VisitAstPath>::visit_ts_import_call_options(&mut self.visitor, node, __ast_path)
         } else {
         }
     }
@@ -32682,6 +33813,18 @@ where
     }
 
     #[inline]
+    fn visit_wtf_8_atom<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast swc_atoms::Wtf8Atom,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        if self.enabled {
+            <V as VisitAstPath>::visit_wtf_8_atom(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
     fn visit_yield_expr<'ast: 'r, 'r>(
         &mut self,
         node: &'ast YieldExpr,
@@ -32731,6 +33874,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Accessibility {
             Accessibility::Public => {}
             Accessibility::Protected => {}
             Accessibility::Private => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -33044,6 +34189,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for AssignOp {
             AssignOp::AndAssign => {}
             AssignOp::OrAssign => {}
             AssignOp::NullishAssign => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -33255,6 +34402,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for AssignTarget {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -33309,6 +34458,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for AssignTargetPat {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -33628,6 +34779,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for BinaryOp {
             BinaryOp::InstanceOf => {}
             BinaryOp::Exp => {}
             BinaryOp::NullishCoalescing => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -33772,6 +34925,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for BlockStmtOrExpr {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -33983,6 +35138,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Callee {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -34370,6 +35527,19 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ClassMember {
                     &mut *__ast_path,
                 );
             }
+            ClassMember::ContentTagMember { 0: _field_0 } => {
+                let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::ClassMember(
+                    self,
+                    self::fields::ClassMemberField::ContentTagMember,
+                ));
+                <ContentTagMember as VisitWithAstPath<V>>::visit_with_ast_path(
+                    _field_0,
+                    visitor,
+                    &mut *__ast_path,
+                );
+            }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -34780,6 +35950,269 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Constructor {
 }
 #[cfg(any(docsrs, feature = "path"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ContentTagContent {
+    #[doc = "Calls [VisitAstPath`::visit_content_tag_content`] with `self`."]
+    fn visit_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_content(visitor, self, __ast_path)
+    }
+
+    fn visit_children_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            ContentTagContent { span, value } => {
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentNodeRef::ContentTagContent(
+                            self,
+                            self::fields::ContentTagContentField::Span,
+                        ));
+                    <swc_common::Span as VisitWithAstPath<V>>::visit_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentNodeRef::ContentTagContent(
+                            self,
+                            self::fields::ContentTagContentField::Value,
+                        ));
+                    <swc_atoms::Atom as VisitWithAstPath<V>>::visit_with_ast_path(
+                        value,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ContentTagEnd {
+    #[doc = "Calls [VisitAstPath`::visit_content_tag_end`] with `self`."]
+    fn visit_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_end(visitor, self, __ast_path)
+    }
+
+    fn visit_children_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            ContentTagEnd { span } => {
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::ContentTagEnd(
+                        self,
+                        self::fields::ContentTagEndField::Span,
+                    ));
+                    <swc_common::Span as VisitWithAstPath<V>>::visit_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ContentTagExpression {
+    #[doc = "Calls [VisitAstPath`::visit_content_tag_expression`] with `self`."]
+    fn visit_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_expression(visitor, self, __ast_path)
+    }
+
+    fn visit_children_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            ContentTagExpression {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentNodeRef::ContentTagExpression(
+                            self,
+                            self::fields::ContentTagExpressionField::Span,
+                        ));
+                    <swc_common::Span as VisitWithAstPath<V>>::visit_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentNodeRef::ContentTagExpression(
+                            self,
+                            self::fields::ContentTagExpressionField::Opening,
+                        ));
+                    <Box<ContentTagStart> as VisitWithAstPath<V>>::visit_with_ast_path(
+                        opening,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentNodeRef::ContentTagExpression(
+                            self,
+                            self::fields::ContentTagExpressionField::Contents,
+                        ));
+                    <Box<ContentTagContent> as VisitWithAstPath<V>>::visit_with_ast_path(
+                        contents,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentNodeRef::ContentTagExpression(
+                            self,
+                            self::fields::ContentTagExpressionField::Closing,
+                        ));
+                    <Box<ContentTagEnd> as VisitWithAstPath<V>>::visit_with_ast_path(
+                        closing,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ContentTagMember {
+    #[doc = "Calls [VisitAstPath`::visit_content_tag_member`] with `self`."]
+    fn visit_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_member(visitor, self, __ast_path)
+    }
+
+    fn visit_children_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            ContentTagMember {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::ContentTagMember(
+                        self,
+                        self::fields::ContentTagMemberField::Span,
+                    ));
+                    <swc_common::Span as VisitWithAstPath<V>>::visit_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::ContentTagMember(
+                        self,
+                        self::fields::ContentTagMemberField::Opening,
+                    ));
+                    <Box<ContentTagStart> as VisitWithAstPath<V>>::visit_with_ast_path(
+                        opening,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::ContentTagMember(
+                        self,
+                        self::fields::ContentTagMemberField::Contents,
+                    ));
+                    <Box<ContentTagContent> as VisitWithAstPath<V>>::visit_with_ast_path(
+                        contents,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::ContentTagMember(
+                        self,
+                        self::fields::ContentTagMemberField::Closing,
+                    ));
+                    <Box<ContentTagEnd> as VisitWithAstPath<V>>::visit_with_ast_path(
+                        closing,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ContentTagStart {
+    #[doc = "Calls [VisitAstPath`::visit_content_tag_start`] with `self`."]
+    fn visit_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_start(visitor, self, __ast_path)
+    }
+
+    fn visit_children_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            ContentTagStart { span } => {
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::ContentTagStart(
+                        self,
+                        self::fields::ContentTagStartField::Span,
+                    ));
+                    <swc_common::Span as VisitWithAstPath<V>>::visit_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
 impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ContinueStmt {
     #[doc = "Calls [VisitAstPath`::visit_continue_stmt`] with `self`."]
     fn visit_with_ast_path<'ast: 'r, 'r>(
@@ -34955,6 +36388,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Decl {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -35054,6 +36489,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for DefaultDecl {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -35544,6 +36981,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ExportSpecifier {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -35850,6 +37289,17 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Expr {
                     &mut *__ast_path,
                 );
             }
+            Expr::ContentTagExpression { 0: _field_0 } => {
+                let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::Expr(
+                    self,
+                    self::fields::ExprField::ContentTagExpression,
+                ));
+                <ContentTagExpression as VisitWithAstPath<V>>::visit_with_ast_path(
+                    _field_0,
+                    visitor,
+                    &mut *__ast_path,
+                );
+            }
             Expr::TsTypeAssertion { 0: _field_0 } => {
                 let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::Expr(
                     self,
@@ -35947,6 +37397,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Expr {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -36185,6 +37637,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ForHead {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -37037,6 +38491,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ImportPhase {
             ImportPhase::Evaluation => {}
             ImportPhase::Source => {}
             ImportPhase::Defer => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -37091,6 +38547,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ImportSpecifier {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -37361,6 +38819,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for JSXAttrName {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -37404,6 +38864,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for JSXAttrOrSpread {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -37425,12 +38887,12 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for JSXAttrValue {
         __ast_path: &mut AstNodePath<'r>,
     ) {
         match self {
-            JSXAttrValue::Lit { 0: _field_0 } => {
+            JSXAttrValue::Str { 0: _field_0 } => {
                 let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::JSXAttrValue(
                     self,
-                    self::fields::JSXAttrValueField::Lit,
+                    self::fields::JSXAttrValueField::Str,
                 ));
-                <Lit as VisitWithAstPath<V>>::visit_with_ast_path(
+                <Str as VisitWithAstPath<V>>::visit_with_ast_path(
                     _field_0,
                     visitor,
                     &mut *__ast_path,
@@ -37469,6 +38931,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for JSXAttrValue {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -37699,6 +39163,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for JSXElementChild {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -37753,6 +39219,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for JSXElementName {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -37830,6 +39298,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for JSXExpr {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -38105,6 +39575,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for JSXObject {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -38353,6 +39825,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Key {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -38583,6 +40057,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Lit {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -38693,6 +40169,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for MemberProp {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -38761,6 +40239,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for MetaPropKind {
         match self {
             MetaPropKind::NewTarget => {}
             MetaPropKind::ImportMeta => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -38785,6 +40265,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for MethodKind {
             MethodKind::Method => {}
             MethodKind::Getter => {}
             MethodKind::Setter => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -39010,6 +40492,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ModuleDecl {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -39053,6 +40537,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ModuleExportName {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -39096,6 +40582,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ModuleItem {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -39486,6 +40974,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ObjectPatProp {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -39609,6 +41099,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for OptChainBase {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -39759,6 +41251,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ParamOrTsParamProp {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -39888,6 +41382,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Pat {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -40177,6 +41673,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Program {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -40264,6 +41762,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Prop {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -40340,6 +41840,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for PropName {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -40383,6 +41885,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for PropOrSpread {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -40885,6 +42389,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for SimpleAssignTarget {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -41179,6 +42685,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Stmt {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -41213,7 +42721,7 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Str {
                 {
                     let mut __ast_path = __ast_path
                         .with_guard(AstParentNodeRef::Str(self, self::fields::StrField::Value));
-                    <swc_atoms::Atom as VisitWithAstPath<V>>::visit_with_ast_path(
+                    <swc_atoms::Wtf8Atom as VisitWithAstPath<V>>::visit_with_ast_path(
                         value,
                         visitor,
                         &mut *__ast_path,
@@ -41306,6 +42814,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for SuperProp {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -41738,7 +43248,7 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TplElement {
                         self,
                         self::fields::TplElementField::Cooked,
                     ));
-                    <Option<swc_atoms::Atom> as VisitWithAstPath<V>>::visit_with_ast_path(
+                    <Option<swc_atoms::Wtf8Atom> as VisitWithAstPath<V>>::visit_with_ast_path(
                         cooked,
                         visitor,
                         &mut *__ast_path,
@@ -41780,6 +43290,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TruePlusMinus {
             TruePlusMinus::True => {}
             TruePlusMinus::Plus => {}
             TruePlusMinus::Minus => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -42363,6 +43875,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsEntityName {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -42524,6 +44038,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsEnumMemberId {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -42722,6 +44238,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsFnOrConstructorType {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -42787,6 +44305,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsFnParam {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -42928,6 +44448,53 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsGetterSignature {
 }
 #[cfg(any(docsrs, feature = "path"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsImportCallOptions {
+    #[doc = "Calls [VisitAstPath`::visit_ts_import_call_options`] with `self`."]
+    fn visit_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_ts_import_call_options(visitor, self, __ast_path)
+    }
+
+    fn visit_children_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            TsImportCallOptions { span, with } => {
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentNodeRef::TsImportCallOptions(
+                            self,
+                            self::fields::TsImportCallOptionsField::Span,
+                        ));
+                    <swc_common::Span as VisitWithAstPath<V>>::visit_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentNodeRef::TsImportCallOptions(
+                            self,
+                            self::fields::TsImportCallOptionsField::With,
+                        ));
+                    <Box<ObjectLit> as VisitWithAstPath<V>>::visit_with_ast_path(
+                        with,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
 impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsImportEqualsDecl {
     #[doc = "Calls [VisitAstPath`::visit_ts_import_equals_decl`] with `self`."]
     fn visit_with_ast_path<'ast: 'r, 'r>(
@@ -43014,6 +44581,7 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsImportType {
                 arg,
                 qualifier,
                 type_args,
+                attributes,
             } => {
                 {
                     let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::TsImportType(
@@ -43054,6 +44622,17 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsImportType {
                         self::fields::TsImportTypeField::TypeArgs,
                     ));
                     < Option < Box < TsTypeParamInstantiation > > as VisitWithAstPath < V > > :: visit_with_ast_path (type_args , visitor , & mut * __ast_path)
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::TsImportType(
+                        self,
+                        self::fields::TsImportTypeField::Attributes,
+                    ));
+                    <Option<TsImportCallOptions> as VisitWithAstPath<V>>::visit_with_ast_path(
+                        attributes,
+                        visitor,
+                        &mut *__ast_path,
+                    )
                 };
             }
         }
@@ -43543,6 +45122,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsKeywordTypeKind {
             TsKeywordTypeKind::TsNullKeyword => {}
             TsKeywordTypeKind::TsNeverKeyword => {}
             TsKeywordTypeKind::TsIntrinsicKeyword => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -43615,6 +45196,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsLit {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -43917,6 +45500,7 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsModuleDecl {
                 span,
                 declare,
                 global,
+                namespace,
                 id,
                 body,
             } => {
@@ -43997,6 +45581,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsModuleName {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -44040,6 +45626,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsModuleRef {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -44083,6 +45671,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsNamespaceBody {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -44399,6 +45989,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsParamPropParam {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -44814,6 +46406,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsThisTypeOrIdent {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -45216,6 +46810,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsType {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -45492,6 +47088,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsTypeElement {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -45617,6 +47215,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsTypeOperatorOp {
             TsTypeOperatorOp::KeyOf => {}
             TsTypeOperatorOp::Unique => {}
             TsTypeOperatorOp::ReadOnly => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -45944,6 +47544,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsTypeQueryExpr {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -46045,6 +47647,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for TsUnionOrIntersectionType
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -46174,6 +47778,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for UnaryOp {
             UnaryOp::TypeOf => {}
             UnaryOp::Void => {}
             UnaryOp::Delete => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -46258,6 +47864,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for UpdateOp {
         match self {
             UpdateOp::PlusPlus => {}
             UpdateOp::MinusMinus => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -46404,6 +48012,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for VarDeclKind {
             VarDeclKind::Var => {}
             VarDeclKind::Let => {}
             VarDeclKind::Const => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -46447,6 +48057,8 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for VarDeclOrExpr {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -47515,6 +49127,33 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Option<TsEntityName> {
 }
 #[cfg(any(docsrs, feature = "path"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Option<TsImportCallOptions> {
+    #[doc = "Calls [VisitAstPath`::visit_opt_ts_import_call_options`] with `self`. (Extra impl)"]
+    #[inline]
+    fn visit_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_opt_ts_import_call_options(visitor, self, __ast_path)
+    }
+
+    #[inline]
+    fn visit_children_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            Some(inner) => <TsImportCallOptions as VisitWithAstPath<V>>::visit_with_ast_path(
+                inner, visitor, __ast_path,
+            ),
+            None => {}
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
 impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Option<TsNamespaceBody> {
     #[doc = "Calls [VisitAstPath`::visit_opt_ts_namespace_body`] with `self`. (Extra impl)"]
     #[inline]
@@ -47734,6 +49373,33 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for [Option<Pat>] {
                 &mut *__ast_path,
             )
         })
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Option<swc_atoms::Wtf8Atom> {
+    #[doc = "Calls [VisitAstPath`::visit_opt_wtf_8_atom`] with `self`. (Extra impl)"]
+    #[inline]
+    fn visit_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_opt_wtf_8_atom(visitor, self, __ast_path)
+    }
+
+    #[inline]
+    fn visit_children_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            Some(inner) => <swc_atoms::Wtf8Atom as VisitWithAstPath<V>>::visit_with_ast_path(
+                inner, visitor, __ast_path,
+            ),
+            None => {}
+        }
     }
 }
 #[cfg(any(docsrs, feature = "path"))]
@@ -48201,6 +49867,28 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for [VarDeclarator] {
 }
 #[cfg(any(docsrs, feature = "path"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for swc_atoms::Wtf8Atom {
+    #[doc = "Calls [VisitAstPath`::visit_wtf_8_atom`] with `self`. (Extra impl)"]
+    #[inline]
+    fn visit_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_wtf_8_atom(visitor, self, __ast_path)
+    }
+
+    #[inline]
+    fn visit_children_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        {}
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
 impl<V, T> VisitWithAstPath<V> for std::boxed::Box<T>
 where
     V: ?Sized + VisitAstPath,
@@ -48508,6 +50196,41 @@ pub trait VisitMut {
     #[inline]
     fn visit_mut_constructor(&mut self, node: &mut Constructor) {
         <Constructor as VisitMutWith<Self>>::visit_mut_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagContent`.\n\nBy default, this method calls \
+             [`ContentTagContent::visit_mut_children_with`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_content(&mut self, node: &mut ContentTagContent) {
+        <ContentTagContent as VisitMutWith<Self>>::visit_mut_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagEnd`.\n\nBy default, this method calls \
+             [`ContentTagEnd::visit_mut_children_with`]. If you want to recurse, you need to call \
+             it manually."]
+    #[inline]
+    fn visit_mut_content_tag_end(&mut self, node: &mut ContentTagEnd) {
+        <ContentTagEnd as VisitMutWith<Self>>::visit_mut_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagExpression`.\n\nBy default, this method calls \
+             [`ContentTagExpression::visit_mut_children_with`]. If you want to recurse, you need \
+             to call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_expression(&mut self, node: &mut ContentTagExpression) {
+        <ContentTagExpression as VisitMutWith<Self>>::visit_mut_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagMember`.\n\nBy default, this method calls \
+             [`ContentTagMember::visit_mut_children_with`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_member(&mut self, node: &mut ContentTagMember) {
+        <ContentTagMember as VisitMutWith<Self>>::visit_mut_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagStart`.\n\nBy default, this method calls \
+             [`ContentTagStart::visit_mut_children_with`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_start(&mut self, node: &mut ContentTagStart) {
+        <ContentTagStart as VisitMutWith<Self>>::visit_mut_children_with(node, self)
     }
     #[doc = "Visit a node of type `ContinueStmt`.\n\nBy default, this method calls \
              [`ContinueStmt::visit_mut_children_with`]. If you want to recurse, you need to call \
@@ -49293,6 +51016,13 @@ pub trait VisitMut {
     fn visit_mut_opt_ts_entity_name(&mut self, node: &mut Option<TsEntityName>) {
         <Option<TsEntityName> as VisitMutWith<Self>>::visit_mut_children_with(node, self)
     }
+    #[doc = "Visit a node of type `Option < TsImportCallOptions >`.\n\nBy default, this method \
+             calls [`Option < TsImportCallOptions >::visit_mut_children_with`]. If you want to \
+             recurse, you need to call it manually."]
+    #[inline]
+    fn visit_mut_opt_ts_import_call_options(&mut self, node: &mut Option<TsImportCallOptions>) {
+        <Option<TsImportCallOptions> as VisitMutWith<Self>>::visit_mut_children_with(node, self)
+    }
     #[doc = "Visit a node of type `Option < TsNamespaceBody >`.\n\nBy default, this method calls \
              [`Option < TsNamespaceBody >::visit_mut_children_with`]. If you want to recurse, you \
              need to call it manually."]
@@ -49353,6 +51083,13 @@ pub trait VisitMut {
     #[inline]
     fn visit_mut_opt_vec_pats(&mut self, node: &mut Vec<Option<Pat>>) {
         <Vec<Option<Pat>> as VisitMutWith<Self>>::visit_mut_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `Option < swc_atoms :: Wtf8Atom >`.\n\nBy default, this method \
+             calls [`Option < swc_atoms :: Wtf8Atom >::visit_mut_children_with`]. If you want to \
+             recurse, you need to call it manually."]
+    #[inline]
+    fn visit_mut_opt_wtf_8_atom(&mut self, node: &mut Option<swc_atoms::Wtf8Atom>) {
+        <Option<swc_atoms::Wtf8Atom> as VisitMutWith<Self>>::visit_mut_children_with(node, self)
     }
     #[doc = "Visit a node of type `Param`.\n\nBy default, this method calls \
              [`Param::visit_mut_children_with`]. If you want to recurse, you need to call it \
@@ -49798,6 +51535,13 @@ pub trait VisitMut {
     #[inline]
     fn visit_mut_ts_getter_signature(&mut self, node: &mut TsGetterSignature) {
         <TsGetterSignature as VisitMutWith<Self>>::visit_mut_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `TsImportCallOptions`.\n\nBy default, this method calls \
+             [`TsImportCallOptions::visit_mut_children_with`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn visit_mut_ts_import_call_options(&mut self, node: &mut TsImportCallOptions) {
+        <TsImportCallOptions as VisitMutWith<Self>>::visit_mut_children_with(node, self)
     }
     #[doc = "Visit a node of type `TsImportEqualsDecl`.\n\nBy default, this method calls \
              [`TsImportEqualsDecl::visit_mut_children_with`]. If you want to recurse, you need to \
@@ -50289,6 +52033,13 @@ pub trait VisitMut {
     fn visit_mut_with_stmt(&mut self, node: &mut WithStmt) {
         <WithStmt as VisitMutWith<Self>>::visit_mut_children_with(node, self)
     }
+    #[doc = "Visit a node of type `swc_atoms :: Wtf8Atom`.\n\nBy default, this method calls \
+             [`swc_atoms :: Wtf8Atom::visit_mut_children_with`]. If you want to recurse, you need \
+             to call it manually."]
+    #[inline]
+    fn visit_mut_wtf_8_atom(&mut self, node: &mut swc_atoms::Wtf8Atom) {
+        <swc_atoms::Wtf8Atom as VisitMutWith<Self>>::visit_mut_children_with(node, self)
+    }
     #[doc = "Visit a node of type `YieldExpr`.\n\nBy default, this method calls \
              [`YieldExpr::visit_mut_children_with`]. If you want to recurse, you need to call it \
              manually."]
@@ -50482,6 +52233,31 @@ where
     }
 
     #[inline]
+    fn visit_mut_content_tag_content(&mut self, node: &mut ContentTagContent) {
+        <V as VisitMut>::visit_mut_content_tag_content(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_end(&mut self, node: &mut ContentTagEnd) {
+        <V as VisitMut>::visit_mut_content_tag_end(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_expression(&mut self, node: &mut ContentTagExpression) {
+        <V as VisitMut>::visit_mut_content_tag_expression(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_member(&mut self, node: &mut ContentTagMember) {
+        <V as VisitMut>::visit_mut_content_tag_member(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_start(&mut self, node: &mut ContentTagStart) {
+        <V as VisitMut>::visit_mut_content_tag_start(&mut **self, node)
+    }
+
+    #[inline]
     fn visit_mut_continue_stmt(&mut self, node: &mut ContinueStmt) {
         <V as VisitMut>::visit_mut_continue_stmt(&mut **self, node)
     }
@@ -51042,6 +52818,11 @@ where
     }
 
     #[inline]
+    fn visit_mut_opt_ts_import_call_options(&mut self, node: &mut Option<TsImportCallOptions>) {
+        <V as VisitMut>::visit_mut_opt_ts_import_call_options(&mut **self, node)
+    }
+
+    #[inline]
     fn visit_mut_opt_ts_namespace_body(&mut self, node: &mut Option<TsNamespaceBody>) {
         <V as VisitMut>::visit_mut_opt_ts_namespace_body(&mut **self, node)
     }
@@ -51082,6 +52863,11 @@ where
     #[inline]
     fn visit_mut_opt_vec_pats(&mut self, node: &mut Vec<Option<Pat>>) {
         <V as VisitMut>::visit_mut_opt_vec_pats(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_opt_wtf_8_atom(&mut self, node: &mut Option<swc_atoms::Wtf8Atom>) {
+        <V as VisitMut>::visit_mut_opt_wtf_8_atom(&mut **self, node)
     }
 
     #[inline]
@@ -51402,6 +53188,11 @@ where
     #[inline]
     fn visit_mut_ts_getter_signature(&mut self, node: &mut TsGetterSignature) {
         <V as VisitMut>::visit_mut_ts_getter_signature(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_ts_import_call_options(&mut self, node: &mut TsImportCallOptions) {
+        <V as VisitMut>::visit_mut_ts_import_call_options(&mut **self, node)
     }
 
     #[inline]
@@ -51752,6 +53543,11 @@ where
     #[inline]
     fn visit_mut_with_stmt(&mut self, node: &mut WithStmt) {
         <V as VisitMut>::visit_mut_with_stmt(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_wtf_8_atom(&mut self, node: &mut swc_atoms::Wtf8Atom) {
+        <V as VisitMut>::visit_mut_wtf_8_atom(&mut **self, node)
     }
 
     #[inline]
@@ -51944,6 +53740,31 @@ where
     }
 
     #[inline]
+    fn visit_mut_content_tag_content(&mut self, node: &mut ContentTagContent) {
+        <V as VisitMut>::visit_mut_content_tag_content(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_end(&mut self, node: &mut ContentTagEnd) {
+        <V as VisitMut>::visit_mut_content_tag_end(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_expression(&mut self, node: &mut ContentTagExpression) {
+        <V as VisitMut>::visit_mut_content_tag_expression(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_member(&mut self, node: &mut ContentTagMember) {
+        <V as VisitMut>::visit_mut_content_tag_member(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_start(&mut self, node: &mut ContentTagStart) {
+        <V as VisitMut>::visit_mut_content_tag_start(&mut **self, node)
+    }
+
+    #[inline]
     fn visit_mut_continue_stmt(&mut self, node: &mut ContinueStmt) {
         <V as VisitMut>::visit_mut_continue_stmt(&mut **self, node)
     }
@@ -52504,6 +54325,11 @@ where
     }
 
     #[inline]
+    fn visit_mut_opt_ts_import_call_options(&mut self, node: &mut Option<TsImportCallOptions>) {
+        <V as VisitMut>::visit_mut_opt_ts_import_call_options(&mut **self, node)
+    }
+
+    #[inline]
     fn visit_mut_opt_ts_namespace_body(&mut self, node: &mut Option<TsNamespaceBody>) {
         <V as VisitMut>::visit_mut_opt_ts_namespace_body(&mut **self, node)
     }
@@ -52544,6 +54370,11 @@ where
     #[inline]
     fn visit_mut_opt_vec_pats(&mut self, node: &mut Vec<Option<Pat>>) {
         <V as VisitMut>::visit_mut_opt_vec_pats(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_opt_wtf_8_atom(&mut self, node: &mut Option<swc_atoms::Wtf8Atom>) {
+        <V as VisitMut>::visit_mut_opt_wtf_8_atom(&mut **self, node)
     }
 
     #[inline]
@@ -52864,6 +54695,11 @@ where
     #[inline]
     fn visit_mut_ts_getter_signature(&mut self, node: &mut TsGetterSignature) {
         <V as VisitMut>::visit_mut_ts_getter_signature(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_ts_import_call_options(&mut self, node: &mut TsImportCallOptions) {
+        <V as VisitMut>::visit_mut_ts_import_call_options(&mut **self, node)
     }
 
     #[inline]
@@ -53214,6 +55050,11 @@ where
     #[inline]
     fn visit_mut_with_stmt(&mut self, node: &mut WithStmt) {
         <V as VisitMut>::visit_mut_with_stmt(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_wtf_8_atom(&mut self, node: &mut swc_atoms::Wtf8Atom) {
+        <V as VisitMut>::visit_mut_wtf_8_atom(&mut **self, node)
     }
 
     #[inline]
@@ -53523,6 +55364,62 @@ where
         match self {
             swc_visit::Either::Left(visitor) => VisitMut::visit_mut_constructor(visitor, node),
             swc_visit::Either::Right(visitor) => VisitMut::visit_mut_constructor(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_content(&mut self, node: &mut ContentTagContent) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMut::visit_mut_content_tag_content(visitor, node)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMut::visit_mut_content_tag_content(visitor, node)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_end(&mut self, node: &mut ContentTagEnd) {
+        match self {
+            swc_visit::Either::Left(visitor) => VisitMut::visit_mut_content_tag_end(visitor, node),
+            swc_visit::Either::Right(visitor) => VisitMut::visit_mut_content_tag_end(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_expression(&mut self, node: &mut ContentTagExpression) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMut::visit_mut_content_tag_expression(visitor, node)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMut::visit_mut_content_tag_expression(visitor, node)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_member(&mut self, node: &mut ContentTagMember) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMut::visit_mut_content_tag_member(visitor, node)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMut::visit_mut_content_tag_member(visitor, node)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_start(&mut self, node: &mut ContentTagStart) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMut::visit_mut_content_tag_start(visitor, node)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMut::visit_mut_content_tag_start(visitor, node)
+            }
         }
     }
 
@@ -54561,6 +56458,18 @@ where
     }
 
     #[inline]
+    fn visit_mut_opt_ts_import_call_options(&mut self, node: &mut Option<TsImportCallOptions>) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMut::visit_mut_opt_ts_import_call_options(visitor, node)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMut::visit_mut_opt_ts_import_call_options(visitor, node)
+            }
+        }
+    }
+
+    #[inline]
     fn visit_mut_opt_ts_namespace_body(&mut self, node: &mut Option<TsNamespaceBody>) {
         match self {
             swc_visit::Either::Left(visitor) => {
@@ -54644,6 +56553,14 @@ where
         match self {
             swc_visit::Either::Left(visitor) => VisitMut::visit_mut_opt_vec_pats(visitor, node),
             swc_visit::Either::Right(visitor) => VisitMut::visit_mut_opt_vec_pats(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_mut_opt_wtf_8_atom(&mut self, node: &mut Option<swc_atoms::Wtf8Atom>) {
+        match self {
+            swc_visit::Either::Left(visitor) => VisitMut::visit_mut_opt_wtf_8_atom(visitor, node),
+            swc_visit::Either::Right(visitor) => VisitMut::visit_mut_opt_wtf_8_atom(visitor, node),
         }
     }
 
@@ -55215,6 +57132,18 @@ where
             }
             swc_visit::Either::Right(visitor) => {
                 VisitMut::visit_mut_ts_getter_signature(visitor, node)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_ts_import_call_options(&mut self, node: &mut TsImportCallOptions) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMut::visit_mut_ts_import_call_options(visitor, node)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMut::visit_mut_ts_import_call_options(visitor, node)
             }
         }
     }
@@ -55902,6 +57831,14 @@ where
     }
 
     #[inline]
+    fn visit_mut_wtf_8_atom(&mut self, node: &mut swc_atoms::Wtf8Atom) {
+        match self {
+            swc_visit::Either::Left(visitor) => VisitMut::visit_mut_wtf_8_atom(visitor, node),
+            swc_visit::Either::Right(visitor) => VisitMut::visit_mut_wtf_8_atom(visitor, node),
+        }
+    }
+
+    #[inline]
     fn visit_mut_yield_expr(&mut self, node: &mut YieldExpr) {
         match self {
             swc_visit::Either::Left(visitor) => VisitMut::visit_mut_yield_expr(visitor, node),
@@ -56197,6 +58134,46 @@ where
     fn visit_mut_constructor(&mut self, node: &mut Constructor) {
         if self.enabled {
             <V as VisitMut>::visit_mut_constructor(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_content(&mut self, node: &mut ContentTagContent) {
+        if self.enabled {
+            <V as VisitMut>::visit_mut_content_tag_content(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_end(&mut self, node: &mut ContentTagEnd) {
+        if self.enabled {
+            <V as VisitMut>::visit_mut_content_tag_end(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_expression(&mut self, node: &mut ContentTagExpression) {
+        if self.enabled {
+            <V as VisitMut>::visit_mut_content_tag_expression(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_member(&mut self, node: &mut ContentTagMember) {
+        if self.enabled {
+            <V as VisitMut>::visit_mut_content_tag_member(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_start(&mut self, node: &mut ContentTagStart) {
+        if self.enabled {
+            <V as VisitMut>::visit_mut_content_tag_start(&mut self.visitor, node)
         } else {
         }
     }
@@ -57098,6 +59075,14 @@ where
     }
 
     #[inline]
+    fn visit_mut_opt_ts_import_call_options(&mut self, node: &mut Option<TsImportCallOptions>) {
+        if self.enabled {
+            <V as VisitMut>::visit_mut_opt_ts_import_call_options(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
     fn visit_mut_opt_ts_namespace_body(&mut self, node: &mut Option<TsNamespaceBody>) {
         if self.enabled {
             <V as VisitMut>::visit_mut_opt_ts_namespace_body(&mut self.visitor, node)
@@ -57160,6 +59145,14 @@ where
     fn visit_mut_opt_vec_pats(&mut self, node: &mut Vec<Option<Pat>>) {
         if self.enabled {
             <V as VisitMut>::visit_mut_opt_vec_pats(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_opt_wtf_8_atom(&mut self, node: &mut Option<swc_atoms::Wtf8Atom>) {
+        if self.enabled {
+            <V as VisitMut>::visit_mut_opt_wtf_8_atom(&mut self.visitor, node)
         } else {
         }
     }
@@ -57672,6 +59665,14 @@ where
     fn visit_mut_ts_getter_signature(&mut self, node: &mut TsGetterSignature) {
         if self.enabled {
             <V as VisitMut>::visit_mut_ts_getter_signature(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_ts_import_call_options(&mut self, node: &mut TsImportCallOptions) {
+        if self.enabled {
+            <V as VisitMut>::visit_mut_ts_import_call_options(&mut self.visitor, node)
         } else {
         }
     }
@@ -58237,6 +60238,14 @@ where
     }
 
     #[inline]
+    fn visit_mut_wtf_8_atom(&mut self, node: &mut swc_atoms::Wtf8Atom) {
+        if self.enabled {
+            <V as VisitMut>::visit_mut_wtf_8_atom(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
     fn visit_mut_yield_expr(&mut self, node: &mut YieldExpr) {
         if self.enabled {
             <V as VisitMut>::visit_mut_yield_expr(&mut self.visitor, node)
@@ -58262,6 +60271,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Accessibility {
             Accessibility::Public => {}
             Accessibility::Protected => {}
             Accessibility::Private => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -58411,6 +60422,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for AssignOp {
             AssignOp::AndAssign => {}
             AssignOp::OrAssign => {}
             AssignOp::NullishAssign => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -58494,6 +60507,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for AssignTarget {
             AssignTarget::Pat { 0: _field_0 } => {
                 <AssignTargetPat as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -58514,6 +60529,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for AssignTargetPat {
             AssignTargetPat::Invalid { 0: _field_0 } => {
                 <Invalid as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -58666,6 +60683,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for BinaryOp {
             BinaryOp::InstanceOf => {}
             BinaryOp::Exp => {}
             BinaryOp::NullishCoalescing => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -58724,6 +60743,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for BlockStmtOrExpr {
             BlockStmtOrExpr::Expr { 0: _field_0 } => {
                 <Box<Expr> as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -58815,6 +60836,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Callee {
             Callee::Expr { 0: _field_0 } => {
                 <Box<Expr> as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -58972,6 +60995,11 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ClassMember {
             ClassMember::AutoAccessor { 0: _field_0 } => {
                 <AutoAccessor as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            ClassMember::ContentTagMember { 0: _field_0 } => {
+                <ContentTagMember as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
+            }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -59155,6 +61183,117 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Constructor {
         }
     }
 }
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for ContentTagContent {
+    #[doc = "Calls [VisitMut`::visit_mut_content_tag_content`] with `self`."]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut>::visit_mut_content_tag_content(visitor, self)
+    }
+
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        match self {
+            ContentTagContent { span, value } => {
+                {
+                    <swc_common::Span as VisitMutWith<V>>::visit_mut_with(span, visitor)
+                };
+                {
+                    <swc_atoms::Atom as VisitMutWith<V>>::visit_mut_with(value, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for ContentTagEnd {
+    #[doc = "Calls [VisitMut`::visit_mut_content_tag_end`] with `self`."]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut>::visit_mut_content_tag_end(visitor, self)
+    }
+
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        match self {
+            ContentTagEnd { span } => {
+                {
+                    <swc_common::Span as VisitMutWith<V>>::visit_mut_with(span, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for ContentTagExpression {
+    #[doc = "Calls [VisitMut`::visit_mut_content_tag_expression`] with `self`."]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut>::visit_mut_content_tag_expression(visitor, self)
+    }
+
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        match self {
+            ContentTagExpression {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                {
+                    <swc_common::Span as VisitMutWith<V>>::visit_mut_with(span, visitor)
+                };
+                {
+                    <Box<ContentTagStart> as VisitMutWith<V>>::visit_mut_with(opening, visitor)
+                };
+                {
+                    <Box<ContentTagContent> as VisitMutWith<V>>::visit_mut_with(contents, visitor)
+                };
+                {
+                    <Box<ContentTagEnd> as VisitMutWith<V>>::visit_mut_with(closing, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for ContentTagMember {
+    #[doc = "Calls [VisitMut`::visit_mut_content_tag_member`] with `self`."]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut>::visit_mut_content_tag_member(visitor, self)
+    }
+
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        match self {
+            ContentTagMember {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                {
+                    <swc_common::Span as VisitMutWith<V>>::visit_mut_with(span, visitor)
+                };
+                {
+                    <Box<ContentTagStart> as VisitMutWith<V>>::visit_mut_with(opening, visitor)
+                };
+                {
+                    <Box<ContentTagContent> as VisitMutWith<V>>::visit_mut_with(contents, visitor)
+                };
+                {
+                    <Box<ContentTagEnd> as VisitMutWith<V>>::visit_mut_with(closing, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for ContentTagStart {
+    #[doc = "Calls [VisitMut`::visit_mut_content_tag_start`] with `self`."]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut>::visit_mut_content_tag_start(visitor, self)
+    }
+
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        match self {
+            ContentTagStart { span } => {
+                {
+                    <swc_common::Span as VisitMutWith<V>>::visit_mut_with(span, visitor)
+                };
+            }
+        }
+    }
+}
 impl<V: ?Sized + VisitMut> VisitMutWith<V> for ContinueStmt {
     #[doc = "Calls [VisitMut`::visit_mut_continue_stmt`] with `self`."]
     fn visit_mut_with(&mut self, visitor: &mut V) {
@@ -59222,6 +61361,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Decl {
             Decl::TsModule { 0: _field_0 } => {
                 <Box<TsModuleDecl> as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -59261,6 +61402,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for DefaultDecl {
             DefaultDecl::TsInterfaceDecl { 0: _field_0 } => {
                 <Box<TsInterfaceDecl> as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -59465,6 +61608,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ExportSpecifier {
             ExportSpecifier::Named { 0: _field_0 } => {
                 <ExportNamedSpecifier as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -59563,6 +61708,9 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Expr {
             Expr::JSXFragment { 0: _field_0 } => {
                 <JSXFragment as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            Expr::ContentTagExpression { 0: _field_0 } => {
+                <ContentTagExpression as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
+            }
             Expr::TsTypeAssertion { 0: _field_0 } => {
                 <TsTypeAssertion as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
@@ -59590,6 +61738,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Expr {
             Expr::Invalid { 0: _field_0 } => {
                 <Invalid as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -59690,6 +61840,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ForHead {
             ForHead::Pat { 0: _field_0 } => {
                 <Box<Pat> as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60055,6 +62207,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ImportPhase {
             ImportPhase::Evaluation => {}
             ImportPhase::Source => {}
             ImportPhase::Defer => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60075,6 +62229,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ImportSpecifier {
             ImportSpecifier::Namespace { 0: _field_0 } => {
                 <ImportStarAsSpecifier as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60187,6 +62343,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for JSXAttrName {
             JSXAttrName::JSXNamespacedName { 0: _field_0 } => {
                 <JSXNamespacedName as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60204,6 +62362,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for JSXAttrOrSpread {
             JSXAttrOrSpread::SpreadElement { 0: _field_0 } => {
                 <SpreadElement as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60215,8 +62375,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for JSXAttrValue {
 
     fn visit_mut_children_with(&mut self, visitor: &mut V) {
         match self {
-            JSXAttrValue::Lit { 0: _field_0 } => {
-                <Lit as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
+            JSXAttrValue::Str { 0: _field_0 } => {
+                <Str as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
             JSXAttrValue::JSXExprContainer { 0: _field_0 } => {
                 <JSXExprContainer as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
@@ -60227,6 +62387,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for JSXAttrValue {
             JSXAttrValue::JSXFragment { 0: _field_0 } => {
                 <JSXFragment as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60318,6 +62480,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for JSXElementChild {
             JSXElementChild::JSXFragment { 0: _field_0 } => {
                 <JSXFragment as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60338,6 +62502,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for JSXElementName {
             JSXElementName::JSXNamespacedName { 0: _field_0 } => {
                 <JSXNamespacedName as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60371,6 +62537,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for JSXExpr {
             JSXExpr::Expr { 0: _field_0 } => {
                 <Box<Expr> as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60481,6 +62649,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for JSXObject {
             JSXObject::Ident { 0: _field_0 } => {
                 <Ident as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60588,6 +62758,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Key {
             Key::Public { 0: _field_0 } => {
                 <PropName as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60680,6 +62852,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Lit {
             Lit::JSXText { 0: _field_0 } => {
                 <JSXText as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60722,6 +62896,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for MemberProp {
             MemberProp::Computed { 0: _field_0 } => {
                 <ComputedPropName as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60754,6 +62930,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for MetaPropKind {
         match self {
             MetaPropKind::NewTarget => {}
             MetaPropKind::ImportMeta => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60768,6 +62946,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for MethodKind {
             MethodKind::Method => {}
             MethodKind::Getter => {}
             MethodKind::Setter => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60851,6 +63031,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ModuleDecl {
             ModuleDecl::TsNamespaceExport { 0: _field_0 } => {
                 <TsNamespaceExportDecl as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60868,6 +63050,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ModuleExportName {
             ModuleExportName::Str { 0: _field_0 } => {
                 <Str as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -60885,6 +63069,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ModuleItem {
             ModuleItem::Stmt { 0: _field_0 } => {
                 <Stmt as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -61053,6 +63239,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ObjectPatProp {
             ObjectPatProp::Rest { 0: _field_0 } => {
                 <RestPat as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -61106,6 +63294,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for OptChainBase {
             OptChainBase::Call { 0: _field_0 } => {
                 <OptCall as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -61172,6 +63362,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ParamOrTsParamProp {
             ParamOrTsParamProp::Param { 0: _field_0 } => {
                 <Param as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -61223,6 +63415,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Pat {
             Pat::Expr { 0: _field_0 } => {
                 <Box<Expr> as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -61350,6 +63544,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Program {
             Program::Script { 0: _field_0 } => {
                 <Script as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -61379,6 +63575,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Prop {
             Prop::Method { 0: _field_0 } => {
                 <MethodProp as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -61405,6 +63603,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for PropName {
             PropName::BigInt { 0: _field_0 } => {
                 <BigInt as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -61422,6 +63622,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for PropOrSpread {
             PropOrSpread::Prop { 0: _field_0 } => {
                 <Box<Prop> as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -61616,6 +63818,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for SimpleAssignTarget {
             SimpleAssignTarget::Invalid { 0: _field_0 } => {
                 <Invalid as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -61722,6 +63926,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Stmt {
             Stmt::Expr { 0: _field_0 } => {
                 <ExprStmt as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -61738,7 +63944,7 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Str {
                     <swc_common::Span as VisitMutWith<V>>::visit_mut_with(span, visitor)
                 };
                 {
-                    <swc_atoms::Atom as VisitMutWith<V>>::visit_mut_with(value, visitor)
+                    <swc_atoms::Wtf8Atom as VisitMutWith<V>>::visit_mut_with(value, visitor)
                 };
                 {
                     <Option<swc_atoms::Atom> as VisitMutWith<V>>::visit_mut_with(raw, visitor)
@@ -61777,6 +63983,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for SuperProp {
             SuperProp::Computed { 0: _field_0 } => {
                 <ComputedPropName as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -61966,7 +64174,9 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TplElement {
                     <swc_common::Span as VisitMutWith<V>>::visit_mut_with(span, visitor)
                 };
                 {
-                    <Option<swc_atoms::Atom> as VisitMutWith<V>>::visit_mut_with(cooked, visitor)
+                    <Option<swc_atoms::Wtf8Atom> as VisitMutWith<V>>::visit_mut_with(
+                        cooked, visitor,
+                    )
                 };
                 {
                     <swc_atoms::Atom as VisitMutWith<V>>::visit_mut_with(raw, visitor)
@@ -61986,6 +64196,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TruePlusMinus {
             TruePlusMinus::True => {}
             TruePlusMinus::Plus => {}
             TruePlusMinus::Minus => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -62231,6 +64443,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsEntityName {
             TsEntityName::Ident { 0: _field_0 } => {
                 <Ident as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -62298,6 +64512,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsEnumMemberId {
             TsEnumMemberId::Str { 0: _field_0 } => {
                 <Str as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -62381,6 +64597,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsFnOrConstructorType {
             TsFnOrConstructorType::TsConstructorType { 0: _field_0 } => {
                 <TsConstructorType as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -62404,6 +64622,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsFnParam {
             TsFnParam::Object { 0: _field_0 } => {
                 <ObjectPat as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -62467,6 +64687,25 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsGetterSignature {
         }
     }
 }
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsImportCallOptions {
+    #[doc = "Calls [VisitMut`::visit_mut_ts_import_call_options`] with `self`."]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut>::visit_mut_ts_import_call_options(visitor, self)
+    }
+
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        match self {
+            TsImportCallOptions { span, with } => {
+                {
+                    <swc_common::Span as VisitMutWith<V>>::visit_mut_with(span, visitor)
+                };
+                {
+                    <Box<ObjectLit> as VisitMutWith<V>>::visit_mut_with(with, visitor)
+                };
+            }
+        }
+    }
+}
 impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsImportEqualsDecl {
     #[doc = "Calls [VisitMut`::visit_mut_ts_import_equals_decl`] with `self`."]
     fn visit_mut_with(&mut self, visitor: &mut V) {
@@ -62508,6 +64747,7 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsImportType {
                 arg,
                 qualifier,
                 type_args,
+                attributes,
             } => {
                 {
                     <swc_common::Span as VisitMutWith<V>>::visit_mut_with(span, visitor)
@@ -62521,6 +64761,11 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsImportType {
                 {
                     <Option<Box<TsTypeParamInstantiation>> as VisitMutWith<V>>::visit_mut_with(
                         type_args, visitor,
+                    )
+                };
+                {
+                    <Option<TsImportCallOptions> as VisitMutWith<V>>::visit_mut_with(
+                        attributes, visitor,
                     )
                 };
             }
@@ -62745,6 +64990,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsKeywordTypeKind {
             TsKeywordTypeKind::TsNullKeyword => {}
             TsKeywordTypeKind::TsNeverKeyword => {}
             TsKeywordTypeKind::TsIntrinsicKeyword => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -62771,6 +65018,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsLit {
             TsLit::Tpl { 0: _field_0 } => {
                 <TsTplLitType as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -62901,6 +65150,7 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsModuleDecl {
                 span,
                 declare,
                 global,
+                namespace,
                 id,
                 body,
             } => {
@@ -62931,6 +65181,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsModuleName {
             TsModuleName::Str { 0: _field_0 } => {
                 <Str as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -62948,6 +65200,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsModuleRef {
             TsModuleRef::TsExternalModuleRef { 0: _field_0 } => {
                 <TsExternalModuleRef as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -62965,6 +65219,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsNamespaceBody {
             TsNamespaceBody::TsNamespaceDecl { 0: _field_0 } => {
                 <TsNamespaceDecl as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -63102,6 +65358,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsParamPropParam {
             TsParamPropParam::Assign { 0: _field_0 } => {
                 <AssignPat as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -63277,6 +65535,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsThisTypeOrIdent {
             TsThisTypeOrIdent::Ident { 0: _field_0 } => {
                 <Ident as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -63415,6 +65675,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsType {
             TsType::TsImportType { 0: _field_0 } => {
                 <TsImportType as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -63526,6 +65788,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsTypeElement {
             TsTypeElement::TsIndexSignature { 0: _field_0 } => {
                 <TsIndexSignature as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -63581,6 +65845,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsTypeOperatorOp {
             TsTypeOperatorOp::KeyOf => {}
             TsTypeOperatorOp::Unique => {}
             TsTypeOperatorOp::ReadOnly => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -63724,6 +65990,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsTypeQueryExpr {
             TsTypeQueryExpr::Import { 0: _field_0 } => {
                 <TsImportType as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -63770,6 +66038,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for TsUnionOrIntersectionType {
             TsUnionOrIntersectionType::TsIntersectionType { 0: _field_0 } => {
                 <TsIntersectionType as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -63829,6 +66099,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for UnaryOp {
             UnaryOp::TypeOf => {}
             UnaryOp::Void => {}
             UnaryOp::Delete => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -63869,6 +66141,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for UpdateOp {
         match self {
             UpdateOp::PlusPlus => {}
             UpdateOp::MinusMinus => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -63937,6 +66211,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for VarDeclKind {
             VarDeclKind::Var => {}
             VarDeclKind::Let => {}
             VarDeclKind::Const => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -63954,6 +66230,8 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for VarDeclOrExpr {
             VarDeclOrExpr::Expr { 0: _field_0 } => {
                 <Box<Expr> as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -64488,6 +66766,21 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Option<TsEntityName> {
         }
     }
 }
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for Option<TsImportCallOptions> {
+    #[doc = "Calls [VisitMut`::visit_mut_opt_ts_import_call_options`] with `self`. (Extra impl)"]
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut>::visit_mut_opt_ts_import_call_options(visitor, self)
+    }
+
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        match self {
+            Some(inner) => <TsImportCallOptions as VisitMutWith<V>>::visit_mut_with(inner, visitor),
+            None => {}
+        }
+    }
+}
 impl<V: ?Sized + VisitMut> VisitMutWith<V> for Option<TsNamespaceBody> {
     #[doc = "Calls [VisitMut`::visit_mut_opt_ts_namespace_body`] with `self`. (Extra impl)"]
     #[inline]
@@ -64608,6 +66901,21 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Vec<Option<Pat>> {
     fn visit_mut_children_with(&mut self, visitor: &mut V) {
         self.iter_mut()
             .for_each(|item| <Option<Pat> as VisitMutWith<V>>::visit_mut_with(item, visitor))
+    }
+}
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for Option<swc_atoms::Wtf8Atom> {
+    #[doc = "Calls [VisitMut`::visit_mut_opt_wtf_8_atom`] with `self`. (Extra impl)"]
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut>::visit_mut_opt_wtf_8_atom(visitor, self)
+    }
+
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        match self {
+            Some(inner) => <swc_atoms::Wtf8Atom as VisitMutWith<V>>::visit_mut_with(inner, visitor),
+            None => {}
+        }
     }
 }
 impl<V: ?Sized + VisitMut> VisitMutWith<V> for Vec<ParamOrTsParamProp> {
@@ -64827,6 +67135,18 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Vec<VarDeclarator> {
     fn visit_mut_children_with(&mut self, visitor: &mut V) {
         self.iter_mut()
             .for_each(|item| <VarDeclarator as VisitMutWith<V>>::visit_mut_with(item, visitor))
+    }
+}
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for swc_atoms::Wtf8Atom {
+    #[doc = "Calls [VisitMut`::visit_mut_wtf_8_atom`] with `self`. (Extra impl)"]
+    #[inline]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut>::visit_mut_wtf_8_atom(visitor, self)
+    }
+
+    #[inline]
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        {}
     }
 }
 impl<V, T> VisitMutWith<V> for std::boxed::Box<T>
@@ -65191,6 +67511,71 @@ pub trait VisitMutAstPath {
     #[inline]
     fn visit_mut_constructor(&mut self, node: &mut Constructor, __ast_path: &mut AstKindPath) {
         <Constructor as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagContent`.\n\nBy default, this method calls \
+             [`ContentTagContent::visit_mut_children_with_ast_path`]. If you want to recurse, you \
+             need to call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_content(
+        &mut self,
+        node: &mut ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <ContentTagContent as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagEnd`.\n\nBy default, this method calls \
+             [`ContentTagEnd::visit_mut_children_with_ast_path`]. If you want to recurse, you need \
+             to call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_end(
+        &mut self,
+        node: &mut ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <ContentTagEnd as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagExpression`.\n\nBy default, this method calls \
+             [`ContentTagExpression::visit_mut_children_with_ast_path`]. If you want to recurse, \
+             you need to call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_expression(
+        &mut self,
+        node: &mut ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <ContentTagExpression as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagMember`.\n\nBy default, this method calls \
+             [`ContentTagMember::visit_mut_children_with_ast_path`]. If you want to recurse, you \
+             need to call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_member(
+        &mut self,
+        node: &mut ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <ContentTagMember as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagStart`.\n\nBy default, this method calls \
+             [`ContentTagStart::visit_mut_children_with_ast_path`]. If you want to recurse, you \
+             need to call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_start(
+        &mut self,
+        node: &mut ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <ContentTagStart as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
             node, self, __ast_path,
         )
     }
@@ -66378,6 +68763,19 @@ pub trait VisitMutAstPath {
             node, self, __ast_path,
         )
     }
+    #[doc = "Visit a node of type `Option < TsImportCallOptions >`.\n\nBy default, this method \
+             calls [`Option < TsImportCallOptions >::visit_mut_children_with_ast_path`]. If you \
+             want to recurse, you need to call it manually."]
+    #[inline]
+    fn visit_mut_opt_ts_import_call_options(
+        &mut self,
+        node: &mut Option<TsImportCallOptions>,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <Option<TsImportCallOptions> as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
     #[doc = "Visit a node of type `Option < TsNamespaceBody >`.\n\nBy default, this method calls \
              [`Option < TsNamespaceBody >::visit_mut_children_with_ast_path`]. If you want to \
              recurse, you need to call it manually."]
@@ -66476,6 +68874,19 @@ pub trait VisitMutAstPath {
         __ast_path: &mut AstKindPath,
     ) {
         <Vec<Option<Pat>> as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `Option < swc_atoms :: Wtf8Atom >`.\n\nBy default, this method \
+             calls [`Option < swc_atoms :: Wtf8Atom >::visit_mut_children_with_ast_path`]. If you \
+             want to recurse, you need to call it manually."]
+    #[inline]
+    fn visit_mut_opt_wtf_8_atom(
+        &mut self,
+        node: &mut Option<swc_atoms::Wtf8Atom>,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <Option<swc_atoms::Wtf8Atom> as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
             node, self, __ast_path,
         )
     }
@@ -67126,6 +69537,19 @@ pub trait VisitMutAstPath {
         __ast_path: &mut AstKindPath,
     ) {
         <TsGetterSignature as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `TsImportCallOptions`.\n\nBy default, this method calls \
+             [`TsImportCallOptions::visit_mut_children_with_ast_path`]. If you want to recurse, \
+             you need to call it manually."]
+    #[inline]
+    fn visit_mut_ts_import_call_options(
+        &mut self,
+        node: &mut TsImportCallOptions,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <TsImportCallOptions as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
             node, self, __ast_path,
         )
     }
@@ -67915,6 +70339,19 @@ pub trait VisitMutAstPath {
             node, self, __ast_path,
         )
     }
+    #[doc = "Visit a node of type `swc_atoms :: Wtf8Atom`.\n\nBy default, this method calls \
+             [`swc_atoms :: Wtf8Atom::visit_mut_children_with_ast_path`]. If you want to recurse, \
+             you need to call it manually."]
+    #[inline]
+    fn visit_mut_wtf_8_atom(
+        &mut self,
+        node: &mut swc_atoms::Wtf8Atom,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <swc_atoms::Wtf8Atom as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
     #[doc = "Visit a node of type `YieldExpr`.\n\nBy default, this method calls \
              [`YieldExpr::visit_mut_children_with_ast_path`]. If you want to recurse, you need to \
              call it manually."]
@@ -68132,6 +70569,51 @@ where
     }
 
     #[inline]
+    fn visit_mut_content_tag_content(
+        &mut self,
+        node: &mut ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_content(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_end(
+        &mut self,
+        node: &mut ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_end(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_expression(
+        &mut self,
+        node: &mut ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_expression(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_member(
+        &mut self,
+        node: &mut ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_member(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_start(
+        &mut self,
+        node: &mut ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_start(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
     fn visit_mut_continue_stmt(&mut self, node: &mut ContinueStmt, __ast_path: &mut AstKindPath) {
         <V as VisitMutAstPath>::visit_mut_continue_stmt(&mut **self, node, __ast_path)
     }
@@ -68872,6 +71354,15 @@ where
     }
 
     #[inline]
+    fn visit_mut_opt_ts_import_call_options(
+        &mut self,
+        node: &mut Option<TsImportCallOptions>,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_opt_ts_import_call_options(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
     fn visit_mut_opt_ts_namespace_body(
         &mut self,
         node: &mut Option<TsNamespaceBody>,
@@ -68945,6 +71436,15 @@ where
         __ast_path: &mut AstKindPath,
     ) {
         <V as VisitMutAstPath>::visit_mut_opt_vec_pats(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_opt_wtf_8_atom(
+        &mut self,
+        node: &mut Option<swc_atoms::Wtf8Atom>,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_opt_wtf_8_atom(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -69345,6 +71845,15 @@ where
         __ast_path: &mut AstKindPath,
     ) {
         <V as VisitMutAstPath>::visit_mut_ts_getter_signature(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_ts_import_call_options(
+        &mut self,
+        node: &mut TsImportCallOptions,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_ts_import_call_options(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -69855,6 +72364,15 @@ where
     #[inline]
     fn visit_mut_with_stmt(&mut self, node: &mut WithStmt, __ast_path: &mut AstKindPath) {
         <V as VisitMutAstPath>::visit_mut_with_stmt(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_wtf_8_atom(
+        &mut self,
+        node: &mut swc_atoms::Wtf8Atom,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_wtf_8_atom(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -70069,6 +72587,51 @@ where
     }
 
     #[inline]
+    fn visit_mut_content_tag_content(
+        &mut self,
+        node: &mut ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_content(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_end(
+        &mut self,
+        node: &mut ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_end(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_expression(
+        &mut self,
+        node: &mut ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_expression(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_member(
+        &mut self,
+        node: &mut ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_member(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_start(
+        &mut self,
+        node: &mut ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_start(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
     fn visit_mut_continue_stmt(&mut self, node: &mut ContinueStmt, __ast_path: &mut AstKindPath) {
         <V as VisitMutAstPath>::visit_mut_continue_stmt(&mut **self, node, __ast_path)
     }
@@ -70809,6 +73372,15 @@ where
     }
 
     #[inline]
+    fn visit_mut_opt_ts_import_call_options(
+        &mut self,
+        node: &mut Option<TsImportCallOptions>,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_opt_ts_import_call_options(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
     fn visit_mut_opt_ts_namespace_body(
         &mut self,
         node: &mut Option<TsNamespaceBody>,
@@ -70882,6 +73454,15 @@ where
         __ast_path: &mut AstKindPath,
     ) {
         <V as VisitMutAstPath>::visit_mut_opt_vec_pats(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_opt_wtf_8_atom(
+        &mut self,
+        node: &mut Option<swc_atoms::Wtf8Atom>,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_opt_wtf_8_atom(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -71282,6 +73863,15 @@ where
         __ast_path: &mut AstKindPath,
     ) {
         <V as VisitMutAstPath>::visit_mut_ts_getter_signature(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_ts_import_call_options(
+        &mut self,
+        node: &mut TsImportCallOptions,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_ts_import_call_options(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -71792,6 +74382,15 @@ where
     #[inline]
     fn visit_mut_with_stmt(&mut self, node: &mut WithStmt, __ast_path: &mut AstKindPath) {
         <V as VisitMutAstPath>::visit_mut_with_stmt(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_wtf_8_atom(
+        &mut self,
+        node: &mut swc_atoms::Wtf8Atom,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_wtf_8_atom(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -72259,6 +74858,86 @@ where
     }
 
     #[inline]
+    fn visit_mut_content_tag_content(
+        &mut self,
+        node: &mut ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_content(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_content(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_end(
+        &mut self,
+        node: &mut ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_end(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_end(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_expression(
+        &mut self,
+        node: &mut ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_expression(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_expression(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_member(
+        &mut self,
+        node: &mut ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_member(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_member(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_start(
+        &mut self,
+        node: &mut ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_start(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_start(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
     fn visit_mut_continue_stmt(&mut self, node: &mut ContinueStmt, __ast_path: &mut AstKindPath) {
         match self {
             swc_visit::Either::Left(visitor) => {
@@ -73783,6 +76462,22 @@ where
     }
 
     #[inline]
+    fn visit_mut_opt_ts_import_call_options(
+        &mut self,
+        node: &mut Option<TsImportCallOptions>,
+        __ast_path: &mut AstKindPath,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMutAstPath::visit_mut_opt_ts_import_call_options(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMutAstPath::visit_mut_opt_ts_import_call_options(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
     fn visit_mut_opt_ts_namespace_body(
         &mut self,
         node: &mut Option<TsNamespaceBody>,
@@ -73910,6 +76605,22 @@ where
             }
             swc_visit::Either::Right(visitor) => {
                 VisitMutAstPath::visit_mut_opt_vec_pats(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_opt_wtf_8_atom(
+        &mut self,
+        node: &mut Option<swc_atoms::Wtf8Atom>,
+        __ast_path: &mut AstKindPath,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMutAstPath::visit_mut_opt_wtf_8_atom(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMutAstPath::visit_mut_opt_wtf_8_atom(visitor, node, __ast_path)
             }
         }
     }
@@ -74758,6 +77469,22 @@ where
             }
             swc_visit::Either::Right(visitor) => {
                 VisitMutAstPath::visit_mut_ts_getter_signature(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_ts_import_call_options(
+        &mut self,
+        node: &mut TsImportCallOptions,
+        __ast_path: &mut AstKindPath,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMutAstPath::visit_mut_ts_import_call_options(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMutAstPath::visit_mut_ts_import_call_options(visitor, node, __ast_path)
             }
         }
     }
@@ -75759,6 +78486,22 @@ where
     }
 
     #[inline]
+    fn visit_mut_wtf_8_atom(
+        &mut self,
+        node: &mut swc_atoms::Wtf8Atom,
+        __ast_path: &mut AstKindPath,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMutAstPath::visit_mut_wtf_8_atom(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMutAstPath::visit_mut_wtf_8_atom(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
     fn visit_mut_yield_expr(&mut self, node: &mut YieldExpr, __ast_path: &mut AstKindPath) {
         match self {
             swc_visit::Either::Left(visitor) => {
@@ -76088,6 +78831,78 @@ where
     fn visit_mut_constructor(&mut self, node: &mut Constructor, __ast_path: &mut AstKindPath) {
         if self.enabled {
             <V as VisitMutAstPath>::visit_mut_constructor(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_content(
+        &mut self,
+        node: &mut ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) {
+        if self.enabled {
+            <V as VisitMutAstPath>::visit_mut_content_tag_content(
+                &mut self.visitor,
+                node,
+                __ast_path,
+            )
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_end(
+        &mut self,
+        node: &mut ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) {
+        if self.enabled {
+            <V as VisitMutAstPath>::visit_mut_content_tag_end(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_expression(
+        &mut self,
+        node: &mut ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) {
+        if self.enabled {
+            <V as VisitMutAstPath>::visit_mut_content_tag_expression(
+                &mut self.visitor,
+                node,
+                __ast_path,
+            )
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_member(
+        &mut self,
+        node: &mut ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) {
+        if self.enabled {
+            <V as VisitMutAstPath>::visit_mut_content_tag_member(
+                &mut self.visitor,
+                node,
+                __ast_path,
+            )
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_start(
+        &mut self,
+        node: &mut ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) {
+        if self.enabled {
+            <V as VisitMutAstPath>::visit_mut_content_tag_start(&mut self.visitor, node, __ast_path)
         } else {
         }
     }
@@ -77273,6 +80088,22 @@ where
     }
 
     #[inline]
+    fn visit_mut_opt_ts_import_call_options(
+        &mut self,
+        node: &mut Option<TsImportCallOptions>,
+        __ast_path: &mut AstKindPath,
+    ) {
+        if self.enabled {
+            <V as VisitMutAstPath>::visit_mut_opt_ts_import_call_options(
+                &mut self.visitor,
+                node,
+                __ast_path,
+            )
+        } else {
+        }
+    }
+
+    #[inline]
     fn visit_mut_opt_ts_namespace_body(
         &mut self,
         node: &mut Option<TsNamespaceBody>,
@@ -77384,6 +80215,18 @@ where
     ) {
         if self.enabled {
             <V as VisitMutAstPath>::visit_mut_opt_vec_pats(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_opt_wtf_8_atom(
+        &mut self,
+        node: &mut Option<swc_atoms::Wtf8Atom>,
+        __ast_path: &mut AstKindPath,
+    ) {
+        if self.enabled {
+            <V as VisitMutAstPath>::visit_mut_opt_wtf_8_atom(&mut self.visitor, node, __ast_path)
         } else {
         }
     }
@@ -78028,6 +80871,22 @@ where
     ) {
         if self.enabled {
             <V as VisitMutAstPath>::visit_mut_ts_getter_signature(
+                &mut self.visitor,
+                node,
+                __ast_path,
+            )
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_ts_import_call_options(
+        &mut self,
+        node: &mut TsImportCallOptions,
+        __ast_path: &mut AstKindPath,
+    ) {
+        if self.enabled {
+            <V as VisitMutAstPath>::visit_mut_ts_import_call_options(
                 &mut self.visitor,
                 node,
                 __ast_path,
@@ -78825,6 +81684,18 @@ where
     }
 
     #[inline]
+    fn visit_mut_wtf_8_atom(
+        &mut self,
+        node: &mut swc_atoms::Wtf8Atom,
+        __ast_path: &mut AstKindPath,
+    ) {
+        if self.enabled {
+            <V as VisitMutAstPath>::visit_mut_wtf_8_atom(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
     fn visit_mut_yield_expr(&mut self, node: &mut YieldExpr, __ast_path: &mut AstKindPath) {
         if self.enabled {
             <V as VisitMutAstPath>::visit_mut_yield_expr(&mut self.visitor, node, __ast_path)
@@ -78854,6 +81725,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Accessibility {
             Accessibility::Public => {}
             Accessibility::Protected => {}
             Accessibility::Private => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -79102,6 +81975,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for AssignOp {
             AssignOp::AndAssign => {}
             AssignOp::OrAssign => {}
             AssignOp::NullishAssign => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -79268,6 +82143,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for AssignTarget {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -79311,6 +82188,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for AssignTargetPat {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -79566,6 +82445,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for BinaryOp {
             BinaryOp::InstanceOf => {}
             BinaryOp::Exp => {}
             BinaryOp::NullishCoalescing => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -79677,6 +82558,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for BlockStmtOrExpr {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -79839,6 +82722,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Callee {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -80154,6 +83039,18 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ClassMember {
                     &mut *__ast_path,
                 );
             }
+            ClassMember::ContentTagMember { 0: _field_0 } => {
+                let mut __ast_path = __ast_path.with_guard(AstParentKind::ClassMember(
+                    self::fields::ClassMemberField::ContentTagMember,
+                ));
+                <ContentTagMember as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                    _field_0,
+                    visitor,
+                    &mut *__ast_path,
+                );
+            }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -80495,6 +83392,215 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Constructor {
 }
 #[cfg(any(docsrs, feature = "path"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ContentTagContent {
+    #[doc = "Calls [VisitMutAstPath`::visit_mut_content_tag_content`] with `self`."]
+    fn visit_mut_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_content(visitor, self, __ast_path)
+    }
+
+    fn visit_mut_children_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        match self {
+            ContentTagContent { span, value } => {
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagContent(
+                        self::fields::ContentTagContentField::Span,
+                    ));
+                    <swc_common::Span as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagContent(
+                        self::fields::ContentTagContentField::Value,
+                    ));
+                    <swc_atoms::Atom as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        value,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ContentTagEnd {
+    #[doc = "Calls [VisitMutAstPath`::visit_mut_content_tag_end`] with `self`."]
+    fn visit_mut_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_end(visitor, self, __ast_path)
+    }
+
+    fn visit_mut_children_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        match self {
+            ContentTagEnd { span } => {
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagEnd(
+                        self::fields::ContentTagEndField::Span,
+                    ));
+                    <swc_common::Span as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ContentTagExpression {
+    #[doc = "Calls [VisitMutAstPath`::visit_mut_content_tag_expression`] with `self`."]
+    fn visit_mut_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_expression(visitor, self, __ast_path)
+    }
+
+    fn visit_mut_children_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        match self {
+            ContentTagExpression {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentKind::ContentTagExpression(
+                            self::fields::ContentTagExpressionField::Span,
+                        ));
+                    <swc_common::Span as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentKind::ContentTagExpression(
+                            self::fields::ContentTagExpressionField::Opening,
+                        ));
+                    <Box<ContentTagStart> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        opening,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentKind::ContentTagExpression(
+                            self::fields::ContentTagExpressionField::Contents,
+                        ));
+                    <Box<ContentTagContent> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        contents,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentKind::ContentTagExpression(
+                            self::fields::ContentTagExpressionField::Closing,
+                        ));
+                    <Box<ContentTagEnd> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        closing,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ContentTagMember {
+    #[doc = "Calls [VisitMutAstPath`::visit_mut_content_tag_member`] with `self`."]
+    fn visit_mut_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_member(visitor, self, __ast_path)
+    }
+
+    fn visit_mut_children_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        match self {
+            ContentTagMember {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagMember(
+                        self::fields::ContentTagMemberField::Span,
+                    ));
+                    <swc_common::Span as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagMember(
+                        self::fields::ContentTagMemberField::Opening,
+                    ));
+                    <Box<ContentTagStart> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        opening,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagMember(
+                        self::fields::ContentTagMemberField::Contents,
+                    ));
+                    <Box<ContentTagContent> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        contents,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagMember(
+                        self::fields::ContentTagMemberField::Closing,
+                    ));
+                    <Box<ContentTagEnd> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        closing,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ContentTagStart {
+    #[doc = "Calls [VisitMutAstPath`::visit_mut_content_tag_start`] with `self`."]
+    fn visit_mut_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_start(visitor, self, __ast_path)
+    }
+
+    fn visit_mut_children_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        match self {
+            ContentTagStart { span } => {
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagStart(
+                        self::fields::ContentTagStartField::Span,
+                    ));
+                    <swc_common::Span as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
 impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ContinueStmt {
     #[doc = "Calls [VisitMutAstPath`::visit_mut_continue_stmt`] with `self`."]
     fn visit_mut_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
@@ -80635,6 +83741,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Decl {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -80711,6 +83819,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for DefaultDecl {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -81091,6 +84201,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ExportSpecifier {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -81366,6 +84478,16 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Expr {
                     &mut *__ast_path,
                 );
             }
+            Expr::ContentTagExpression { 0: _field_0 } => {
+                let mut __ast_path = __ast_path.with_guard(AstParentKind::Expr(
+                    self::fields::ExprField::ContentTagExpression,
+                ));
+                <ContentTagExpression as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                    _field_0,
+                    visitor,
+                    &mut *__ast_path,
+                );
+            }
             Expr::TsTypeAssertion { 0: _field_0 } => {
                 let mut __ast_path = __ast_path.with_guard(AstParentKind::Expr(
                     self::fields::ExprField::TsTypeAssertion,
@@ -81450,6 +84572,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Expr {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -81629,6 +84753,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ForHead {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -82305,6 +85431,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ImportPhase {
             ImportPhase::Evaluation => {}
             ImportPhase::Source => {}
             ImportPhase::Defer => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -82348,6 +85476,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ImportSpecifier {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -82554,6 +85684,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for JSXAttrName {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -82587,6 +85719,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for JSXAttrOrSpread {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -82600,11 +85734,11 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for JSXAttrValue {
 
     fn visit_mut_children_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
         match self {
-            JSXAttrValue::Lit { 0: _field_0 } => {
+            JSXAttrValue::Str { 0: _field_0 } => {
                 let mut __ast_path = __ast_path.with_guard(AstParentKind::JSXAttrValue(
-                    self::fields::JSXAttrValueField::Lit,
+                    self::fields::JSXAttrValueField::Str,
                 ));
-                <Lit as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                <Str as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
                     _field_0,
                     visitor,
                     &mut *__ast_path,
@@ -82640,6 +85774,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for JSXAttrValue {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -82823,6 +85959,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for JSXElementChild {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -82866,6 +86004,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for JSXElementName {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -82923,6 +86063,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for JSXExpr {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -83141,6 +86283,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for JSXObject {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -83331,6 +86475,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Key {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -83522,6 +86668,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Lit {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -83610,6 +86758,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for MemberProp {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -83660,6 +86810,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for MetaPropKind {
         match self {
             MetaPropKind::NewTarget => {}
             MetaPropKind::ImportMeta => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -83676,6 +86828,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for MethodKind {
             MethodKind::Method => {}
             MethodKind::Getter => {}
             MethodKind::Setter => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -83861,6 +87015,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ModuleDecl {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -83894,6 +87050,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ModuleExportName {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -83927,6 +87085,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ModuleItem {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -84234,6 +87394,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ObjectPatProp {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -84330,6 +87492,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for OptChainBase {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -84449,6 +87613,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ParamOrTsParamProp 
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -84558,6 +87724,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Pat {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -84797,6 +87965,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Program {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -84864,6 +88034,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Prop {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -84923,6 +88095,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for PropName {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -84956,6 +88130,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for PropOrSpread {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -85365,6 +88541,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for SimpleAssignTarget 
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -85619,6 +88797,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Stmt {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -85645,7 +88825,7 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Str {
                 {
                     let mut __ast_path =
                         __ast_path.with_guard(AstParentKind::Str(self::fields::StrField::Value));
-                    <swc_atoms::Atom as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                    <swc_atoms::Wtf8Atom as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
                         value,
                         visitor,
                         &mut *__ast_path,
@@ -85718,6 +88898,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for SuperProp {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -86058,7 +89240,7 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TplElement {
                     let mut __ast_path = __ast_path.with_guard(AstParentKind::TplElement(
                         self::fields::TplElementField::Cooked,
                     ));
-                    <Option<swc_atoms::Atom> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                    <Option<swc_atoms::Wtf8Atom> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
                         cooked,
                         visitor,
                         &mut *__ast_path,
@@ -86091,6 +89273,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TruePlusMinus {
             TruePlusMinus::True => {}
             TruePlusMinus::Plus => {}
             TruePlusMinus::Minus => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -86542,6 +89726,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsEntityName {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -86670,6 +89856,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsEnumMemberId {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -86818,6 +90006,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsFnOrConstructorTy
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -86870,6 +90060,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsFnParam {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -86980,6 +90172,41 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsGetterSignature {
 }
 #[cfg(any(docsrs, feature = "path"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsImportCallOptions {
+    #[doc = "Calls [VisitMutAstPath`::visit_mut_ts_import_call_options`] with `self`."]
+    fn visit_mut_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        <V as VisitMutAstPath>::visit_mut_ts_import_call_options(visitor, self, __ast_path)
+    }
+
+    fn visit_mut_children_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        match self {
+            TsImportCallOptions { span, with } => {
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::TsImportCallOptions(
+                        self::fields::TsImportCallOptionsField::Span,
+                    ));
+                    <swc_common::Span as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::TsImportCallOptions(
+                        self::fields::TsImportCallOptionsField::With,
+                    ));
+                    <Box<ObjectLit> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        with,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
 impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsImportEqualsDecl {
     #[doc = "Calls [VisitMutAstPath`::visit_mut_ts_import_equals_decl`] with `self`."]
     fn visit_mut_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
@@ -87044,6 +90271,7 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsImportType {
                 arg,
                 qualifier,
                 type_args,
+                attributes,
             } => {
                 {
                     let mut __ast_path = __ast_path.with_guard(AstParentKind::TsImportType(
@@ -87080,6 +90308,16 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsImportType {
                         self::fields::TsImportTypeField::TypeArgs,
                     ));
                     < Option < Box < TsTypeParamInstantiation > > as VisitMutWithAstPath < V > > :: visit_mut_with_ast_path (type_args , visitor , & mut * __ast_path)
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::TsImportType(
+                        self::fields::TsImportTypeField::Attributes,
+                    ));
+                    <Option<TsImportCallOptions> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        attributes,
+                        visitor,
+                        &mut *__ast_path,
+                    )
                 };
             }
         }
@@ -87462,6 +90700,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsKeywordTypeKind {
             TsKeywordTypeKind::TsNullKeyword => {}
             TsKeywordTypeKind::TsNeverKeyword => {}
             TsKeywordTypeKind::TsIntrinsicKeyword => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -87520,6 +90760,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsLit {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -87756,6 +90998,7 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsModuleDecl {
                 span,
                 declare,
                 global,
+                namespace,
                 id,
                 body,
             } => {
@@ -87823,6 +91066,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsModuleName {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -87856,6 +91101,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsModuleRef {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -87889,6 +91136,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsNamespaceBody {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -88142,6 +91391,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsParamPropParam {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -88466,6 +91717,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsThisTypeOrIdent {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -88803,6 +92056,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsType {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -89026,6 +92281,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsTypeElement {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -89121,6 +92378,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsTypeOperatorOp {
             TsTypeOperatorOp::KeyOf => {}
             TsTypeOperatorOp::Unique => {}
             TsTypeOperatorOp::ReadOnly => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -89384,6 +92643,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsTypeQueryExpr {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -89463,6 +92724,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for TsUnionOrIntersecti
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -89560,6 +92823,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for UnaryOp {
             UnaryOp::TypeOf => {}
             UnaryOp::Void => {}
             UnaryOp::Delete => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -89624,6 +92889,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for UpdateOp {
         match self {
             UpdateOp::PlusPlus => {}
             UpdateOp::MinusMinus => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -89736,6 +93003,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for VarDeclKind {
             VarDeclKind::Var => {}
             VarDeclKind::Let => {}
             VarDeclKind::Const => {}
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -89769,6 +93038,8 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for VarDeclOrExpr {
                     &mut *__ast_path,
                 );
             }
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }
@@ -90546,6 +93817,28 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Option<TsEntityName
 }
 #[cfg(any(docsrs, feature = "path"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Option<TsImportCallOptions> {
+    #[doc = "Calls [VisitMutAstPath`::visit_mut_opt_ts_import_call_options`] with `self`. (Extra \
+             impl)"]
+    #[inline]
+    fn visit_mut_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        <V as VisitMutAstPath>::visit_mut_opt_ts_import_call_options(visitor, self, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_children_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        match self {
+            Some(inner) => {
+                <TsImportCallOptions as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                    inner, visitor, __ast_path,
+                )
+            }
+            None => {}
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
 impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Option<TsNamespaceBody> {
     #[doc = "Calls [VisitMutAstPath`::visit_mut_opt_ts_namespace_body`] with `self`. (Extra impl)"]
     #[inline]
@@ -90703,6 +93996,27 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Vec<Option<Pat>> {
                 &mut *__ast_path,
             )
         })
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Option<swc_atoms::Wtf8Atom> {
+    #[doc = "Calls [VisitMutAstPath`::visit_mut_opt_wtf_8_atom`] with `self`. (Extra impl)"]
+    #[inline]
+    fn visit_mut_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        <V as VisitMutAstPath>::visit_mut_opt_wtf_8_atom(visitor, self, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_children_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        match self {
+            Some(inner) => {
+                <swc_atoms::Wtf8Atom as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                    inner, visitor, __ast_path,
+                )
+            }
+            None => {}
+        }
     }
 }
 #[cfg(any(docsrs, feature = "path"))]
@@ -91050,6 +94364,20 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Vec<VarDeclarator> 
 }
 #[cfg(any(docsrs, feature = "path"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for swc_atoms::Wtf8Atom {
+    #[doc = "Calls [VisitMutAstPath`::visit_mut_wtf_8_atom`] with `self`. (Extra impl)"]
+    #[inline]
+    fn visit_mut_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        <V as VisitMutAstPath>::visit_mut_wtf_8_atom(visitor, self, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_children_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        {}
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
 impl<V, T> VisitMutWithAstPath<V> for std::boxed::Box<T>
 where
     V: ?Sized + VisitMutAstPath,
@@ -91323,6 +94651,41 @@ pub trait Fold {
     #[inline]
     fn fold_constructor(&mut self, node: Constructor) -> Constructor {
         <Constructor as FoldWith<Self>>::fold_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagContent`.\n\nBy default, this method calls \
+             [`ContentTagContent::fold_children_with`]. If you want to recurse, you need to call \
+             it manually."]
+    #[inline]
+    fn fold_content_tag_content(&mut self, node: ContentTagContent) -> ContentTagContent {
+        <ContentTagContent as FoldWith<Self>>::fold_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagEnd`.\n\nBy default, this method calls \
+             [`ContentTagEnd::fold_children_with`]. If you want to recurse, you need to call it \
+             manually."]
+    #[inline]
+    fn fold_content_tag_end(&mut self, node: ContentTagEnd) -> ContentTagEnd {
+        <ContentTagEnd as FoldWith<Self>>::fold_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagExpression`.\n\nBy default, this method calls \
+             [`ContentTagExpression::fold_children_with`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn fold_content_tag_expression(&mut self, node: ContentTagExpression) -> ContentTagExpression {
+        <ContentTagExpression as FoldWith<Self>>::fold_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagMember`.\n\nBy default, this method calls \
+             [`ContentTagMember::fold_children_with`]. If you want to recurse, you need to call it \
+             manually."]
+    #[inline]
+    fn fold_content_tag_member(&mut self, node: ContentTagMember) -> ContentTagMember {
+        <ContentTagMember as FoldWith<Self>>::fold_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagStart`.\n\nBy default, this method calls \
+             [`ContentTagStart::fold_children_with`]. If you want to recurse, you need to call it \
+             manually."]
+    #[inline]
+    fn fold_content_tag_start(&mut self, node: ContentTagStart) -> ContentTagStart {
+        <ContentTagStart as FoldWith<Self>>::fold_children_with(node, self)
     }
     #[doc = "Visit a node of type `ContinueStmt`.\n\nBy default, this method calls \
              [`ContinueStmt::fold_children_with`]. If you want to recurse, you need to call it \
@@ -92107,6 +95470,16 @@ pub trait Fold {
     fn fold_opt_ts_entity_name(&mut self, node: Option<TsEntityName>) -> Option<TsEntityName> {
         <Option<TsEntityName> as FoldWith<Self>>::fold_children_with(node, self)
     }
+    #[doc = "Visit a node of type `Option < TsImportCallOptions >`.\n\nBy default, this method \
+             calls [`Option < TsImportCallOptions >::fold_children_with`]. If you want to recurse, \
+             you need to call it manually."]
+    #[inline]
+    fn fold_opt_ts_import_call_options(
+        &mut self,
+        node: Option<TsImportCallOptions>,
+    ) -> Option<TsImportCallOptions> {
+        <Option<TsImportCallOptions> as FoldWith<Self>>::fold_children_with(node, self)
+    }
     #[doc = "Visit a node of type `Option < TsNamespaceBody >`.\n\nBy default, this method calls \
              [`Option < TsNamespaceBody >::fold_children_with`]. If you want to recurse, you need \
              to call it manually."]
@@ -92174,6 +95547,16 @@ pub trait Fold {
     #[inline]
     fn fold_opt_vec_pats(&mut self, node: Vec<Option<Pat>>) -> Vec<Option<Pat>> {
         <Vec<Option<Pat>> as FoldWith<Self>>::fold_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `Option < swc_atoms :: Wtf8Atom >`.\n\nBy default, this method \
+             calls [`Option < swc_atoms :: Wtf8Atom >::fold_children_with`]. If you want to \
+             recurse, you need to call it manually."]
+    #[inline]
+    fn fold_opt_wtf_8_atom(
+        &mut self,
+        node: Option<swc_atoms::Wtf8Atom>,
+    ) -> Option<swc_atoms::Wtf8Atom> {
+        <Option<swc_atoms::Wtf8Atom> as FoldWith<Self>>::fold_children_with(node, self)
     }
     #[doc = "Visit a node of type `Param`.\n\nBy default, this method calls \
              [`Param::fold_children_with`]. If you want to recurse, you need to call it manually."]
@@ -92621,6 +96004,13 @@ pub trait Fold {
     #[inline]
     fn fold_ts_getter_signature(&mut self, node: TsGetterSignature) -> TsGetterSignature {
         <TsGetterSignature as FoldWith<Self>>::fold_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `TsImportCallOptions`.\n\nBy default, this method calls \
+             [`TsImportCallOptions::fold_children_with`]. If you want to recurse, you need to call \
+             it manually."]
+    #[inline]
+    fn fold_ts_import_call_options(&mut self, node: TsImportCallOptions) -> TsImportCallOptions {
+        <TsImportCallOptions as FoldWith<Self>>::fold_children_with(node, self)
     }
     #[doc = "Visit a node of type `TsImportEqualsDecl`.\n\nBy default, this method calls \
              [`TsImportEqualsDecl::fold_children_with`]. If you want to recurse, you need to call \
@@ -93117,6 +96507,13 @@ pub trait Fold {
     fn fold_with_stmt(&mut self, node: WithStmt) -> WithStmt {
         <WithStmt as FoldWith<Self>>::fold_children_with(node, self)
     }
+    #[doc = "Visit a node of type `swc_atoms :: Wtf8Atom`.\n\nBy default, this method calls \
+             [`swc_atoms :: Wtf8Atom::fold_children_with`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn fold_wtf_8_atom(&mut self, node: swc_atoms::Wtf8Atom) -> swc_atoms::Wtf8Atom {
+        <swc_atoms::Wtf8Atom as FoldWith<Self>>::fold_children_with(node, self)
+    }
     #[doc = "Visit a node of type `YieldExpr`.\n\nBy default, this method calls \
              [`YieldExpr::fold_children_with`]. If you want to recurse, you need to call it \
              manually."]
@@ -93310,6 +96707,31 @@ where
     }
 
     #[inline]
+    fn fold_content_tag_content(&mut self, node: ContentTagContent) -> ContentTagContent {
+        <V as Fold>::fold_content_tag_content(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_end(&mut self, node: ContentTagEnd) -> ContentTagEnd {
+        <V as Fold>::fold_content_tag_end(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_expression(&mut self, node: ContentTagExpression) -> ContentTagExpression {
+        <V as Fold>::fold_content_tag_expression(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_member(&mut self, node: ContentTagMember) -> ContentTagMember {
+        <V as Fold>::fold_content_tag_member(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_start(&mut self, node: ContentTagStart) -> ContentTagStart {
+        <V as Fold>::fold_content_tag_start(&mut **self, node)
+    }
+
+    #[inline]
     fn fold_continue_stmt(&mut self, node: ContinueStmt) -> ContinueStmt {
         <V as Fold>::fold_continue_stmt(&mut **self, node)
     }
@@ -93891,6 +97313,14 @@ where
     }
 
     #[inline]
+    fn fold_opt_ts_import_call_options(
+        &mut self,
+        node: Option<TsImportCallOptions>,
+    ) -> Option<TsImportCallOptions> {
+        <V as Fold>::fold_opt_ts_import_call_options(&mut **self, node)
+    }
+
+    #[inline]
     fn fold_opt_ts_namespace_body(
         &mut self,
         node: Option<TsNamespaceBody>,
@@ -93940,6 +97370,14 @@ where
     #[inline]
     fn fold_opt_vec_pats(&mut self, node: Vec<Option<Pat>>) -> Vec<Option<Pat>> {
         <V as Fold>::fold_opt_vec_pats(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_opt_wtf_8_atom(
+        &mut self,
+        node: Option<swc_atoms::Wtf8Atom>,
+    ) -> Option<swc_atoms::Wtf8Atom> {
+        <V as Fold>::fold_opt_wtf_8_atom(&mut **self, node)
     }
 
     #[inline]
@@ -94275,6 +97713,11 @@ where
     #[inline]
     fn fold_ts_getter_signature(&mut self, node: TsGetterSignature) -> TsGetterSignature {
         <V as Fold>::fold_ts_getter_signature(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_ts_import_call_options(&mut self, node: TsImportCallOptions) -> TsImportCallOptions {
+        <V as Fold>::fold_ts_import_call_options(&mut **self, node)
     }
 
     #[inline]
@@ -94634,6 +98077,11 @@ where
     #[inline]
     fn fold_with_stmt(&mut self, node: WithStmt) -> WithStmt {
         <V as Fold>::fold_with_stmt(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_wtf_8_atom(&mut self, node: swc_atoms::Wtf8Atom) -> swc_atoms::Wtf8Atom {
+        <V as Fold>::fold_wtf_8_atom(&mut **self, node)
     }
 
     #[inline]
@@ -94826,6 +98274,31 @@ where
     }
 
     #[inline]
+    fn fold_content_tag_content(&mut self, node: ContentTagContent) -> ContentTagContent {
+        <V as Fold>::fold_content_tag_content(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_end(&mut self, node: ContentTagEnd) -> ContentTagEnd {
+        <V as Fold>::fold_content_tag_end(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_expression(&mut self, node: ContentTagExpression) -> ContentTagExpression {
+        <V as Fold>::fold_content_tag_expression(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_member(&mut self, node: ContentTagMember) -> ContentTagMember {
+        <V as Fold>::fold_content_tag_member(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_start(&mut self, node: ContentTagStart) -> ContentTagStart {
+        <V as Fold>::fold_content_tag_start(&mut **self, node)
+    }
+
+    #[inline]
     fn fold_continue_stmt(&mut self, node: ContinueStmt) -> ContinueStmt {
         <V as Fold>::fold_continue_stmt(&mut **self, node)
     }
@@ -95407,6 +98880,14 @@ where
     }
 
     #[inline]
+    fn fold_opt_ts_import_call_options(
+        &mut self,
+        node: Option<TsImportCallOptions>,
+    ) -> Option<TsImportCallOptions> {
+        <V as Fold>::fold_opt_ts_import_call_options(&mut **self, node)
+    }
+
+    #[inline]
     fn fold_opt_ts_namespace_body(
         &mut self,
         node: Option<TsNamespaceBody>,
@@ -95456,6 +98937,14 @@ where
     #[inline]
     fn fold_opt_vec_pats(&mut self, node: Vec<Option<Pat>>) -> Vec<Option<Pat>> {
         <V as Fold>::fold_opt_vec_pats(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_opt_wtf_8_atom(
+        &mut self,
+        node: Option<swc_atoms::Wtf8Atom>,
+    ) -> Option<swc_atoms::Wtf8Atom> {
+        <V as Fold>::fold_opt_wtf_8_atom(&mut **self, node)
     }
 
     #[inline]
@@ -95791,6 +99280,11 @@ where
     #[inline]
     fn fold_ts_getter_signature(&mut self, node: TsGetterSignature) -> TsGetterSignature {
         <V as Fold>::fold_ts_getter_signature(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_ts_import_call_options(&mut self, node: TsImportCallOptions) -> TsImportCallOptions {
+        <V as Fold>::fold_ts_import_call_options(&mut **self, node)
     }
 
     #[inline]
@@ -96150,6 +99644,11 @@ where
     #[inline]
     fn fold_with_stmt(&mut self, node: WithStmt) -> WithStmt {
         <V as Fold>::fold_with_stmt(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_wtf_8_atom(&mut self, node: swc_atoms::Wtf8Atom) -> swc_atoms::Wtf8Atom {
+        <V as Fold>::fold_wtf_8_atom(&mut **self, node)
     }
 
     #[inline]
@@ -96447,6 +99946,46 @@ where
         match self {
             swc_visit::Either::Left(visitor) => Fold::fold_constructor(visitor, node),
             swc_visit::Either::Right(visitor) => Fold::fold_constructor(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_content(&mut self, node: ContentTagContent) -> ContentTagContent {
+        match self {
+            swc_visit::Either::Left(visitor) => Fold::fold_content_tag_content(visitor, node),
+            swc_visit::Either::Right(visitor) => Fold::fold_content_tag_content(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_end(&mut self, node: ContentTagEnd) -> ContentTagEnd {
+        match self {
+            swc_visit::Either::Left(visitor) => Fold::fold_content_tag_end(visitor, node),
+            swc_visit::Either::Right(visitor) => Fold::fold_content_tag_end(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_expression(&mut self, node: ContentTagExpression) -> ContentTagExpression {
+        match self {
+            swc_visit::Either::Left(visitor) => Fold::fold_content_tag_expression(visitor, node),
+            swc_visit::Either::Right(visitor) => Fold::fold_content_tag_expression(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_member(&mut self, node: ContentTagMember) -> ContentTagMember {
+        match self {
+            swc_visit::Either::Left(visitor) => Fold::fold_content_tag_member(visitor, node),
+            swc_visit::Either::Right(visitor) => Fold::fold_content_tag_member(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_start(&mut self, node: ContentTagStart) -> ContentTagStart {
+        match self {
+            swc_visit::Either::Left(visitor) => Fold::fold_content_tag_start(visitor, node),
+            swc_visit::Either::Right(visitor) => Fold::fold_content_tag_start(visitor, node),
         }
     }
 
@@ -97372,6 +100911,21 @@ where
     }
 
     #[inline]
+    fn fold_opt_ts_import_call_options(
+        &mut self,
+        node: Option<TsImportCallOptions>,
+    ) -> Option<TsImportCallOptions> {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                Fold::fold_opt_ts_import_call_options(visitor, node)
+            }
+            swc_visit::Either::Right(visitor) => {
+                Fold::fold_opt_ts_import_call_options(visitor, node)
+            }
+        }
+    }
+
+    #[inline]
     fn fold_opt_ts_namespace_body(
         &mut self,
         node: Option<TsNamespaceBody>,
@@ -97448,6 +101002,17 @@ where
         match self {
             swc_visit::Either::Left(visitor) => Fold::fold_opt_vec_pats(visitor, node),
             swc_visit::Either::Right(visitor) => Fold::fold_opt_vec_pats(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn fold_opt_wtf_8_atom(
+        &mut self,
+        node: Option<swc_atoms::Wtf8Atom>,
+    ) -> Option<swc_atoms::Wtf8Atom> {
+        match self {
+            swc_visit::Either::Left(visitor) => Fold::fold_opt_wtf_8_atom(visitor, node),
+            swc_visit::Either::Right(visitor) => Fold::fold_opt_wtf_8_atom(visitor, node),
         }
     }
 
@@ -97981,6 +101546,14 @@ where
         match self {
             swc_visit::Either::Left(visitor) => Fold::fold_ts_getter_signature(visitor, node),
             swc_visit::Either::Right(visitor) => Fold::fold_ts_getter_signature(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn fold_ts_import_call_options(&mut self, node: TsImportCallOptions) -> TsImportCallOptions {
+        match self {
+            swc_visit::Either::Left(visitor) => Fold::fold_ts_import_call_options(visitor, node),
+            swc_visit::Either::Right(visitor) => Fold::fold_ts_import_call_options(visitor, node),
         }
     }
 
@@ -98562,6 +102135,14 @@ where
     }
 
     #[inline]
+    fn fold_wtf_8_atom(&mut self, node: swc_atoms::Wtf8Atom) -> swc_atoms::Wtf8Atom {
+        match self {
+            swc_visit::Either::Left(visitor) => Fold::fold_wtf_8_atom(visitor, node),
+            swc_visit::Either::Right(visitor) => Fold::fold_wtf_8_atom(visitor, node),
+        }
+    }
+
+    #[inline]
     fn fold_yield_expr(&mut self, node: YieldExpr) -> YieldExpr {
         match self {
             swc_visit::Either::Left(visitor) => Fold::fold_yield_expr(visitor, node),
@@ -98892,6 +102473,51 @@ where
     fn fold_constructor(&mut self, node: Constructor) -> Constructor {
         if self.enabled {
             <V as Fold>::fold_constructor(&mut self.visitor, node)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_content(&mut self, node: ContentTagContent) -> ContentTagContent {
+        if self.enabled {
+            <V as Fold>::fold_content_tag_content(&mut self.visitor, node)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_end(&mut self, node: ContentTagEnd) -> ContentTagEnd {
+        if self.enabled {
+            <V as Fold>::fold_content_tag_end(&mut self.visitor, node)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_expression(&mut self, node: ContentTagExpression) -> ContentTagExpression {
+        if self.enabled {
+            <V as Fold>::fold_content_tag_expression(&mut self.visitor, node)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_member(&mut self, node: ContentTagMember) -> ContentTagMember {
+        if self.enabled {
+            <V as Fold>::fold_content_tag_member(&mut self.visitor, node)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_start(&mut self, node: ContentTagStart) -> ContentTagStart {
+        if self.enabled {
+            <V as Fold>::fold_content_tag_start(&mut self.visitor, node)
         } else {
             node
         }
@@ -99927,6 +103553,18 @@ where
     }
 
     #[inline]
+    fn fold_opt_ts_import_call_options(
+        &mut self,
+        node: Option<TsImportCallOptions>,
+    ) -> Option<TsImportCallOptions> {
+        if self.enabled {
+            <V as Fold>::fold_opt_ts_import_call_options(&mut self.visitor, node)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
     fn fold_opt_ts_namespace_body(
         &mut self,
         node: Option<TsNamespaceBody>,
@@ -100005,6 +103643,18 @@ where
     fn fold_opt_vec_pats(&mut self, node: Vec<Option<Pat>>) -> Vec<Option<Pat>> {
         if self.enabled {
             <V as Fold>::fold_opt_vec_pats(&mut self.visitor, node)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_opt_wtf_8_atom(
+        &mut self,
+        node: Option<swc_atoms::Wtf8Atom>,
+    ) -> Option<swc_atoms::Wtf8Atom> {
+        if self.enabled {
+            <V as Fold>::fold_opt_wtf_8_atom(&mut self.visitor, node)
         } else {
             node
         }
@@ -100596,6 +104246,15 @@ where
     fn fold_ts_getter_signature(&mut self, node: TsGetterSignature) -> TsGetterSignature {
         if self.enabled {
             <V as Fold>::fold_ts_getter_signature(&mut self.visitor, node)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_ts_import_call_options(&mut self, node: TsImportCallOptions) -> TsImportCallOptions {
+        if self.enabled {
+            <V as Fold>::fold_ts_import_call_options(&mut self.visitor, node)
         } else {
             node
         }
@@ -101241,6 +104900,15 @@ where
     }
 
     #[inline]
+    fn fold_wtf_8_atom(&mut self, node: swc_atoms::Wtf8Atom) -> swc_atoms::Wtf8Atom {
+        if self.enabled {
+            <V as Fold>::fold_wtf_8_atom(&mut self.visitor, node)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
     fn fold_yield_expr(&mut self, node: YieldExpr) -> YieldExpr {
         if self.enabled {
             <V as Fold>::fold_yield_expr(&mut self.visitor, node)
@@ -101267,6 +104935,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for Accessibility {
             Accessibility::Public => Accessibility::Public,
             Accessibility::Protected => Accessibility::Protected,
             Accessibility::Private => Accessibility::Private,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -101408,6 +105078,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for AssignOp {
             AssignOp::AndAssign => AssignOp::AndAssign,
             AssignOp::OrAssign => AssignOp::OrAssign,
             AssignOp::NullishAssign => AssignOp::NullishAssign,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -101478,6 +105150,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for AssignTarget {
                 let _field_0 = <AssignTargetPat as FoldWith<V>>::fold_with(_field_0, visitor);
                 AssignTarget::Pat { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -101501,6 +105175,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for AssignTargetPat {
                 let _field_0 = <Invalid as FoldWith<V>>::fold_with(_field_0, visitor);
                 AssignTargetPat::Invalid { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -101643,6 +105319,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for BinaryOp {
             BinaryOp::InstanceOf => BinaryOp::InstanceOf,
             BinaryOp::Exp => BinaryOp::Exp,
             BinaryOp::NullishCoalescing => BinaryOp::NullishCoalescing,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -101696,6 +105374,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for BlockStmtOrExpr {
                 let _field_0 = <Box<Expr> as FoldWith<V>>::fold_with(_field_0, visitor);
                 BlockStmtOrExpr::Expr { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -101785,6 +105465,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for Callee {
                 let _field_0 = <Box<Expr> as FoldWith<V>>::fold_with(_field_0, visitor);
                 Callee::Expr { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -101941,6 +105623,12 @@ impl<V: ?Sized + Fold> FoldWith<V> for ClassMember {
                 let _field_0 = <AutoAccessor as FoldWith<V>>::fold_with(_field_0, visitor);
                 ClassMember::AutoAccessor { 0: _field_0 }
             }
+            ClassMember::ContentTagMember { 0: _field_0 } => {
+                let _field_0 = <ContentTagMember as FoldWith<V>>::fold_with(_field_0, visitor);
+                ClassMember::ContentTagMember { 0: _field_0 }
+            }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -102117,6 +105805,112 @@ impl<V: ?Sized + Fold> FoldWith<V> for Constructor {
         }
     }
 }
+impl<V: ?Sized + Fold> FoldWith<V> for ContentTagContent {
+    #[doc = "Calls [Fold`::fold_content_tag_content`] with `self`."]
+    fn fold_with(self, visitor: &mut V) -> Self {
+        <V as Fold>::fold_content_tag_content(visitor, self)
+    }
+
+    fn fold_children_with(self, visitor: &mut V) -> Self {
+        match self {
+            ContentTagContent { span, value } => {
+                let span = { <swc_common::Span as FoldWith<V>>::fold_with(span, visitor) };
+                let value = { <swc_atoms::Atom as FoldWith<V>>::fold_with(value, visitor) };
+                ContentTagContent { span, value }
+            }
+        }
+    }
+}
+impl<V: ?Sized + Fold> FoldWith<V> for ContentTagEnd {
+    #[doc = "Calls [Fold`::fold_content_tag_end`] with `self`."]
+    fn fold_with(self, visitor: &mut V) -> Self {
+        <V as Fold>::fold_content_tag_end(visitor, self)
+    }
+
+    fn fold_children_with(self, visitor: &mut V) -> Self {
+        match self {
+            ContentTagEnd { span } => {
+                let span = { <swc_common::Span as FoldWith<V>>::fold_with(span, visitor) };
+                ContentTagEnd { span }
+            }
+        }
+    }
+}
+impl<V: ?Sized + Fold> FoldWith<V> for ContentTagExpression {
+    #[doc = "Calls [Fold`::fold_content_tag_expression`] with `self`."]
+    fn fold_with(self, visitor: &mut V) -> Self {
+        <V as Fold>::fold_content_tag_expression(visitor, self)
+    }
+
+    fn fold_children_with(self, visitor: &mut V) -> Self {
+        match self {
+            ContentTagExpression {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                let span = { <swc_common::Span as FoldWith<V>>::fold_with(span, visitor) };
+                let opening =
+                    { <Box<ContentTagStart> as FoldWith<V>>::fold_with(opening, visitor) };
+                let contents =
+                    { <Box<ContentTagContent> as FoldWith<V>>::fold_with(contents, visitor) };
+                let closing = { <Box<ContentTagEnd> as FoldWith<V>>::fold_with(closing, visitor) };
+                ContentTagExpression {
+                    span,
+                    opening,
+                    contents,
+                    closing,
+                }
+            }
+        }
+    }
+}
+impl<V: ?Sized + Fold> FoldWith<V> for ContentTagMember {
+    #[doc = "Calls [Fold`::fold_content_tag_member`] with `self`."]
+    fn fold_with(self, visitor: &mut V) -> Self {
+        <V as Fold>::fold_content_tag_member(visitor, self)
+    }
+
+    fn fold_children_with(self, visitor: &mut V) -> Self {
+        match self {
+            ContentTagMember {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                let span = { <swc_common::Span as FoldWith<V>>::fold_with(span, visitor) };
+                let opening =
+                    { <Box<ContentTagStart> as FoldWith<V>>::fold_with(opening, visitor) };
+                let contents =
+                    { <Box<ContentTagContent> as FoldWith<V>>::fold_with(contents, visitor) };
+                let closing = { <Box<ContentTagEnd> as FoldWith<V>>::fold_with(closing, visitor) };
+                ContentTagMember {
+                    span,
+                    opening,
+                    contents,
+                    closing,
+                }
+            }
+        }
+    }
+}
+impl<V: ?Sized + Fold> FoldWith<V> for ContentTagStart {
+    #[doc = "Calls [Fold`::fold_content_tag_start`] with `self`."]
+    fn fold_with(self, visitor: &mut V) -> Self {
+        <V as Fold>::fold_content_tag_start(visitor, self)
+    }
+
+    fn fold_children_with(self, visitor: &mut V) -> Self {
+        match self {
+            ContentTagStart { span } => {
+                let span = { <swc_common::Span as FoldWith<V>>::fold_with(span, visitor) };
+                ContentTagStart { span }
+            }
+        }
+    }
+}
 impl<V: ?Sized + Fold> FoldWith<V> for ContinueStmt {
     #[doc = "Calls [Fold`::fold_continue_stmt`] with `self`."]
     fn fold_with(self, visitor: &mut V) -> Self {
@@ -102188,6 +105982,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for Decl {
                 let _field_0 = <Box<TsModuleDecl> as FoldWith<V>>::fold_with(_field_0, visitor);
                 Decl::TsModule { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -102227,6 +106023,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for DefaultDecl {
                 let _field_0 = <Box<TsInterfaceDecl> as FoldWith<V>>::fold_with(_field_0, visitor);
                 DefaultDecl::TsInterfaceDecl { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -102418,6 +106216,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for ExportSpecifier {
                 let _field_0 = <ExportNamedSpecifier as FoldWith<V>>::fold_with(_field_0, visitor);
                 ExportSpecifier::Named { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -102545,6 +106345,10 @@ impl<V: ?Sized + Fold> FoldWith<V> for Expr {
                 let _field_0 = <JSXFragment as FoldWith<V>>::fold_with(_field_0, visitor);
                 Expr::JSXFragment { 0: _field_0 }
             }
+            Expr::ContentTagExpression { 0: _field_0 } => {
+                let _field_0 = <ContentTagExpression as FoldWith<V>>::fold_with(_field_0, visitor);
+                Expr::ContentTagExpression { 0: _field_0 }
+            }
             Expr::TsTypeAssertion { 0: _field_0 } => {
                 let _field_0 = <TsTypeAssertion as FoldWith<V>>::fold_with(_field_0, visitor);
                 Expr::TsTypeAssertion { 0: _field_0 }
@@ -102581,6 +106385,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for Expr {
                 let _field_0 = <Invalid as FoldWith<V>>::fold_with(_field_0, visitor);
                 Expr::Invalid { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -102677,6 +106483,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for ForHead {
                 let _field_0 = <Box<Pat> as FoldWith<V>>::fold_with(_field_0, visitor);
                 ForHead::Pat { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103019,6 +106827,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for ImportPhase {
             ImportPhase::Evaluation => ImportPhase::Evaluation,
             ImportPhase::Source => ImportPhase::Source,
             ImportPhase::Defer => ImportPhase::Defer,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103043,6 +106853,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for ImportSpecifier {
                 let _field_0 = <ImportStarAsSpecifier as FoldWith<V>>::fold_with(_field_0, visitor);
                 ImportSpecifier::Namespace { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103142,6 +106954,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for JSXAttrName {
                 let _field_0 = <JSXNamespacedName as FoldWith<V>>::fold_with(_field_0, visitor);
                 JSXAttrName::JSXNamespacedName { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103161,6 +106975,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for JSXAttrOrSpread {
                 let _field_0 = <SpreadElement as FoldWith<V>>::fold_with(_field_0, visitor);
                 JSXAttrOrSpread::SpreadElement { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103172,9 +106988,9 @@ impl<V: ?Sized + Fold> FoldWith<V> for JSXAttrValue {
 
     fn fold_children_with(self, visitor: &mut V) -> Self {
         match self {
-            JSXAttrValue::Lit { 0: _field_0 } => {
-                let _field_0 = <Lit as FoldWith<V>>::fold_with(_field_0, visitor);
-                JSXAttrValue::Lit { 0: _field_0 }
+            JSXAttrValue::Str { 0: _field_0 } => {
+                let _field_0 = <Str as FoldWith<V>>::fold_with(_field_0, visitor);
+                JSXAttrValue::Str { 0: _field_0 }
             }
             JSXAttrValue::JSXExprContainer { 0: _field_0 } => {
                 let _field_0 = <JSXExprContainer as FoldWith<V>>::fold_with(_field_0, visitor);
@@ -103188,6 +107004,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for JSXAttrValue {
                 let _field_0 = <JSXFragment as FoldWith<V>>::fold_with(_field_0, visitor);
                 JSXAttrValue::JSXFragment { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103280,6 +107098,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for JSXElementChild {
                 let _field_0 = <JSXFragment as FoldWith<V>>::fold_with(_field_0, visitor);
                 JSXElementChild::JSXFragment { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103303,6 +107123,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for JSXElementName {
                 let _field_0 = <JSXNamespacedName as FoldWith<V>>::fold_with(_field_0, visitor);
                 JSXElementName::JSXNamespacedName { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103337,6 +107159,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for JSXExpr {
                 let _field_0 = <Box<Expr> as FoldWith<V>>::fold_with(_field_0, visitor);
                 JSXExpr::Expr { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103435,6 +107259,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for JSXObject {
                 let _field_0 = <Ident as FoldWith<V>>::fold_with(_field_0, visitor);
                 JSXObject::Ident { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103536,6 +107362,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for Key {
                 let _field_0 = <PropName as FoldWith<V>>::fold_with(_field_0, visitor);
                 Key::Public { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103624,6 +107452,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for Lit {
                 let _field_0 = <JSXText as FoldWith<V>>::fold_with(_field_0, visitor);
                 Lit::JSXText { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103664,6 +107494,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for MemberProp {
                 let _field_0 = <ComputedPropName as FoldWith<V>>::fold_with(_field_0, visitor);
                 MemberProp::Computed { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103693,6 +107525,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for MetaPropKind {
         match self {
             MetaPropKind::NewTarget => MetaPropKind::NewTarget,
             MetaPropKind::ImportMeta => MetaPropKind::ImportMeta,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103707,6 +107541,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for MethodKind {
             MethodKind::Method => MethodKind::Method,
             MethodKind::Getter => MethodKind::Getter,
             MethodKind::Setter => MethodKind::Setter,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103797,6 +107633,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for ModuleDecl {
                 let _field_0 = <TsNamespaceExportDecl as FoldWith<V>>::fold_with(_field_0, visitor);
                 ModuleDecl::TsNamespaceExport { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103816,6 +107654,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for ModuleExportName {
                 let _field_0 = <Str as FoldWith<V>>::fold_with(_field_0, visitor);
                 ModuleExportName::Str { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103835,6 +107675,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for ModuleItem {
                 let _field_0 = <Stmt as FoldWith<V>>::fold_with(_field_0, visitor);
                 ModuleItem::Stmt { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -103999,6 +107841,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for ObjectPatProp {
                 let _field_0 = <RestPat as FoldWith<V>>::fold_with(_field_0, visitor);
                 ObjectPatProp::Rest { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -104053,6 +107897,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for OptChainBase {
                 let _field_0 = <OptCall as FoldWith<V>>::fold_with(_field_0, visitor);
                 OptChainBase::Call { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -104122,6 +107968,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for ParamOrTsParamProp {
                 let _field_0 = <Param as FoldWith<V>>::fold_with(_field_0, visitor);
                 ParamOrTsParamProp::Param { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -104177,6 +108025,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for Pat {
                 let _field_0 = <Box<Expr> as FoldWith<V>>::fold_with(_field_0, visitor);
                 Pat::Expr { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -104302,6 +108152,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for Program {
                 let _field_0 = <Script as FoldWith<V>>::fold_with(_field_0, visitor);
                 Program::Script { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -104337,6 +108189,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for Prop {
                 let _field_0 = <MethodProp as FoldWith<V>>::fold_with(_field_0, visitor);
                 Prop::Method { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -104368,6 +108222,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for PropName {
                 let _field_0 = <BigInt as FoldWith<V>>::fold_with(_field_0, visitor);
                 PropName::BigInt { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -104387,6 +108243,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for PropOrSpread {
                 let _field_0 = <Box<Prop> as FoldWith<V>>::fold_with(_field_0, visitor);
                 PropOrSpread::Prop { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -104578,6 +108436,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for SimpleAssignTarget {
                 let _field_0 = <Invalid as FoldWith<V>>::fold_with(_field_0, visitor);
                 SimpleAssignTarget::Invalid { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -104698,6 +108558,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for Stmt {
                 let _field_0 = <ExprStmt as FoldWith<V>>::fold_with(_field_0, visitor);
                 Stmt::Expr { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -104711,7 +108573,7 @@ impl<V: ?Sized + Fold> FoldWith<V> for Str {
         match self {
             Str { span, value, raw } => {
                 let span = { <swc_common::Span as FoldWith<V>>::fold_with(span, visitor) };
-                let value = { <swc_atoms::Atom as FoldWith<V>>::fold_with(value, visitor) };
+                let value = { <swc_atoms::Wtf8Atom as FoldWith<V>>::fold_with(value, visitor) };
                 let raw = { <Option<swc_atoms::Atom> as FoldWith<V>>::fold_with(raw, visitor) };
                 Str { span, value, raw }
             }
@@ -104749,6 +108611,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for SuperProp {
                 let _field_0 = <ComputedPropName as FoldWith<V>>::fold_with(_field_0, visitor);
                 SuperProp::Computed { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -104919,7 +108783,7 @@ impl<V: ?Sized + Fold> FoldWith<V> for TplElement {
             } => {
                 let span = { <swc_common::Span as FoldWith<V>>::fold_with(span, visitor) };
                 let cooked =
-                    { <Option<swc_atoms::Atom> as FoldWith<V>>::fold_with(cooked, visitor) };
+                    { <Option<swc_atoms::Wtf8Atom> as FoldWith<V>>::fold_with(cooked, visitor) };
                 let raw = { <swc_atoms::Atom as FoldWith<V>>::fold_with(raw, visitor) };
                 TplElement {
                     span,
@@ -104942,6 +108806,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TruePlusMinus {
             TruePlusMinus::True => TruePlusMinus::True,
             TruePlusMinus::Plus => TruePlusMinus::Plus,
             TruePlusMinus::Minus => TruePlusMinus::Minus,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -105173,6 +109039,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsEntityName {
                 let _field_0 = <Ident as FoldWith<V>>::fold_with(_field_0, visitor);
                 TsEntityName::Ident { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -105238,6 +109106,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsEnumMemberId {
                 let _field_0 = <Str as FoldWith<V>>::fold_with(_field_0, visitor);
                 TsEnumMemberId::Str { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -105318,6 +109188,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsFnOrConstructorType {
                 let _field_0 = <TsConstructorType as FoldWith<V>>::fold_with(_field_0, visitor);
                 TsFnOrConstructorType::TsConstructorType { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -105345,6 +109217,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsFnParam {
                 let _field_0 = <ObjectPat as FoldWith<V>>::fold_with(_field_0, visitor);
                 TsFnParam::Object { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -105406,6 +109280,22 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsGetterSignature {
         }
     }
 }
+impl<V: ?Sized + Fold> FoldWith<V> for TsImportCallOptions {
+    #[doc = "Calls [Fold`::fold_ts_import_call_options`] with `self`."]
+    fn fold_with(self, visitor: &mut V) -> Self {
+        <V as Fold>::fold_ts_import_call_options(visitor, self)
+    }
+
+    fn fold_children_with(self, visitor: &mut V) -> Self {
+        match self {
+            TsImportCallOptions { span, with } => {
+                let span = { <swc_common::Span as FoldWith<V>>::fold_with(span, visitor) };
+                let with = { <Box<ObjectLit> as FoldWith<V>>::fold_with(with, visitor) };
+                TsImportCallOptions { span, with }
+            }
+        }
+    }
+}
 impl<V: ?Sized + Fold> FoldWith<V> for TsImportEqualsDecl {
     #[doc = "Calls [Fold`::fold_ts_import_equals_decl`] with `self`."]
     fn fold_with(self, visitor: &mut V) -> Self {
@@ -105448,6 +109338,7 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsImportType {
                 arg,
                 qualifier,
                 type_args,
+                attributes,
             } => {
                 let span = { <swc_common::Span as FoldWith<V>>::fold_with(span, visitor) };
                 let arg = { <Str as FoldWith<V>>::fold_with(arg, visitor) };
@@ -105458,11 +109349,15 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsImportType {
                         type_args, visitor,
                     )
                 };
+                let attributes = {
+                    <Option<TsImportCallOptions> as FoldWith<V>>::fold_with(attributes, visitor)
+                };
                 TsImportType {
                     span,
                     arg,
                     qualifier,
                     type_args,
+                    attributes,
                 }
             }
         }
@@ -105673,6 +109568,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsKeywordTypeKind {
             TsKeywordTypeKind::TsNullKeyword => TsKeywordTypeKind::TsNullKeyword,
             TsKeywordTypeKind::TsNeverKeyword => TsKeywordTypeKind::TsNeverKeyword,
             TsKeywordTypeKind::TsIntrinsicKeyword => TsKeywordTypeKind::TsIntrinsicKeyword,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -105704,6 +109601,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsLit {
                 let _field_0 = <TsTplLitType as FoldWith<V>>::fold_with(_field_0, visitor);
                 TsLit::Tpl { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -105827,6 +109726,7 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsModuleDecl {
                 span,
                 declare,
                 global,
+                namespace,
                 id,
                 body,
             } => {
@@ -105837,6 +109737,7 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsModuleDecl {
                     span,
                     declare,
                     global,
+                    namespace,
                     id,
                     body,
                 }
@@ -105860,6 +109761,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsModuleName {
                 let _field_0 = <Str as FoldWith<V>>::fold_with(_field_0, visitor);
                 TsModuleName::Str { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -105879,6 +109782,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsModuleRef {
                 let _field_0 = <TsExternalModuleRef as FoldWith<V>>::fold_with(_field_0, visitor);
                 TsModuleRef::TsExternalModuleRef { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -105898,6 +109803,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsNamespaceBody {
                 let _field_0 = <TsNamespaceDecl as FoldWith<V>>::fold_with(_field_0, visitor);
                 TsNamespaceBody::TsNamespaceDecl { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -106028,6 +109935,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsParamPropParam {
                 let _field_0 = <AssignPat as FoldWith<V>>::fold_with(_field_0, visitor);
                 TsParamPropParam::Assign { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -106195,6 +110104,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsThisTypeOrIdent {
                 let _field_0 = <Ident as FoldWith<V>>::fold_with(_field_0, visitor);
                 TsThisTypeOrIdent::Ident { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -106346,6 +110257,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsType {
                 let _field_0 = <TsImportType as FoldWith<V>>::fold_with(_field_0, visitor);
                 TsType::TsImportType { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -106459,6 +110372,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsTypeElement {
                 let _field_0 = <TsIndexSignature as FoldWith<V>>::fold_with(_field_0, visitor);
                 TsTypeElement::TsIndexSignature { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -106506,6 +110421,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsTypeOperatorOp {
             TsTypeOperatorOp::KeyOf => TsTypeOperatorOp::KeyOf,
             TsTypeOperatorOp::Unique => TsTypeOperatorOp::Unique,
             TsTypeOperatorOp::ReadOnly => TsTypeOperatorOp::ReadOnly,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -106650,6 +110567,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsTypeQueryExpr {
                 let _field_0 = <TsImportType as FoldWith<V>>::fold_with(_field_0, visitor);
                 TsTypeQueryExpr::Import { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -106699,6 +110618,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for TsUnionOrIntersectionType {
                 let _field_0 = <TsIntersectionType as FoldWith<V>>::fold_with(_field_0, visitor);
                 TsUnionOrIntersectionType::TsIntersectionType { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -106750,6 +110671,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for UnaryOp {
             UnaryOp::TypeOf => UnaryOp::TypeOf,
             UnaryOp::Void => UnaryOp::Void,
             UnaryOp::Delete => UnaryOp::Delete,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -106790,6 +110713,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for UpdateOp {
         match self {
             UpdateOp::PlusPlus => UpdateOp::PlusPlus,
             UpdateOp::MinusMinus => UpdateOp::MinusMinus,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -106858,6 +110783,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for VarDeclKind {
             VarDeclKind::Var => VarDeclKind::Var,
             VarDeclKind::Let => VarDeclKind::Let,
             VarDeclKind::Const => VarDeclKind::Const,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -106877,6 +110804,8 @@ impl<V: ?Sized + Fold> FoldWith<V> for VarDeclOrExpr {
                 let _field_0 = <Box<Expr> as FoldWith<V>>::fold_with(_field_0, visitor);
                 VarDeclOrExpr::Expr { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -107359,6 +111288,18 @@ impl<V: ?Sized + Fold> FoldWith<V> for Option<TsEntityName> {
         self.map(|inner| <TsEntityName as FoldWith<V>>::fold_with(inner, visitor))
     }
 }
+impl<V: ?Sized + Fold> FoldWith<V> for Option<TsImportCallOptions> {
+    #[doc = "Calls [Fold`::fold_opt_ts_import_call_options`] with `self`. (Extra impl)"]
+    #[inline]
+    fn fold_with(self, visitor: &mut V) -> Self {
+        <V as Fold>::fold_opt_ts_import_call_options(visitor, self)
+    }
+
+    #[inline]
+    fn fold_children_with(self, visitor: &mut V) -> Self {
+        self.map(|inner| <TsImportCallOptions as FoldWith<V>>::fold_with(inner, visitor))
+    }
+}
 impl<V: ?Sized + Fold> FoldWith<V> for Option<TsNamespaceBody> {
     #[doc = "Calls [Fold`::fold_opt_ts_namespace_body`] with `self`. (Extra impl)"]
     #[inline]
@@ -107457,6 +111398,18 @@ impl<V: ?Sized + Fold> FoldWith<V> for Vec<Option<Pat>> {
         swc_visit::util::move_map::MoveMap::move_map(self, |item| {
             <Option<Pat> as FoldWith<V>>::fold_with(item, visitor)
         })
+    }
+}
+impl<V: ?Sized + Fold> FoldWith<V> for Option<swc_atoms::Wtf8Atom> {
+    #[doc = "Calls [Fold`::fold_opt_wtf_8_atom`] with `self`. (Extra impl)"]
+    #[inline]
+    fn fold_with(self, visitor: &mut V) -> Self {
+        <V as Fold>::fold_opt_wtf_8_atom(visitor, self)
+    }
+
+    #[inline]
+    fn fold_children_with(self, visitor: &mut V) -> Self {
+        self.map(|inner| <swc_atoms::Wtf8Atom as FoldWith<V>>::fold_with(inner, visitor))
     }
 }
 impl<V: ?Sized + Fold> FoldWith<V> for Vec<ParamOrTsParamProp> {
@@ -107691,6 +111644,18 @@ impl<V: ?Sized + Fold> FoldWith<V> for Vec<VarDeclarator> {
         swc_visit::util::move_map::MoveMap::move_map(self, |item| {
             <VarDeclarator as FoldWith<V>>::fold_with(item, visitor)
         })
+    }
+}
+impl<V: ?Sized + Fold> FoldWith<V> for swc_atoms::Wtf8Atom {
+    #[doc = "Calls [Fold`::fold_wtf_8_atom`] with `self`. (Extra impl)"]
+    #[inline]
+    fn fold_with(self, visitor: &mut V) -> Self {
+        <V as Fold>::fold_wtf_8_atom(visitor, self)
+    }
+
+    #[inline]
+    fn fold_children_with(self, visitor: &mut V) -> Self {
+        self
     }
 }
 impl<V, T> FoldWith<V> for std::boxed::Box<T>
@@ -108035,6 +112000,71 @@ pub trait FoldAstPath {
     #[inline]
     fn fold_constructor(&mut self, node: Constructor, __ast_path: &mut AstKindPath) -> Constructor {
         <Constructor as FoldWithAstPath<Self>>::fold_children_with_ast_path(node, self, __ast_path)
+    }
+    #[doc = "Visit a node of type `ContentTagContent`.\n\nBy default, this method calls \
+             [`ContentTagContent::fold_children_with_ast_path`]. If you want to recurse, you need \
+             to call it manually."]
+    #[inline]
+    fn fold_content_tag_content(
+        &mut self,
+        node: ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagContent {
+        <ContentTagContent as FoldWithAstPath<Self>>::fold_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagEnd`.\n\nBy default, this method calls \
+             [`ContentTagEnd::fold_children_with_ast_path`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn fold_content_tag_end(
+        &mut self,
+        node: ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagEnd {
+        <ContentTagEnd as FoldWithAstPath<Self>>::fold_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagExpression`.\n\nBy default, this method calls \
+             [`ContentTagExpression::fold_children_with_ast_path`]. If you want to recurse, you \
+             need to call it manually."]
+    #[inline]
+    fn fold_content_tag_expression(
+        &mut self,
+        node: ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagExpression {
+        <ContentTagExpression as FoldWithAstPath<Self>>::fold_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagMember`.\n\nBy default, this method calls \
+             [`ContentTagMember::fold_children_with_ast_path`]. If you want to recurse, you need \
+             to call it manually."]
+    #[inline]
+    fn fold_content_tag_member(
+        &mut self,
+        node: ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagMember {
+        <ContentTagMember as FoldWithAstPath<Self>>::fold_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagStart`.\n\nBy default, this method calls \
+             [`ContentTagStart::fold_children_with_ast_path`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn fold_content_tag_start(
+        &mut self,
+        node: ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagStart {
+        <ContentTagStart as FoldWithAstPath<Self>>::fold_children_with_ast_path(
+            node, self, __ast_path,
+        )
     }
     #[doc = "Visit a node of type `ContinueStmt`.\n\nBy default, this method calls \
              [`ContinueStmt::fold_children_with_ast_path`]. If you want to recurse, you need to \
@@ -109196,6 +113226,19 @@ pub trait FoldAstPath {
             node, self, __ast_path,
         )
     }
+    #[doc = "Visit a node of type `Option < TsImportCallOptions >`.\n\nBy default, this method \
+             calls [`Option < TsImportCallOptions >::fold_children_with_ast_path`]. If you want to \
+             recurse, you need to call it manually."]
+    #[inline]
+    fn fold_opt_ts_import_call_options(
+        &mut self,
+        node: Option<TsImportCallOptions>,
+        __ast_path: &mut AstKindPath,
+    ) -> Option<TsImportCallOptions> {
+        <Option<TsImportCallOptions> as FoldWithAstPath<Self>>::fold_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
     #[doc = "Visit a node of type `Option < TsNamespaceBody >`.\n\nBy default, this method calls \
              [`Option < TsNamespaceBody >::fold_children_with_ast_path`]. If you want to recurse, \
              you need to call it manually."]
@@ -109296,6 +113339,19 @@ pub trait FoldAstPath {
         __ast_path: &mut AstKindPath,
     ) -> Vec<Option<Pat>> {
         <Vec<Option<Pat>> as FoldWithAstPath<Self>>::fold_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `Option < swc_atoms :: Wtf8Atom >`.\n\nBy default, this method \
+             calls [`Option < swc_atoms :: Wtf8Atom >::fold_children_with_ast_path`]. If you want \
+             to recurse, you need to call it manually."]
+    #[inline]
+    fn fold_opt_wtf_8_atom(
+        &mut self,
+        node: Option<swc_atoms::Wtf8Atom>,
+        __ast_path: &mut AstKindPath,
+    ) -> Option<swc_atoms::Wtf8Atom> {
+        <Option<swc_atoms::Wtf8Atom> as FoldWithAstPath<Self>>::fold_children_with_ast_path(
             node, self, __ast_path,
         )
     }
@@ -109928,6 +113984,19 @@ pub trait FoldAstPath {
         __ast_path: &mut AstKindPath,
     ) -> TsGetterSignature {
         <TsGetterSignature as FoldWithAstPath<Self>>::fold_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `TsImportCallOptions`.\n\nBy default, this method calls \
+             [`TsImportCallOptions::fold_children_with_ast_path`]. If you want to recurse, you \
+             need to call it manually."]
+    #[inline]
+    fn fold_ts_import_call_options(
+        &mut self,
+        node: TsImportCallOptions,
+        __ast_path: &mut AstKindPath,
+    ) -> TsImportCallOptions {
+        <TsImportCallOptions as FoldWithAstPath<Self>>::fold_children_with_ast_path(
             node, self, __ast_path,
         )
     }
@@ -110719,6 +114788,19 @@ pub trait FoldAstPath {
     fn fold_with_stmt(&mut self, node: WithStmt, __ast_path: &mut AstKindPath) -> WithStmt {
         <WithStmt as FoldWithAstPath<Self>>::fold_children_with_ast_path(node, self, __ast_path)
     }
+    #[doc = "Visit a node of type `swc_atoms :: Wtf8Atom`.\n\nBy default, this method calls \
+             [`swc_atoms :: Wtf8Atom::fold_children_with_ast_path`]. If you want to recurse, you \
+             need to call it manually."]
+    #[inline]
+    fn fold_wtf_8_atom(
+        &mut self,
+        node: swc_atoms::Wtf8Atom,
+        __ast_path: &mut AstKindPath,
+    ) -> swc_atoms::Wtf8Atom {
+        <swc_atoms::Wtf8Atom as FoldWithAstPath<Self>>::fold_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
     #[doc = "Visit a node of type `YieldExpr`.\n\nBy default, this method calls \
              [`YieldExpr::fold_children_with_ast_path`]. If you want to recurse, you need to call \
              it manually."]
@@ -110970,6 +115052,51 @@ where
     }
 
     #[inline]
+    fn fold_content_tag_content(
+        &mut self,
+        node: ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagContent {
+        <V as FoldAstPath>::fold_content_tag_content(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_end(
+        &mut self,
+        node: ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagEnd {
+        <V as FoldAstPath>::fold_content_tag_end(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_expression(
+        &mut self,
+        node: ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagExpression {
+        <V as FoldAstPath>::fold_content_tag_expression(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_member(
+        &mut self,
+        node: ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagMember {
+        <V as FoldAstPath>::fold_content_tag_member(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_start(
+        &mut self,
+        node: ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagStart {
+        <V as FoldAstPath>::fold_content_tag_start(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
     fn fold_continue_stmt(
         &mut self,
         node: ContinueStmt,
@@ -111802,6 +115929,15 @@ where
     }
 
     #[inline]
+    fn fold_opt_ts_import_call_options(
+        &mut self,
+        node: Option<TsImportCallOptions>,
+        __ast_path: &mut AstKindPath,
+    ) -> Option<TsImportCallOptions> {
+        <V as FoldAstPath>::fold_opt_ts_import_call_options(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
     fn fold_opt_ts_namespace_body(
         &mut self,
         node: Option<TsNamespaceBody>,
@@ -111871,6 +116007,15 @@ where
         __ast_path: &mut AstKindPath,
     ) -> Vec<Option<Pat>> {
         <V as FoldAstPath>::fold_opt_vec_pats(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_opt_wtf_8_atom(
+        &mut self,
+        node: Option<swc_atoms::Wtf8Atom>,
+        __ast_path: &mut AstKindPath,
+    ) -> Option<swc_atoms::Wtf8Atom> {
+        <V as FoldAstPath>::fold_opt_wtf_8_atom(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -112323,6 +116468,15 @@ where
         __ast_path: &mut AstKindPath,
     ) -> TsGetterSignature {
         <V as FoldAstPath>::fold_ts_getter_signature(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_ts_import_call_options(
+        &mut self,
+        node: TsImportCallOptions,
+        __ast_path: &mut AstKindPath,
+    ) -> TsImportCallOptions {
+        <V as FoldAstPath>::fold_ts_import_call_options(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -112889,6 +117043,15 @@ where
     #[inline]
     fn fold_with_stmt(&mut self, node: WithStmt, __ast_path: &mut AstKindPath) -> WithStmt {
         <V as FoldAstPath>::fold_with_stmt(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_wtf_8_atom(
+        &mut self,
+        node: swc_atoms::Wtf8Atom,
+        __ast_path: &mut AstKindPath,
+    ) -> swc_atoms::Wtf8Atom {
+        <V as FoldAstPath>::fold_wtf_8_atom(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -113139,6 +117302,51 @@ where
     }
 
     #[inline]
+    fn fold_content_tag_content(
+        &mut self,
+        node: ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagContent {
+        <V as FoldAstPath>::fold_content_tag_content(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_end(
+        &mut self,
+        node: ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagEnd {
+        <V as FoldAstPath>::fold_content_tag_end(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_expression(
+        &mut self,
+        node: ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagExpression {
+        <V as FoldAstPath>::fold_content_tag_expression(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_member(
+        &mut self,
+        node: ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagMember {
+        <V as FoldAstPath>::fold_content_tag_member(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_start(
+        &mut self,
+        node: ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagStart {
+        <V as FoldAstPath>::fold_content_tag_start(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
     fn fold_continue_stmt(
         &mut self,
         node: ContinueStmt,
@@ -113971,6 +118179,15 @@ where
     }
 
     #[inline]
+    fn fold_opt_ts_import_call_options(
+        &mut self,
+        node: Option<TsImportCallOptions>,
+        __ast_path: &mut AstKindPath,
+    ) -> Option<TsImportCallOptions> {
+        <V as FoldAstPath>::fold_opt_ts_import_call_options(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
     fn fold_opt_ts_namespace_body(
         &mut self,
         node: Option<TsNamespaceBody>,
@@ -114040,6 +118257,15 @@ where
         __ast_path: &mut AstKindPath,
     ) -> Vec<Option<Pat>> {
         <V as FoldAstPath>::fold_opt_vec_pats(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_opt_wtf_8_atom(
+        &mut self,
+        node: Option<swc_atoms::Wtf8Atom>,
+        __ast_path: &mut AstKindPath,
+    ) -> Option<swc_atoms::Wtf8Atom> {
+        <V as FoldAstPath>::fold_opt_wtf_8_atom(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -114492,6 +118718,15 @@ where
         __ast_path: &mut AstKindPath,
     ) -> TsGetterSignature {
         <V as FoldAstPath>::fold_ts_getter_signature(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_ts_import_call_options(
+        &mut self,
+        node: TsImportCallOptions,
+        __ast_path: &mut AstKindPath,
+    ) -> TsImportCallOptions {
+        <V as FoldAstPath>::fold_ts_import_call_options(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -115058,6 +119293,15 @@ where
     #[inline]
     fn fold_with_stmt(&mut self, node: WithStmt, __ast_path: &mut AstKindPath) -> WithStmt {
         <V as FoldAstPath>::fold_with_stmt(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_wtf_8_atom(
+        &mut self,
+        node: swc_atoms::Wtf8Atom,
+        __ast_path: &mut AstKindPath,
+    ) -> swc_atoms::Wtf8Atom {
+        <V as FoldAstPath>::fold_wtf_8_atom(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -115542,6 +119786,86 @@ where
             }
             swc_visit::Either::Right(visitor) => {
                 FoldAstPath::fold_constructor(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_content(
+        &mut self,
+        node: ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagContent {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                FoldAstPath::fold_content_tag_content(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                FoldAstPath::fold_content_tag_content(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_end(
+        &mut self,
+        node: ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagEnd {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                FoldAstPath::fold_content_tag_end(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                FoldAstPath::fold_content_tag_end(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_expression(
+        &mut self,
+        node: ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagExpression {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                FoldAstPath::fold_content_tag_expression(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                FoldAstPath::fold_content_tag_expression(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_member(
+        &mut self,
+        node: ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagMember {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                FoldAstPath::fold_content_tag_member(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                FoldAstPath::fold_content_tag_member(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_start(
+        &mut self,
+        node: ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagStart {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                FoldAstPath::fold_content_tag_start(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                FoldAstPath::fold_content_tag_start(visitor, node, __ast_path)
             }
         }
     }
@@ -117129,6 +121453,22 @@ where
     }
 
     #[inline]
+    fn fold_opt_ts_import_call_options(
+        &mut self,
+        node: Option<TsImportCallOptions>,
+        __ast_path: &mut AstKindPath,
+    ) -> Option<TsImportCallOptions> {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                FoldAstPath::fold_opt_ts_import_call_options(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                FoldAstPath::fold_opt_ts_import_call_options(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
     fn fold_opt_ts_namespace_body(
         &mut self,
         node: Option<TsNamespaceBody>,
@@ -117252,6 +121592,22 @@ where
             }
             swc_visit::Either::Right(visitor) => {
                 FoldAstPath::fold_opt_vec_pats(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn fold_opt_wtf_8_atom(
+        &mut self,
+        node: Option<swc_atoms::Wtf8Atom>,
+        __ast_path: &mut AstKindPath,
+    ) -> Option<swc_atoms::Wtf8Atom> {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                FoldAstPath::fold_opt_wtf_8_atom(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                FoldAstPath::fold_opt_wtf_8_atom(visitor, node, __ast_path)
             }
         }
     }
@@ -118104,6 +122460,22 @@ where
             }
             swc_visit::Either::Right(visitor) => {
                 FoldAstPath::fold_ts_getter_signature(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn fold_ts_import_call_options(
+        &mut self,
+        node: TsImportCallOptions,
+        __ast_path: &mut AstKindPath,
+    ) -> TsImportCallOptions {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                FoldAstPath::fold_ts_import_call_options(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                FoldAstPath::fold_ts_import_call_options(visitor, node, __ast_path)
             }
         }
     }
@@ -119163,6 +123535,22 @@ where
     }
 
     #[inline]
+    fn fold_wtf_8_atom(
+        &mut self,
+        node: swc_atoms::Wtf8Atom,
+        __ast_path: &mut AstKindPath,
+    ) -> swc_atoms::Wtf8Atom {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                FoldAstPath::fold_wtf_8_atom(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                FoldAstPath::fold_wtf_8_atom(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
     fn fold_yield_expr(&mut self, node: YieldExpr, __ast_path: &mut AstKindPath) -> YieldExpr {
         match self {
             swc_visit::Either::Left(visitor) => {
@@ -119555,6 +123943,71 @@ where
     fn fold_constructor(&mut self, node: Constructor, __ast_path: &mut AstKindPath) -> Constructor {
         if self.enabled {
             <V as FoldAstPath>::fold_constructor(&mut self.visitor, node, __ast_path)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_content(
+        &mut self,
+        node: ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagContent {
+        if self.enabled {
+            <V as FoldAstPath>::fold_content_tag_content(&mut self.visitor, node, __ast_path)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_end(
+        &mut self,
+        node: ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagEnd {
+        if self.enabled {
+            <V as FoldAstPath>::fold_content_tag_end(&mut self.visitor, node, __ast_path)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_expression(
+        &mut self,
+        node: ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagExpression {
+        if self.enabled {
+            <V as FoldAstPath>::fold_content_tag_expression(&mut self.visitor, node, __ast_path)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_member(
+        &mut self,
+        node: ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagMember {
+        if self.enabled {
+            <V as FoldAstPath>::fold_content_tag_member(&mut self.visitor, node, __ast_path)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_start(
+        &mut self,
+        node: ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagStart {
+        if self.enabled {
+            <V as FoldAstPath>::fold_content_tag_start(&mut self.visitor, node, __ast_path)
         } else {
             node
         }
@@ -120841,6 +125294,19 @@ where
     }
 
     #[inline]
+    fn fold_opt_ts_import_call_options(
+        &mut self,
+        node: Option<TsImportCallOptions>,
+        __ast_path: &mut AstKindPath,
+    ) -> Option<TsImportCallOptions> {
+        if self.enabled {
+            <V as FoldAstPath>::fold_opt_ts_import_call_options(&mut self.visitor, node, __ast_path)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
     fn fold_opt_ts_namespace_body(
         &mut self,
         node: Option<TsNamespaceBody>,
@@ -120943,6 +125409,19 @@ where
     ) -> Vec<Option<Pat>> {
         if self.enabled {
             <V as FoldAstPath>::fold_opt_vec_pats(&mut self.visitor, node, __ast_path)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_opt_wtf_8_atom(
+        &mut self,
+        node: Option<swc_atoms::Wtf8Atom>,
+        __ast_path: &mut AstKindPath,
+    ) -> Option<swc_atoms::Wtf8Atom> {
+        if self.enabled {
+            <V as FoldAstPath>::fold_opt_wtf_8_atom(&mut self.visitor, node, __ast_path)
         } else {
             node
         }
@@ -121655,6 +126134,19 @@ where
     ) -> TsGetterSignature {
         if self.enabled {
             <V as FoldAstPath>::fold_ts_getter_signature(&mut self.visitor, node, __ast_path)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_ts_import_call_options(
+        &mut self,
+        node: TsImportCallOptions,
+        __ast_path: &mut AstKindPath,
+    ) -> TsImportCallOptions {
+        if self.enabled {
+            <V as FoldAstPath>::fold_ts_import_call_options(&mut self.visitor, node, __ast_path)
         } else {
             node
         }
@@ -122515,6 +127007,19 @@ where
     }
 
     #[inline]
+    fn fold_wtf_8_atom(
+        &mut self,
+        node: swc_atoms::Wtf8Atom,
+        __ast_path: &mut AstKindPath,
+    ) -> swc_atoms::Wtf8Atom {
+        if self.enabled {
+            <V as FoldAstPath>::fold_wtf_8_atom(&mut self.visitor, node, __ast_path)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
     fn fold_yield_expr(&mut self, node: YieldExpr, __ast_path: &mut AstKindPath) -> YieldExpr {
         if self.enabled {
             <V as FoldAstPath>::fold_yield_expr(&mut self.visitor, node, __ast_path)
@@ -122545,6 +127050,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Accessibility {
             Accessibility::Public => Accessibility::Public,
             Accessibility::Protected => Accessibility::Protected,
             Accessibility::Private => Accessibility::Private,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -122820,6 +127327,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for AssignOp {
             AssignOp::AndAssign => AssignOp::AndAssign,
             AssignOp::OrAssign => AssignOp::OrAssign,
             AssignOp::NullishAssign => AssignOp::NullishAssign,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -122991,6 +127500,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for AssignTarget {
                 );
                 AssignTarget::Pat { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -123037,6 +127548,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for AssignTargetPat {
                 );
                 AssignTargetPat::Invalid { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -123308,6 +127821,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for BinaryOp {
             BinaryOp::InstanceOf => BinaryOp::InstanceOf,
             BinaryOp::Exp => BinaryOp::Exp,
             BinaryOp::NullishCoalescing => BinaryOp::NullishCoalescing,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -123419,6 +127934,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for BlockStmtOrExpr {
                 );
                 BlockStmtOrExpr::Expr { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -123593,6 +128110,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Callee {
                 );
                 Callee::Expr { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -123939,6 +128458,19 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ClassMember {
                 );
                 ClassMember::AutoAccessor { 0: _field_0 }
             }
+            ClassMember::ContentTagMember { 0: _field_0 } => {
+                let mut __ast_path = __ast_path.with_guard(AstParentKind::ClassMember(
+                    self::fields::ClassMemberField::ContentTagMember,
+                ));
+                let _field_0 = <ContentTagMember as FoldWithAstPath<V>>::fold_with_ast_path(
+                    _field_0,
+                    visitor,
+                    &mut *__ast_path,
+                );
+                ClassMember::ContentTagMember { 0: _field_0 }
+            }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -124322,6 +128854,230 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Constructor {
 }
 #[cfg(any(docsrs, feature = "path"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ContentTagContent {
+    #[doc = "Calls [FoldAstPath`::fold_content_tag_content`] with `self`."]
+    fn fold_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        <V as FoldAstPath>::fold_content_tag_content(visitor, self, __ast_path)
+    }
+
+    fn fold_children_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        match self {
+            ContentTagContent { span, value } => {
+                let span = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagContent(
+                        self::fields::ContentTagContentField::Span,
+                    ));
+                    <swc_common::Span as FoldWithAstPath<V>>::fold_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                let value = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagContent(
+                        self::fields::ContentTagContentField::Value,
+                    ));
+                    <swc_atoms::Atom as FoldWithAstPath<V>>::fold_with_ast_path(
+                        value,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                ContentTagContent { span, value }
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ContentTagEnd {
+    #[doc = "Calls [FoldAstPath`::fold_content_tag_end`] with `self`."]
+    fn fold_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        <V as FoldAstPath>::fold_content_tag_end(visitor, self, __ast_path)
+    }
+
+    fn fold_children_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        match self {
+            ContentTagEnd { span } => {
+                let span = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagEnd(
+                        self::fields::ContentTagEndField::Span,
+                    ));
+                    <swc_common::Span as FoldWithAstPath<V>>::fold_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                ContentTagEnd { span }
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ContentTagExpression {
+    #[doc = "Calls [FoldAstPath`::fold_content_tag_expression`] with `self`."]
+    fn fold_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        <V as FoldAstPath>::fold_content_tag_expression(visitor, self, __ast_path)
+    }
+
+    fn fold_children_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        match self {
+            ContentTagExpression {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                let span = {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentKind::ContentTagExpression(
+                            self::fields::ContentTagExpressionField::Span,
+                        ));
+                    <swc_common::Span as FoldWithAstPath<V>>::fold_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                let opening = {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentKind::ContentTagExpression(
+                            self::fields::ContentTagExpressionField::Opening,
+                        ));
+                    <Box<ContentTagStart> as FoldWithAstPath<V>>::fold_with_ast_path(
+                        opening,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                let contents = {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentKind::ContentTagExpression(
+                            self::fields::ContentTagExpressionField::Contents,
+                        ));
+                    <Box<ContentTagContent> as FoldWithAstPath<V>>::fold_with_ast_path(
+                        contents,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                let closing = {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentKind::ContentTagExpression(
+                            self::fields::ContentTagExpressionField::Closing,
+                        ));
+                    <Box<ContentTagEnd> as FoldWithAstPath<V>>::fold_with_ast_path(
+                        closing,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                ContentTagExpression {
+                    span,
+                    opening,
+                    contents,
+                    closing,
+                }
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ContentTagMember {
+    #[doc = "Calls [FoldAstPath`::fold_content_tag_member`] with `self`."]
+    fn fold_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        <V as FoldAstPath>::fold_content_tag_member(visitor, self, __ast_path)
+    }
+
+    fn fold_children_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        match self {
+            ContentTagMember {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                let span = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagMember(
+                        self::fields::ContentTagMemberField::Span,
+                    ));
+                    <swc_common::Span as FoldWithAstPath<V>>::fold_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                let opening = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagMember(
+                        self::fields::ContentTagMemberField::Opening,
+                    ));
+                    <Box<ContentTagStart> as FoldWithAstPath<V>>::fold_with_ast_path(
+                        opening,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                let contents = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagMember(
+                        self::fields::ContentTagMemberField::Contents,
+                    ));
+                    <Box<ContentTagContent> as FoldWithAstPath<V>>::fold_with_ast_path(
+                        contents,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                let closing = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagMember(
+                        self::fields::ContentTagMemberField::Closing,
+                    ));
+                    <Box<ContentTagEnd> as FoldWithAstPath<V>>::fold_with_ast_path(
+                        closing,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                ContentTagMember {
+                    span,
+                    opening,
+                    contents,
+                    closing,
+                }
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ContentTagStart {
+    #[doc = "Calls [FoldAstPath`::fold_content_tag_start`] with `self`."]
+    fn fold_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        <V as FoldAstPath>::fold_content_tag_start(visitor, self, __ast_path)
+    }
+
+    fn fold_children_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        match self {
+            ContentTagStart { span } => {
+                let span = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagStart(
+                        self::fields::ContentTagStartField::Span,
+                    ));
+                    <swc_common::Span as FoldWithAstPath<V>>::fold_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                ContentTagStart { span }
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
 impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ContinueStmt {
     #[doc = "Calls [FoldAstPath`::fold_continue_stmt`] with `self`."]
     fn fold_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
@@ -124472,6 +129228,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Decl {
                 );
                 Decl::TsModule { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -124552,6 +129310,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for DefaultDecl {
                 );
                 DefaultDecl::TsInterfaceDecl { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -124954,6 +129714,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ExportSpecifier {
                 );
                 ExportSpecifier::Named { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -125258,6 +130020,17 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Expr {
                 );
                 Expr::JSXFragment { 0: _field_0 }
             }
+            Expr::ContentTagExpression { 0: _field_0 } => {
+                let mut __ast_path = __ast_path.with_guard(AstParentKind::Expr(
+                    self::fields::ExprField::ContentTagExpression,
+                ));
+                let _field_0 = <ContentTagExpression as FoldWithAstPath<V>>::fold_with_ast_path(
+                    _field_0,
+                    visitor,
+                    &mut *__ast_path,
+                );
+                Expr::ContentTagExpression { 0: _field_0 }
+            }
             Expr::TsTypeAssertion { 0: _field_0 } => {
                 let mut __ast_path = __ast_path.with_guard(AstParentKind::Expr(
                     self::fields::ExprField::TsTypeAssertion,
@@ -125351,6 +130124,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Expr {
                 );
                 Expr::Invalid { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -125541,6 +130316,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ForHead {
                 );
                 ForHead::Pat { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -126287,6 +131064,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ImportPhase {
             ImportPhase::Evaluation => ImportPhase::Evaluation,
             ImportPhase::Source => ImportPhase::Source,
             ImportPhase::Defer => ImportPhase::Defer,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -126333,6 +131112,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ImportSpecifier {
                 );
                 ImportSpecifier::Namespace { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -126546,6 +131327,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for JSXAttrName {
                 );
                 JSXAttrName::JSXNamespacedName { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -126581,6 +131364,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for JSXAttrOrSpread {
                 );
                 JSXAttrOrSpread::SpreadElement { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -126594,16 +131379,16 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for JSXAttrValue {
 
     fn fold_children_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
         match self {
-            JSXAttrValue::Lit { 0: _field_0 } => {
+            JSXAttrValue::Str { 0: _field_0 } => {
                 let mut __ast_path = __ast_path.with_guard(AstParentKind::JSXAttrValue(
-                    self::fields::JSXAttrValueField::Lit,
+                    self::fields::JSXAttrValueField::Str,
                 ));
-                let _field_0 = <Lit as FoldWithAstPath<V>>::fold_with_ast_path(
+                let _field_0 = <Str as FoldWithAstPath<V>>::fold_with_ast_path(
                     _field_0,
                     visitor,
                     &mut *__ast_path,
                 );
-                JSXAttrValue::Lit { 0: _field_0 }
+                JSXAttrValue::Str { 0: _field_0 }
             }
             JSXAttrValue::JSXExprContainer { 0: _field_0 } => {
                 let mut __ast_path = __ast_path.with_guard(AstParentKind::JSXAttrValue(
@@ -126638,6 +131423,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for JSXAttrValue {
                 );
                 JSXAttrValue::JSXFragment { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -126834,6 +131621,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for JSXElementChild {
                 );
                 JSXElementChild::JSXFragment { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -126880,6 +131669,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for JSXElementName {
                 );
                 JSXElementName::JSXNamespacedName { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -126940,6 +131731,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for JSXExpr {
                 );
                 JSXExpr::Expr { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -127169,6 +131962,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for JSXObject {
                 );
                 JSXObject::Ident { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -127371,6 +132166,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Key {
                 );
                 Key::Public { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -127572,6 +132369,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Lit {
                 );
                 Lit::JSXText { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -127664,6 +132463,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for MemberProp {
                 );
                 MemberProp::Computed { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -127715,6 +132516,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for MetaPropKind {
         match self {
             MetaPropKind::NewTarget => MetaPropKind::NewTarget,
             MetaPropKind::ImportMeta => MetaPropKind::ImportMeta,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -127731,6 +132534,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for MethodKind {
             MethodKind::Method => MethodKind::Method,
             MethodKind::Getter => MethodKind::Getter,
             MethodKind::Setter => MethodKind::Setter,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -127931,6 +132736,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ModuleDecl {
                 );
                 ModuleDecl::TsNamespaceExport { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -127966,6 +132773,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ModuleExportName {
                 );
                 ModuleExportName::Str { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -128001,6 +132810,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ModuleItem {
                 );
                 ModuleItem::Stmt { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -128334,6 +133145,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ObjectPatProp {
                 );
                 ObjectPatProp::Rest { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -128439,6 +133252,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for OptChainBase {
                 );
                 OptChainBase::Call { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -128566,6 +133381,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ParamOrTsParamProp {
                 );
                 ParamOrTsParamProp::Param { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -128683,6 +133500,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Pat {
                 );
                 Pat::Expr { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -128950,6 +133769,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Program {
                 );
                 Program::Script { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -129023,6 +133844,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Prop {
                 );
                 Prop::Method { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -129087,6 +133910,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for PropName {
                 );
                 PropName::BigInt { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -129122,6 +133947,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for PropOrSpread {
                 );
                 PropOrSpread::Prop { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -129563,6 +134390,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for SimpleAssignTarget {
                 );
                 SimpleAssignTarget::Invalid { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -129838,6 +134667,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Stmt {
                 );
                 Stmt::Expr { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -129864,7 +134695,7 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Str {
                 let value = {
                     let mut __ast_path =
                         __ast_path.with_guard(AstParentKind::Str(self::fields::StrField::Value));
-                    <swc_atoms::Atom as FoldWithAstPath<V>>::fold_with_ast_path(
+                    <swc_atoms::Wtf8Atom as FoldWithAstPath<V>>::fold_with_ast_path(
                         value,
                         visitor,
                         &mut *__ast_path,
@@ -129941,6 +134772,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for SuperProp {
                 );
                 SuperProp::Computed { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -130302,7 +135135,7 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TplElement {
                     let mut __ast_path = __ast_path.with_guard(AstParentKind::TplElement(
                         self::fields::TplElementField::Cooked,
                     ));
-                    <Option<swc_atoms::Atom> as FoldWithAstPath<V>>::fold_with_ast_path(
+                    <Option<swc_atoms::Wtf8Atom> as FoldWithAstPath<V>>::fold_with_ast_path(
                         cooked,
                         visitor,
                         &mut *__ast_path,
@@ -130341,6 +135174,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TruePlusMinus {
             TruePlusMinus::True => TruePlusMinus::True,
             TruePlusMinus::Plus => TruePlusMinus::Plus,
             TruePlusMinus::Minus => TruePlusMinus::Minus,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -130845,6 +135680,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsEntityName {
                 );
                 TsEntityName::Ident { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -130979,6 +135816,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsEnumMemberId {
                 );
                 TsEnumMemberId::Str { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -131132,6 +135971,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsFnOrConstructorType {
                 );
                 TsFnOrConstructorType::TsConstructorType { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -131188,6 +136029,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsFnParam {
                 );
                 TsFnParam::Object { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -131314,6 +136157,42 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsGetterSignature {
 }
 #[cfg(any(docsrs, feature = "path"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsImportCallOptions {
+    #[doc = "Calls [FoldAstPath`::fold_ts_import_call_options`] with `self`."]
+    fn fold_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        <V as FoldAstPath>::fold_ts_import_call_options(visitor, self, __ast_path)
+    }
+
+    fn fold_children_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        match self {
+            TsImportCallOptions { span, with } => {
+                let span = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::TsImportCallOptions(
+                        self::fields::TsImportCallOptionsField::Span,
+                    ));
+                    <swc_common::Span as FoldWithAstPath<V>>::fold_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                let with = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::TsImportCallOptions(
+                        self::fields::TsImportCallOptionsField::With,
+                    ));
+                    <Box<ObjectLit> as FoldWithAstPath<V>>::fold_with_ast_path(
+                        with,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                TsImportCallOptions { span, with }
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
 impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsImportEqualsDecl {
     #[doc = "Calls [FoldAstPath`::fold_ts_import_equals_decl`] with `self`."]
     fn fold_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
@@ -131381,6 +136260,7 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsImportType {
                 arg,
                 qualifier,
                 type_args,
+                attributes,
             } => {
                 let span = {
                     let mut __ast_path = __ast_path.with_guard(AstParentKind::TsImportType(
@@ -131414,11 +136294,22 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsImportType {
                     ));
                     < Option < Box < TsTypeParamInstantiation > > as FoldWithAstPath < V > > :: fold_with_ast_path (type_args , visitor , & mut * __ast_path)
                 };
+                let attributes = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::TsImportType(
+                        self::fields::TsImportTypeField::Attributes,
+                    ));
+                    <Option<TsImportCallOptions> as FoldWithAstPath<V>>::fold_with_ast_path(
+                        attributes,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
                 TsImportType {
                     span,
                     arg,
                     qualifier,
                     type_args,
+                    attributes,
                 }
             }
         }
@@ -131835,6 +136726,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsKeywordTypeKind {
             TsKeywordTypeKind::TsNullKeyword => TsKeywordTypeKind::TsNullKeyword,
             TsKeywordTypeKind::TsNeverKeyword => TsKeywordTypeKind::TsNeverKeyword,
             TsKeywordTypeKind::TsIntrinsicKeyword => TsKeywordTypeKind::TsIntrinsicKeyword,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -131898,6 +136791,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsLit {
                 );
                 TsLit::Tpl { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -132157,6 +137052,7 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsModuleDecl {
                 span,
                 declare,
                 global,
+                namespace,
                 id,
                 body,
             } => {
@@ -132194,6 +137090,7 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsModuleDecl {
                     span,
                     declare,
                     global,
+                    namespace,
                     id,
                     body,
                 }
@@ -132233,6 +137130,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsModuleName {
                 );
                 TsModuleName::Str { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -132268,6 +137167,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsModuleRef {
                 );
                 TsModuleRef::TsExternalModuleRef { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -132303,6 +137204,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsNamespaceBody {
                 );
                 TsNamespaceBody::TsNamespaceDecl { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -132568,6 +137471,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsParamPropParam {
                 );
                 TsParamPropParam::Assign { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -132917,6 +137822,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsThisTypeOrIdent {
                 );
                 TsThisTypeOrIdent::Ident { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -133282,6 +138189,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsType {
                 );
                 TsType::TsImportType { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -133525,6 +138434,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsTypeElement {
                 );
                 TsTypeElement::TsIndexSignature { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -133622,6 +138533,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsTypeOperatorOp {
             TsTypeOperatorOp::KeyOf => TsTypeOperatorOp::KeyOf,
             TsTypeOperatorOp::Unique => TsTypeOperatorOp::Unique,
             TsTypeOperatorOp::ReadOnly => TsTypeOperatorOp::ReadOnly,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -133909,6 +138822,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsTypeQueryExpr {
                 );
                 TsTypeQueryExpr::Import { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -133995,6 +138910,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for TsUnionOrIntersectionType {
                 );
                 TsUnionOrIntersectionType::TsIntersectionType { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -134094,6 +139011,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for UnaryOp {
             UnaryOp::TypeOf => UnaryOp::TypeOf,
             UnaryOp::Void => UnaryOp::Void,
             UnaryOp::Delete => UnaryOp::Delete,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -134164,6 +139083,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for UpdateOp {
         match self {
             UpdateOp::PlusPlus => UpdateOp::PlusPlus,
             UpdateOp::MinusMinus => UpdateOp::MinusMinus,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -134288,6 +139209,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for VarDeclKind {
             VarDeclKind::Var => VarDeclKind::Var,
             VarDeclKind::Let => VarDeclKind::Let,
             VarDeclKind::Const => VarDeclKind::Const,
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -134323,6 +139246,8 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for VarDeclOrExpr {
                 );
                 VarDeclOrExpr::Expr { 0: _field_0 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => self,
         }
     }
 }
@@ -135092,6 +140017,24 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Option<TsEntityName> {
 }
 #[cfg(any(docsrs, feature = "path"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Option<TsImportCallOptions> {
+    #[doc = "Calls [FoldAstPath`::fold_opt_ts_import_call_options`] with `self`. (Extra impl)"]
+    #[inline]
+    fn fold_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        <V as FoldAstPath>::fold_opt_ts_import_call_options(visitor, self, __ast_path)
+    }
+
+    #[inline]
+    fn fold_children_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        self.map(|inner| {
+            <TsImportCallOptions as FoldWithAstPath<V>>::fold_with_ast_path(
+                inner, visitor, __ast_path,
+            )
+        })
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
 impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Option<TsNamespaceBody> {
     #[doc = "Calls [FoldAstPath`::fold_opt_ts_namespace_body`] with `self`. (Extra impl)"]
     #[inline]
@@ -135236,6 +140179,24 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Vec<Option<Pat>> {
                 )
             })
             .collect()
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Option<swc_atoms::Wtf8Atom> {
+    #[doc = "Calls [FoldAstPath`::fold_opt_wtf_8_atom`] with `self`. (Extra impl)"]
+    #[inline]
+    fn fold_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        <V as FoldAstPath>::fold_opt_wtf_8_atom(visitor, self, __ast_path)
+    }
+
+    #[inline]
+    fn fold_children_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        self.map(|inner| {
+            <swc_atoms::Wtf8Atom as FoldWithAstPath<V>>::fold_with_ast_path(
+                inner, visitor, __ast_path,
+            )
+        })
     }
 }
 #[cfg(any(docsrs, feature = "path"))]
@@ -135616,6 +140577,20 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Vec<VarDeclarator> {
 }
 #[cfg(any(docsrs, feature = "path"))]
 #[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for swc_atoms::Wtf8Atom {
+    #[doc = "Calls [FoldAstPath`::fold_wtf_8_atom`] with `self`. (Extra impl)"]
+    #[inline]
+    fn fold_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        <V as FoldAstPath>::fold_wtf_8_atom(visitor, self, __ast_path)
+    }
+
+    #[inline]
+    fn fold_children_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        self
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
 impl<V, T> FoldWithAstPath<V> for std::boxed::Box<T>
 where
     V: ?Sized + FoldAstPath,
@@ -135658,6 +140633,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum AccessibilityField {
         #[doc = "Represents [`Accessibility::Public`]"]
         Public,
@@ -135678,6 +140654,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ArrayLitField {
         #[doc = "Represents [`ArrayLit::span`]"]
         Span,
@@ -135696,6 +140673,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ArrayPatField {
         #[doc = "Represents [`ArrayPat::span`]"]
         Span,
@@ -135718,6 +140696,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ArrowExprField {
         #[doc = "Represents [`ArrowExpr::span`]"]
         Span,
@@ -135744,6 +140723,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum AssignExprField {
         #[doc = "Represents [`AssignExpr::span`]"]
         Span,
@@ -135761,6 +140741,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum AssignOpField {
         #[doc = "Represents [`AssignOp::Assign`]"]
         Assign,
@@ -135803,6 +140784,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum AssignPatField {
         #[doc = "Represents [`AssignPat::span`]"]
         Span,
@@ -135819,6 +140801,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum AssignPatPropField {
         #[doc = "Represents [`AssignPatProp::span`]"]
         Span,
@@ -135835,6 +140818,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum AssignPropField {
         #[doc = "Represents [`AssignProp::span`]"]
         Span,
@@ -135850,6 +140834,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum AssignTargetField {
         #[doc = "Represents [`AssignTarget::Simple`]"]
         Simple,
@@ -135863,6 +140848,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum AssignTargetPatField {
         #[doc = "Represents [`AssignTargetPat::Array`]"]
         Array,
@@ -135883,6 +140869,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum AutoAccessorField {
         #[doc = "Represents [`AutoAccessor::span`]"]
         Span,
@@ -135913,6 +140900,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum AwaitExprField {
         #[doc = "Represents [`AwaitExpr::span`]"]
         Span,
@@ -135927,6 +140915,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum BigIntField {
         #[doc = "Represents [`BigInt::span`]"]
         Span,
@@ -135943,6 +140932,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum BinExprField {
         #[doc = "Represents [`BinExpr::span`]"]
         Span,
@@ -135960,6 +140950,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum BinaryOpField {
         #[doc = "Represents [`BinaryOp::EqEq`]"]
         EqEq,
@@ -136020,6 +141011,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum BindingIdentField {
         #[doc = "Represents [`BindingIdent::id`]"]
         Id,
@@ -136038,6 +141030,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum BlockStmtField {
         #[doc = "Represents [`BlockStmt::span`]"]
         Span,
@@ -136053,6 +141046,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum BlockStmtOrExprField {
         #[doc = "Represents [`BlockStmtOrExpr::BlockStmt`]"]
         BlockStmt,
@@ -136067,6 +141061,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum BoolField {
         #[doc = "Represents [`Bool::span`]"]
         Span,
@@ -136081,6 +141076,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum BreakStmtField {
         #[doc = "Represents [`BreakStmt::span`]"]
         Span,
@@ -136099,6 +141095,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum CallExprField {
         #[doc = "Represents [`CallExpr::span`]"]
         Span,
@@ -136118,6 +141115,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum CalleeField {
         #[doc = "Represents [`Callee::Super`]"]
         Super,
@@ -136134,6 +141132,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum CatchClauseField {
         #[doc = "Represents [`CatchClause::span`]"]
         Span,
@@ -136162,6 +141161,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ClassField {
         #[doc = "Represents [`Class::span`]"]
         Span,
@@ -136190,6 +141190,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ClassDeclField {
         #[doc = "Represents [`ClassDecl::ident`]"]
         Ident,
@@ -136206,6 +141207,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ClassExprField {
         #[doc = "Represents [`ClassExpr::ident`]"]
         Ident,
@@ -136219,6 +141221,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ClassMemberField {
         #[doc = "Represents [`ClassMember::Constructor`]"]
         Constructor,
@@ -136238,6 +141241,8 @@ pub mod fields {
         StaticBlock,
         #[doc = "Represents [`ClassMember::AutoAccessor`]"]
         AutoAccessor,
+        #[doc = "Represents [`ClassMember::ContentTagMember`]"]
+        ContentTagMember,
     }
     impl ClassMethodField {
         pub(crate) fn set_index(&mut self, index: usize) {
@@ -136247,6 +141252,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ClassMethodField {
         #[doc = "Represents [`ClassMethod::span`]"]
         Span,
@@ -136279,6 +141285,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ClassPropField {
         #[doc = "Represents [`ClassProp::span`]"]
         Span,
@@ -136315,6 +141322,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ComputedPropNameField {
         #[doc = "Represents [`ComputedPropName::span`]"]
         Span,
@@ -136329,6 +141337,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum CondExprField {
         #[doc = "Represents [`CondExpr::span`]"]
         Span,
@@ -136351,6 +141360,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ConstructorField {
         #[doc = "Represents [`Constructor::span`]"]
         Span,
@@ -136367,6 +141377,85 @@ pub mod fields {
         #[doc = "Represents [`Constructor::is_optional`]"]
         IsOptional,
     }
+    impl ContentTagContentField {
+        pub(crate) fn set_index(&mut self, index: usize) {
+            match self {
+                _ => swc_visit::wrong_ast_path(),
+            }
+        }
+    }
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
+    pub enum ContentTagContentField {
+        #[doc = "Represents [`ContentTagContent::span`]"]
+        Span,
+        #[doc = "Represents [`ContentTagContent::value`]"]
+        Value,
+    }
+    impl ContentTagEndField {
+        pub(crate) fn set_index(&mut self, index: usize) {
+            match self {
+                _ => swc_visit::wrong_ast_path(),
+            }
+        }
+    }
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
+    pub enum ContentTagEndField {
+        #[doc = "Represents [`ContentTagEnd::span`]"]
+        Span,
+    }
+    impl ContentTagExpressionField {
+        pub(crate) fn set_index(&mut self, index: usize) {
+            match self {
+                _ => swc_visit::wrong_ast_path(),
+            }
+        }
+    }
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
+    pub enum ContentTagExpressionField {
+        #[doc = "Represents [`ContentTagExpression::span`]"]
+        Span,
+        #[doc = "Represents [`ContentTagExpression::opening`]"]
+        Opening,
+        #[doc = "Represents [`ContentTagExpression::contents`]"]
+        Contents,
+        #[doc = "Represents [`ContentTagExpression::closing`]"]
+        Closing,
+    }
+    impl ContentTagMemberField {
+        pub(crate) fn set_index(&mut self, index: usize) {
+            match self {
+                _ => swc_visit::wrong_ast_path(),
+            }
+        }
+    }
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
+    pub enum ContentTagMemberField {
+        #[doc = "Represents [`ContentTagMember::span`]"]
+        Span,
+        #[doc = "Represents [`ContentTagMember::opening`]"]
+        Opening,
+        #[doc = "Represents [`ContentTagMember::contents`]"]
+        Contents,
+        #[doc = "Represents [`ContentTagMember::closing`]"]
+        Closing,
+    }
+    impl ContentTagStartField {
+        pub(crate) fn set_index(&mut self, index: usize) {
+            match self {
+                _ => swc_visit::wrong_ast_path(),
+            }
+        }
+    }
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
+    pub enum ContentTagStartField {
+        #[doc = "Represents [`ContentTagStart::span`]"]
+        Span,
+    }
     impl ContinueStmtField {
         pub(crate) fn set_index(&mut self, index: usize) {
             match self {
@@ -136375,6 +141464,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ContinueStmtField {
         #[doc = "Represents [`ContinueStmt::span`]"]
         Span,
@@ -136389,6 +141479,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum DebuggerStmtField {
         #[doc = "Represents [`DebuggerStmt::span`]"]
         Span,
@@ -136400,6 +141491,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum DeclField {
         #[doc = "Represents [`Decl::Class`]"]
         Class,
@@ -136426,6 +141518,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum DecoratorField {
         #[doc = "Represents [`Decorator::span`]"]
         Span,
@@ -136439,6 +141532,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum DefaultDeclField {
         #[doc = "Represents [`DefaultDecl::Class`]"]
         Class,
@@ -136455,6 +141549,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum DoWhileStmtField {
         #[doc = "Represents [`DoWhileStmt::span`]"]
         Span,
@@ -136471,6 +141566,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum EmptyStmtField {
         #[doc = "Represents [`EmptyStmt::span`]"]
         Span,
@@ -136483,6 +141579,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ExportAllField {
         #[doc = "Represents [`ExportAll::span`]"]
         Span,
@@ -136501,6 +141598,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ExportDeclField {
         #[doc = "Represents [`ExportDecl::span`]"]
         Span,
@@ -136515,6 +141613,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ExportDefaultDeclField {
         #[doc = "Represents [`ExportDefaultDecl::span`]"]
         Span,
@@ -136529,6 +141628,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ExportDefaultExprField {
         #[doc = "Represents [`ExportDefaultExpr::span`]"]
         Span,
@@ -136543,6 +141643,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ExportDefaultSpecifierField {
         #[doc = "Represents [`ExportDefaultSpecifier::exported`]"]
         Exported,
@@ -136555,6 +141656,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ExportNamedSpecifierField {
         #[doc = "Represents [`ExportNamedSpecifier::span`]"]
         Span,
@@ -136573,6 +141675,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ExportNamespaceSpecifierField {
         #[doc = "Represents [`ExportNamespaceSpecifier::span`]"]
         Span,
@@ -136586,6 +141689,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ExportSpecifierField {
         #[doc = "Represents [`ExportSpecifier::Namespace`]"]
         Namespace,
@@ -136601,6 +141705,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ExprField {
         #[doc = "Represents [`Expr::This`]"]
         This,
@@ -136660,6 +141765,8 @@ pub mod fields {
         Jsxelement,
         #[doc = "Represents [`Expr::JSXFragment`]"]
         Jsxfragment,
+        #[doc = "Represents [`Expr::ContentTagExpression`]"]
+        ContentTagExpression,
         #[doc = "Represents [`Expr::TsTypeAssertion`]"]
         TsTypeAssertion,
         #[doc = "Represents [`Expr::TsConstAssertion`]"]
@@ -136687,6 +141794,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ExprOrSpreadField {
         #[doc = "Represents [`ExprOrSpread::spread`]"]
         Spread,
@@ -136701,6 +141809,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ExprStmtField {
         #[doc = "Represents [`ExprStmt::span`]"]
         Span,
@@ -136715,6 +141824,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum FnDeclField {
         #[doc = "Represents [`FnDecl::ident`]"]
         Ident,
@@ -136731,6 +141841,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum FnExprField {
         #[doc = "Represents [`FnExpr::ident`]"]
         Ident,
@@ -136744,6 +141855,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ForHeadField {
         #[doc = "Represents [`ForHead::VarDecl`]"]
         VarDecl,
@@ -136760,6 +141872,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ForInStmtField {
         #[doc = "Represents [`ForInStmt::span`]"]
         Span,
@@ -136778,6 +141891,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ForOfStmtField {
         #[doc = "Represents [`ForOfStmt::span`]"]
         Span,
@@ -136798,6 +141912,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ForStmtField {
         #[doc = "Represents [`ForStmt::span`]"]
         Span,
@@ -136826,6 +141941,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum FunctionField {
         #[doc = "Represents [`Function::params`]"]
         Params(usize),
@@ -136854,6 +141970,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum GetterPropField {
         #[doc = "Represents [`GetterProp::span`]"]
         Span,
@@ -136872,6 +141989,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum IdentField {
         #[doc = "Represents [`Ident::span`]"]
         Span,
@@ -136890,6 +142008,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum IdentNameField {
         #[doc = "Represents [`IdentName::span`]"]
         Span,
@@ -136904,6 +142023,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum IfStmtField {
         #[doc = "Represents [`IfStmt::span`]"]
         Span,
@@ -136922,6 +142042,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ImportField {
         #[doc = "Represents [`Import::span`]"]
         Span,
@@ -136940,6 +142061,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ImportDeclField {
         #[doc = "Represents [`ImportDecl::span`]"]
         Span,
@@ -136962,6 +142084,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ImportDefaultSpecifierField {
         #[doc = "Represents [`ImportDefaultSpecifier::span`]"]
         Span,
@@ -136976,6 +142099,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ImportNamedSpecifierField {
         #[doc = "Represents [`ImportNamedSpecifier::span`]"]
         Span,
@@ -136993,6 +142117,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ImportPhaseField {
         #[doc = "Represents [`ImportPhase::Evaluation`]"]
         Evaluation,
@@ -137008,6 +142133,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ImportSpecifierField {
         #[doc = "Represents [`ImportSpecifier::Named`]"]
         Named,
@@ -137024,6 +142150,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ImportStarAsSpecifierField {
         #[doc = "Represents [`ImportStarAsSpecifier::span`]"]
         Span,
@@ -137042,6 +142169,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ImportWithField {
         #[doc = "Represents [`ImportWith::span`]"]
         Span,
@@ -137056,6 +142184,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ImportWithItemField {
         #[doc = "Represents [`ImportWithItem::key`]"]
         Key,
@@ -137070,6 +142199,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum InvalidField {
         #[doc = "Represents [`Invalid::span`]"]
         Span,
@@ -137082,6 +142212,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXAttrField {
         #[doc = "Represents [`JSXAttr::span`]"]
         Span,
@@ -137097,6 +142228,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXAttrNameField {
         #[doc = "Represents [`JSXAttrName::Ident`]"]
         Ident,
@@ -137110,6 +142242,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXAttrOrSpreadField {
         #[doc = "Represents [`JSXAttrOrSpread::JSXAttr`]"]
         Jsxattr,
@@ -137123,9 +142256,10 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXAttrValueField {
-        #[doc = "Represents [`JSXAttrValue::Lit`]"]
-        Lit,
+        #[doc = "Represents [`JSXAttrValue::Str`]"]
+        Str,
         #[doc = "Represents [`JSXAttrValue::JSXExprContainer`]"]
         JsxexprContainer,
         #[doc = "Represents [`JSXAttrValue::JSXElement`]"]
@@ -137141,6 +142275,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXClosingElementField {
         #[doc = "Represents [`JSXClosingElement::span`]"]
         Span,
@@ -137155,6 +142290,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXClosingFragmentField {
         #[doc = "Represents [`JSXClosingFragment::span`]"]
         Span,
@@ -137171,6 +142307,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXElementField {
         #[doc = "Represents [`JSXElement::span`]"]
         Span,
@@ -137188,6 +142325,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXElementChildField {
         #[doc = "Represents [`JSXElementChild::JSXText`]"]
         Jsxtext,
@@ -137207,6 +142345,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXElementNameField {
         #[doc = "Represents [`JSXElementName::Ident`]"]
         Ident,
@@ -137223,6 +142362,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXEmptyExprField {
         #[doc = "Represents [`JSXEmptyExpr::span`]"]
         Span,
@@ -137234,6 +142374,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXExprField {
         #[doc = "Represents [`JSXExpr::JSXEmptyExpr`]"]
         JsxemptyExpr,
@@ -137248,6 +142389,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXExprContainerField {
         #[doc = "Represents [`JSXExprContainer::span`]"]
         Span,
@@ -137266,6 +142408,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXFragmentField {
         #[doc = "Represents [`JSXFragment::span`]"]
         Span,
@@ -137284,6 +142427,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXMemberExprField {
         #[doc = "Represents [`JSXMemberExpr::span`]"]
         Span,
@@ -137300,6 +142444,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXNamespacedNameField {
         #[doc = "Represents [`JSXNamespacedName::span`]"]
         Span,
@@ -137315,6 +142460,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXObjectField {
         #[doc = "Represents [`JSXObject::JSXMemberExpr`]"]
         JsxmemberExpr,
@@ -137333,6 +142479,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXOpeningElementField {
         #[doc = "Represents [`JSXOpeningElement::name`]"]
         Name,
@@ -137353,6 +142500,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXOpeningFragmentField {
         #[doc = "Represents [`JSXOpeningFragment::span`]"]
         Span,
@@ -137365,6 +142513,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXSpreadChildField {
         #[doc = "Represents [`JSXSpreadChild::span`]"]
         Span,
@@ -137379,6 +142528,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum JSXTextField {
         #[doc = "Represents [`JSXText::span`]"]
         Span,
@@ -137394,6 +142544,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum KeyField {
         #[doc = "Represents [`Key::Private`]"]
         Private,
@@ -137408,6 +142559,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum KeyValuePatPropField {
         #[doc = "Represents [`KeyValuePatProp::key`]"]
         Key,
@@ -137422,6 +142574,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum KeyValuePropField {
         #[doc = "Represents [`KeyValueProp::key`]"]
         Key,
@@ -137436,6 +142589,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum LabeledStmtField {
         #[doc = "Represents [`LabeledStmt::span`]"]
         Span,
@@ -137451,6 +142605,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum LitField {
         #[doc = "Represents [`Lit::Str`]"]
         Str,
@@ -137475,6 +142630,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum MemberExprField {
         #[doc = "Represents [`MemberExpr::span`]"]
         Span,
@@ -137490,6 +142646,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum MemberPropField {
         #[doc = "Represents [`MemberProp::Ident`]"]
         Ident,
@@ -137506,6 +142663,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum MetaPropExprField {
         #[doc = "Represents [`MetaPropExpr::span`]"]
         Span,
@@ -137519,6 +142677,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum MetaPropKindField {
         #[doc = "Represents [`MetaPropKind::NewTarget`]"]
         NewTarget,
@@ -137532,6 +142691,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum MethodKindField {
         #[doc = "Represents [`MethodKind::Method`]"]
         Method,
@@ -137548,6 +142708,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum MethodPropField {
         #[doc = "Represents [`MethodProp::key`]"]
         Key,
@@ -137566,6 +142727,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ModuleField {
         #[doc = "Represents [`Module::span`]"]
         Span,
@@ -137581,6 +142743,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ModuleDeclField {
         #[doc = "Represents [`ModuleDecl::Import`]"]
         Import,
@@ -137608,6 +142771,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ModuleExportNameField {
         #[doc = "Represents [`ModuleExportName::Ident`]"]
         Ident,
@@ -137621,6 +142785,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ModuleItemField {
         #[doc = "Represents [`ModuleItem::ModuleDecl`]"]
         ModuleDecl,
@@ -137639,6 +142804,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum NamedExportField {
         #[doc = "Represents [`NamedExport::span`]"]
         Span,
@@ -137663,6 +142829,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum NewExprField {
         #[doc = "Represents [`NewExpr::span`]"]
         Span,
@@ -137683,6 +142850,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum NullField {
         #[doc = "Represents [`Null::span`]"]
         Span,
@@ -137695,6 +142863,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum NumberField {
         #[doc = "Represents [`Number::span`]"]
         Span,
@@ -137715,6 +142884,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ObjectLitField {
         #[doc = "Represents [`ObjectLit::span`]"]
         Span,
@@ -137733,6 +142903,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ObjectPatField {
         #[doc = "Represents [`ObjectPat::span`]"]
         Span,
@@ -137750,6 +142921,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ObjectPatPropField {
         #[doc = "Represents [`ObjectPatProp::KeyValue`]"]
         KeyValue,
@@ -137770,6 +142942,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum OptCallField {
         #[doc = "Represents [`OptCall::span`]"]
         Span,
@@ -137789,6 +142962,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum OptChainBaseField {
         #[doc = "Represents [`OptChainBase::Member`]"]
         Member,
@@ -137803,6 +142977,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum OptChainExprField {
         #[doc = "Represents [`OptChainExpr::span`]"]
         Span,
@@ -137823,6 +142998,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ParamField {
         #[doc = "Represents [`Param::span`]"]
         Span,
@@ -137838,6 +143014,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ParamOrTsParamPropField {
         #[doc = "Represents [`ParamOrTsParamProp::TsParamProp`]"]
         TsParamProp,
@@ -137852,6 +143029,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ParenExprField {
         #[doc = "Represents [`ParenExpr::span`]"]
         Span,
@@ -137865,6 +143043,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum PatField {
         #[doc = "Represents [`Pat::Ident`]"]
         Ident,
@@ -137889,6 +143068,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum PrivateMethodField {
         #[doc = "Represents [`PrivateMethod::span`]"]
         Span,
@@ -137917,6 +143097,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum PrivateNameField {
         #[doc = "Represents [`PrivateName::span`]"]
         Span,
@@ -137935,6 +143116,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum PrivatePropField {
         #[doc = "Represents [`PrivateProp::span`]"]
         Span,
@@ -137968,6 +143150,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ProgramField {
         #[doc = "Represents [`Program::Module`]"]
         Module,
@@ -137981,6 +143164,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum PropField {
         #[doc = "Represents [`Prop::Shorthand`]"]
         Shorthand,
@@ -138002,6 +143186,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum PropNameField {
         #[doc = "Represents [`PropName::Ident`]"]
         Ident,
@@ -138021,6 +143206,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum PropOrSpreadField {
         #[doc = "Represents [`PropOrSpread::Spread`]"]
         Spread,
@@ -138035,6 +143221,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum RegexField {
         #[doc = "Represents [`Regex::span`]"]
         Span,
@@ -138051,6 +143238,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum RestPatField {
         #[doc = "Represents [`RestPat::span`]"]
         Span,
@@ -138069,6 +143257,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ReturnStmtField {
         #[doc = "Represents [`ReturnStmt::span`]"]
         Span,
@@ -138087,6 +143276,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ScriptField {
         #[doc = "Represents [`Script::span`]"]
         Span,
@@ -138107,6 +143297,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum SeqExprField {
         #[doc = "Represents [`SeqExpr::span`]"]
         Span,
@@ -138121,6 +143312,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum SetterPropField {
         #[doc = "Represents [`SetterProp::span`]"]
         Span,
@@ -138140,6 +143332,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum SimpleAssignTargetField {
         #[doc = "Represents [`SimpleAssignTarget::Ident`]"]
         Ident,
@@ -138172,6 +143365,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum SpreadElementField {
         #[doc = "Represents [`SpreadElement::dot3_token`]"]
         Dot3Token,
@@ -138186,6 +143380,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum StaticBlockField {
         #[doc = "Represents [`StaticBlock::span`]"]
         Span,
@@ -138199,6 +143394,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum StmtField {
         #[doc = "Represents [`Stmt::Block`]"]
         Block,
@@ -138247,6 +143443,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum StrField {
         #[doc = "Represents [`Str::span`]"]
         Span,
@@ -138263,6 +143460,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum SuperField {
         #[doc = "Represents [`Super::span`]"]
         Span,
@@ -138274,6 +143472,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum SuperPropField {
         #[doc = "Represents [`SuperProp::Ident`]"]
         Ident,
@@ -138288,6 +143487,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum SuperPropExprField {
         #[doc = "Represents [`SuperPropExpr::span`]"]
         Span,
@@ -138308,6 +143508,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum SwitchCaseField {
         #[doc = "Represents [`SwitchCase::span`]"]
         Span,
@@ -138328,6 +143529,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum SwitchStmtField {
         #[doc = "Represents [`SwitchStmt::span`]"]
         Span,
@@ -138344,6 +143546,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TaggedTplField {
         #[doc = "Represents [`TaggedTpl::span`]"]
         Span,
@@ -138364,6 +143567,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ThisExprField {
         #[doc = "Represents [`ThisExpr::span`]"]
         Span,
@@ -138376,6 +143580,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum ThrowStmtField {
         #[doc = "Represents [`ThrowStmt::span`]"]
         Span,
@@ -138398,6 +143603,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TplField {
         #[doc = "Represents [`Tpl::span`]"]
         Span,
@@ -138414,6 +143620,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TplElementField {
         #[doc = "Represents [`TplElement::span`]"]
         Span,
@@ -138431,6 +143638,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TruePlusMinusField {
         #[doc = "Represents [`TruePlusMinus::True`]"]
         True,
@@ -138447,6 +143655,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TryStmtField {
         #[doc = "Represents [`TryStmt::span`]"]
         Span,
@@ -138465,6 +143674,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsArrayTypeField {
         #[doc = "Represents [`TsArrayType::span`]"]
         Span,
@@ -138479,6 +143689,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsAsExprField {
         #[doc = "Represents [`TsAsExpr::span`]"]
         Span,
@@ -138499,6 +143710,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsCallSignatureDeclField {
         #[doc = "Represents [`TsCallSignatureDecl::span`]"]
         Span,
@@ -138517,6 +143729,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsConditionalTypeField {
         #[doc = "Represents [`TsConditionalType::span`]"]
         Span,
@@ -138537,6 +143750,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsConstAssertionField {
         #[doc = "Represents [`TsConstAssertion::span`]"]
         Span,
@@ -138555,6 +143769,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsConstructSignatureDeclField {
         #[doc = "Represents [`TsConstructSignatureDecl::span`]"]
         Span,
@@ -138577,6 +143792,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsConstructorTypeField {
         #[doc = "Represents [`TsConstructorType::span`]"]
         Span,
@@ -138596,6 +143812,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsEntityNameField {
         #[doc = "Represents [`TsEntityName::TsQualifiedName`]"]
         TsQualifiedName,
@@ -138614,6 +143831,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsEnumDeclField {
         #[doc = "Represents [`TsEnumDecl::span`]"]
         Span,
@@ -138634,6 +143852,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsEnumMemberField {
         #[doc = "Represents [`TsEnumMember::span`]"]
         Span,
@@ -138649,6 +143868,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsEnumMemberIdField {
         #[doc = "Represents [`TsEnumMemberId::Ident`]"]
         Ident,
@@ -138663,6 +143883,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsExportAssignmentField {
         #[doc = "Represents [`TsExportAssignment::span`]"]
         Span,
@@ -138677,6 +143898,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsExprWithTypeArgsField {
         #[doc = "Represents [`TsExprWithTypeArgs::span`]"]
         Span,
@@ -138693,6 +143915,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsExternalModuleRefField {
         #[doc = "Represents [`TsExternalModuleRef::span`]"]
         Span,
@@ -138706,6 +143929,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsFnOrConstructorTypeField {
         #[doc = "Represents [`TsFnOrConstructorType::TsFnType`]"]
         TsFnType,
@@ -138719,6 +143943,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsFnParamField {
         #[doc = "Represents [`TsFnParam::Ident`]"]
         Ident,
@@ -138741,6 +143966,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsFnTypeField {
         #[doc = "Represents [`TsFnType::span`]"]
         Span,
@@ -138759,6 +143985,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsGetterSignatureField {
         #[doc = "Represents [`TsGetterSignature::span`]"]
         Span,
@@ -138769,6 +143996,21 @@ pub mod fields {
         #[doc = "Represents [`TsGetterSignature::type_ann`]"]
         TypeAnn,
     }
+    impl TsImportCallOptionsField {
+        pub(crate) fn set_index(&mut self, index: usize) {
+            match self {
+                _ => swc_visit::wrong_ast_path(),
+            }
+        }
+    }
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
+    pub enum TsImportCallOptionsField {
+        #[doc = "Represents [`TsImportCallOptions::span`]"]
+        Span,
+        #[doc = "Represents [`TsImportCallOptions::with`]"]
+        With,
+    }
     impl TsImportEqualsDeclField {
         pub(crate) fn set_index(&mut self, index: usize) {
             match self {
@@ -138777,6 +144019,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsImportEqualsDeclField {
         #[doc = "Represents [`TsImportEqualsDecl::span`]"]
         Span,
@@ -138797,6 +144040,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsImportTypeField {
         #[doc = "Represents [`TsImportType::span`]"]
         Span,
@@ -138806,6 +144050,8 @@ pub mod fields {
         Qualifier,
         #[doc = "Represents [`TsImportType::type_args`]"]
         TypeArgs,
+        #[doc = "Represents [`TsImportType::attributes`]"]
+        Attributes,
     }
     impl TsIndexSignatureField {
         pub(crate) fn set_index(&mut self, index: usize) {
@@ -138819,6 +144065,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsIndexSignatureField {
         #[doc = "Represents [`TsIndexSignature::params`]"]
         Params(usize),
@@ -138839,6 +144086,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsIndexedAccessTypeField {
         #[doc = "Represents [`TsIndexedAccessType::span`]"]
         Span,
@@ -138857,6 +144105,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsInferTypeField {
         #[doc = "Represents [`TsInferType::span`]"]
         Span,
@@ -138871,6 +144120,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsInstantiationField {
         #[doc = "Represents [`TsInstantiation::span`]"]
         Span,
@@ -138891,6 +144141,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsInterfaceBodyField {
         #[doc = "Represents [`TsInterfaceBody::span`]"]
         Span,
@@ -138909,6 +144160,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsInterfaceDeclField {
         #[doc = "Represents [`TsInterfaceDecl::span`]"]
         Span,
@@ -138935,6 +144187,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsIntersectionTypeField {
         #[doc = "Represents [`TsIntersectionType::span`]"]
         Span,
@@ -138949,6 +144202,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsKeywordTypeField {
         #[doc = "Represents [`TsKeywordType::span`]"]
         Span,
@@ -138962,6 +144216,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsKeywordTypeKindField {
         #[doc = "Represents [`TsKeywordTypeKind::TsAnyKeyword`]"]
         TsAnyKeyword,
@@ -138997,6 +144252,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsLitField {
         #[doc = "Represents [`TsLit::Number`]"]
         Number,
@@ -139017,6 +144273,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsLitTypeField {
         #[doc = "Represents [`TsLitType::span`]"]
         Span,
@@ -139031,6 +144288,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsMappedTypeField {
         #[doc = "Represents [`TsMappedType::span`]"]
         Span,
@@ -139057,6 +144315,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsMethodSignatureField {
         #[doc = "Represents [`TsMethodSignature::span`]"]
         Span,
@@ -139085,6 +144344,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsModuleBlockField {
         #[doc = "Represents [`TsModuleBlock::span`]"]
         Span,
@@ -139099,6 +144359,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsModuleDeclField {
         #[doc = "Represents [`TsModuleDecl::span`]"]
         Span,
@@ -139106,6 +144367,8 @@ pub mod fields {
         Declare,
         #[doc = "Represents [`TsModuleDecl::global`]"]
         Global,
+        #[doc = "Represents [`TsModuleDecl::namespace`]"]
+        Namespace,
         #[doc = "Represents [`TsModuleDecl::id`]"]
         Id,
         #[doc = "Represents [`TsModuleDecl::body`]"]
@@ -139118,6 +144381,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsModuleNameField {
         #[doc = "Represents [`TsModuleName::Ident`]"]
         Ident,
@@ -139131,6 +144395,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsModuleRefField {
         #[doc = "Represents [`TsModuleRef::TsEntityName`]"]
         TsEntityName,
@@ -139144,6 +144409,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsNamespaceBodyField {
         #[doc = "Represents [`TsNamespaceBody::TsModuleBlock`]"]
         TsModuleBlock,
@@ -139158,6 +144424,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsNamespaceDeclField {
         #[doc = "Represents [`TsNamespaceDecl::span`]"]
         Span,
@@ -139178,6 +144445,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsNamespaceExportDeclField {
         #[doc = "Represents [`TsNamespaceExportDecl::span`]"]
         Span,
@@ -139192,6 +144460,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsNonNullExprField {
         #[doc = "Represents [`TsNonNullExpr::span`]"]
         Span,
@@ -139206,6 +144475,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsOptionalTypeField {
         #[doc = "Represents [`TsOptionalType::span`]"]
         Span,
@@ -139224,6 +144494,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsParamPropField {
         #[doc = "Represents [`TsParamProp::span`]"]
         Span,
@@ -139245,6 +144516,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsParamPropParamField {
         #[doc = "Represents [`TsParamPropParam::Ident`]"]
         Ident,
@@ -139259,6 +144531,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsParenthesizedTypeField {
         #[doc = "Represents [`TsParenthesizedType::span`]"]
         Span,
@@ -139273,6 +144546,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsPropertySignatureField {
         #[doc = "Represents [`TsPropertySignature::span`]"]
         Span,
@@ -139295,6 +144569,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsQualifiedNameField {
         #[doc = "Represents [`TsQualifiedName::span`]"]
         Span,
@@ -139311,6 +144586,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsRestTypeField {
         #[doc = "Represents [`TsRestType::span`]"]
         Span,
@@ -139325,6 +144601,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsSatisfiesExprField {
         #[doc = "Represents [`TsSatisfiesExpr::span`]"]
         Span,
@@ -139341,6 +144618,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsSetterSignatureField {
         #[doc = "Represents [`TsSetterSignature::span`]"]
         Span,
@@ -139359,6 +144637,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsThisTypeField {
         #[doc = "Represents [`TsThisType::span`]"]
         Span,
@@ -139370,6 +144649,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsThisTypeOrIdentField {
         #[doc = "Represents [`TsThisTypeOrIdent::TsThisType`]"]
         TsThisType,
@@ -139392,6 +144672,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTplLitTypeField {
         #[doc = "Represents [`TsTplLitType::span`]"]
         Span,
@@ -139408,6 +144689,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTupleElementField {
         #[doc = "Represents [`TsTupleElement::span`]"]
         Span,
@@ -139428,6 +144710,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTupleTypeField {
         #[doc = "Represents [`TsTupleType::span`]"]
         Span,
@@ -139441,6 +144724,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTypeField {
         #[doc = "Represents [`TsType::TsKeywordType`]"]
         TsKeywordType,
@@ -139491,6 +144775,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTypeAliasDeclField {
         #[doc = "Represents [`TsTypeAliasDecl::span`]"]
         Span,
@@ -139511,6 +144796,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTypeAnnField {
         #[doc = "Represents [`TsTypeAnn::span`]"]
         Span,
@@ -139525,6 +144811,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTypeAssertionField {
         #[doc = "Represents [`TsTypeAssertion::span`]"]
         Span,
@@ -139540,6 +144827,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTypeElementField {
         #[doc = "Represents [`TsTypeElement::TsCallSignatureDecl`]"]
         TsCallSignatureDecl,
@@ -139568,6 +144856,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTypeLitField {
         #[doc = "Represents [`TsTypeLit::span`]"]
         Span,
@@ -139582,6 +144871,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTypeOperatorField {
         #[doc = "Represents [`TsTypeOperator::span`]"]
         Span,
@@ -139597,6 +144887,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTypeOperatorOpField {
         #[doc = "Represents [`TsTypeOperatorOp::KeyOf`]"]
         KeyOf,
@@ -139613,6 +144904,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTypeParamField {
         #[doc = "Represents [`TsTypeParam::span`]"]
         Span,
@@ -139641,6 +144933,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTypeParamDeclField {
         #[doc = "Represents [`TsTypeParamDecl::span`]"]
         Span,
@@ -139659,6 +144952,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTypeParamInstantiationField {
         #[doc = "Represents [`TsTypeParamInstantiation::span`]"]
         Span,
@@ -139673,6 +144967,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTypePredicateField {
         #[doc = "Represents [`TsTypePredicate::span`]"]
         Span,
@@ -139691,6 +144986,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTypeQueryField {
         #[doc = "Represents [`TsTypeQuery::span`]"]
         Span,
@@ -139706,6 +145002,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTypeQueryExprField {
         #[doc = "Represents [`TsTypeQueryExpr::TsEntityName`]"]
         TsEntityName,
@@ -139720,6 +145017,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsTypeRefField {
         #[doc = "Represents [`TsTypeRef::span`]"]
         Span,
@@ -139735,6 +145033,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsUnionOrIntersectionTypeField {
         #[doc = "Represents [`TsUnionOrIntersectionType::TsUnionType`]"]
         TsUnionType,
@@ -139753,6 +145052,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum TsUnionTypeField {
         #[doc = "Represents [`TsUnionType::span`]"]
         Span,
@@ -139767,6 +145067,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum UnaryExprField {
         #[doc = "Represents [`UnaryExpr::span`]"]
         Span,
@@ -139782,6 +145083,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum UnaryOpField {
         #[doc = "Represents [`UnaryOp::Minus`]"]
         Minus,
@@ -139806,6 +145108,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum UpdateExprField {
         #[doc = "Represents [`UpdateExpr::span`]"]
         Span,
@@ -139823,6 +145126,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum UpdateOpField {
         #[doc = "Represents [`UpdateOp::PlusPlus`]"]
         PlusPlus,
@@ -139841,6 +145145,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum UsingDeclField {
         #[doc = "Represents [`UsingDecl::span`]"]
         Span,
@@ -139861,6 +145166,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum VarDeclField {
         #[doc = "Represents [`VarDecl::span`]"]
         Span,
@@ -139880,6 +145186,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum VarDeclKindField {
         #[doc = "Represents [`VarDeclKind::Var`]"]
         Var,
@@ -139895,6 +145202,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum VarDeclOrExprField {
         #[doc = "Represents [`VarDeclOrExpr::VarDecl`]"]
         VarDecl,
@@ -139909,6 +145217,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum VarDeclaratorField {
         #[doc = "Represents [`VarDeclarator::span`]"]
         Span,
@@ -139927,6 +145236,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum WhileStmtField {
         #[doc = "Represents [`WhileStmt::span`]"]
         Span,
@@ -139943,6 +145253,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum WithStmtField {
         #[doc = "Represents [`WithStmt::span`]"]
         Span,
@@ -139959,6 +145270,7 @@ pub mod fields {
         }
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum YieldExprField {
         #[doc = "Represents [`YieldExpr::span`]"]
         Span,
@@ -139968,6 +145280,7 @@ pub mod fields {
         Delegate,
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
     pub enum AstParentKind {
         Accessibility(AccessibilityField),
         ArrayLit(ArrayLitField),
@@ -140002,6 +145315,11 @@ pub mod fields {
         ComputedPropName(ComputedPropNameField),
         CondExpr(CondExprField),
         Constructor(ConstructorField),
+        ContentTagContent(ContentTagContentField),
+        ContentTagEnd(ContentTagEndField),
+        ContentTagExpression(ContentTagExpressionField),
+        ContentTagMember(ContentTagMemberField),
+        ContentTagStart(ContentTagStartField),
         ContinueStmt(ContinueStmtField),
         DebuggerStmt(DebuggerStmtField),
         Decl(DeclField),
@@ -140138,6 +145456,7 @@ pub mod fields {
         TsFnParam(TsFnParamField),
         TsFnType(TsFnTypeField),
         TsGetterSignature(TsGetterSignatureField),
+        TsImportCallOptions(TsImportCallOptionsField),
         TsImportEqualsDecl(TsImportEqualsDeclField),
         TsImportType(TsImportTypeField),
         TsIndexSignature(TsIndexSignatureField),
@@ -140242,6 +145561,11 @@ pub mod fields {
                 Self::ComputedPropName(v) => v.set_index(index),
                 Self::CondExpr(v) => v.set_index(index),
                 Self::Constructor(v) => v.set_index(index),
+                Self::ContentTagContent(v) => v.set_index(index),
+                Self::ContentTagEnd(v) => v.set_index(index),
+                Self::ContentTagExpression(v) => v.set_index(index),
+                Self::ContentTagMember(v) => v.set_index(index),
+                Self::ContentTagStart(v) => v.set_index(index),
                 Self::ContinueStmt(v) => v.set_index(index),
                 Self::DebuggerStmt(v) => v.set_index(index),
                 Self::Decl(v) => v.set_index(index),
@@ -140378,6 +145702,7 @@ pub mod fields {
                 Self::TsFnParam(v) => v.set_index(index),
                 Self::TsFnType(v) => v.set_index(index),
                 Self::TsGetterSignature(v) => v.set_index(index),
+                Self::TsImportCallOptions(v) => v.set_index(index),
                 Self::TsImportEqualsDecl(v) => v.set_index(index),
                 Self::TsImportType(v) => v.set_index(index),
                 Self::TsIndexSignature(v) => v.set_index(index),
@@ -140482,6 +145807,11 @@ pub mod fields {
         ComputedPropName(&'ast ComputedPropName, ComputedPropNameField),
         CondExpr(&'ast CondExpr, CondExprField),
         Constructor(&'ast Constructor, ConstructorField),
+        ContentTagContent(&'ast ContentTagContent, ContentTagContentField),
+        ContentTagEnd(&'ast ContentTagEnd, ContentTagEndField),
+        ContentTagExpression(&'ast ContentTagExpression, ContentTagExpressionField),
+        ContentTagMember(&'ast ContentTagMember, ContentTagMemberField),
+        ContentTagStart(&'ast ContentTagStart, ContentTagStartField),
         ContinueStmt(&'ast ContinueStmt, ContinueStmtField),
         DebuggerStmt(&'ast DebuggerStmt, DebuggerStmtField),
         Decl(&'ast Decl, DeclField),
@@ -140624,6 +145954,7 @@ pub mod fields {
         TsFnParam(&'ast TsFnParam, TsFnParamField),
         TsFnType(&'ast TsFnType, TsFnTypeField),
         TsGetterSignature(&'ast TsGetterSignature, TsGetterSignatureField),
+        TsImportCallOptions(&'ast TsImportCallOptions, TsImportCallOptionsField),
         TsImportEqualsDecl(&'ast TsImportEqualsDecl, TsImportEqualsDeclField),
         TsImportType(&'ast TsImportType, TsImportTypeField),
         TsIndexSignature(&'ast TsIndexSignature, TsIndexSignatureField),
@@ -140740,6 +146071,11 @@ pub mod fields {
                 Self::ComputedPropName(_, __field_kind) => __field_kind.set_index(index),
                 Self::CondExpr(_, __field_kind) => __field_kind.set_index(index),
                 Self::Constructor(_, __field_kind) => __field_kind.set_index(index),
+                Self::ContentTagContent(_, __field_kind) => __field_kind.set_index(index),
+                Self::ContentTagEnd(_, __field_kind) => __field_kind.set_index(index),
+                Self::ContentTagExpression(_, __field_kind) => __field_kind.set_index(index),
+                Self::ContentTagMember(_, __field_kind) => __field_kind.set_index(index),
+                Self::ContentTagStart(_, __field_kind) => __field_kind.set_index(index),
                 Self::ContinueStmt(_, __field_kind) => __field_kind.set_index(index),
                 Self::DebuggerStmt(_, __field_kind) => __field_kind.set_index(index),
                 Self::Decl(_, __field_kind) => __field_kind.set_index(index),
@@ -140876,6 +146212,7 @@ pub mod fields {
                 Self::TsFnParam(_, __field_kind) => __field_kind.set_index(index),
                 Self::TsFnType(_, __field_kind) => __field_kind.set_index(index),
                 Self::TsGetterSignature(_, __field_kind) => __field_kind.set_index(index),
+                Self::TsImportCallOptions(_, __field_kind) => __field_kind.set_index(index),
                 Self::TsImportEqualsDecl(_, __field_kind) => __field_kind.set_index(index),
                 Self::TsImportType(_, __field_kind) => __field_kind.set_index(index),
                 Self::TsIndexSignature(_, __field_kind) => __field_kind.set_index(index),
@@ -140989,6 +146326,19 @@ pub mod fields {
                 }
                 Self::CondExpr(_, __field_kind) => AstParentKind::CondExpr(*__field_kind),
                 Self::Constructor(_, __field_kind) => AstParentKind::Constructor(*__field_kind),
+                Self::ContentTagContent(_, __field_kind) => {
+                    AstParentKind::ContentTagContent(*__field_kind)
+                }
+                Self::ContentTagEnd(_, __field_kind) => AstParentKind::ContentTagEnd(*__field_kind),
+                Self::ContentTagExpression(_, __field_kind) => {
+                    AstParentKind::ContentTagExpression(*__field_kind)
+                }
+                Self::ContentTagMember(_, __field_kind) => {
+                    AstParentKind::ContentTagMember(*__field_kind)
+                }
+                Self::ContentTagStart(_, __field_kind) => {
+                    AstParentKind::ContentTagStart(*__field_kind)
+                }
                 Self::ContinueStmt(_, __field_kind) => AstParentKind::ContinueStmt(*__field_kind),
                 Self::DebuggerStmt(_, __field_kind) => AstParentKind::DebuggerStmt(*__field_kind),
                 Self::Decl(_, __field_kind) => AstParentKind::Decl(*__field_kind),
@@ -141196,6 +146546,9 @@ pub mod fields {
                 Self::TsFnType(_, __field_kind) => AstParentKind::TsFnType(*__field_kind),
                 Self::TsGetterSignature(_, __field_kind) => {
                     AstParentKind::TsGetterSignature(*__field_kind)
+                }
+                Self::TsImportCallOptions(_, __field_kind) => {
+                    AstParentKind::TsImportCallOptions(*__field_kind)
                 }
                 Self::TsImportEqualsDecl(_, __field_kind) => {
                     AstParentKind::TsImportEqualsDecl(*__field_kind)
@@ -141490,6 +146843,31 @@ impl<'ast> From<&'ast CondExpr> for NodeRef<'ast> {
 impl<'ast> From<&'ast Constructor> for NodeRef<'ast> {
     fn from(node: &'ast Constructor) -> Self {
         NodeRef::Constructor(node)
+    }
+}
+impl<'ast> From<&'ast ContentTagContent> for NodeRef<'ast> {
+    fn from(node: &'ast ContentTagContent) -> Self {
+        NodeRef::ContentTagContent(node)
+    }
+}
+impl<'ast> From<&'ast ContentTagEnd> for NodeRef<'ast> {
+    fn from(node: &'ast ContentTagEnd) -> Self {
+        NodeRef::ContentTagEnd(node)
+    }
+}
+impl<'ast> From<&'ast ContentTagExpression> for NodeRef<'ast> {
+    fn from(node: &'ast ContentTagExpression) -> Self {
+        NodeRef::ContentTagExpression(node)
+    }
+}
+impl<'ast> From<&'ast ContentTagMember> for NodeRef<'ast> {
+    fn from(node: &'ast ContentTagMember) -> Self {
+        NodeRef::ContentTagMember(node)
+    }
+}
+impl<'ast> From<&'ast ContentTagStart> for NodeRef<'ast> {
+    fn from(node: &'ast ContentTagStart) -> Self {
+        NodeRef::ContentTagStart(node)
     }
 }
 impl<'ast> From<&'ast ContinueStmt> for NodeRef<'ast> {
@@ -142172,6 +147550,11 @@ impl<'ast> From<&'ast TsGetterSignature> for NodeRef<'ast> {
         NodeRef::TsGetterSignature(node)
     }
 }
+impl<'ast> From<&'ast TsImportCallOptions> for NodeRef<'ast> {
+    fn from(node: &'ast TsImportCallOptions) -> Self {
+        NodeRef::TsImportCallOptions(node)
+    }
+}
 impl<'ast> From<&'ast TsImportEqualsDecl> for NodeRef<'ast> {
     fn from(node: &'ast TsImportEqualsDecl) -> Self {
         NodeRef::TsImportEqualsDecl(node)
@@ -142537,6 +147920,11 @@ pub enum NodeRef<'ast> {
     ComputedPropName(&'ast ComputedPropName),
     CondExpr(&'ast CondExpr),
     Constructor(&'ast Constructor),
+    ContentTagContent(&'ast ContentTagContent),
+    ContentTagEnd(&'ast ContentTagEnd),
+    ContentTagExpression(&'ast ContentTagExpression),
+    ContentTagMember(&'ast ContentTagMember),
+    ContentTagStart(&'ast ContentTagStart),
     ContinueStmt(&'ast ContinueStmt),
     DebuggerStmt(&'ast DebuggerStmt),
     Decl(&'ast Decl),
@@ -142673,6 +148061,7 @@ pub enum NodeRef<'ast> {
     TsFnParam(&'ast TsFnParam),
     TsFnType(&'ast TsFnType),
     TsGetterSignature(&'ast TsGetterSignature),
+    TsImportCallOptions(&'ast TsImportCallOptions),
     TsImportEqualsDecl(&'ast TsImportEqualsDecl),
     TsImportType(&'ast TsImportType),
     TsIndexSignature(&'ast TsIndexSignature),
@@ -143036,6 +148425,9 @@ impl<'ast> NodeRef<'ast> {
                 ClassMember::AutoAccessor(v0) => {
                     Box::new(::std::iter::once(NodeRef::AutoAccessor(v0)))
                 }
+                ClassMember::ContentTagMember(v0) => {
+                    Box::new(::std::iter::once(NodeRef::ContentTagMember(v0)))
+                }
                 _ => Box::new(::std::iter::empty::<NodeRef<'ast>>()),
             },
             NodeRef::ClassMethod(node) => {
@@ -143117,6 +148509,50 @@ impl<'ast> NodeRef<'ast> {
                             .iter()
                             .flat_map(|item| ::std::iter::once(NodeRef::Accessibility(&item))),
                     );
+                Box::new(iterator)
+            }
+            NodeRef::ContentTagContent(node) => {
+                let iterator = ::std::iter::empty::<NodeRef<'ast>>();
+                Box::new(iterator)
+            }
+            NodeRef::ContentTagEnd(node) => {
+                let iterator = ::std::iter::empty::<NodeRef<'ast>>();
+                Box::new(iterator)
+            }
+            NodeRef::ContentTagExpression(node) => {
+                let iterator = ::std::iter::empty::<NodeRef<'ast>>()
+                    .chain({
+                        let item = &*node.opening;
+                        ::std::iter::once(NodeRef::ContentTagStart(&item))
+                    })
+                    .chain({
+                        let item = &*node.contents;
+                        ::std::iter::once(NodeRef::ContentTagContent(&item))
+                    })
+                    .chain({
+                        let item = &*node.closing;
+                        ::std::iter::once(NodeRef::ContentTagEnd(&item))
+                    });
+                Box::new(iterator)
+            }
+            NodeRef::ContentTagMember(node) => {
+                let iterator = ::std::iter::empty::<NodeRef<'ast>>()
+                    .chain({
+                        let item = &*node.opening;
+                        ::std::iter::once(NodeRef::ContentTagStart(&item))
+                    })
+                    .chain({
+                        let item = &*node.contents;
+                        ::std::iter::once(NodeRef::ContentTagContent(&item))
+                    })
+                    .chain({
+                        let item = &*node.closing;
+                        ::std::iter::once(NodeRef::ContentTagEnd(&item))
+                    });
+                Box::new(iterator)
+            }
+            NodeRef::ContentTagStart(node) => {
+                let iterator = ::std::iter::empty::<NodeRef<'ast>>();
                 Box::new(iterator)
             }
             NodeRef::ContinueStmt(node) => {
@@ -143266,6 +148702,9 @@ impl<'ast> NodeRef<'ast> {
                 Expr::JSXEmpty(v0) => Box::new(::std::iter::once(NodeRef::JSXEmptyExpr(v0))),
                 Expr::JSXElement(v0) => Box::new(::std::iter::once(NodeRef::JSXElement(v0))),
                 Expr::JSXFragment(v0) => Box::new(::std::iter::once(NodeRef::JSXFragment(v0))),
+                Expr::ContentTagExpression(v0) => {
+                    Box::new(::std::iter::once(NodeRef::ContentTagExpression(v0)))
+                }
                 Expr::TsTypeAssertion(v0) => {
                     Box::new(::std::iter::once(NodeRef::TsTypeAssertion(v0)))
                 }
@@ -143538,7 +148977,7 @@ impl<'ast> NodeRef<'ast> {
                 _ => Box::new(::std::iter::empty::<NodeRef<'ast>>()),
             },
             NodeRef::JSXAttrValue(node) => match node {
-                JSXAttrValue::Lit(v0) => Box::new(::std::iter::once(NodeRef::Lit(v0))),
+                JSXAttrValue::Str(v0) => Box::new(::std::iter::once(NodeRef::Str(v0))),
                 JSXAttrValue::JSXExprContainer(v0) => {
                     Box::new(::std::iter::once(NodeRef::JSXExprContainer(v0)))
                 }
@@ -144440,6 +149879,13 @@ impl<'ast> NodeRef<'ast> {
                     }));
                 Box::new(iterator)
             }
+            NodeRef::TsImportCallOptions(node) => {
+                let iterator = ::std::iter::empty::<NodeRef<'ast>>().chain({
+                    let item = &*node.with;
+                    ::std::iter::once(NodeRef::ObjectLit(&item))
+                });
+                Box::new(iterator)
+            }
             NodeRef::TsImportEqualsDecl(node) => {
                 let iterator = ::std::iter::empty::<NodeRef<'ast>>()
                     .chain(::std::iter::once(NodeRef::Ident(&node.id)))
@@ -144447,17 +149893,21 @@ impl<'ast> NodeRef<'ast> {
                 Box::new(iterator)
             }
             NodeRef::TsImportType(node) => {
-                let iterator = ::std::iter::empty::<NodeRef<'ast>>()
-                    .chain(::std::iter::once(NodeRef::Str(&node.arg)))
-                    .chain(
-                        node.qualifier
-                            .iter()
-                            .flat_map(|item| ::std::iter::once(NodeRef::TsEntityName(&item))),
-                    )
-                    .chain(node.type_args.iter().flat_map(|item| {
-                        let item = &*item;
-                        ::std::iter::once(NodeRef::TsTypeParamInstantiation(&item))
-                    }));
+                let iterator =
+                    ::std::iter::empty::<NodeRef<'ast>>()
+                        .chain(::std::iter::once(NodeRef::Str(&node.arg)))
+                        .chain(
+                            node.qualifier
+                                .iter()
+                                .flat_map(|item| ::std::iter::once(NodeRef::TsEntityName(&item))),
+                        )
+                        .chain(node.type_args.iter().flat_map(|item| {
+                            let item = &*item;
+                            ::std::iter::once(NodeRef::TsTypeParamInstantiation(&item))
+                        }))
+                        .chain(node.attributes.iter().flat_map(|item| {
+                            ::std::iter::once(NodeRef::TsImportCallOptions(&item))
+                        }));
                 Box::new(iterator)
             }
             NodeRef::TsIndexSignature(node) => {

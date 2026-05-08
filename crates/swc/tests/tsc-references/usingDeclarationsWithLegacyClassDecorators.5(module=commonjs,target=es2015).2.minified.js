@@ -7,18 +7,18 @@ Object.defineProperty(exports, "__esModule", {
         return C;
     }
 });
-const _ts_decorate = require("@swc/helpers/_/_ts_decorate"), _ts_add_disposable_resource = require("@swc/helpers/_/_ts_add_disposable_resource"), _ts_dispose_resources = require("@swc/helpers/_/_ts_dispose_resources"), env = {
+let _ts_decorate = require("@swc/helpers/_/_ts_decorate"), _ts_add_disposable_resource = require("@swc/helpers/_/_ts_add_disposable_resource"), _ts_dispose_resources = require("@swc/helpers/_/_ts_dispose_resources"), env = {
     stack: [],
     error: void 0,
     hasError: !1
 };
 try {
     _ts_add_disposable_resource._(env, null, !1);
-    class C1 {
-    }
-    C1 = _ts_decorate._([
+    var C = class {
+    };
+    C = _ts_decorate._([
         dec
-    ], C1);
+    ], C);
 } catch (e) {
     env.error = e, env.hasError = !0;
 } finally{

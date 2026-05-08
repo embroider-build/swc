@@ -80,7 +80,7 @@ impl Visit for ValidTypeof {
                     }),
                     Expr::Lit(Lit::Str(Str { value, .. })),
                 ) => {
-                    self.check(bin_expr.span, value);
+                    self.check(bin_expr.span, &value.to_string_lossy());
                 }
                 // case "type" === typeof x
                 (
@@ -89,7 +89,7 @@ impl Visit for ValidTypeof {
                         op: op!("typeof"), ..
                     }),
                 ) => {
-                    self.check(bin_expr.span, value);
+                    self.check(bin_expr.span, &value.to_string_lossy());
                 }
                 // case typeof x === typeof y
                 (
@@ -106,10 +106,8 @@ impl Visit for ValidTypeof {
                         op: op!("typeof"), ..
                     }),
                     _,
-                ) => {
-                    if self.require_string_literals {
-                        self.emit_report(bin_expr.span);
-                    }
+                ) if self.require_string_literals => {
+                    self.emit_report(bin_expr.span);
                 }
                 // case foo() === typeof x
                 (
@@ -117,10 +115,8 @@ impl Visit for ValidTypeof {
                     Expr::Unary(UnaryExpr {
                         op: op!("typeof"), ..
                     }),
-                ) => {
-                    if self.require_string_literals {
-                        self.emit_report(bin_expr.span);
-                    }
+                ) if self.require_string_literals => {
+                    self.emit_report(bin_expr.span);
                 }
                 _ => {}
             }

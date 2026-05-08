@@ -19,10 +19,10 @@ impl Optimizer<'_> {
         };
 
         // We only care about instant breaks.
-        let label = match &mut *f.body {
-            Stmt::Break(b) => b.label.take(),
+        match &mut *f.body {
+            Stmt::Break(BreakStmt { label: None, .. }) => {}
             _ => return,
-        };
+        }
 
         self.changed = true;
         report_change!("loops: Removing a for loop with instant break");
@@ -34,6 +34,8 @@ impl Optimizer<'_> {
                     expr,
                 }
                 .into(),
+                #[cfg(swc_ast_unknown)]
+                _ => panic!("unable to access unknown nodes"),
             }
         }));
         self.prepend_stmts.extend(f.test.take().map(|expr| {
@@ -43,15 +45,6 @@ impl Optimizer<'_> {
             }
             .into()
         }));
-        if label.is_some() {
-            self.prepend_stmts.push(
-                BreakStmt {
-                    span: DUMMY_SP,
-                    label,
-                }
-                .into(),
-            );
-        }
 
         *s = EmptyStmt { span: DUMMY_SP }.into()
     }
@@ -65,7 +58,7 @@ impl Optimizer<'_> {
 
         match stmt {
             Stmt::While(w) => {
-                let (purity, val) = w.test.cast_to_bool(&self.ctx.expr_ctx);
+                let (purity, val) = w.test.cast_to_bool(self.ctx.expr_ctx);
                 if let Known(false) = val {
                     if purity.is_pure() {
                         let changed = UnreachableHandler::preserve_vars(stmt);
@@ -86,7 +79,7 @@ impl Optimizer<'_> {
             }
             Stmt::For(f) => {
                 if let Some(test) = &mut f.test {
-                    let (purity, val) = test.cast_to_bool(&self.ctx.expr_ctx);
+                    let (purity, val) = test.cast_to_bool(self.ctx.expr_ctx);
                     if let Known(false) = val {
                         let changed = UnreachableHandler::preserve_vars(&mut f.body);
                         self.changed |= changed;
@@ -103,6 +96,8 @@ impl Optimizer<'_> {
                                     expr,
                                 }
                                 .into(),
+                                #[cfg(swc_ast_unknown)]
+                                _ => panic!("unable to access unknown nodes"),
                             }
                         }));
                         self.prepend_stmts.push(
@@ -126,32 +121,6 @@ impl Optimizer<'_> {
                 }
             }
             _ => {}
-        }
-    }
-
-    ///
-    /// - `for (a(), 5; b(); c())` => `for (a(); b(); c())`
-    pub(super) fn optimize_init_of_for_stmt(&mut self, s: &mut ForStmt) {
-        if !self.options.side_effects {
-            return;
-        }
-
-        if let Some(init) = &mut s.init {
-            match init {
-                VarDeclOrExpr::VarDecl(_) => {}
-                VarDeclOrExpr::Expr(init) => {
-                    let new = self.ignore_return_value(init);
-                    if let Some(new) = new {
-                        *init = Box::new(new);
-                    } else {
-                        s.init = None;
-                        self.changed = true;
-                        report_change!(
-                            "loops: Removed side-effect-free expressions in `init` of a for stmt"
-                        );
-                    }
-                }
-            }
         }
     }
 }

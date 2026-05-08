@@ -65,14 +65,20 @@ class B extends A {
             ()=>_superprop_get_x().call(_this);
             // element access in arrow
             ()=>_superprop_get("x").call(_this);
-            /*#__PURE__*/ _async_to_generator(// property access in async arrow
-            function*() {
-                return _superprop_get_x().call(_this);
-            });
-            /*#__PURE__*/ _async_to_generator(// element access in async arrow
-            function*() {
-                return _superprop_get("x").call(_this);
-            });
+            // property access in async arrow
+            ()=>{
+                var _this = this, _superprop_get_x1 = ()=>_superprop_get_x();
+                _async_to_generator(function*() {
+                    return _superprop_get_x1().call(_this);
+                })();
+            };
+            // element access in async arrow
+            ()=>{
+                var _this = this, _superprop_get1 = (_prop)=>_superprop_get(_prop);
+                _async_to_generator(function*() {
+                    return _superprop_get1("x").call(_this);
+                })();
+            };
         })();
     }
     property_access_only_read_only() {
@@ -84,10 +90,13 @@ class B extends A {
             const a = _superprop_get_x();
             // property access in arrow
             ()=>_superprop_get_x().call(_this);
-            /*#__PURE__*/ _async_to_generator(// property access in async arrow
-            function*() {
-                return _superprop_get_x().call(_this);
-            });
+            // property access in async arrow
+            ()=>{
+                var _this = this, _superprop_get_x1 = ()=>_superprop_get_x();
+                _async_to_generator(function*() {
+                    return _superprop_get_x1().call(_this);
+                })();
+            };
         })();
     }
     property_access_only_write_only() {
@@ -109,10 +118,13 @@ class B extends A {
             });
             // property access (assign) in arrow
             ()=>_superprop_set_x(f);
-            /*#__PURE__*/ _async_to_generator(// property access (assign) in async arrow
-            function*() {
-                return _superprop_set_x(f);
-            });
+            // property access (assign) in async arrow
+            ()=>{
+                var _superprop_set_x1 = (_value)=>_superprop_set_x(_value);
+                _async_to_generator(function*() {
+                    return _superprop_set_x1(f);
+                })();
+            };
         })();
     }
     element_access_only_read_only() {
@@ -124,10 +136,13 @@ class B extends A {
             const a = _superprop_get("x");
             // element access in arrow
             ()=>_superprop_get("x").call(_this);
-            /*#__PURE__*/ _async_to_generator(// element access in async arrow
-            function*() {
-                return _superprop_get("x").call(_this);
-            });
+            // element access in async arrow
+            ()=>{
+                var _this = this, _superprop_get1 = (_prop)=>_superprop_get(_prop);
+                _async_to_generator(function*() {
+                    return _superprop_get1("x").call(_this);
+                })();
+            };
         })();
     }
     element_access_only_write_only() {
@@ -149,10 +164,13 @@ class B extends A {
             });
             // element access (assign) in arrow
             ()=>_superprop_set("x", f);
-            /*#__PURE__*/ _async_to_generator(// element access (assign) in async arrow
-            function*() {
-                return _superprop_set("x", f);
-            });
+            // element access (assign) in async arrow
+            ()=>{
+                var _superprop_set1 = (_prop, _value)=>_superprop_set(_prop, _value);
+                _async_to_generator(function*() {
+                    return _superprop_set1("x", f);
+                })();
+            };
         })();
     }
     property_access_only_read_only_in_generator() {
@@ -164,10 +182,13 @@ class B extends A {
             const a = _superprop_get_x();
             // property access in arrow
             ()=>_superprop_get_x().call(_this);
-            /*#__PURE__*/ _async_to_generator(// property access in async arrow
-            function*() {
-                return _superprop_get_x().call(_this);
-            });
+            // property access in async arrow
+            ()=>{
+                var _this = this, _superprop_get_x1 = ()=>_superprop_get_x();
+                _async_to_generator(function*() {
+                    return _superprop_get_x1().call(_this);
+                })();
+            };
         })();
     }
     property_access_only_write_only_in_generator() {
@@ -189,10 +210,13 @@ class B extends A {
             });
             // property access (assign) in arrow
             ()=>_superprop_set_x(f);
-            /*#__PURE__*/ _async_to_generator(// property access (assign) in async arrow
-            function*() {
-                return _superprop_set_x(f);
-            });
+            // property access (assign) in async arrow
+            ()=>{
+                var _superprop_set_x1 = (_value)=>_superprop_set_x(_value);
+                _async_to_generator(function*() {
+                    return _superprop_set_x1(f);
+                })();
+            };
         })();
     }
     element_access_only_read_only_in_generator() {
@@ -204,10 +228,13 @@ class B extends A {
             const a = _superprop_get("x");
             // element access in arrow
             ()=>_superprop_get("x").call(_this);
-            /*#__PURE__*/ _async_to_generator(// element access in async arrow
-            function*() {
-                return _superprop_get("x").call(_this);
-            });
+            // element access in async arrow
+            ()=>{
+                var _this = this, _superprop_get1 = (_prop)=>_superprop_get(_prop);
+                _async_to_generator(function*() {
+                    return _superprop_get1("x").call(_this);
+                })();
+            };
         })();
     }
     element_access_only_write_only_in_generator() {
@@ -229,10 +256,13 @@ class B extends A {
             });
             // element access (assign) in arrow
             ()=>_superprop_set("x", f);
-            /*#__PURE__*/ _async_to_generator(// element access (assign) in async arrow
-            function*() {
-                return _superprop_set("x", f);
-            });
+            // element access (assign) in async arrow
+            ()=>{
+                var _superprop_set1 = (_prop, _value)=>_superprop_set(_prop, _value);
+                _async_to_generator(function*() {
+                    return _superprop_set1("x", f);
+                })();
+            };
         })();
     }
 }
@@ -251,75 +281,99 @@ class Base {
 }
 class Derived extends Base {
     a() {
-        var _this = this, _superprop_get_method = ()=>super.method;
-        return /*#__PURE__*/ _async_to_generator(function*() {
-            return _superprop_get_method().call(_this, '');
-        });
+        return ()=>{
+            var _this = this, _superprop_get_method = ()=>super.method;
+            _async_to_generator(function*() {
+                return _superprop_get_method().call(_this, '');
+            })();
+        };
     }
     b() {
-        var _superprop_get_getter = ()=>super.getter;
-        return /*#__PURE__*/ _async_to_generator(function*() {
-            return _superprop_get_getter();
-        });
+        return ()=>{
+            var _superprop_get_getter = ()=>super.getter;
+            _async_to_generator(function*() {
+                return _superprop_get_getter();
+            })();
+        };
     }
     c() {
-        var _superprop_set_setter = (_value)=>super.setter = _value;
-        return /*#__PURE__*/ _async_to_generator(function*() {
-            return _superprop_set_setter('');
-        });
+        return ()=>{
+            var _superprop_set_setter = (_value)=>super.setter = _value;
+            _async_to_generator(function*() {
+                return _superprop_set_setter('');
+            })();
+        };
     }
     d() {
-        var _this = this, _superprop_get = (_prop)=>super[_prop];
-        return /*#__PURE__*/ _async_to_generator(function*() {
-            return _superprop_get("method").call(_this, '');
-        });
+        return ()=>{
+            var _this = this, _superprop_get = (_prop)=>super[_prop];
+            _async_to_generator(function*() {
+                return _superprop_get("method").call(_this, '');
+            })();
+        };
     }
     e() {
-        var _superprop_get = (_prop)=>super[_prop];
-        return /*#__PURE__*/ _async_to_generator(function*() {
-            return _superprop_get("getter");
-        });
+        return ()=>{
+            var _superprop_get = (_prop)=>super[_prop];
+            _async_to_generator(function*() {
+                return _superprop_get("getter");
+            })();
+        };
     }
     f() {
-        var _superprop_set = (_prop, _value)=>super[_prop] = _value;
-        return /*#__PURE__*/ _async_to_generator(function*() {
-            return _superprop_set("setter", '');
-        });
+        return ()=>{
+            var _superprop_set = (_prop, _value)=>super[_prop] = _value;
+            _async_to_generator(function*() {
+                return _superprop_set("setter", '');
+            })();
+        };
     }
     static a() {
-        var _this = this, _superprop_get_method = ()=>super.method;
-        return /*#__PURE__*/ _async_to_generator(function*() {
-            return _superprop_get_method().call(_this, '');
-        });
+        return ()=>{
+            var _this = this, _superprop_get_method = ()=>super.method;
+            _async_to_generator(function*() {
+                return _superprop_get_method().call(_this, '');
+            })();
+        };
     }
     static b() {
-        var _superprop_get_getter = ()=>super.getter;
-        return /*#__PURE__*/ _async_to_generator(function*() {
-            return _superprop_get_getter();
-        });
+        return ()=>{
+            var _superprop_get_getter = ()=>super.getter;
+            _async_to_generator(function*() {
+                return _superprop_get_getter();
+            })();
+        };
     }
     static c() {
-        var _superprop_set_setter = (_value)=>super.setter = _value;
-        return /*#__PURE__*/ _async_to_generator(function*() {
-            return _superprop_set_setter('');
-        });
+        return ()=>{
+            var _superprop_set_setter = (_value)=>super.setter = _value;
+            _async_to_generator(function*() {
+                return _superprop_set_setter('');
+            })();
+        };
     }
     static d() {
-        var _this = this, _superprop_get = (_prop)=>super[_prop];
-        return /*#__PURE__*/ _async_to_generator(function*() {
-            return _superprop_get("method").call(_this, '');
-        });
+        return ()=>{
+            var _this = this, _superprop_get = (_prop)=>super[_prop];
+            _async_to_generator(function*() {
+                return _superprop_get("method").call(_this, '');
+            })();
+        };
     }
     static e() {
-        var _superprop_get = (_prop)=>super[_prop];
-        return /*#__PURE__*/ _async_to_generator(function*() {
-            return _superprop_get("getter");
-        });
+        return ()=>{
+            var _superprop_get = (_prop)=>super[_prop];
+            _async_to_generator(function*() {
+                return _superprop_get("getter");
+            })();
+        };
     }
     static f() {
-        var _superprop_set = (_prop, _value)=>super[_prop] = _value;
-        return /*#__PURE__*/ _async_to_generator(function*() {
-            return _superprop_set("setter", '');
-        });
+        return ()=>{
+            var _superprop_set = (_prop, _value)=>super[_prop] = _value;
+            _async_to_generator(function*() {
+                return _superprop_set("setter", '');
+            })();
+        };
     }
 }

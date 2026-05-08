@@ -1,15 +1,21 @@
+use std::borrow::Borrow;
+
 use rustc_hash::FxHashSet;
-use swc_atoms::JsWord;
+use swc_atoms::Atom;
 use swc_common::{util::take::Take, DUMMY_SP};
 use swc_ecma_ast::*;
-use swc_ecma_usage_analyzer::util::is_global_var_with_pure_property_access;
-use swc_ecma_utils::{contains_ident_ref, contains_this_expr, ExprExt};
+use swc_ecma_utils::{contains_ident_ref, contains_this_expr, find_pat_ids, ExprExt, Value};
 use swc_ecma_visit::{noop_visit_type, Visit, VisitWith};
 
 use super::Optimizer;
 #[cfg(feature = "debug")]
 use crate::debug::dump;
-use crate::{compress::optimize::util::extract_class_side_effect, option::PureGetterOption};
+use crate::{
+    compress::optimize::{util::extract_class_side_effect, BitCtx},
+    option::PureGetterOption,
+    program_data::{ScopeData, VarUsageInfoFlags},
+    usage_analyzer::{analyzer::storage::Storage, util::is_global_var_with_pure_property_access},
+};
 
 #[derive(Debug, Default, Clone, Copy)]
 pub(crate) struct PropertyAccessOpts {
@@ -20,7 +26,7 @@ pub(crate) struct PropertyAccessOpts {
 
 /// Methods related to the option `unused`.
 impl Optimizer<'_> {
-    #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
     pub(super) fn drop_unused_var_declarator(
         &mut self,
         var: &mut VarDeclarator,
@@ -67,22 +73,26 @@ impl Optimizer<'_> {
 
         #[cfg(debug_assertions)]
         {
-            if let Some(VarDeclKind::Const | VarDeclKind::Let) = self.ctx.var_kind {
-                if had_init && var.init.is_none() {
-                    unreachable!("const/let variable without initializer: {:#?}", var);
-                }
+            if self
+                .ctx
+                .bit_ctx
+                .intersects(BitCtx::IsConst.union(BitCtx::IsLet))
+                && had_init
+                && var.init.is_none()
+            {
+                unreachable!("const/let variable without initializer: {:#?}", var);
             }
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
     pub(super) fn drop_unused_param(&mut self, pat: &mut Pat, ignore_fn_length: bool) {
         if !self.options.unused && !self.options.reduce_fns {
             return;
         }
 
-        if let Some(scope) = self.data.scopes.get(&self.ctx.scope) {
-            if scope.has_eval_call || scope.has_with_stmt {
+        if let Some(scope) = self.data.get_scope(self.ctx.scope) {
+            if scope.intersects(ScopeData::HAS_EVAL_CALL.union(ScopeData::HAS_WITH_STMT)) {
                 return;
             }
         }
@@ -94,12 +104,24 @@ impl Optimizer<'_> {
             }
         }
 
+        // When keep_fargs is true, we should only optimize within destructuring
+        // patterns (arrays/objects) but not remove the entire parameter.
+        // For Pat::Assign (default parameters), we should not remove them if
+        // keep_fargs is true, as that would change the function signature.
+        if self.options.keep_fargs && matches!(pat, Pat::Assign(_)) {
+            return;
+        }
+
         self.take_pat_if_unused(pat, None, false)
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
     pub(super) fn drop_unused_vars(&mut self, name: &mut Pat, init: Option<&mut Expr>) {
-        if self.ctx.is_exported || self.ctx.in_asm {
+        if self
+            .ctx
+            .bit_ctx
+            .intersects(BitCtx::IsExported | BitCtx::InAsm)
+        {
             return;
         }
 
@@ -109,17 +131,19 @@ impl Optimizer<'_> {
             return;
         }
 
-        if self.ctx.in_var_decl_of_for_in_or_of_loop {
+        if self.ctx.bit_ctx.contains(BitCtx::InVarDeclOfForInOrOfLoop) {
             return;
         }
 
-        if let Some(scope) = self.data.scopes.get(&self.ctx.scope) {
-            if scope.has_eval_call || scope.has_with_stmt {
-                log_abort!(
-                    "unused: Preserving `{}` because of usages",
-                    dump(&*name, false)
-                );
-                return;
+        for (_, ctx) in find_pat_ids::<_, Id>(name) {
+            if let Some(scope) = self.data.get_scope(ctx) {
+                if scope.intersects(ScopeData::HAS_EVAL_CALL.union(ScopeData::HAS_WITH_STMT)) {
+                    log_abort!(
+                        "unused: Preserving `{}` because of usages",
+                        dump(&*name, false)
+                    );
+                    return;
+                }
             }
         }
 
@@ -130,7 +154,7 @@ impl Optimizer<'_> {
         self.take_pat_if_unused(name, init, true);
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
     pub(super) fn drop_unused_params(&mut self, params: &mut Vec<Param>) {
         if self.options.keep_fargs || !self.options.unused {
             return;
@@ -147,7 +171,7 @@ impl Optimizer<'_> {
         params.retain(|p| !p.pat.is_invalid());
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
     pub(super) fn drop_unused_arrow_params(&mut self, params: &mut Vec<Pat>) {
         if self.options.keep_fargs || !self.options.unused {
             return;
@@ -164,7 +188,7 @@ impl Optimizer<'_> {
         params.retain(|p| !p.is_invalid());
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
     fn take_ident_of_pat_if_unused(&mut self, i: &mut Ident, init: Option<&mut Expr>) {
         trace_op!("unused: Checking identifier `{}`", i);
 
@@ -173,11 +197,13 @@ impl Optimizer<'_> {
             return;
         }
 
-        if let Some(v) = self.data.vars.get(&i.to_id()).cloned() {
+        if let Some(v) = self.data.vars.get(&i.to_id()) {
+            let is_used_in_member =
+                v.property_mutation_count > 0 || v.flags.contains(VarUsageInfoFlags::USED_AS_REF);
             if v.ref_count == 0
                 && v.usage_count == 0
-                && !v.reassigned
-                && v.property_mutation_count == 0
+                && !v.flags.contains(VarUsageInfoFlags::REASSIGNED)
+                && !is_used_in_member
             {
                 self.changed = true;
                 report_change!(
@@ -192,7 +218,11 @@ impl Optimizer<'_> {
 
             if v.ref_count == 0 && v.usage_count == 0 {
                 if let Some(e) = init {
-                    if let Some(VarDeclKind::Const | VarDeclKind::Let) = self.ctx.var_kind {
+                    if self
+                        .ctx
+                        .bit_ctx
+                        .intersects(BitCtx::IsConst.union(BitCtx::IsLet))
+                    {
                         if let Expr::Lit(Lit::Null(..)) = e {
                             return;
                         }
@@ -202,7 +232,11 @@ impl Optimizer<'_> {
                     if let Some(ret) = ret {
                         *e = ret;
                     } else {
-                        if let Some(VarDeclKind::Const | VarDeclKind::Let) = self.ctx.var_kind {
+                        if self
+                            .ctx
+                            .bit_ctx
+                            .intersects(BitCtx::IsConst.union(BitCtx::IsLet))
+                        {
                             *e = Null { span: DUMMY_SP }.into();
                         } else {
                             *e = Invalid { span: DUMMY_SP }.into();
@@ -236,11 +270,15 @@ impl Optimizer<'_> {
                 }
 
                 if let Some(usage) = self.data.vars.get(&e.to_id()) {
-                    if !usage.declared {
+                    if !usage.flags.contains(VarUsageInfoFlags::DECLARED) {
                         return true;
                     }
 
-                    if !usage.mutated() && usage.no_side_effect_for_member_access {
+                    if !usage.mutated()
+                        && usage
+                            .flags
+                            .contains(VarUsageInfoFlags::NO_SIDE_EFFECT_FOR_MEMBER_ACCESS)
+                    {
                         return false;
                     }
                 }
@@ -276,7 +314,11 @@ impl Optimizer<'_> {
 
                         Prop::Setter(_) => true,
                         Prop::Method(_) => false,
+                        #[cfg(swc_ast_unknown)]
+                        _ => panic!("unable to access unknown nodes"),
                     },
+                    #[cfg(swc_ast_unknown)]
+                    _ => panic!("unable to access unknown nodes"),
                 });
             }
 
@@ -301,14 +343,14 @@ impl Optimizer<'_> {
 
     /// `parent_span` should be [Span] of [VarDeclarator] or [AssignExpr]
     #[allow(clippy::only_used_in_recursion)]
-    #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
     pub(super) fn take_pat_if_unused(
         &mut self,
         name: &mut Pat,
         mut init: Option<&mut Expr>,
         is_var_decl: bool,
     ) {
-        if self.ctx.is_exported {
+        if self.ctx.bit_ctx.contains(BitCtx::IsExported) {
             return;
         }
 
@@ -323,21 +365,30 @@ impl Optimizer<'_> {
         };
 
         if !name.is_ident() {
-            // TODO: Use smart logic
-            if self.options.pure_getters != PureGetterOption::Bool(true) && !has_pure_ann {
-                return;
-            }
+            // For Pat::Assign (default parameters), we can skip the pure_getters check
+            // when there's no init expression, because the default value is part of the
+            // pattern itself and doesn't involve property access on an external value.
+            let is_assign_pat_without_init = matches!(name, Pat::Assign(_)) && init.is_none();
 
-            if !has_pure_ann {
-                if let Some(init) = init.as_mut() {
-                    if self.should_preserve_property_access(
-                        init,
-                        PropertyAccessOpts {
-                            allow_getter: false,
-                            only_ident: false,
-                        },
-                    ) {
-                        return;
+            if !is_assign_pat_without_init {
+                // TODO: Use smart logic
+                if self.options.pure_getters != PureGetterOption::Bool(true) && !has_pure_ann {
+                    return;
+                }
+
+                if !has_pure_ann {
+                    if let Some(init) = init.as_mut() {
+                        if !matches!(init, Expr::Ident(_))
+                            && self.should_preserve_property_access(
+                                init,
+                                PropertyAccessOpts {
+                                    allow_getter: false,
+                                    only_ident: false,
+                                },
+                            )
+                        {
+                            return;
+                        }
                     }
                 }
             }
@@ -420,6 +471,8 @@ impl Optimizer<'_> {
                             }
                         }
                         ObjectPatProp::Rest(_) => {}
+                        #[cfg(swc_ast_unknown)]
+                        _ => panic!("unable to access unknown nodes"),
                     }
 
                     true
@@ -431,17 +484,38 @@ impl Optimizer<'_> {
             }
 
             Pat::Rest(_) => {}
-            Pat::Assign(_) => {
-                // TODO
+            Pat::Assign(assign) => {
+                // First check if the default value has side effects using
+                // may_have_side_effects which doesn't mutate optimizer state.
+                // If it does, we cannot remove this pattern at all.
+                if assign.right.may_have_side_effects(self.ctx.expr_ctx) {
+                    // The default value has side effects, so we cannot remove
+                    // this assignment pattern. We must preserve it as-is.
+                    return;
+                }
+
+                // Now check if the left side of the assignment pattern is unused
+                self.take_pat_if_unused(&mut assign.left, None, is_var_decl);
+
+                // If the left side is now invalid (unused), we can remove the
+                // entire pattern since we already know the default has no side
+                // effects
+                if assign.left.is_invalid() {
+                    report_change!(
+                        "unused: Dropping assign pattern as left is unused and right has no side \
+                         effects"
+                    );
+                    name.take();
+                }
             }
             _ => {}
         }
     }
 
     /// Creates an empty [VarDecl] if `decl` should be removed.
-    #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
     pub(super) fn drop_unused_decl(&mut self, decl: &mut Decl) {
-        if self.ctx.is_exported {
+        if self.ctx.bit_ctx.contains(BitCtx::IsExported) {
             return;
         }
 
@@ -453,40 +527,14 @@ impl Optimizer<'_> {
             return;
         }
 
-        if let Some(scope) = self.data.scopes.get(&self.ctx.scope) {
-            if scope.has_eval_call || scope.has_with_stmt {
+        if let Some(scope) = self.data.get_scope(self.ctx.scope) {
+            if scope.intersects(ScopeData::HAS_EVAL_CALL.union(ScopeData::HAS_WITH_STMT)) {
                 return;
             }
         }
 
         match decl {
             Decl::Class(ClassDecl { ident, class, .. }) => {
-                if ident.sym == "arguments" {
-                    return;
-                }
-
-                // Fix https://github.com/swc-project/swc/issues/5588
-                let may_have_side_effect = class.body.iter().any(|m| match m {
-                    ClassMember::ClassProp(ClassProp {
-                        is_static: true,
-                        value: Some(_),
-                        ..
-                    })
-                    | ClassMember::PrivateProp(PrivateProp {
-                        is_static: true,
-                        value: Some(_),
-                        ..
-                    }) => true,
-                    ClassMember::StaticBlock(StaticBlock {
-                        body: BlockStmt { stmts, .. },
-                        ..
-                    }) if !stmts.is_empty() => true,
-                    _ => false,
-                });
-                if may_have_side_effect {
-                    return;
-                }
-
                 // If it is not used, drop it.
                 if self
                     .data
@@ -495,34 +543,42 @@ impl Optimizer<'_> {
                     .map(|v| v.usage_count == 0 && v.property_mutation_count == 0)
                     .unwrap_or(false)
                 {
+                    let Some(side_effects) =
+                        extract_class_side_effect(self.ctx.expr_ctx, Some(ident), class)
+                    else {
+                        return;
+                    };
+
                     self.changed = true;
                     report_change!(
                         "unused: Dropping a decl '{}{:?}' because it is not used",
                         ident.sym,
                         ident.ctxt
                     );
-                    // This will remove the declaration.
-                    let class = decl.take().class().unwrap();
-                    let mut side_effects =
-                        extract_class_side_effect(&self.ctx.expr_ctx, *class.class);
 
-                    if !side_effects.is_empty() {
-                        self.prepend_stmts.push(
-                            ExprStmt {
-                                span: DUMMY_SP,
-                                expr: if side_effects.len() > 1 {
-                                    SeqExpr {
-                                        span: DUMMY_SP,
-                                        exprs: side_effects,
-                                    }
-                                    .into()
-                                } else {
-                                    side_effects.remove(0)
-                                },
-                            }
-                            .into(),
-                        )
+                    let mut side_effects: Vec<_> =
+                        side_effects.into_iter().map(|expr| expr.take()).collect();
+                    decl.take();
+
+                    if side_effects.is_empty() {
+                        return;
                     }
+
+                    self.prepend_stmts.push(
+                        ExprStmt {
+                            span: DUMMY_SP,
+                            expr: if side_effects.len() > 1 {
+                                SeqExpr {
+                                    span: DUMMY_SP,
+                                    exprs: side_effects,
+                                }
+                                .into()
+                            } else {
+                                side_effects.remove(0)
+                            },
+                        }
+                        .into(),
+                    );
                 }
             }
             Decl::Fn(FnDecl { ident, .. }) => {
@@ -569,11 +625,14 @@ impl Optimizer<'_> {
             Decl::TsInterface(_) | Decl::TsTypeAlias(_) | Decl::TsEnum(_) | Decl::TsModule(_) => {
                 // Nothing to do. We might change this to unreachable!()
             }
+
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         }
     }
 
     /// This should be only called from ignore_return_value
-    #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
     pub(super) fn drop_unused_update(&mut self, e: &mut Expr) {
         if !self.options.unused {
             return;
@@ -587,7 +646,11 @@ impl Optimizer<'_> {
         if let Expr::Ident(arg) = &*update.arg {
             if let Some(var) = self.data.vars.get(&arg.to_id()) {
                 // Update is counted as usage
-                if var.declared && var.is_fn_local && var.usage_count == 1 {
+                if var
+                    .flags
+                    .contains(VarUsageInfoFlags::DECLARED.union(VarUsageInfoFlags::IS_FN_LOCAL))
+                    && var.usage_count == 1
+                {
                     self.changed = true;
                     report_change!(
                         "unused: Dropping an update '{}{:?}' because it is not used",
@@ -602,17 +665,21 @@ impl Optimizer<'_> {
     }
 
     /// This should be only called from ignore_return_value
-    #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
     pub(super) fn drop_unused_op_assign(&mut self, e: &mut Expr) {
         if !self.options.unused {
             return;
         }
 
-        if self.ctx.is_delete_arg {
+        if self.ctx.bit_ctx.contains(BitCtx::IsDeleteArg) {
             return;
         }
 
-        if self.data.top.has_eval_call || self.data.top.has_with_stmt {
+        if self
+            .data
+            .top
+            .intersects(ScopeData::HAS_EVAL_CALL.union(ScopeData::HAS_WITH_STMT))
+        {
             return;
         }
 
@@ -627,7 +694,11 @@ impl Optimizer<'_> {
         if let AssignTarget::Simple(SimpleAssignTarget::Ident(left)) = &assign.left {
             if let Some(var) = self.data.vars.get(&left.to_id()) {
                 // TODO: We don't need fn_local check
-                if var.declared && var.is_fn_local && var.usage_count == 1 {
+                if var
+                    .flags
+                    .contains(VarUsageInfoFlags::DECLARED.union(VarUsageInfoFlags::IS_FN_LOCAL))
+                    && var.usage_count == 1
+                {
                     self.changed = true;
                     report_change!(
                         "unused: Dropping an op-assign '{}{:?}' because it is not used",
@@ -641,13 +712,17 @@ impl Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
     pub(super) fn drop_unused_assignments(&mut self, e: &mut Expr) {
-        if self.ctx.is_delete_arg {
+        if self.ctx.bit_ctx.contains(BitCtx::IsDeleteArg) {
             return;
         }
 
-        if self.data.top.has_eval_call || self.data.top.has_with_stmt {
+        if self
+            .data
+            .top
+            .intersects(ScopeData::HAS_EVAL_CALL.union(ScopeData::HAS_WITH_STMT))
+        {
             return;
         }
 
@@ -659,18 +734,6 @@ impl Optimizer<'_> {
         if !self.options.unused {
             return;
         }
-
-        let used_arguments = self
-            .data
-            .scopes
-            .get(&self.ctx.scope)
-            .unwrap_or_else(|| {
-                unreachable!(
-                    "scope should exist\nScopes: {:?};\nCtxt: {:?}",
-                    self.data.scopes, self.ctx.scope
-                )
-            })
-            .used_arguments;
 
         trace_op!(
             "unused: drop_unused_assignments: Target: `{}`",
@@ -684,11 +747,13 @@ impl Optimizer<'_> {
 
             if let Some(var) = self.data.vars.get(&i.to_id()) {
                 // technically this is inline
-                if !var.inline_prevented
-                    && !var.exported
-                    && var.usage_count == 0
-                    && var.declared
-                    && (!var.declared_as_fn_param || !used_arguments || self.ctx.expr_ctx.in_strict)
+                if !var.flags.intersects(
+                    VarUsageInfoFlags::INLINE_PREVENTED.union(VarUsageInfoFlags::EXPORTED),
+                ) && var.usage_count == 0
+                    && var.flags.contains(VarUsageInfoFlags::DECLARED)
+                    && (!var.flags.contains(VarUsageInfoFlags::DECLARED_AS_FN_PARAM)
+                        || !self.data.used_arguments(self.ctx.scope)
+                        || self.ctx.expr_ctx.in_strict)
                 {
                     report_change!(
                         "unused: Dropping assignment to var '{}{:?}', which is never used",
@@ -696,7 +761,7 @@ impl Optimizer<'_> {
                         i.id.ctxt
                     );
                     self.changed = true;
-                    if self.ctx.is_this_aware_callee {
+                    if self.ctx.bit_ctx.contains(BitCtx::IsThisAwareCallee) {
                         *e = SeqExpr {
                             span: DUMMY_SP,
                             exprs: vec![0.into(), assign.right.take()],
@@ -716,14 +781,48 @@ impl Optimizer<'_> {
         }
     }
 
+    pub(super) fn drop_empty_constructors(&self, n: &mut Class) {
+        let mut empty_constructor_indices = Vec::new();
+
+        for (index, member) in n.body.iter().enumerate() {
+            if let ClassMember::Constructor(constructor) = member {
+                if self.is_constructor_empty(constructor) {
+                    empty_constructor_indices.push(index);
+                }
+            }
+        }
+
+        if !empty_constructor_indices.is_empty() {
+            report_change!("Removing an empty constructor");
+            for index in empty_constructor_indices.into_iter().rev() {
+                n.body.remove(index);
+            }
+        }
+    }
+
+    fn is_constructor_empty(&self, constructor: &Constructor) -> bool {
+        if !constructor.params.is_empty() {
+            return false;
+        }
+
+        match &constructor.body {
+            None => true,
+            Some(body) => match body.stmts.as_slice() {
+                [] => true,
+                [Stmt::Empty(_)] => true,
+                _ => false,
+            },
+        }
+    }
+
     /// Make `name` [None] if the name is not used.
-    #[cfg_attr(feature = "debug", tracing::instrument(skip_all))]
+    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
     pub(super) fn remove_name_if_not_used(&mut self, name: &mut Option<Ident>) {
         if !self.options.unused {
             return;
         }
 
-        if self.ctx.is_exported {
+        if self.ctx.bit_ctx.contains(BitCtx::IsExported) {
             return;
         }
 
@@ -733,7 +832,9 @@ impl Optimizer<'_> {
                 .vars
                 .get(&i.to_id())
                 .map(|v| {
-                    (!v.used_recursively && v.ref_count == 0 && v.usage_count == 0)
+                    (!v.flags.contains(VarUsageInfoFlags::USED_RECURSIVELY)
+                        && v.ref_count == 0
+                        && v.usage_count == 0)
                         || v.var_kind.is_some()
                 })
                 .unwrap_or(false);
@@ -760,9 +861,10 @@ impl Optimizer<'_> {
             if d.init.is_none() {
                 if let Pat::Ident(name) = &d.name {
                     if let Some(usage) = self.data.vars.get_mut(&name.to_id()) {
-                        if usage.is_fn_local
-                            && usage.declared_as_fn_param
-                            && usage.declared_count >= 2
+                        if usage.flags.contains(
+                            VarUsageInfoFlags::IS_FN_LOCAL
+                                .union(VarUsageInfoFlags::DECLARED_AS_FN_PARAM),
+                        ) && usage.declared_count >= 2
                         {
                             d.name.take();
                             usage.declared_count -= 1;
@@ -789,11 +891,11 @@ impl Optimizer<'_> {
         }
 
         if let Some(Expr::Fn(f)) = v.init.as_deref_mut() {
-            if f.ident.is_none() {
+            let Some(f_ident) = f.ident.as_ref() else {
                 return;
-            }
+            };
 
-            if contains_ident_ref(&f.function.body, &f.ident.as_ref().unwrap().to_id()) {
+            if contains_ident_ref(&f.function.body, f_ident) {
                 return;
             }
 
@@ -806,11 +908,11 @@ impl Optimizer<'_> {
     }
 
     pub(super) fn drop_unused_properties(&mut self, v: &mut VarDeclarator) -> Option<()> {
-        if !self.options.hoist_props || self.ctx.is_exported {
+        if !self.options.hoist_props || self.ctx.bit_ctx.contains(BitCtx::IsExported) {
             return None;
         }
 
-        if self.ctx.top_level && !self.options.top_level() {
+        if self.ctx.bit_ctx.contains(BitCtx::TopLevel) && !self.options.top_level() {
             return None;
         }
 
@@ -819,7 +921,20 @@ impl Optimizer<'_> {
 
         let usage = self.data.vars.get(&name.to_id())?;
 
-        if usage.indexed_with_dynamic_key || usage.used_as_ref || usage.used_recursively {
+        // Property pruning is only safe when every property read is reflected in
+        // accessed_props. Some reduced computed reads only leave the coarser
+        // HAS_PROPERTY_ACCESS marker, so keep the whole object in that case.
+        if usage.flags.contains(VarUsageInfoFlags::HAS_PROPERTY_ACCESS)
+            && usage.accessed_props.is_empty()
+        {
+            return None;
+        }
+
+        if usage.flags.intersects(
+            VarUsageInfoFlags::INDEXED_WITH_DYNAMIC_KEY
+                .union(VarUsageInfoFlags::USED_AS_REF)
+                .union(VarUsageInfoFlags::USED_RECURSIVELY),
+        ) {
             return None;
         }
 
@@ -828,13 +943,17 @@ impl Optimizer<'_> {
             PropOrSpread::Prop(p) => match &**p {
                 Prop::Shorthand(_) => false,
                 Prop::KeyValue(p) => {
-                    p.key.is_computed() || p.value.may_have_side_effects(&self.ctx.expr_ctx)
+                    p.key.is_computed() || p.value.may_have_side_effects(self.ctx.expr_ctx)
                 }
                 Prop::Assign(_) => true,
                 Prop::Getter(p) => p.key.is_computed(),
                 Prop::Setter(p) => p.key.is_computed(),
                 Prop::Method(p) => p.key.is_computed(),
+                #[cfg(swc_ast_unknown)]
+                _ => panic!("unable to access unknown nodes"),
             },
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         }) {
             return None;
         }
@@ -861,6 +980,8 @@ impl Optimizer<'_> {
             let prop = match prop {
                 PropOrSpread::Spread(_) => return None,
                 PropOrSpread::Prop(prop) => prop,
+                #[cfg(swc_ast_unknown)]
+                _ => panic!("unable to access unknown nodes"),
             };
 
             match &**prop {
@@ -911,22 +1032,22 @@ impl Optimizer<'_> {
                         }
                     }
                     PropName::Ident(i) => {
-                        if !can_remove_property(&i.sym) {
+                        if !can_remove_property(i.sym.borrow()) {
                             return None;
                         }
 
-                        if let Some(v) = unknown_used_props.get_mut(&i.sym) {
+                        if let Some(v) = unknown_used_props.get_mut(i.sym.borrow()) {
                             *v = 0;
                         }
                     }
                     _ => return None,
                 },
                 Prop::Shorthand(p) => {
-                    if !can_remove_property(&p.sym) {
+                    if !can_remove_property(p.sym.borrow()) {
                         return None;
                     }
 
-                    if let Some(v) = unknown_used_props.get_mut(&p.sym) {
+                    if let Some(v) = unknown_used_props.get_mut(p.sym.borrow()) {
                         *v = 0;
                     }
                 }
@@ -939,18 +1060,27 @@ impl Optimizer<'_> {
             return None;
         }
 
-        let should_preserve_property = |sym: &JsWord| {
-            if let "toString" = &**sym {
-                return true;
+        let should_preserve_property = |sym: &swc_atoms::Wtf8Atom| {
+            if let Some(s) = sym.as_str() {
+                if s == "toString" {
+                    return true;
+                }
+
+                if s.parse::<f64>().is_ok() || s.parse::<i32>().is_ok() {
+                    return true;
+                }
             }
-            !usage.accessed_props.contains_key(sym) && !properties_used_via_this.contains(sym)
+
+            usage.accessed_props.contains_key(sym) || properties_used_via_this.contains(sym)
         };
         let should_preserve = |key: &PropName| match key {
-            PropName::Ident(k) => should_preserve_property(&k.sym),
+            PropName::Ident(k) => should_preserve_property(k.sym.borrow()),
             PropName::Str(k) => should_preserve_property(&k.value),
             PropName::Num(..) => true,
             PropName::Computed(..) => true,
             PropName::BigInt(..) => true,
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         };
 
         let len = obj.props.len();
@@ -959,15 +1089,19 @@ impl Optimizer<'_> {
                 unreachable!()
             }
             PropOrSpread::Prop(p) => match &**p {
-                Prop::Shorthand(p) => !should_preserve_property(&p.sym),
-                Prop::KeyValue(p) => !should_preserve(&p.key),
+                Prop::Shorthand(p) => should_preserve_property(p.sym.borrow()),
+                Prop::KeyValue(p) => should_preserve(&p.key),
                 Prop::Assign(..) => {
                     unreachable!()
                 }
-                Prop::Getter(p) => !should_preserve(&p.key),
-                Prop::Setter(p) => !should_preserve(&p.key),
-                Prop::Method(p) => !should_preserve(&p.key),
+                Prop::Getter(p) => should_preserve(&p.key),
+                Prop::Setter(p) => should_preserve(&p.key),
+                Prop::Method(p) => should_preserve(&p.key),
+                #[cfg(swc_ast_unknown)]
+                _ => panic!("unable to access unknown nodes"),
             },
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         });
 
         if obj.props.len() != len {
@@ -977,21 +1111,111 @@ impl Optimizer<'_> {
 
         None
     }
+
+    pub(crate) fn ignore_unused_args_of_call(&mut self, e: &mut CallExpr) {
+        if !self.options.unused && !self.options.reduce_vars {
+            return;
+        }
+
+        if e.args.iter().any(|a| a.spread.is_some()) {
+            return;
+        }
+
+        let callee = match &mut e.callee {
+            Callee::Super(_) | Callee::Import(_) => return,
+            Callee::Expr(e) => &mut **e,
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
+        };
+
+        match callee {
+            Expr::Fn(FnExpr { function, .. }) => {
+                if let Some(scope) = self.data.get_scope(function.ctxt) {
+                    if scope.intersects(ScopeData::USED_ARGUMENTS.union(ScopeData::HAS_EVAL_CALL)) {
+                        return;
+                    }
+                }
+            }
+            Expr::Arrow(a) => {
+                if let Some(scope) = self.data.get_scope(a.ctxt) {
+                    if scope.intersects(ScopeData::HAS_EVAL_CALL) {
+                        return;
+                    }
+                }
+            }
+            _ => (),
+        }
+
+        let params_len = match callee {
+            Expr::Fn(FnExpr { function, .. }) => {
+                let params = &function.params;
+
+                if !params.iter().any(|p| p.pat.is_rest()) {
+                    params.len()
+                } else {
+                    return;
+                }
+            }
+            Expr::Arrow(ArrowExpr { params, .. }) => {
+                if !params.iter().any(|p| p.is_rest()) {
+                    params.len()
+                } else {
+                    return;
+                }
+            }
+            Expr::Ident(i) => {
+                if let Some(scope) = self.data.get_scope(i.ctxt) {
+                    if scope.intersects(ScopeData::HAS_EVAL_CALL.union(ScopeData::HAS_WITH_STMT)) {
+                        return;
+                    }
+                }
+
+                if let Some(data) = self.data.get_var_data(i.to_id()) {
+                    if let (true, Some(Value::Known(count))) = (
+                        data.flags.intersects(VarUsageInfoFlags::DECLARED),
+                        data.param_count,
+                    ) {
+                        count as usize
+                    } else {
+                        return;
+                    }
+                } else {
+                    return;
+                }
+            }
+            _ => return,
+        };
+
+        if e.args.len() > params_len {
+            for i in (params_len..e.args.len()).rev() {
+                if let Some(arg) = e.args.get_mut(i) {
+                    let new = self.ignore_return_value(&mut arg.expr);
+
+                    if let Some(new) = new {
+                        *arg.expr = new;
+                    } else {
+                        e.args.remove(i);
+                    }
+                }
+            }
+        }
+    }
 }
 
-fn can_remove_property(sym: &str) -> bool {
-    !matches!(sym, "toString" | "valueOf")
+fn can_remove_property(sym: &swc_atoms::Wtf8Atom) -> bool {
+    sym.as_str()
+        .map_or(true, |s| !matches!(s, "toString" | "valueOf"))
 }
 
 #[derive(Default)]
 struct ThisPropertyVisitor {
-    properties: FxHashSet<JsWord>,
+    properties: FxHashSet<Atom>,
 
     should_abort: bool,
 }
 
 impl Visit for ThisPropertyVisitor {
-    noop_visit_type!();
+    noop_visit_type!(fail);
 
     fn visit_assign_expr(&mut self, e: &AssignExpr) {
         if self.should_abort {

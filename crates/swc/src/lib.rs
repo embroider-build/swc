@@ -19,13 +19,13 @@
 //!
 //!
 //!
-//! ### What is [JsWord](swc_atoms::JsWord)?
+//! ### What is [Atom](swc_atoms::Atom)?
 //!
 //! It's basically an interned string. See [swc_atoms].
 //!
-//! ### Choosing between [JsWord](swc_atoms::JsWord) vs String
+//! ### Choosing between [Atom](swc_atoms::Atom) vs String
 //!
-//! You should  prefer [JsWord](swc_atoms::JsWord) over [String] if it's going
+//! You should  prefer [Atom](swc_atoms::Atom) over [String] if it's going
 //! to be stored in an AST node.
 //!
 //! See [swc_atoms] for detailed description.
@@ -113,7 +113,6 @@ pub extern crate swc_atoms as atoms;
 extern crate swc_common as common;
 
 use std::{
-    cell::RefCell,
     fs::{read_to_string, File},
     io::ErrorKind,
     path::{Path, PathBuf},
@@ -129,38 +128,43 @@ use common::{
 use jsonc_parser::{parse_to_serde_value, ParseOptions};
 use once_cell::sync::Lazy;
 use serde_json::error::Category;
-pub use sourcemap;
 use swc_common::{
-    comments::Comments, errors::Handler, sync::Lrc, FileName, Mark, SourceFile, SourceMap, Spanned,
-    GLOBALS,
+    comments::Comments, errors::Handler, sync::Lrc, FileName, Mark, SourceFile, SourceMap, Span,
+    Spanned, GLOBALS,
 };
 pub use swc_compiler_base::{PrintArgs, TransformOutput};
-pub use swc_config::config_types::{BoolConfig, BoolOr, BoolOrDataConfig};
-use swc_ecma_ast::{noop_pass, EsVersion, Pass, Program};
-use swc_ecma_codegen::{to_code_with_comments, Node};
+pub use swc_config::types::{BoolConfig, BoolOr, BoolOrDataConfig};
+use swc_ecma_ast::{
+    noop_pass, Decl, DefaultDecl, EsVersion, Module, ModuleDecl, ModuleItem, Pass, Program, Script,
+    TsNamespaceBody,
+};
+use swc_ecma_codegen::Node;
+#[cfg(feature = "module")]
 use swc_ecma_loader::resolvers::{
     lru::CachingResolver, node::NodeModulesResolver, tsc::TsConfigResolver,
 };
 use swc_ecma_minifier::option::{MangleCache, MinifyOptions, TopLevelOptions};
-use swc_ecma_parser::{EsSyntax, Syntax};
+use swc_ecma_parser::{
+    error::SyntaxError, parse_file_as_program, parse_file_as_script, EsSyntax, Syntax,
+};
 use swc_ecma_transforms::{
     fixer,
     helpers::{self, Helpers},
-    hygiene,
-    modules::{path::NodeImportResolver, rewriter::import_rewriter},
-    resolver,
+    hygiene, resolver,
 };
 use swc_ecma_transforms_base::fixer::paren_remover;
+#[cfg(feature = "module")]
+use swc_ecma_transforms_module::path::NodeImportResolver;
 use swc_ecma_visit::{FoldWith, VisitMutWith, VisitWith};
 pub use swc_error_reporters::handler::{try_with_handler, HandlerOpts};
 pub use swc_node_comments::SwcComments;
+pub use swc_sourcemap as sourcemap;
 use swc_timer::timer;
-use swc_transform_common::output::emit;
+#[cfg(feature = "isolated-dts")]
 use swc_typescript::fast_dts::FastDts;
 use tracing::warn;
 use url::Url;
 
-pub use crate::builder::PassBuilder;
 use crate::config::{
     BuiltInput, Config, ConfigFile, InputSourceMap, IsModule, JsMinifyCommentOption,
     JsMinifyOptions, Options, OutputCharset, Rc, RootMode, SourceMapsConfig,
@@ -170,10 +174,11 @@ mod builder;
 pub mod config;
 mod dropped_comments_preserver;
 mod plugin;
+pub mod wasm_analysis;
 pub mod resolver {
     use std::path::PathBuf;
 
-    use swc_common::collections::AHashMap;
+    use rustc_hash::FxHashMap;
     use swc_ecma_loader::{
         resolvers::{lru::CachingResolver, node::NodeModulesResolver, tsc::TsConfigResolver},
         TargetEnv,
@@ -185,7 +190,7 @@ pub mod resolver {
 
     pub fn paths_resolver(
         target_env: TargetEnv,
-        alias: AHashMap<String, String>,
+        alias: FxHashMap<String, String>,
         base_url: PathBuf,
         paths: CompiledPaths,
         preserve_symlinks: bool,
@@ -200,7 +205,7 @@ pub mod resolver {
 
     pub fn environment_resolver(
         target_env: TargetEnv,
-        alias: AHashMap<String, String>,
+        alias: FxHashMap<String, String>,
         preserve_symlinks: bool,
     ) -> NodeResolver {
         CachingResolver::new(
@@ -210,9 +215,185 @@ pub mod resolver {
     }
 }
 
+#[cfg(feature = "module")]
 type SwcImportResolver = Arc<
     NodeImportResolver<CachingResolver<TsConfigResolver<CachingResolver<NodeModulesResolver>>>>,
 >;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FlowScriptLikeModuleKind {
+    Script,
+    TypeOnlyModule,
+    RuntimeModule(Span),
+}
+
+fn emit_parser_recoverable_errors(
+    handler: &Handler,
+    errors: Vec<swc_ecma_parser::error::Error>,
+) -> Result<(), Error> {
+    if errors.is_empty() {
+        return Ok(());
+    }
+
+    for error in errors {
+        error.into_diagnostic(handler).emit();
+    }
+
+    Err(Error::msg("Syntax Error"))
+}
+
+fn classify_flow_script_like_module(program: &Program) -> FlowScriptLikeModuleKind {
+    let Program::Module(module) = program else {
+        return FlowScriptLikeModuleKind::Script;
+    };
+
+    classify_flow_script_like_module_body(module)
+}
+
+fn classify_flow_script_like_module_body(module: &Module) -> FlowScriptLikeModuleKind {
+    let mut saw_module_decl = false;
+
+    for module_item in &module.body {
+        let Some(module_decl) = module_item.as_module_decl() else {
+            continue;
+        };
+
+        saw_module_decl = true;
+
+        if is_runtime_module_decl(module_decl) {
+            return FlowScriptLikeModuleKind::RuntimeModule(module_item.span());
+        }
+    }
+
+    if saw_module_decl {
+        FlowScriptLikeModuleKind::TypeOnlyModule
+    } else {
+        let span = module
+            .body
+            .first()
+            .map(Spanned::span)
+            .unwrap_or(module.span);
+        FlowScriptLikeModuleKind::RuntimeModule(span)
+    }
+}
+
+fn downgrade_flow_script_like_module(program: Program) -> Result<Program, Error> {
+    let Program::Module(module) = program else {
+        return Ok(program);
+    };
+
+    if module
+        .body
+        .iter()
+        .any(|module_item| matches!(module_item, ModuleItem::ModuleDecl(..)))
+    {
+        bail!(
+            "failed to downgrade Flow type-only module to script because module declarations \
+             remain after stripping"
+        );
+    }
+
+    let Module {
+        span,
+        body,
+        shebang,
+    } = module;
+
+    let body = body
+        .into_iter()
+        .map(|module_item| match module_item {
+            ModuleItem::Stmt(stmt) => Ok(stmt),
+            ModuleItem::ModuleDecl(..) => bail!(
+                "failed to downgrade Flow type-only module to script because module declarations \
+                 remain after stripping"
+            ),
+        })
+        .collect::<Result<_, Error>>()?;
+
+    Ok(Program::Script(Script {
+        span,
+        body,
+        shebang,
+    }))
+}
+
+fn is_runtime_module_decl(module_decl: &ModuleDecl) -> bool {
+    match module_decl {
+        ModuleDecl::Import(import_decl) => !import_decl.type_only,
+        ModuleDecl::ExportDecl(export_decl) => is_runtime_decl(&export_decl.decl),
+        ModuleDecl::ExportNamed(named_export) => !named_export.type_only,
+        ModuleDecl::ExportDefaultDecl(export_default_decl) => {
+            is_runtime_default_decl(&export_default_decl.decl)
+        }
+        ModuleDecl::ExportDefaultExpr(..) => true,
+        ModuleDecl::ExportAll(export_all) => !export_all.type_only,
+        ModuleDecl::TsImportEquals(ts_import_equals_decl) => !ts_import_equals_decl.is_type_only,
+        ModuleDecl::TsExportAssignment(..) => true,
+        ModuleDecl::TsNamespaceExport(..) => false,
+    }
+}
+
+fn is_runtime_decl(decl: &Decl) -> bool {
+    if is_declare_decl(decl) {
+        return false;
+    }
+
+    match decl {
+        Decl::TsInterface(..) | Decl::TsTypeAlias(..) => false,
+        Decl::Fn(function_decl) => function_decl.function.body.is_some(),
+        Decl::Class(..) | Decl::Var(..) | Decl::Using(..) | Decl::TsEnum(..) => true,
+        Decl::TsModule(ts_module_decl) => ts_module_decl
+            .body
+            .as_ref()
+            .map(is_runtime_namespace_body)
+            .unwrap_or_default(),
+    }
+}
+
+fn is_runtime_default_decl(default_decl: &DefaultDecl) -> bool {
+    match default_decl {
+        DefaultDecl::Class(..) => true,
+        DefaultDecl::Fn(function_expr) => function_expr.function.body.is_some(),
+        DefaultDecl::TsInterfaceDecl(..) => false,
+    }
+}
+
+fn is_runtime_namespace_body(namespace_body: &TsNamespaceBody) -> bool {
+    match namespace_body {
+        TsNamespaceBody::TsModuleBlock(ts_module_block) => {
+            ts_module_block
+                .body
+                .iter()
+                .any(|module_item| match module_item {
+                    ModuleItem::Stmt(stmt) => is_runtime_stmt(stmt),
+                    ModuleItem::ModuleDecl(module_decl) => is_runtime_module_decl(module_decl),
+                })
+        }
+        TsNamespaceBody::TsNamespaceDecl(ts_namespace_decl) => {
+            is_runtime_namespace_body(&ts_namespace_decl.body)
+        }
+    }
+}
+
+fn is_runtime_stmt(stmt: &swc_ecma_ast::Stmt) -> bool {
+    match stmt {
+        swc_ecma_ast::Stmt::Empty(..) => false,
+        swc_ecma_ast::Stmt::Decl(decl) => is_runtime_decl(decl),
+        _ => true,
+    }
+}
+
+fn is_declare_decl(decl: &Decl) -> bool {
+    match decl {
+        Decl::Class(class_decl) => class_decl.declare,
+        Decl::Fn(function_decl) => function_decl.declare,
+        Decl::Var(var_decl) => var_decl.declare,
+        Decl::Using(..) => false,
+        Decl::TsInterface(..) | Decl::TsTypeAlias(..) => true,
+        Decl::TsEnum(ts_enum_decl) => ts_enum_decl.declare,
+        Decl::TsModule(ts_module_decl) => ts_module_decl.declare || ts_module_decl.global,
+    }
+}
 
 /// All methods accept [Handler], which is a storage for errors.
 ///
@@ -258,13 +439,13 @@ impl Compiler {
             let read_inline_sourcemap =
                 |data_url: &str| -> Result<Option<sourcemap::SourceMap>, Error> {
                     let url = Url::parse(data_url).with_context(|| {
-                        format!("failed to parse inline source map url\n{}", data_url)
+                        format!("failed to parse inline source map url\n{data_url}")
                     })?;
 
                     let idx = match url.path().find("base64,") {
                         Some(v) => v,
                         None => {
-                            bail!("failed to parse inline source map: not base64: {:?}", url)
+                            bail!("failed to parse inline source map: not base64: {url:?}")
                         }
                     };
 
@@ -366,8 +547,7 @@ impl Compiler {
                                         || {
                                             format!(
                                                 "failed to read input source map
-                                from file at {}",
-                                                path
+                                from file at {path}"
                                             )
                                         },
                                     )?))
@@ -413,7 +593,7 @@ impl Compiler {
                     } else {
                         // Load source map passed by user
                         Ok(Some(
-                            sourcemap::SourceMap::from_slice(s.as_bytes()).context(
+                            swc_sourcemap::SourceMap::from_slice(s.as_bytes()).context(
                                 "failed to read input source map from user-provided sourcemap",
                             )?,
                         ))
@@ -442,6 +622,66 @@ impl Compiler {
             is_module,
             comments,
         )
+    }
+
+    fn parse_js_as_transform_input(
+        &self,
+        fm: Arc<SourceFile>,
+        handler: &Handler,
+        target: EsVersion,
+        syntax: Syntax,
+        is_module: IsModule,
+        comments: Option<&dyn Comments>,
+    ) -> Result<(Program, bool), Error> {
+        if !syntax.flow() {
+            return self
+                .parse_js(fm, handler, target, syntax, is_module, comments)
+                .map(|program| (program, false));
+        }
+
+        if matches!(is_module, IsModule::Bool(false)) {
+            let mut errors = Vec::new();
+            match parse_file_as_script(&fm, syntax, target, comments, &mut errors) {
+                Ok(script) => {
+                    emit_parser_recoverable_errors(handler, errors)?;
+                    return Ok((Program::Script(script), false));
+                }
+                Err(err) if matches!(err.kind(), SyntaxError::ImportExportInScript) => {}
+                Err(err) => {
+                    emit_parser_recoverable_errors(handler, errors)?;
+                    err.into_diagnostic(handler).emit();
+                    return Err(Error::msg("Syntax Error"));
+                }
+            }
+
+            let mut errors = Vec::new();
+            let program = parse_file_as_program(&fm, syntax, target, comments, &mut errors)
+                .map_err(|err| {
+                    err.into_diagnostic(handler).emit();
+                    Error::msg("Syntax Error")
+                })?;
+
+            emit_parser_recoverable_errors(handler, errors)?;
+
+            match classify_flow_script_like_module(&program) {
+                FlowScriptLikeModuleKind::Script => Ok((program, false)),
+                FlowScriptLikeModuleKind::TypeOnlyModule => Ok((program, true)),
+                FlowScriptLikeModuleKind::RuntimeModule(span) => {
+                    handler
+                        .struct_span_err(span, &SyntaxError::ImportExportInScript.msg())
+                        .emit();
+                    Err(Error::msg("Syntax Error"))
+                }
+            }
+        } else {
+            let program = self.parse_js(fm, handler, target, syntax, is_module, comments)?;
+            let flow_strip_script_like_module = matches!(
+                classify_flow_script_like_module(&program),
+                FlowScriptLikeModuleKind::TypeOnlyModule
+            ) && matches!(is_module, IsModule::Unknown);
+
+            Ok((program, flow_strip_script_like_module))
+        }
     }
 
     /// Converts ast node to source string and sourcemap.
@@ -493,7 +733,24 @@ impl Compiler {
                 _ => {
                     if *swcrc {
                         if let FileName::Real(ref path) = name {
-                            find_swcrc(path, root, *root_mode)
+                            // Canonicalize relative paths for proper parent traversal
+                            let abs_path = if path.is_relative() {
+                                root.join(path).canonicalize().ok()
+                            } else {
+                                path.canonicalize().ok()
+                            };
+                            let found = abs_path.and_then(|p| find_swcrc(&p, root, *root_mode));
+
+                            // "upward" mode requires a .swcrc to be found
+                            if found.is_none() && *root_mode == RootMode::Upward {
+                                bail!(
+                                    "Could not find .swcrc file while using rootMode \
+                                     \"upward\".\nSearched from: {}",
+                                    path.display()
+                                );
+                            }
+
+                            found
                         } else {
                             None
                         }
@@ -567,11 +824,11 @@ impl Compiler {
             match config {
                 Some(config) => Ok(Some(config)),
                 None => {
-                    bail!("no config matched for file ({})", name)
+                    bail!("no config matched for file ({name})")
                 }
             }
         })
-        .with_context(|| format!("failed to read .swcrc file for input file at `{}`", name))
+        .with_context(|| format!("failed to read .swcrc file for input file at `{name}`"))
     }
 
     /// This method returns [None] if a file should be skipped.
@@ -612,8 +869,8 @@ impl Compiler {
                 &self.cm,
                 name,
                 move |syntax, target, is_module| match program {
-                    Some(v) => Ok(v),
-                    _ => self.parse_js(
+                    Some(v) => Ok((v, false)),
+                    _ => self.parse_js_as_transform_input(
                         fm.clone(),
                         handler,
                         target,
@@ -625,6 +882,7 @@ impl Compiler {
                 opts.output_path.as_deref(),
                 opts.source_root.clone(),
                 opts.source_file_name.clone(),
+                config.source_map_ignore_list.clone(),
                 handler,
                 Some(config),
                 comments,
@@ -724,7 +982,7 @@ impl Compiler {
                 None
             };
 
-            self.apply_transforms(handler, comments.clone(), fm.clone(), orig.as_ref(), config)
+            self.apply_transforms(handler, comments.clone(), fm.clone(), orig, config)
         })
     }
 
@@ -759,18 +1017,18 @@ impl Compiler {
 
             let target = opts.ecma.clone().into();
 
-            let (source_map, orig) = opts
+            let (source_map, orig, source_map_url) = opts
                 .source_map
                 .as_ref()
                 .map(|obj| -> Result<_, Error> {
                     let orig = obj.content.as_ref().map(|s| s.to_sourcemap()).transpose()?;
 
-                    Ok((SourceMapsConfig::Bool(true), orig))
+                    Ok((SourceMapsConfig::Bool(true), orig, obj.url.as_deref()))
                 })
                 .unwrap_as_option(|v| {
                     Some(Ok(match v {
-                        Some(true) => (SourceMapsConfig::Bool(true), None),
-                        _ => (SourceMapsConfig::Bool(false), None),
+                        Some(true) => (SourceMapsConfig::Bool(true), None, None),
+                        _ => (SourceMapsConfig::Bool(false), None, None),
                     }))
                 })
                 .unwrap()?;
@@ -826,7 +1084,7 @@ impl Compiler {
                 )
                 .context("failed to parse input file")?;
 
-            if program.is_module() {
+            if opts.toplevel == Some(true) || program.is_module() {
                 if let Some(opts) = &mut min_opts.compress {
                     if opts.top_level.is_none() {
                         opts.top_level = Some(TopLevelOptions { functions: true });
@@ -888,9 +1146,17 @@ impl Compiler {
                 .clone()
                 .into_inner()
                 .unwrap_or(BoolOr::Data(JsMinifyCommentOption::PreserveSomeComments));
-            swc_compiler_base::minify_file_comments(&comments, preserve_comments);
+            let extracted_comments = swc_compiler_base::minify_file_comments(
+                &comments,
+                preserve_comments,
+                opts.extract_comments
+                    .clone()
+                    .into_inner()
+                    .unwrap_or(BoolOr::Bool(false)),
+                opts.format.preserve_annotations,
+            );
 
-            self.print(
+            let ret = self.print(
                 &program,
                 PrintArgs {
                     source_root: None,
@@ -898,10 +1164,12 @@ impl Compiler {
                     output_path: opts.output_path.clone().map(From::from),
                     inline_sources_content: opts.inline_sources_content,
                     source_map,
+                    source_map_ignore_list: opts.source_map_ignore_list.clone(),
                     source_map_names: &source_map_names,
-                    orig: orig.as_ref(),
+                    orig,
                     comments: Some(&comments),
                     emit_source_map_columns: opts.emit_source_map_columns,
+                    emit_source_map_scopes: false,
                     preamble: &opts.format.preamble,
                     codegen_config: swc_ecma_codegen::Config::default()
                         .with_target(target)
@@ -910,16 +1178,33 @@ impl Compiler {
                         .with_emit_assert_for_import_attributes(
                             opts.format.emit_assert_for_import_attributes,
                         )
-                        .with_inline_script(opts.format.inline_script),
+                        .with_inline_script(opts.format.inline_script)
+                        .with_reduce_escaped_newline(
+                            min_opts
+                                .compress
+                                .unwrap_or_default()
+                                .experimental
+                                .reduce_escaped_newline,
+                        ),
                     output: None,
+                    source_map_url,
                 },
-            )
+            );
+
+            ret.map(|mut output| {
+                if !extracted_comments.is_empty() {
+                    output.extracted_comments = Some(extracted_comments);
+                }
+                output.diagnostics = handler.take_diagnostics();
+
+                output
+            })
         })
     }
 
     /// You can use custom pass with this method.
     ///
-    /// There exists a [PassBuilder] to help building custom passes.
+    /// Pass building logic has been inlined into the configuration system.
     #[tracing::instrument(skip_all)]
     pub fn process_js(
         &self,
@@ -945,21 +1230,21 @@ impl Compiler {
     fn apply_transforms(
         &self,
         handler: &Handler,
-        comments: SingleThreadedComments,
-        fm: Arc<SourceFile>,
-        orig: Option<&sourcemap::SourceMap>,
+        #[allow(unused)] comments: SingleThreadedComments,
+        #[allow(unused)] fm: Arc<SourceFile>,
+        orig: Option<sourcemap::SourceMap>,
         config: BuiltInput<impl Pass>,
     ) -> Result<TransformOutput, Error> {
         self.run(|| {
             let program = config.program;
+            let is_typescript_syntax = matches!(config.syntax, Syntax::Typescript(..));
 
-            if config.emit_isolated_dts && !config.syntax.typescript() {
+            if config.emit_isolated_dts && !is_typescript_syntax {
                 handler.warn(
                     "jsc.experimental.emitIsolatedDts is enabled but the syntax is not TypeScript",
                 );
             }
 
-            let emit_dts = config.syntax.typescript() && config.emit_isolated_dts;
             let source_map_names = if config.source_maps.enabled() {
                 let mut v = swc_compiler_base::IdentCollector {
                     names: Default::default(),
@@ -971,28 +1256,34 @@ impl Compiler {
             } else {
                 Default::default()
             };
+            #[cfg(feature = "isolated-dts")]
+            let dts_code = if is_typescript_syntax && config.emit_isolated_dts {
+                use std::cell::RefCell;
 
-            let dts_code = if emit_dts {
+                use swc_ecma_codegen::to_code_with_comments;
                 let (leading, trailing) = comments.borrow_all();
 
                 let leading = std::rc::Rc::new(RefCell::new(leading.clone()));
                 let trailing = std::rc::Rc::new(RefCell::new(trailing.clone()));
 
                 let comments = SingleThreadedComments::from_leading_and_trailing(leading, trailing);
-                let mut checker = FastDts::new(fm.name.clone());
+
+                let mut checker =
+                    FastDts::new(fm.name.clone(), config.unresolved_mark, Default::default());
                 let mut program = program.clone();
 
+                #[cfg(feature = "module")]
                 if let Some((base, resolver)) = config.resolver {
+                    use swc_ecma_transforms_module::rewriter::import_rewriter;
+
                     program.mutate(import_rewriter(base, resolver));
                 }
 
                 let issues = checker.transform(&mut program);
 
                 for issue in issues {
-                    let range = issue.range();
-
                     handler
-                        .struct_span_err(range.span, &issue.to_string())
+                        .struct_span_err(issue.range.span, &issue.message)
                         .emit();
                 }
 
@@ -1004,11 +1295,12 @@ impl Compiler {
 
             let pass = config.pass;
             let (program, output) = swc_transform_common::output::capture(|| {
-                if let Some(dts_code) = dts_code {
-                    emit(
-                        "__swc_isolated_declarations__".into(),
-                        serde_json::Value::String(dts_code),
-                    );
+                #[cfg(feature = "isolated-dts")]
+                {
+                    if let Some(dts_code) = dts_code {
+                        use swc_transform_common::output::experimental_emit;
+                        experimental_emit("__swc_isolated_declarations__".into(), dts_code);
+                    }
                 }
 
                 helpers::HELPERS.set(&Helpers::new(config.external_helpers), || {
@@ -1019,8 +1311,19 @@ impl Compiler {
                 })
             });
 
+            let program = if config.flow_strip_script_like_module {
+                downgrade_flow_script_like_module(program)?
+            } else {
+                program
+            };
+
             if let Some(comments) = &config.comments {
-                swc_compiler_base::minify_file_comments(comments, config.preserve_comments);
+                swc_compiler_base::minify_file_comments(
+                    comments,
+                    config.preserve_comments,
+                    BoolOr::Bool(false),
+                    config.output.preserve_annotations.into_bool(),
+                );
             }
 
             self.print(
@@ -1028,6 +1331,7 @@ impl Compiler {
                 PrintArgs {
                     source_root: config.source_root.as_deref(),
                     source_file_name: config.source_file_name.as_deref(),
+                    source_map_ignore_list: config.source_map_ignore_list.clone(),
                     output_path: config.output_path,
                     inline_sources_content: config.inline_sources_content,
                     source_map: config.source_maps,
@@ -1035,6 +1339,7 @@ impl Compiler {
                     orig,
                     comments: config.comments.as_ref().map(|v| v as _),
                     emit_source_map_columns: config.emit_source_map_columns,
+                    emit_source_map_scopes: config.emit_source_map_scopes,
                     preamble: &config.output.preamble,
                     codegen_config: swc_ecma_codegen::Config::default()
                         .with_target(config.target)
@@ -1055,6 +1360,7 @@ impl Compiler {
                     } else {
                         Some(output)
                     },
+                    source_map_url: config.output.source_map_url.as_deref(),
                 },
             )
         })
@@ -1114,8 +1420,7 @@ fn parse_swcrc(s: &str) -> Result<Rc, Error> {
             Category::Eof => "unexpected eof",
         };
         Error::new(e).context(format!(
-            "failed to deserialize .swcrc (json) file: {}: {}:{}",
-            msg, line, column
+            "failed to deserialize .swcrc (json) file: {msg}: {line}:{column}"
         ))
     }
 

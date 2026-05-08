@@ -1,4 +1,4 @@
-/// <reference types="jest" />
+/// <reference types="@rstest/core/globals" />
 const { getPkgRoot } = require("../utils");
 const { spawn } = require("child_process");
 const path = require("path");
@@ -17,7 +17,7 @@ const waitProcessAsync = async (proc) =>
 const getPluginAbsolutePath = (feature) =>
     path.join(
         getPkgRoot(),
-        `node-swc/e2e/fixtures/${feature}/target/wasm32-wasi/debug/${feature}.wasm`
+        `node-swc/e2e/fixtures/${feature}/target/wasm32-wasip1/debug/${feature}.wasm`
     );
 
 /**
@@ -50,7 +50,7 @@ const buildPlugin = async (feature) => {
         "--manifest-path",
         `./node-swc/e2e/fixtures/${feature}/Cargo.toml`,
         "--target",
-        "wasm32-wasi",
+        "wasm32-wasip1",
     ];
 
     const options = { cwd: getPkgRoot(), stdio: "inherit" };

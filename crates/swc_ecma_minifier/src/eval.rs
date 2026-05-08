@@ -1,11 +1,9 @@
 use std::sync::Arc;
 
 use parking_lot::Mutex;
-use swc_atoms::js_word;
-use swc_common::{collections::AHashMap, SyntaxContext, DUMMY_SP};
+use rustc_hash::FxHashMap;
+use swc_common::{SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::*;
-use swc_ecma_transforms_optimization::simplify::{expr_simplifier, ExprSimplifierConfig};
-use swc_ecma_usage_analyzer::marks::Marks;
 use swc_ecma_utils::{ExprCtx, ExprExt};
 use swc_ecma_visit::VisitMutWith;
 
@@ -13,12 +11,13 @@ use crate::{
     compress::{compressor, pure_optimizer, PureOptimizerConfig},
     mode::Mode,
     option::{CompressOptions, TopLevelOptions},
+    usage_analyzer::marks::Marks,
 };
 
 pub struct Evaluator {
     expr_ctx: ExprCtx,
 
-    module: Module,
+    program: Program,
     marks: Marks,
     data: Eval,
     /// We run minification only once.
@@ -32,9 +31,10 @@ impl Evaluator {
                 unresolved_ctxt: SyntaxContext::empty().apply_mark(marks.unresolved_mark),
                 is_unresolved_ref_safe: false,
                 in_strict: true,
+                remaining_depth: 3,
             },
 
-            module,
+            program: Program::Module(module),
             marks,
             data: Default::default(),
             done: Default::default(),
@@ -49,7 +49,7 @@ struct Eval {
 
 #[derive(Default)]
 struct EvalStore {
-    cache: AHashMap<Id, Box<Expr>>,
+    cache: FxHashMap<Id, Box<Expr>>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,10 +71,6 @@ impl Mode for Eval {
     fn should_be_very_correct(&self) -> bool {
         false
     }
-
-    fn force_str_for_tpl(&self) -> bool {
-        true
-    }
 }
 
 impl Evaluator {
@@ -86,7 +82,7 @@ impl Evaluator {
             let marks = self.marks;
             let data = self.data.clone();
             //
-            self.module.visit_mut_with(&mut compressor(
+            self.program.mutate(&mut compressor(
                 marks,
                 &CompressOptions {
                     // We should not drop unused variables.
@@ -98,6 +94,19 @@ impl Evaluator {
                 &data,
             ));
         }
+    }
+
+    pub fn store(&self, id: Id, value: &Expr) {
+        self.data.store(id, value);
+    }
+
+    pub fn resolve_identifier(&mut self, ident: &Ident) -> Option<Box<Expr>> {
+        self.run();
+
+        let lock = self.data.store.lock();
+        let val = lock.cache.get(&ident.to_id())?;
+
+        Some(val.clone())
     }
 
     pub fn eval(&mut self, e: &Expr) -> Option<EvalResult> {
@@ -124,7 +133,7 @@ impl Evaluator {
                         obj: tag_obj,
                         prop: MemberProp::Ident(prop),
                         ..
-                    }) if tag_obj.is_global_ref_to(&self.expr_ctx, "String")
+                    }) if tag_obj.is_global_ref_to(self.expr_ctx, "String")
                         && prop.sym == *"raw" =>
                     {
                         return self.eval_tpl(&t.tpl);
@@ -185,16 +194,44 @@ impl Evaluator {
         Some(EvalResult::Lit(self.eval_as_expr(e)?.lit()?))
     }
 
-    fn eval_as_expr(&mut self, e: &Expr) -> Option<Box<Expr>> {
+    pub fn eval_as_expr(&mut self, e: &Expr) -> Option<Box<Expr>> {
         match e {
-            Expr::Ident(i) => {
-                self.run();
+            Expr::Bin(BinExpr {
+                span,
+                op,
+                left,
+                right,
+            }) => {
+                let l = if left.is_lit() || left.is_tpl() {
+                    left.clone()
+                } else {
+                    self.eval_as_expr(left)?
+                };
+                let r = if right.is_lit() || right.is_tpl() {
+                    right.clone()
+                } else {
+                    self.eval_as_expr(right)?
+                };
 
-                let lock = self.data.store.lock();
-                let val = lock.cache.get(&i.to_id())?;
+                let mut e: Expr = BinExpr {
+                    span: *span,
+                    op: *op,
+                    left: l,
+                    right: r,
+                }
+                .into();
 
-                return Some(val.clone());
+                e.visit_mut_with(&mut pure_optimizer(
+                    &Default::default(),
+                    self.marks,
+                    PureOptimizerConfig {
+                        enable_join_vars: true,
+                    },
+                ));
+                return Some(Box::new(e));
             }
+
+            Expr::Ident(i) => return self.resolve_identifier(i),
 
             Expr::Member(MemberExpr {
                 span, obj, prop, ..
@@ -208,9 +245,12 @@ impl Evaluator {
                 }
                 .into();
 
-                e.visit_mut_with(&mut expr_simplifier(
-                    self.marks.unresolved_mark,
-                    ExprSimplifierConfig {},
+                e.visit_mut_with(&mut pure_optimizer(
+                    &Default::default(),
+                    self.marks,
+                    PureOptimizerConfig {
+                        enable_join_vars: false,
+                    },
                 ));
                 return Some(Box::new(e));
             }
@@ -246,21 +286,28 @@ impl Evaluator {
                 self.marks,
                 PureOptimizerConfig {
                     enable_join_vars: false,
-                    force_str_for_tpl: self.data.force_str_for_tpl(),
-                    #[cfg(feature = "debug")]
-                    debug_infinite_loop: false,
                 },
             ));
         }
 
-        Some(EvalResult::Lit(e.lit()?))
+        match *e {
+            Expr::Lit(l) => Some(EvalResult::Lit(l)),
+            Expr::Tpl(t) if t.exprs.is_empty() && t.quasis[0].cooked.is_some() => {
+                Some(EvalResult::Lit(Lit::Str(Str {
+                    span: t.span,
+                    value: t.quasis[0].cooked.clone().unwrap(),
+                    raw: None,
+                })))
+            }
+            _ => None,
+        }
     }
 }
 
 fn is_truthy(lit: &EvalResult) -> Option<bool> {
     match lit {
         EvalResult::Lit(v) => match v {
-            Lit::Str(v) => Some(v.value != js_word!("")),
+            Lit::Str(v) => Some(!v.value.is_empty()),
             Lit::Bool(v) => Some(v.value),
             Lit::Null(_) => Some(false),
             Lit::Num(v) => Some(v.value != 0.0 && v.value != -0.0),

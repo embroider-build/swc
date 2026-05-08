@@ -1,9 +1,11 @@
+use std::borrow::Borrow;
+
 use swc_common::{util::take::Take, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_utils::{contains_this_expr, private_ident, prop_name_eq, ExprExt};
 
-use super::{unused::PropertyAccessOpts, Optimizer};
-use crate::util::deeply_contains_this_expr;
+use super::{unused::PropertyAccessOpts, BitCtx, Optimizer};
+use crate::{program_data::VarUsageInfoFlags, util::deeply_contains_this_expr};
 
 /// Methods related to the option `hoist_props`.
 impl Optimizer<'_> {
@@ -15,7 +17,7 @@ impl Optimizer<'_> {
             log_abort!("hoist_props: option is disabled");
             return None;
         }
-        if self.ctx.is_exported {
+        if self.ctx.bit_ctx.contains(BitCtx::IsExported) {
             log_abort!("hoist_props: Exported variable is not hoisted");
             return None;
         }
@@ -40,12 +42,13 @@ impl Optimizer<'_> {
             // smart.
             let usage = self.data.vars.get(&name.to_id())?;
             if usage.mutated()
-                || usage.used_in_cond
-                || usage.used_above_decl
-                || usage.used_as_ref
-                || usage.used_as_arg
-                || usage.indexed_with_dynamic_key
-                || usage.used_recursively
+                || usage.flags.intersects(
+                    VarUsageInfoFlags::USED_ABOVE_DECL
+                        .union(VarUsageInfoFlags::USED_AS_REF)
+                        .union(VarUsageInfoFlags::USED_AS_ARG)
+                        .union(VarUsageInfoFlags::INDEXED_WITH_DYNAMIC_KEY)
+                        .union(VarUsageInfoFlags::USED_RECURSIVELY),
+                )
             {
                 log_abort!("hoist_props: Variable `{}` is not a candidate", name.id);
                 return None;
@@ -54,6 +57,15 @@ impl Optimizer<'_> {
             if usage.accessed_props.is_empty() {
                 log_abort!(
                     "hoist_props: Variable `{}` is not accessed with known keys",
+                    name.id
+                );
+                return None;
+            }
+
+            let accessed_props_count: u32 = usage.accessed_props.values().sum();
+            if accessed_props_count < usage.ref_count {
+                log_abort!(
+                    "hoist_props: Variable `{}` is directly used without accessing its properties",
                     name.id
                 );
                 return None;
@@ -72,6 +84,8 @@ impl Optimizer<'_> {
                     let prop = match prop {
                         PropOrSpread::Spread(_) => return None,
                         PropOrSpread::Prop(prop) => prop,
+                        #[cfg(swc_ast_unknown)]
+                        _ => panic!("unable to access unknown nodes"),
                     };
 
                     match &**prop {
@@ -87,7 +101,7 @@ impl Optimizer<'_> {
                                     }
                                 }
                                 PropName::Ident(i) => {
-                                    if let Some(v) = unknown_used_props.get_mut(&i.sym) {
+                                    if let Some(v) = unknown_used_props.get_mut(i.sym.borrow()) {
                                         *v = 0;
                                     }
                                 }
@@ -95,7 +109,7 @@ impl Optimizer<'_> {
                             }
                         }
                         Prop::Shorthand(p) => {
-                            if let Some(v) = unknown_used_props.get_mut(&p.sym) {
+                            if let Some(v) = unknown_used_props.get_mut(p.sym.borrow()) {
                                 *v = 0;
                             }
                         }
@@ -131,6 +145,8 @@ impl Optimizer<'_> {
                 let prop = match prop {
                     PropOrSpread::Spread(_) => unreachable!(),
                     PropOrSpread::Prop(prop) => prop,
+                    #[cfg(swc_ast_unknown)]
+                    _ => panic!("unable to access unknown nodes"),
                 };
 
                 let value = match &mut **prop {
@@ -141,17 +157,22 @@ impl Optimizer<'_> {
 
                 let (key, suffix) = match &**prop {
                     Prop::KeyValue(p) => match &p.key {
-                        PropName::Ident(i) => (i.sym.clone(), i.sym.clone()),
+                        PropName::Ident(i) => (i.sym.clone().into(), i.sym.clone()),
                         PropName::Str(s) => (
                             s.value.clone(),
                             s.value
-                                .clone()
-                                .replace(|c: char| !Ident::is_valid_continue(c), "$")
+                                .code_points()
+                                .map(|c| {
+                                    c.to_char()
+                                        .filter(|&c| Ident::is_valid_start(c))
+                                        .unwrap_or('$')
+                                })
+                                .collect::<String>()
                                 .into(),
                         ),
                         _ => unreachable!(),
                     },
-                    Prop::Shorthand(p) => (p.sym.clone(), p.sym.clone()),
+                    Prop::Shorthand(p) => (p.sym.clone().into(), p.sym.clone()),
                     _ => unreachable!(),
                 };
 
@@ -190,7 +211,7 @@ impl Optimizer<'_> {
         };
         if let Expr::Ident(obj) = &*member.obj {
             let sym = match &member.prop {
-                MemberProp::Ident(i) => &i.sym,
+                MemberProp::Ident(i) => i.sym.borrow(),
                 MemberProp::Computed(e) => match &*e.expr {
                     Expr::Lit(Lit::Str(s)) => &s.value,
                     _ => return,
@@ -204,7 +225,7 @@ impl Optimizer<'_> {
                 .get(&(obj.to_id(), sym.clone()))
                 .cloned()
             {
-                report_change!("hoist_props: Inlining `{}.{}`", obj.sym, sym);
+                report_change!("hoist_props: Inlining `{}.{:?}`", obj.sym, sym);
                 self.changed = true;
                 *e = value.into();
             }
@@ -235,6 +256,8 @@ fn is_expr_fine_for_hoist_props(value: &Expr) -> bool {
                 Prop::KeyValue(p) => is_expr_fine_for_hoist_props(&p.value),
                 _ => false,
             },
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         }),
 
         _ => false,
@@ -248,7 +271,11 @@ impl Optimizer<'_> {
             return;
         }
 
-        if self.ctx.is_update_arg || self.ctx.is_callee || self.ctx.is_exact_lhs_of_assign {
+        if self
+            .ctx
+            .bit_ctx
+            .intersects(BitCtx::IsUpdateArg | BitCtx::IsCallee | BitCtx::IsExactLhsOfAssign)
+        {
             return;
         }
 
@@ -279,7 +306,11 @@ impl Optimizer<'_> {
                     Prop::Getter(p) => prop_name_eq(&p.key, &key.sym),
                     Prop::Setter(p) => prop_name_eq(&p.key, &key.sym),
                     Prop::Method(p) => prop_name_eq(&p.key, &key.sym),
+                    #[cfg(swc_ast_unknown)]
+                    _ => panic!("unable to access unknown nodes"),
                 },
+                #[cfg(swc_ast_unknown)]
+                _ => panic!("unable to access unknown nodes"),
             })
             .count()
             != 1;
@@ -299,17 +330,21 @@ impl Optimizer<'_> {
                 Prop::Shorthand(..) => false,
                 Prop::KeyValue(p) => {
                     p.key.is_computed()
-                        || p.value.may_have_side_effects(&self.ctx.expr_ctx)
+                        || p.value.may_have_side_effects(self.ctx.expr_ctx)
                         || deeply_contains_this_expr(&p.value)
                 }
                 Prop::Assign(p) => {
-                    p.value.may_have_side_effects(&self.ctx.expr_ctx)
+                    p.value.may_have_side_effects(self.ctx.expr_ctx)
                         || deeply_contains_this_expr(&p.value)
                 }
                 Prop::Getter(p) => p.key.is_computed(),
                 Prop::Setter(p) => p.key.is_computed(),
                 Prop::Method(p) => p.key.is_computed(),
+                #[cfg(swc_ast_unknown)]
+                _ => panic!("unable to access unknown nodes"),
             },
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         }) {
             log_abort!("Property accesses should not be inlined to preserve side effects");
             return;
@@ -335,7 +370,11 @@ impl Optimizer<'_> {
                     Prop::Getter(_) => {}
                     Prop::Setter(_) => {}
                     Prop::Method(_) => {}
+                    #[cfg(swc_ast_unknown)]
+                    _ => panic!("unable to access unknown nodes"),
                 },
+                #[cfg(swc_ast_unknown)]
+                _ => panic!("unable to access unknown nodes"),
             }
         }
     }

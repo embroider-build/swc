@@ -1,5 +1,5 @@
 {
-  "mappings": "AAAA;;;;;CAKC,GACDA,QAAQC,GAAG,CAAC,IAAIC,QAAQC,KAAK",
+  "mappings": ";AAAA;;;;;CAKC,GACDA,QAAQC,GAAG,CAAC,IAAIC,QAAQC,KAAK",
   "names": [
     "console",
     "log",
@@ -7,7 +7,7 @@
     "stack"
   ],
   "sources": [
-    "../../input/index.js"
+    "../input/index.js"
   ],
   "sourcesContent": [
     "/**\n * This is a\n * long\n * license\n * header\n */\nconsole.log(new Error().stack);\n"

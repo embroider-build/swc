@@ -18,13 +18,12 @@ const env = {
     hasError: false
 };
 try {
-    class C {
-    }
+    var C = class C {
+    };
     C = _ts_decorate._([
         dec
     ], C);
-    const after = _ts_add_disposable_resource._(env, null, false);
-    ;
+    var after = _ts_add_disposable_resource._(env, null, false);
 } catch (e) {
     env.error = e;
     env.hasError = true;

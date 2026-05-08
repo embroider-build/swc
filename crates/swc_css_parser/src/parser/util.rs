@@ -15,7 +15,7 @@ where
 {
     /// Original context is restored when returned guard is dropped.
     #[inline]
-    pub(super) fn with_ctx(&mut self, ctx: Ctx) -> WithCtx<I> {
+    pub(super) fn with_ctx(&mut self, ctx: Ctx) -> WithCtx<'_, I> {
         let orig_ctx = self.ctx;
 
         self.ctx = ctx;
@@ -348,12 +348,8 @@ where
             temporary_list.children.push(component_value);
         }
 
-        match self
-            .parse_according_to_grammar::<Declaration>(&temporary_list, |parser| parser.parse_as())
-        {
-            Ok(decl) => Some(decl),
-            Err(_) => None,
-        }
+        self.parse_according_to_grammar::<Declaration>(&temporary_list, |parser| parser.parse_as())
+            .ok()
     }
 
     pub(super) fn parse_declaration_from_temporary_list(

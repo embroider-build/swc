@@ -1,10 +1,8 @@
 use std::iter;
 
-use swc_atoms::JsWord;
-use swc_common::{
-    collections::AHashMap, errors::HANDLER, util::take::Take, Mark, Span, Spanned, SyntaxContext,
-    DUMMY_SP,
-};
+use rustc_hash::FxHashMap;
+use swc_atoms::Atom;
+use swc_common::{errors::HANDLER, util::take::Take, Mark, Span, Spanned, SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_transforms_base::helper;
 use swc_ecma_utils::{alias_ident_for, alias_if_required, prepend_stmt, quote_ident, ExprFactory};
@@ -17,7 +15,7 @@ use crate::optional_chaining_impl::optional_chaining_impl;
 pub(super) struct Private {
     pub mark: Mark,
     pub class_name: Ident,
-    pub ident: AHashMap<JsWord, PrivateKind>,
+    pub ident: FxHashMap<Atom, PrivateKind>,
 }
 
 pub(super) struct PrivateRecord(Vec<Private>);
@@ -44,14 +42,14 @@ impl PrivateRecord {
         self.0.pop();
     }
 
-    pub fn get(&self, span: Span, name: &JsWord) -> (Mark, PrivateKind, &Ident) {
+    pub fn get(&self, span: Span, name: &Atom) -> (Mark, PrivateKind, &Ident) {
         for p in self.0.iter().rev() {
             if let Some(kind) = p.ident.get(name) {
                 return (p.mark, *kind, &p.class_name);
             }
         }
 
-        let error = format!("private name #{} is not defined.", name);
+        let error = format!("private name #{name} is not defined.");
         HANDLER.with(|handler| handler.struct_span_err(span, &error).emit());
         (Mark::root(), PrivateKind::default(), &self.0[0].class_name)
     }
@@ -151,17 +149,12 @@ impl VisitMut for BrandCheckHandler<'_> {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub(super) enum PrivateAccessType {
+    #[default]
     Get,
     DestructureSet,
     Update,
-}
-
-impl Default for PrivateAccessType {
-    fn default() -> Self {
-        Self::Get
-    }
 }
 
 pub(super) struct PrivateAccessVisitor<'a> {

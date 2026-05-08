@@ -1,9 +1,9 @@
 //// [thisTypeInFunctions.ts]
-// body checking
 import { _ as _call_super } from "@swc/helpers/_/_call_super";
 import { _ as _class_call_check } from "@swc/helpers/_/_class_call_check";
 import { _ as _inherits } from "@swc/helpers/_/_inherits";
 var _this = this;
+// body checking
 var B = function B() {
     "use strict";
     _class_call_check(this, B);
@@ -48,7 +48,7 @@ function implicitThis(n) {
 }
 var impl = {
     a: 12,
-    explicitVoid2: function() {
+    explicitVoid2: function explicitVoid2() {
         return _this.a;
     },
     explicitVoid1: function explicitVoid1() {
@@ -118,17 +118,17 @@ reconstructed.explicitProperty(11);
 var explicitVoid = reconstructed.explicitVoid;
 explicitVoid(12);
 // assignment checking
-var unboundToSpecified = function(x) {
+var unboundToSpecified = function unboundToSpecified(x) {
     return x + _this.y;
 }; // ok, this:any
 var specifiedToSpecified = explicitStructural;
 var anyToSpecified = function anyToSpecified(x) {
     return x + 12;
 };
-var unspecifiedLambda = function(x) {
+var unspecifiedLambda = function unspecifiedLambda(x) {
     return x + 12;
 };
-var specifiedLambda = function(x) {
+var specifiedLambda = function specifiedLambda(x) {
     return x + 12;
 };
 var unspecifiedLambdaToSpecified = unspecifiedLambda;
@@ -246,19 +246,13 @@ var b1 = new Base1();
 var b2 = new Base2();
 var d1 = new Derived1();
 var d2 = new Derived2();
-d2.polymorphic = d1.polymorphic // ok, 'x' and 'y' in { x, y }
-;
-d1.polymorphic = d2.polymorphic // ok, 'x' and 'y' in { x, y }
-;
+d2.polymorphic = d1.polymorphic; // ok, 'x' and 'y' in { x, y }
+d1.polymorphic = d2.polymorphic; // ok, 'x' and 'y' in { x, y }
 // bivariance-allowed cases
-d1.polymorphic = b2.polymorphic // ok, 'y' in D: { x, y }
-;
-d2.polymorphic = d1.explicit // ok, 'y' in { x, y }
-;
-b1.polymorphic = d2.polymorphic // ok, 'x' and 'y' not in Base1: { x }
-;
-b1.explicit = d2.polymorphic // ok, 'x' and 'y' not in Base1: { x }
-;
+d1.polymorphic = b2.polymorphic; // ok, 'y' in D: { x, y }
+d2.polymorphic = d1.explicit; // ok, 'y' in { x, y }
+b1.polymorphic = d2.polymorphic; // ok, 'x' and 'y' not in Base1: { x }
+b1.explicit = d2.polymorphic; // ok, 'x' and 'y' not in Base1: { x }
 ////// use this-type for construction with new ////
 function InterfaceThis() {
     this.a = 12;

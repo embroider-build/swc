@@ -5,8 +5,10 @@ use swc_common::{util::take::Take, Spanned, SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_utils::{ExprExt, Value::Known};
 
-use super::Optimizer;
-use crate::{compress::util::eval_as_number, maybe_par, DISABLE_BUGGY_PASSES};
+use super::{BitCtx, Optimizer};
+use crate::{
+    compress::util::eval_as_number, program_data::VarUsageInfoFlags, DISABLE_BUGGY_PASSES,
+};
 
 /// Methods related to the option `evaluate`.
 impl Optimizer<'_> {
@@ -24,7 +26,11 @@ impl Optimizer<'_> {
     }
 
     fn eval_fn_props(&mut self, e: &mut Expr) -> Option<()> {
-        if self.ctx.is_delete_arg || self.ctx.is_update_arg || self.ctx.is_lhs_of_assign {
+        if self
+            .ctx
+            .bit_ctx
+            .intersects(BitCtx::IsDeleteArg | BitCtx::IsUpdateArg | BitCtx::IsLhsOfAssign)
+        {
             return None;
         }
 
@@ -40,7 +46,7 @@ impl Optimizer<'_> {
 
                 let usage = self.data.vars.get(&obj.to_id())?;
 
-                if usage.reassigned {
+                if usage.flags.contains(VarUsageInfoFlags::REASSIGNED) {
                     return None;
                 }
 
@@ -63,7 +69,7 @@ impl Optimizer<'_> {
 
                             *e = Lit::Str(Str {
                                 span: *span,
-                                value: obj.sym.clone(),
+                                value: obj.sym.clone().into(),
                                 raw: None,
                             })
                             .into();
@@ -84,11 +90,9 @@ impl Optimizer<'_> {
             return;
         }
 
-        if self.ctx.is_delete_arg
-            || self.ctx.is_update_arg
-            || self.ctx.is_lhs_of_assign
-            || self.ctx.in_with_stmt
-        {
+        if self.ctx.bit_ctx.intersects(
+            BitCtx::IsDeleteArg | BitCtx::IsUpdateArg | BitCtx::IsLhsOfAssign | BitCtx::InWithStmt,
+        ) {
             return;
         }
 
@@ -98,7 +102,7 @@ impl Optimizer<'_> {
                 .data
                 .vars
                 .get(&i.to_id())
-                .map(|var| var.declared)
+                .map(|var| var.flags.contains(VarUsageInfoFlags::DECLARED))
                 .unwrap_or(false)
             {
                 return;
@@ -134,6 +138,68 @@ impl Optimizer<'_> {
                 .into();
             }
 
+            Expr::Member(MemberExpr {
+                obj,
+                prop: MemberProp::Ident(prop),
+                span,
+                ..
+            }) if matches!(obj.as_ref(), Expr::Ident(ident) if &*ident.sym == "Number") => {
+                if let Expr::Ident(number_ident) = &**obj {
+                    if number_ident.ctxt != self.ctx.expr_ctx.unresolved_ctxt {
+                        return;
+                    }
+                }
+
+                match &*prop.sym {
+                    "MIN_VALUE" => {
+                        report_change!("evaluate: `Number.MIN_VALUE` -> `5e-324`");
+                        self.changed = true;
+                        *e = Lit::Num(Number {
+                            span: *span,
+                            value: 5e-324,
+                            raw: None,
+                        })
+                        .into();
+                    }
+                    "NaN" => {
+                        report_change!("evaluate: `Number.NaN` -> `NaN`");
+                        self.changed = true;
+                        *e = Ident::new(
+                            atom!("NaN"),
+                            *span,
+                            SyntaxContext::empty().apply_mark(self.marks.unresolved_mark),
+                        )
+                        .into();
+                    }
+                    "POSITIVE_INFINITY" => {
+                        report_change!("evaluate: `Number.POSITIVE_INFINITY` -> `Infinity`");
+                        self.changed = true;
+                        *e = Ident::new(
+                            atom!("Infinity"),
+                            *span,
+                            SyntaxContext::empty().apply_mark(self.marks.unresolved_mark),
+                        )
+                        .into();
+                    }
+                    "NEGATIVE_INFINITY" => {
+                        report_change!("evaluate: `Number.NEGATIVE_INFINITY` -> `-Infinity`");
+                        self.changed = true;
+                        *e = UnaryExpr {
+                            span: *span,
+                            op: op!(unary, "-"),
+                            arg: Ident::new(
+                                atom!("Infinity"),
+                                *span,
+                                SyntaxContext::empty().apply_mark(self.marks.unresolved_mark),
+                            )
+                            .into(),
+                        }
+                        .into();
+                    }
+                    _ => {}
+                }
+            }
+
             _ => {}
         }
     }
@@ -145,7 +211,11 @@ impl Optimizer<'_> {
             return;
         }
 
-        if self.ctx.is_delete_arg || self.ctx.is_update_arg || self.ctx.is_lhs_of_assign {
+        if self
+            .ctx
+            .bit_ctx
+            .intersects(BitCtx::IsDeleteArg | BitCtx::IsUpdateArg | BitCtx::IsLhsOfAssign)
+        {
             return;
         }
 
@@ -163,7 +233,7 @@ impl Optimizer<'_> {
         //
 
         for arg in &*args {
-            if arg.spread.is_some() || arg.expr.may_have_side_effects(&self.ctx.expr_ctx) {
+            if arg.spread.is_some() || arg.expr.may_have_side_effects(self.ctx.expr_ctx) {
                 return;
             }
         }
@@ -186,15 +256,18 @@ impl Optimizer<'_> {
                     0 => {}
                     1 => {
                         if let Expr::Lit(Lit::Str(exp)) = &*args[0].expr {
+                            let Some(value) = exp.value.as_str() else {
+                                return;
+                            };
                             self.changed = true;
                             report_change!(
                                 "evaluate: Converting RegExpr call into a regexp literal `/{}/`",
-                                exp.value
+                                value
                             );
 
                             *e = Lit::Regex(Regex {
                                 span,
-                                exp: exp.value.as_ref().into(),
+                                exp: value.into(),
                                 flags: atom!(""),
                             })
                             .into();
@@ -204,17 +277,24 @@ impl Optimizer<'_> {
                         if let (Expr::Lit(Lit::Str(exp)), Expr::Lit(Lit::Str(flags))) =
                             (&*args[0].expr, &*args[1].expr)
                         {
+                            let Some(value) = exp.value.as_str() else {
+                                return;
+                            };
+                            let Some(flags) = flags.value.as_str() else {
+                                return;
+                            };
+
                             self.changed = true;
                             report_change!(
                                 "evaluate: Converting RegExpr call into a regexp literal `/{}/{}`",
-                                exp.value,
-                                flags.value
+                                value,
+                                flags
                             );
 
                             *e = Lit::Regex(Regex {
                                 span,
-                                exp: exp.value.as_ref().into(),
-                                flags: flags.value.as_ref().into(),
+                                exp: value.into(),
+                                flags: flags.into(),
                             })
                             .into();
                         }
@@ -233,7 +313,7 @@ impl Optimizer<'_> {
                             return;
                         }
 
-                        if let Known(char_code) = args[0].expr.as_pure_number(&self.ctx.expr_ctx) {
+                        if let Known(char_code) = args[0].expr.as_pure_number(self.ctx.expr_ctx) {
                             let v = char_code.floor() as u32;
 
                             if let Some(v) = char::from_u32(v) {
@@ -283,7 +363,7 @@ impl Optimizer<'_> {
                                             expr: Lit::Str(Str {
                                                 span: p.span,
                                                 raw: None,
-                                                value: p.sym.clone(),
+                                                value: p.sym.clone().into(),
                                             })
                                             .into(),
                                         }));
@@ -295,7 +375,7 @@ impl Optimizer<'_> {
                                                 expr: Lit::Str(Str {
                                                     span: key.span,
                                                     raw: None,
-                                                    value: key.sym.clone(),
+                                                    value: key.sym.clone().into(),
                                                 })
                                                 .into(),
                                             }));
@@ -310,6 +390,8 @@ impl Optimizer<'_> {
                                     },
                                     _ => return,
                                 },
+                                #[cfg(swc_ast_unknown)]
+                                _ => panic!("unable to access unknown nodes"),
                             }
                         }
 
@@ -336,18 +418,22 @@ impl Optimizer<'_> {
             return;
         }
 
-        if self.ctx.is_delete_arg || self.ctx.is_update_arg || self.ctx.is_lhs_of_assign {
+        if self
+            .ctx
+            .bit_ctx
+            .intersects(BitCtx::IsDeleteArg | BitCtx::IsUpdateArg | BitCtx::IsLhsOfAssign)
+        {
             return;
         }
 
         if let Expr::Call(..) = e {
-            if let Some(value) = eval_as_number(&self.ctx.expr_ctx, e) {
+            if let Some(value) = eval_as_number(self.ctx.expr_ctx, e) {
                 self.changed = true;
                 report_change!("evaluate: Evaluated an expression as `{}`", value);
 
                 if value.is_nan() {
                     *e = Ident::new(
-                        "NaN".into(),
+                        atom!("NaN"),
                         e.span(),
                         SyntaxContext::empty().apply_mark(self.marks.unresolved_mark),
                     )
@@ -367,8 +453,8 @@ impl Optimizer<'_> {
 
         match e {
             Expr::Bin(bin @ BinExpr { op: op!("**"), .. }) => {
-                let l = bin.left.as_pure_number(&self.ctx.expr_ctx);
-                let r = bin.right.as_pure_number(&self.ctx.expr_ctx);
+                let l = bin.left.as_pure_number(self.ctx.expr_ctx);
+                let r = bin.right.as_pure_number(self.ctx.expr_ctx);
 
                 if let Known(l) = l {
                     if let Known(r) = r {
@@ -377,7 +463,7 @@ impl Optimizer<'_> {
 
                         if l.is_nan() || r.is_nan() {
                             *e = Ident::new(
-                                "NaN".into(),
+                                atom!("NaN"),
                                 bin.span,
                                 SyntaxContext::empty().apply_mark(self.marks.unresolved_mark),
                             )
@@ -395,9 +481,9 @@ impl Optimizer<'_> {
             }
 
             Expr::Bin(bin @ BinExpr { op: op!("/"), .. }) => {
-                let ln = bin.left.as_pure_number(&self.ctx.expr_ctx);
+                let ln = bin.left.as_pure_number(self.ctx.expr_ctx);
 
-                let rn = bin.right.as_pure_number(&self.ctx.expr_ctx);
+                let rn = bin.right.as_pure_number(self.ctx.expr_ctx);
                 if let (Known(ln), Known(rn)) = (ln, rn) {
                     // Prefer `0/0` over NaN.
                     if ln == 0.0 && rn == 0.0 {
@@ -409,45 +495,21 @@ impl Optimizer<'_> {
                     }
 
                     // It's NaN
-                    match (ln.classify(), rn.classify()) {
-                        (FpCategory::Zero, FpCategory::Zero) => {
-                            // If a variable named `NaN` is in scope, don't convert e into NaN.
-                            let data = &self.data.vars;
-                            if maybe_par!(
-                                data.iter().any(|(name, v)| v.declared && name.0 == "NaN"),
-                                *crate::LIGHT_TASK_PARALLELS
-                            ) {
-                                return;
+                    if let (FpCategory::Normal, FpCategory::Zero) = (ln.classify(), rn.classify()) {
+                        self.changed = true;
+                        report_change!("evaluate: `{} / 0` => `Infinity`", ln);
+
+                        // Sign does not matter for NaN
+                        *e = if ln.is_sign_positive() == rn.is_sign_positive() {
+                            Ident::new_no_ctxt(atom!("Infinity"), bin.span).into()
+                        } else {
+                            UnaryExpr {
+                                span: bin.span,
+                                op: op!(unary, "-"),
+                                arg: Ident::new_no_ctxt(atom!("Infinity"), bin.span).into(),
                             }
-
-                            self.changed = true;
-                            report_change!("evaluate: `0 / 0` => `NaN`");
-
-                            // Sign does not matter for NaN
-                            *e = Ident::new(
-                                "NaN".into(),
-                                bin.span,
-                                SyntaxContext::empty().apply_mark(self.marks.unresolved_mark),
-                            )
-                            .into();
-                        }
-                        (FpCategory::Normal, FpCategory::Zero) => {
-                            self.changed = true;
-                            report_change!("evaluate: `{} / 0` => `Infinity`", ln);
-
-                            // Sign does not matter for NaN
-                            *e = if ln.is_sign_positive() == rn.is_sign_positive() {
-                                Ident::new_no_ctxt("Infinity".into(), bin.span).into()
-                            } else {
-                                UnaryExpr {
-                                    span: bin.span,
-                                    op: op!(unary, "-"),
-                                    arg: Ident::new_no_ctxt("Infinity".into(), bin.span).into(),
-                                }
-                                .into()
-                            };
-                        }
-                        _ => {}
+                            .into()
+                        };
                     }
                 }
             }
@@ -477,7 +539,7 @@ impl Optimizer<'_> {
             }
             // Remove rhs of lhs if possible.
 
-            let v = left.right.as_pure_bool(&self.ctx.expr_ctx);
+            let v = left.right.as_pure_bool(self.ctx.expr_ctx);
             if let Known(v) = v {
                 // As we used as_pure_bool, we can drop it.
                 if v && e.op == op!("&&") {

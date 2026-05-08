@@ -1,8 +1,6 @@
-use swc_atoms::JsWord;
-use swc_common::{
-    collections::{AHashMap, AHashSet},
-    sync::Lrc,
-};
+use rustc_hash::{FxHashMap, FxHashSet};
+use swc_atoms::{Atom, Wtf8Atom};
+use swc_common::sync::Lrc;
 use swc_ecma_ast::*;
 use swc_ecma_transforms_base::perf::{ParVisitMut, Parallel};
 use swc_ecma_utils::{collect_decls, parallel::cpu_count, NodeIgnoringSpan};
@@ -10,17 +8,7 @@ use swc_ecma_visit::{noop_visit_mut_type, visit_mut_pass, VisitMut, VisitMutWith
 
 /// The key will be compared using [EqIgnoreSpan::eq_ignore_span], and matched
 /// expressions will be replaced with the value.
-pub type GlobalExprMap = Lrc<AHashMap<NodeIgnoringSpan<'static, Expr>, Expr>>;
-
-/// Create a global inlining pass, which replaces expressions with the specified
-/// value.
-pub fn inline_globals(
-    envs: Lrc<AHashMap<JsWord, Expr>>,
-    globals: Lrc<AHashMap<JsWord, Expr>>,
-    typeofs: Lrc<AHashMap<JsWord, JsWord>>,
-) -> impl Pass {
-    inline_globals2(envs, globals, Default::default(), typeofs)
-}
+pub type GlobalExprMap = Lrc<FxHashMap<NodeIgnoringSpan<'static, Expr>, Expr>>;
 
 /// Create a global inlining pass, which replaces expressions with the specified
 /// value.
@@ -28,12 +16,18 @@ pub fn inline_globals(
 /// See [GlobalExprMap] for description.
 ///
 /// Note: Values specified in `global_exprs` have higher precedence than
-pub fn inline_globals2(
-    envs: Lrc<AHashMap<JsWord, Expr>>,
-    globals: Lrc<AHashMap<JsWord, Expr>>,
+pub fn inline_globals(
+    envs: Lrc<FxHashMap<Atom, Expr>>,
+    globals: Lrc<FxHashMap<Atom, Expr>>,
     global_exprs: GlobalExprMap,
-    typeofs: Lrc<AHashMap<JsWord, JsWord>>,
+    typeofs: Lrc<FxHashMap<Atom, Atom>>,
 ) -> impl Pass {
+    let envs = Lrc::new(
+        envs.iter()
+            .map(|(k, v)| (k.clone().into(), v.clone()))
+            .collect(),
+    );
+
     visit_mut_pass(InlineGlobals {
         envs,
         globals,
@@ -45,13 +39,13 @@ pub fn inline_globals2(
 
 #[derive(Clone)]
 struct InlineGlobals {
-    envs: Lrc<AHashMap<JsWord, Expr>>,
-    globals: Lrc<AHashMap<JsWord, Expr>>,
-    global_exprs: Lrc<AHashMap<NodeIgnoringSpan<'static, Expr>, Expr>>,
+    envs: Lrc<FxHashMap<Wtf8Atom, Expr>>,
+    globals: Lrc<FxHashMap<Atom, Expr>>,
+    global_exprs: Lrc<FxHashMap<NodeIgnoringSpan<'static, Expr>, Expr>>,
 
-    typeofs: Lrc<AHashMap<JsWord, JsWord>>,
+    typeofs: Lrc<FxHashMap<Atom, Atom>>,
 
-    bindings: Lrc<AHashSet<Id>>,
+    bindings: Lrc<FxHashSet<Id>>,
 }
 
 impl Parallel for InlineGlobals {
@@ -65,9 +59,13 @@ impl Parallel for InlineGlobals {
 impl VisitMut for InlineGlobals {
     noop_visit_mut_type!(fail);
 
+    fn visit_mut_class_members(&mut self, members: &mut Vec<ClassMember>) {
+        self.visit_mut_par(cpu_count(), members);
+    }
+
     fn visit_mut_expr(&mut self, expr: &mut Expr) {
-        if let Expr::Ident(Ident { ref sym, ctxt, .. }) = expr {
-            if self.bindings.contains(&(sym.clone(), *ctxt)) {
+        if let Expr::Ident(id) = expr {
+            if self.bindings.contains(&id.to_id()) {
                 return;
             }
         }
@@ -98,13 +96,9 @@ impl VisitMut for InlineGlobals {
                 arg,
                 ..
             }) => {
-                if let Expr::Ident(Ident {
-                    ref sym,
-                    ctxt: arg_ctxt,
-                    ..
-                }) = &**arg
-                {
-                    if self.bindings.contains(&(sym.clone(), *arg_ctxt)) {
+                if let Expr::Ident(ident @ Ident { ref sym, .. }) = &**arg {
+                    // It's a declared variable
+                    if self.bindings.contains(&ident.to_id()) {
                         return;
                     }
 
@@ -113,7 +107,7 @@ impl VisitMut for InlineGlobals {
                         *expr = Lit::Str(Str {
                             span: *span,
                             raw: None,
-                            value,
+                            value: value.into(),
                         })
                         .into();
                     }
@@ -125,24 +119,23 @@ impl VisitMut for InlineGlobals {
                     obj: first_obj,
                     prop: inner_prop,
                     ..
-                }) if inner_prop.is_ident_with("env") => {
-                    if first_obj.is_ident_ref_to("process") {
-                        match prop {
-                            MemberProp::Computed(ComputedPropName { expr: c, .. }) => {
-                                if let Expr::Lit(Lit::Str(Str { value: sym, .. })) = &**c {
-                                    if let Some(env) = self.envs.get(sym) {
-                                        *expr = env.clone();
-                                    }
-                                }
-                            }
-
-                            MemberProp::Ident(IdentName { sym, .. }) => {
+                }) if inner_prop.is_ident_with("env") && first_obj.is_ident_ref_to("process") => {
+                    match prop {
+                        MemberProp::Computed(ComputedPropName { expr: c, .. }) => {
+                            if let Expr::Lit(Lit::Str(Str { value: sym, .. })) = &**c {
                                 if let Some(env) = self.envs.get(sym) {
                                     *expr = env.clone();
                                 }
                             }
-                            _ => {}
                         }
+
+                        MemberProp::Ident(IdentName { sym, .. }) => {
+                            let sym_wtf8: Wtf8Atom = sym.clone().into();
+                            if let Some(env) = self.envs.get(&sym_wtf8) {
+                                *expr = env.clone();
+                            }
+                        }
+                        _ => {}
                     }
                 }
                 _ => (),
@@ -151,16 +144,29 @@ impl VisitMut for InlineGlobals {
         }
     }
 
+    fn visit_mut_expr_or_spreads(&mut self, n: &mut Vec<ExprOrSpread>) {
+        self.visit_mut_par(cpu_count(), n);
+    }
+
+    fn visit_mut_exprs(&mut self, n: &mut Vec<Box<Expr>>) {
+        self.visit_mut_par(cpu_count(), n);
+    }
+
     fn visit_mut_module(&mut self, module: &mut Module) {
         self.bindings = Lrc::new(collect_decls(&*module));
 
         module.visit_mut_children_with(self);
     }
 
+    fn visit_mut_opt_vec_expr_or_spreads(&mut self, n: &mut Vec<Option<ExprOrSpread>>) {
+        self.visit_mut_par(cpu_count(), n);
+    }
+
     fn visit_mut_prop(&mut self, p: &mut Prop) {
         p.visit_mut_children_with(self);
 
         if let Prop::Shorthand(i) = p {
+            // Ignore declared variables
             if self.bindings.contains(&i.to_id()) {
                 return;
             }
@@ -176,32 +182,22 @@ impl VisitMut for InlineGlobals {
         }
     }
 
+    fn visit_mut_prop_or_spreads(&mut self, n: &mut Vec<PropOrSpread>) {
+        self.visit_mut_par(cpu_count(), n);
+    }
+
     fn visit_mut_script(&mut self, script: &mut Script) {
         self.bindings = Lrc::new(collect_decls(&*script));
 
         script.visit_mut_children_with(self);
     }
-
-    fn visit_mut_prop_or_spreads(&mut self, n: &mut Vec<PropOrSpread>) {
-        self.visit_mut_par(cpu_count() * 8, n);
-    }
-
-    fn visit_mut_expr_or_spreads(&mut self, n: &mut Vec<ExprOrSpread>) {
-        self.visit_mut_par(cpu_count() * 8, n);
-    }
-
-    fn visit_mut_opt_vec_expr_or_spreads(&mut self, n: &mut Vec<Option<ExprOrSpread>>) {
-        self.visit_mut_par(cpu_count() * 8, n);
-    }
-
-    fn visit_mut_exprs(&mut self, n: &mut Vec<Box<Expr>>) {
-        self.visit_mut_par(cpu_count() * 8, n);
-    }
 }
 
 #[cfg(test)]
 mod tests {
+    use swc_common::Mark;
     use swc_ecma_transforms_testing::{test, Tester};
+    use swc_ecma_transforms_typescript::typescript;
     use swc_ecma_utils::{DropSpan, StmtOrModuleItem};
 
     use super::*;
@@ -210,12 +206,12 @@ mod tests {
         tester: &mut Tester<'_>,
         values: &[(&str, &str)],
         is_env: bool,
-    ) -> AHashMap<JsWord, Expr> {
-        let mut m = AHashMap::default();
+    ) -> FxHashMap<Atom, Expr> {
+        let mut m = FxHashMap::default();
 
         for (k, v) in values {
             let v = if is_env {
-                format!("'{}'", v)
+                format!("'{v}'")
             } else {
                 (*v).into()
             };
@@ -246,17 +242,22 @@ mod tests {
         m
     }
 
-    fn envs(tester: &mut Tester<'_>, values: &[(&str, &str)]) -> Lrc<AHashMap<JsWord, Expr>> {
+    fn envs(tester: &mut Tester<'_>, values: &[(&str, &str)]) -> Lrc<FxHashMap<Atom, Expr>> {
         Lrc::new(mk_map(tester, values, true))
     }
 
-    fn globals(tester: &mut Tester<'_>, values: &[(&str, &str)]) -> Lrc<AHashMap<JsWord, Expr>> {
+    fn globals(tester: &mut Tester<'_>, values: &[(&str, &str)]) -> Lrc<FxHashMap<Atom, Expr>> {
         Lrc::new(mk_map(tester, values, false))
     }
 
     test!(
         ::swc_ecma_parser::Syntax::default(),
-        |tester| inline_globals(envs(tester, &[]), globals(tester, &[]), Default::default(),),
+        |tester| inline_globals(
+            envs(tester, &[("NODE_ENV", "development")]),
+            globals(tester, &[]),
+            Default::default(),
+            Default::default()
+        ),
         issue_215,
         r#"if (process.env.x === 'development') {}"#
     );
@@ -266,6 +267,7 @@ mod tests {
         |tester| inline_globals(
             envs(tester, &[("NODE_ENV", "development")]),
             globals(tester, &[]),
+            Default::default(),
             Default::default(),
         ),
         node_env,
@@ -278,6 +280,7 @@ mod tests {
             envs(tester, &[]),
             globals(tester, &[("__DEBUG__", "true")]),
             Default::default(),
+            Default::default()
         ),
         globals_simple,
         r#"if (__DEBUG__) {}"#
@@ -289,6 +292,7 @@ mod tests {
             envs(tester, &[]),
             globals(tester, &[("debug", "true")]),
             Default::default(),
+            Default::default(),
         ),
         non_global,
         r#"if (foo.debug) {}"#
@@ -296,7 +300,12 @@ mod tests {
 
     test!(
         Default::default(),
-        |tester| inline_globals(envs(tester, &[]), globals(tester, &[]), Default::default(),),
+        |tester| inline_globals(
+            envs(tester, &[]),
+            globals(tester, &[]),
+            Default::default(),
+            Default::default(),
+        ),
         issue_417_1,
         "const test = process.env['x']"
     );
@@ -306,6 +315,7 @@ mod tests {
         |tester| inline_globals(
             envs(tester, &[("x", "FOO")]),
             globals(tester, &[]),
+            Default::default(),
             Default::default(),
         ),
         issue_417_2,
@@ -318,8 +328,24 @@ mod tests {
             envs(tester, &[("x", "BAR")]),
             globals(tester, &[]),
             Default::default(),
+            Default::default(),
         ),
         issue_2499_1,
         "process.env.x = 'foo'"
+    );
+
+    test!(
+        swc_ecma_parser::Syntax::Typescript(Default::default()),
+        |tester| (
+            typescript(Default::default(), Mark::new(), Mark::new()),
+            inline_globals(
+                envs(tester, &[]),
+                globals(tester, &[("__MY_HOST__", "'https://swc.rs/'")]),
+                Default::default(),
+                Default::default(),
+            )
+        ),
+        issue_10831_1,
+        "declare let __MY_HOST__: string; console.log(__MY_HOST__);"
     );
 }

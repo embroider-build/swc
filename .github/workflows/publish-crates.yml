@@ -23,8 +23,11 @@ concurrency:
 
 jobs:
   publish-cargo:
+    # Run only on `chore: Publish` prefix
     name: "Publish cargo crates"
     runs-on: ubuntu-latest
+    if: >-
+      ${{ github.ref == 'refs/heads/main' && startsWith(github.event.head_commit.message, 'chore: Publish') }}
     steps:
       - uses: actions/checkout@v4
 
@@ -42,7 +45,7 @@ jobs:
       - name: Install cargo-mono
         uses: taiki-e/install-action@v2
         with:
-          tool: cargo-mono@0.4.1
+          tool: cargo-mono@0.6.7
 
       - name: Update constant of swc_core
         run: npx ts-node .github/bot/src/cargo/update-constants.ts
@@ -51,4 +54,4 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
         run: |
-          cargo mono publish --no-verify
+          cargo mono publish --allow-dirty

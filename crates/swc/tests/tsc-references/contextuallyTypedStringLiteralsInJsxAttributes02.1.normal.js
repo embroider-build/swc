@@ -11,17 +11,17 @@ define([
     function _export(target, all) {
         for(var name in all)Object.defineProperty(target, name, {
             enumerable: true,
-            get: all[name]
+            get: Object.getOwnPropertyDescriptor(all, name).get
         });
     }
     _export(exports, {
-        MainButton: function() {
+        get MainButton () {
             return MainButton;
         },
-        NoOverload: function() {
+        get NoOverload () {
             return NoOverload;
         },
-        NoOverload1: function() {
+        get NoOverload1 () {
             return NoOverload1;
         }
     });
@@ -33,13 +33,13 @@ define([
         return this._buildMainButton(props);
     }
     var b0 = /*#__PURE__*/ _react.createElement(MainButton, {
-        onClick: function(k) {
+        onClick: function onClick(k) {
             console.log(k);
         },
         extra: true
     }); // k has type "left" | "right"
     var b2 = /*#__PURE__*/ _react.createElement(MainButton, {
-        onClick: function(k) {
+        onClick: function onClick(k) {
             console.log(k);
         },
         extra: true
@@ -56,7 +56,7 @@ define([
         return undefined;
     }
     var c1 = /*#__PURE__*/ _react.createElement(NoOverload, {
-        onClick: function(k) {
+        onClick: function onClick(k) {
             console.log(k);
         },
         extra: true

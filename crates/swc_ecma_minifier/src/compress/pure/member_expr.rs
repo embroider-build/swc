@@ -1,5 +1,5 @@
 use phf::phf_set;
-use swc_atoms::{Atom, JsWord};
+use swc_atoms::Atom;
 use swc_common::Spanned;
 use swc_ecma_ast::{
     ArrayLit, Expr, ExprOrSpread, IdentName, Lit, MemberExpr, MemberProp, ObjectLit, Prop,
@@ -8,6 +8,7 @@ use swc_ecma_ast::{
 use swc_ecma_utils::{prop_name_eq, ExprExt, Known};
 
 use super::Pure;
+use crate::compress::pure::Ctx;
 
 /// Ref: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array
 static ARRAY_SYMBOLS: phf::Set<&str> = phf_set!(
@@ -215,6 +216,9 @@ fn does_key_exist(key: &str, props: &Vec<PropOrSpread>) -> Option<bool> {
                         return Some(true);
                     }
                 }
+
+                #[cfg(swc_ast_unknown)]
+                _ => panic!("unable to access unknown nodes"),
             },
 
             _ => {
@@ -246,7 +250,11 @@ impl Pure<'_> {
         obj: &mut Expr,
         prop: &MemberProp,
     ) -> Option<Expr> {
-        if !self.options.pristine_globals || self.ctx.is_lhs_of_assign || self.ctx.is_callee {
+        if !self.options.pristine_globals
+            || self
+                .ctx
+                .intersects(Ctx::IS_CALLEE.union(Ctx::IS_LHS_OF_ASSIGN))
+        {
             return None;
         }
 
@@ -265,17 +273,11 @@ impl Pure<'_> {
             /// ({}).foo
             ///
             /// ({}).length
-            IndexStr(JsWord),
+            IndexStr(Atom),
         }
 
         let op = match prop {
-            MemberProp::Ident(IdentName { sym, .. }) => {
-                if self.ctx.is_callee {
-                    return None;
-                }
-
-                KnownOp::IndexStr(sym.clone())
-            }
+            MemberProp::Ident(IdentName { sym, .. }) => KnownOp::IndexStr(sym.clone()),
 
             MemberProp::Computed(c) => match &*c.expr {
                 Expr::Lit(Lit::Num(n)) => KnownOp::Index(n.value),
@@ -285,14 +287,14 @@ impl Pure<'_> {
                 }
 
                 _ => {
-                    let Known(s) = c.expr.as_pure_string(&self.expr_ctx) else {
+                    let Known(s) = c.expr.as_pure_string(self.expr_ctx) else {
                         return None;
                     };
 
                     if let Ok(n) = s.parse::<f64>() {
                         KnownOp::Index(n)
                     } else {
-                        KnownOp::IndexStr(JsWord::from(s))
+                        KnownOp::IndexStr(Atom::from(s))
                     }
                 }
             },
@@ -412,7 +414,7 @@ impl Pure<'_> {
                             let optimized_len = elems
                                 .iter()
                                 .flatten()
-                                .filter(|elem| elem.expr.may_have_side_effects(&self.expr_ctx))
+                                .filter(|elem| elem.expr.may_have_side_effects(self.expr_ctx))
                                 .count();
 
                             if optimized_len == elems.len() {
@@ -512,7 +514,7 @@ impl Pure<'_> {
                     let optimized_len = props
                         .iter()
                         .filter(|prop| {
-                            matches!(prop, PropOrSpread::Prop(prop) if matches!(&**prop, Prop::KeyValue(prop) if prop.value.may_have_side_effects(&self.expr_ctx)))
+                            matches!(prop, PropOrSpread::Prop(prop) if matches!(&**prop, Prop::KeyValue(prop) if prop.value.may_have_side_effects(self.expr_ctx)))
                         })
                         .count();
 

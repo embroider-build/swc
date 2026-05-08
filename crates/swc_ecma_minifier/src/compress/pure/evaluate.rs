@@ -1,20 +1,212 @@
 use radix_fmt::Radix;
+use swc_atoms::atom;
 use swc_common::{util::take::Take, Spanned, SyntaxContext};
 use swc_ecma_ast::*;
-use swc_ecma_utils::{number::ToJsString, ExprExt, IsEmpty, Value};
+use swc_ecma_utils::{
+    number::ToJsString,
+    unicode::{is_high_surrogate, is_low_surrogate},
+    ExprExt, IsEmpty, Type, Value,
+};
 
 use super::Pure;
-use crate::compress::util::{eval_as_number, is_pure_undefined_or_null};
 #[cfg(feature = "debug")]
 use crate::debug::dump;
+use crate::{
+    compress::{
+        pure::Ctx,
+        util::{eval_as_number, is_pure_undefined_or_null},
+    },
+    util::ValueExt,
+};
 
 impl Pure<'_> {
+    ///
+    /// - `1 == 1` => `true`
+    /// - `1 == 2` => `false`
+    pub(super) fn optimize_lit_cmp(&mut self, n: &mut BinExpr) -> Option<Expr> {
+        if n.op != op!("==") && n.op != op!("!=") {
+            return None;
+        }
+        let flag = n.op == op!("!=");
+        let mut make_lit_bool = |value: bool| {
+            self.changed = true;
+            Some(
+                Lit::Bool(Bool {
+                    span: n.span,
+                    value: flag ^ value,
+                })
+                .into(),
+            )
+        };
+        match (
+            n.left.get_type(self.expr_ctx).opt()?,
+            n.right.get_type(self.expr_ctx).opt()?,
+        ) {
+            // Abort if types differ, or one of them is unknown.
+            (lt, rt) if lt != rt => {}
+            (Type::Obj, Type::Obj) => {}
+            (Type::Num, Type::Num) => {
+                let l = n.left.as_pure_number(self.expr_ctx).opt()?;
+                let r = n.right.as_pure_number(self.expr_ctx).opt()?;
+                report_change!("Optimizing: literal comparison => num");
+                return make_lit_bool(l == r);
+            }
+            (Type::Str, Type::Str) => {
+                let l = &n.left.as_pure_string(self.expr_ctx).opt()?;
+                let r = &n.right.as_pure_string(self.expr_ctx).opt()?;
+                report_change!("Optimizing: literal comparison => str");
+                return make_lit_bool(l == r);
+            }
+            (_, _) => {
+                let l = n.left.as_pure_bool(self.expr_ctx).opt()?;
+                let r = n.right.as_pure_bool(self.expr_ctx).opt()?;
+                report_change!("Optimizing: literal comparison => bool");
+                return make_lit_bool(l == r);
+            }
+        };
+
+        None
+    }
+
+    pub(super) fn eval_array_spread(&mut self, e: &mut Expr) {
+        if !self.options.evaluate {
+            return;
+        }
+
+        // Don't optimize arrays used as assignment targets in destructuring
+        // assignments, as delete operands, or as arguments to update operators
+        // (++/--). This prevents invalid transformations like: [obj.prop] =
+        // [true] => [!0] = [!0]
+        if self.ctx.intersects(
+            Ctx::IN_DELETE
+                .union(Ctx::IS_UPDATE_ARG)
+                .union(Ctx::IS_LHS_OF_ASSIGN),
+        ) {
+            return;
+        }
+
+        let Expr::Array(ArrayLit { elems, .. }) = e else {
+            return;
+        };
+
+        if !elems.iter().any(|elem| match elem {
+            Some(ExprOrSpread {
+                spread: Some(..),
+                expr,
+            }) => expr.is_array(),
+            _ => false,
+        }) {
+            return;
+        }
+
+        report_change!("evaluate: Evaluated array spread");
+        self.changed = true;
+
+        let mut new_elems = Vec::with_capacity(elems.len());
+
+        for elem in elems.take() {
+            match elem {
+                Some(ExprOrSpread {
+                    spread: Some(..),
+                    expr,
+                }) if expr.is_array() => {
+                    new_elems.extend(expr.expect_array().elems);
+                }
+                _ => {
+                    new_elems.push(elem);
+                }
+            }
+        }
+
+        *elems = new_elems;
+    }
+
+    pub(super) fn eval_logical_expr(&mut self, e: &mut Expr) {
+        let Expr::Bin(
+            b @ BinExpr {
+                op: op!("||") | op!("&&"),
+                ..
+            },
+        ) = e
+        else {
+            return;
+        };
+
+        let (purity, lv) = b.left.cast_to_bool(self.expr_ctx);
+
+        if purity.is_pure() {
+            if let Value::Known(lv) = lv {
+                match (lv, b.op) {
+                    (true, op!("||")) => {
+                        self.changed = true;
+                        report_change!("evaluate: `true || foo` => `true`");
+
+                        *e = *b.left.take();
+                    }
+                    (false, op!("||")) => {
+                        self.changed = true;
+                        report_change!("evaluate: `false || foo` => `foo`");
+
+                        *e = *b.right.take();
+                    }
+                    (true, op!("&&")) => {
+                        self.changed = true;
+                        report_change!("evaluate: `true && foo` => `foo`");
+
+                        *e = *b.right.take();
+                    }
+                    (false, op!("&&")) => {
+                        self.changed = true;
+                        report_change!("evaluate: `false && foo` => `false`");
+
+                        *e = *b.left.take();
+                    }
+                    _ => {}
+                }
+            }
+        } else {
+            if let Value::Known(lv) = lv {
+                match (lv, b.op) {
+                    (true, op!("||")) => {
+                        self.changed = true;
+                        report_change!("evaluate: `truthy || foo` => `truthy`");
+                        *e = *b.left.take();
+                    }
+
+                    (false, op!("&&")) => {
+                        self.changed = true;
+                        report_change!("evaluate: `falsy && foo` => `falsy`");
+                        *e = *b.left.take();
+                    }
+
+                    (true, op!("&&")) => {
+                        self.changed = true;
+                        report_change!("evaluate: `truthy && foo` => `truthy, foo`");
+                        *e = *Expr::from_exprs(vec![b.left.take(), b.right.take()]);
+                    }
+
+                    (false, op!("||")) => {
+                        self.changed = true;
+                        report_change!("evaluate: `falsy || foo` => `falsy, foo`");
+                        *e = *Expr::from_exprs(vec![b.left.take(), b.right.take()]);
+                    }
+
+                    _ => {}
+                }
+            }
+        }
+    }
+
     pub(super) fn eval_array_method_call(&mut self, e: &mut Expr) {
         if !self.options.evaluate {
             return;
         }
 
-        if self.ctx.in_delete || self.ctx.is_update_arg || self.ctx.is_lhs_of_assign {
+        if self.ctx.intersects(
+            Ctx::IN_DELETE
+                .union(Ctx::IS_UPDATE_ARG)
+                .union(Ctx::IS_LHS_OF_ASSIGN),
+        ) {
             return;
         }
 
@@ -26,7 +218,7 @@ impl Pure<'_> {
         let has_spread = call.args.iter().any(|arg| arg.spread.is_some());
 
         for arg in &call.args {
-            if arg.expr.may_have_side_effects(&self.expr_ctx) {
+            if arg.expr.may_have_side_effects(self.expr_ctx) {
                 return;
             }
         }
@@ -34,6 +226,8 @@ impl Pure<'_> {
         let callee = match &mut call.callee {
             Callee::Super(_) | Callee::Import(_) => return,
             Callee::Expr(e) => &mut **e,
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         };
 
         if let Expr::Member(MemberExpr {
@@ -42,7 +236,7 @@ impl Pure<'_> {
             prop: MemberProp::Ident(method_name),
         }) = callee
         {
-            if obj.may_have_side_effects(&self.expr_ctx) {
+            if obj.may_have_side_effects(self.expr_ctx) {
                 return;
             }
 
@@ -75,8 +269,7 @@ impl Pure<'_> {
                         *e = *obj.take();
                     }
                     1 => {
-                        if let Value::Known(start) =
-                            call.args[0].expr.as_pure_number(&self.expr_ctx)
+                        if let Value::Known(start) = call.args[0].expr.as_pure_number(self.expr_ctx)
                         {
                             if start.is_sign_negative() {
                                 return;
@@ -102,8 +295,8 @@ impl Pure<'_> {
                         }
                     }
                     _ => {
-                        let start = call.args[0].expr.as_pure_number(&self.expr_ctx);
-                        let end = call.args[1].expr.as_pure_number(&self.expr_ctx);
+                        let start = call.args[0].expr.as_pure_number(self.expr_ctx);
+                        let end = call.args[1].expr.as_pure_number(self.expr_ctx);
                         if let Value::Known(start) = start {
                             if start.is_sign_negative() {
                                 return;
@@ -168,7 +361,11 @@ impl Pure<'_> {
             return;
         }
 
-        if self.ctx.in_delete || self.ctx.is_update_arg || self.ctx.is_lhs_of_assign {
+        if self.ctx.intersects(
+            Ctx::IN_DELETE
+                .union(Ctx::IS_UPDATE_ARG)
+                .union(Ctx::IS_LHS_OF_ASSIGN),
+        ) {
             return;
         }
 
@@ -180,7 +377,7 @@ impl Pure<'_> {
         let has_spread = call.args.iter().any(|arg| arg.spread.is_some());
 
         for arg in &call.args {
-            if arg.expr.may_have_side_effects(&self.expr_ctx) {
+            if arg.expr.may_have_side_effects(self.expr_ctx) {
                 return;
             }
         }
@@ -188,6 +385,8 @@ impl Pure<'_> {
         let callee = match &mut call.callee {
             Callee::Super(_) | Callee::Import(_) => return,
             Callee::Expr(e) => &mut **e,
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         };
 
         if let Expr::Member(MemberExpr {
@@ -196,7 +395,7 @@ impl Pure<'_> {
             ..
         }) = callee
         {
-            if obj.may_have_side_effects(&self.expr_ctx) {
+            if obj.may_have_side_effects(self.expr_ctx) {
                 return;
             }
 
@@ -231,7 +430,7 @@ impl Pure<'_> {
 
                 *e = Str {
                     span: call.span,
-                    value: "function(){}".into(),
+                    value: atom!("function(){}").into(),
                     raw: None,
                 }
                 .into();
@@ -254,16 +453,20 @@ impl Pure<'_> {
             MemberProp::PrivateName(_) => {}
             MemberProp::Computed(p) => {
                 if let Expr::Lit(Lit::Str(s)) = &*p.expr {
-                    if let Ok(value) = s.value.parse::<u32>() {
-                        p.expr = Lit::Num(Number {
-                            span: s.span,
-                            value: value as f64,
-                            raw: None,
-                        })
-                        .into();
+                    if let Some(value) = s.value.as_str() {
+                        if let Ok(value) = value.parse::<u32>() {
+                            p.expr = Lit::Num(Number {
+                                span: s.span,
+                                value: value as f64,
+                                raw: None,
+                            })
+                            .into();
+                        }
                     }
                 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         }
     }
 
@@ -323,10 +526,33 @@ impl Pure<'_> {
 
         if args
             .iter()
-            .any(|arg| arg.expr.may_have_side_effects(&self.expr_ctx))
+            .any(|arg| arg.expr.may_have_side_effects(self.expr_ctx))
         {
             return;
         }
+
+        // We already have `eval_array_spread`, `eval_spread_array_in_args` and
+        // `eval_spread_array_in_array` runs before `eval_number_method_call`
+        // so assumeing that there is no spread in arguments is safe.
+
+        let first_arg: Value<Option<f64>> = {
+            if let Some(first_arg) = args.first() {
+                if first_arg.spread.is_some() {
+                    Value::Unknown
+                } else if first_arg.expr.is_undefined(self.expr_ctx) || first_arg.expr.is_void() {
+                    Value::Known(None)
+                } else {
+                    eval_as_number(self.expr_ctx, &first_arg.expr)
+                        .map_or(Value::Unknown, |res| Value::Known(Some(res)))
+                }
+            } else {
+                Value::Known(None)
+            }
+        };
+
+        let Value::Known(first_arg) = first_arg else {
+            return;
+        };
 
         if &*method.sym == "toFixed" {
             // https://tc39.es/ecma262/multipage/numbers-and-dates.html#sec-number.prototype.tofixed
@@ -344,54 +570,49 @@ impl Pure<'_> {
 
             // 1. Let x be ? thisNumberValue(this value).
             // 2. Let f be ? ToIntegerOrInfinity(fractionDigits).
-            if let Some(precision) = args
-                .first()
-                // 3. Assert: If fractionDigits is undefined, then f is 0.
-                .map_or(Some(0f64), |arg| eval_as_number(&self.expr_ctx, &arg.expr))
-            {
-                let f = precision.trunc() as u8;
+            // 3. Assert: If fractionDigits is undefined, then f is 0.
+            let precision = first_arg.unwrap_or(0f64);
+            let f = precision.trunc() as u8;
 
-                // 4. If f is not finite, throw a RangeError exception.
-                // 5. If f < 0 or f > 100, throw a RangeError exception.
+            // 4. If f is not finite, throw a RangeError exception.
+            // 5. If f < 0 or f > 100, throw a RangeError exception.
 
-                // Note: ES2018 increased the maximum number of fraction digits from 20 to 100.
-                // It relies on runtime behavior.
-                if !(0..=20).contains(&f) {
-                    return;
-                }
-
-                let mut buffer = ryu_js::Buffer::new();
-                let value = buffer.format_to_fixed(num.value, f);
-
-                self.changed = true;
-                report_change!(
-                    "evaluate: Evaluating `{}.toFixed({})` as `{}`",
-                    num,
-                    precision,
-                    value
-                );
-
-                *e = Lit::Str(Str {
-                    span: e.span(),
-                    raw: None,
-                    value: value.into(),
-                })
-                .into();
+            // Note: ES2018 increased the maximum number of fraction digits from 20 to 100.
+            // It relies on runtime behavior.
+            if !(0..=20).contains(&f) {
+                return;
             }
+
+            let mut buffer = ryu_js::Buffer::new();
+            let value = buffer.format_to_fixed(num.value, f);
+
+            self.changed = true;
+            report_change!(
+                "evaluate: Evaluating `{}.toFixed({})` as `{}`",
+                num,
+                precision,
+                value
+            );
+
+            *e = Lit::Str(Str {
+                span: e.span(),
+                raw: None,
+                value: value.into(),
+            })
+            .into();
 
             return;
         }
 
         if &*method.sym == "toPrecision" {
-            // TODO: handle num.toPrecision(undefined)
-            if args.is_empty() {
+            if first_arg.is_none() {
                 // https://tc39.es/ecma262/multipage/numbers-and-dates.html#sec-number.prototype.toprecision
                 // 2. If precision is undefined, return ! ToString(x).
                 let value = num.value.to_js_string().into();
 
                 self.changed = true;
                 report_change!(
-                    "evaluate: Evaluating `{}.toPrecision()` as `{}`",
+                    "evaluate: Evaluating `{}.toPrecision()` as `{:?}`",
                     num,
                     value
                 );
@@ -403,12 +624,7 @@ impl Pure<'_> {
                 })
                 .into();
                 return;
-            }
-
-            if let Some(precision) = args
-                .first()
-                .and_then(|arg| eval_as_number(&self.expr_ctx, &arg.expr))
-            {
+            } else if let Some(precision) = first_arg {
                 let p = precision.trunc() as usize;
                 // 5. If p < 1 or p > 100, throw a RangeError exception.
                 if !(1..=21).contains(&p) {
@@ -433,13 +649,12 @@ impl Pure<'_> {
         }
 
         if &*method.sym == "toExponential" {
-            // TODO: handle num.toExponential(undefined)
-            if args.is_empty() {
+            if first_arg.is_none() {
                 let value = f64_to_exponential(num.value).into();
 
                 self.changed = true;
                 report_change!(
-                    "evaluate: Evaluating `{}.toExponential()` as `{}`",
+                    "evaluate: Evaluating `{}.toExponential()` as `{:?}`",
                     num,
                     value
                 );
@@ -451,10 +666,7 @@ impl Pure<'_> {
                 })
                 .into();
                 return;
-            } else if let Some(precision) = args
-                .first()
-                .and_then(|arg| eval_as_number(&self.expr_ctx, &arg.expr))
-            {
+            } else if let Some(precision) = first_arg {
                 let p = precision.trunc() as usize;
                 // 5. If p < 1 or p > 100, throw a RangeError exception.
                 if !(0..=20).contains(&p) {
@@ -465,7 +677,7 @@ impl Pure<'_> {
 
                 self.changed = true;
                 report_change!(
-                    "evaluate: Evaluating `{}.toPrecision({})` as `{}`",
+                    "evaluate: Evaluating `{}.toExponential({})` as `{:?}`",
                     num,
                     precision,
                     value
@@ -482,44 +694,40 @@ impl Pure<'_> {
         }
 
         if &*method.sym == "toString" {
-            if let Some(base) = args
-                .first()
-                .map_or(Some(10f64), |arg| eval_as_number(&self.expr_ctx, &arg.expr))
-            {
-                if base.trunc() == 10. {
-                    let value = num.value.to_js_string().into();
-                    *e = Lit::Str(Str {
-                        span: e.span(),
-                        raw: None,
-                        value,
-                    })
-                    .into();
-                    return;
-                }
+            let base = first_arg.unwrap_or(10f64);
+            if base.trunc() == 10. {
+                let value = num.value.to_js_string().into();
+                *e = Lit::Str(Str {
+                    span: e.span(),
+                    raw: None,
+                    value,
+                })
+                .into();
+                return;
+            }
 
-                if num.value.fract() == 0.0 && (2.0..=36.0).contains(&base) && base.fract() == 0.0 {
-                    let base = base.floor() as u8;
+            if num.value.fract() == 0.0 && (2.0..=36.0).contains(&base) && base.fract() == 0.0 {
+                let base = base.floor() as u8;
 
-                    self.changed = true;
+                self.changed = true;
 
-                    let value = {
-                        let x = num.value;
-                        if x < 0. {
-                            // I don't know if u128 is really needed, but it works.
-                            format!("-{}", Radix::new(-x as u128, base))
-                        } else {
-                            Radix::new(x as u128, base).to_string()
-                        }
+                let value = {
+                    let x = num.value;
+                    if x < 0. {
+                        // I don't know if u128 is really needed, but it works.
+                        format!("-{}", Radix::new(-x as u128, base))
+                    } else {
+                        Radix::new(x as u128, base).to_string()
                     }
-                    .into();
-
-                    *e = Lit::Str(Str {
-                        span: e.span(),
-                        raw: None,
-                        value,
-                    })
-                    .into()
                 }
+                .into();
+
+                *e = Lit::Str(Str {
+                    span: e.span(),
+                    raw: None,
+                    value,
+                })
+                .into()
             }
         }
     }
@@ -533,7 +741,7 @@ impl Pure<'_> {
         match &mut *opt.base {
             OptChainBase::Member(MemberExpr { span, obj, .. }) => {
                 //
-                if is_pure_undefined_or_null(&self.expr_ctx, obj) {
+                if is_pure_undefined_or_null(self.expr_ctx, obj) {
                     self.changed = true;
                     report_change!(
                         "evaluate: Reduced an optional chaining operation because object is \
@@ -545,7 +753,7 @@ impl Pure<'_> {
             }
 
             OptChainBase::Call(OptCall { span, callee, .. }) => {
-                if is_pure_undefined_or_null(&self.expr_ctx, callee) {
+                if is_pure_undefined_or_null(self.expr_ctx, callee) {
                     self.changed = true;
                     report_change!(
                         "evaluate: Reduced a call expression with optional chaining operation \
@@ -555,79 +763,8 @@ impl Pure<'_> {
                     *e = *Expr::undefined(*span);
                 }
             }
-        }
-    }
-
-    /// Note: this method requires boolean context.
-    ///
-    /// - `foo || 1` => `foo, 1`
-    pub(super) fn optmize_known_logical_expr(&mut self, e: &mut Expr) {
-        let bin_expr = match e {
-            Expr::Bin(
-                e @ BinExpr {
-                    op: op!("||") | op!("&&"),
-                    ..
-                },
-            ) => e,
-            _ => return,
-        };
-
-        if bin_expr.op == op!("||") {
-            if let Value::Known(v) = bin_expr.right.as_pure_bool(&self.expr_ctx) {
-                // foo || 1 => foo, 1
-                if v {
-                    self.changed = true;
-                    report_change!("evaluate: `foo || true` => `foo, 1`");
-
-                    *e = SeqExpr {
-                        span: bin_expr.span,
-                        exprs: vec![bin_expr.left.clone(), bin_expr.right.clone()],
-                    }
-                    .into();
-                } else {
-                    self.changed = true;
-                    report_change!("evaluate: `foo || false` => `foo` (bool ctx)");
-
-                    *e = *bin_expr.left.take();
-                }
-                return;
-            }
-
-            // 1 || foo => foo
-            if let Value::Known(true) = bin_expr.left.as_pure_bool(&self.expr_ctx) {
-                self.changed = true;
-                report_change!("evaluate: `true || foo` => `foo`");
-
-                *e = *bin_expr.right.take();
-            }
-        } else {
-            debug_assert_eq!(bin_expr.op, op!("&&"));
-
-            if let Value::Known(v) = bin_expr.right.as_pure_bool(&self.expr_ctx) {
-                if v {
-                    self.changed = true;
-                    report_change!("evaluate: `foo && true` => `foo` (bool ctx)");
-
-                    *e = *bin_expr.left.take();
-                } else {
-                    self.changed = true;
-                    report_change!("evaluate: `foo && false` => `foo, false`");
-
-                    *e = SeqExpr {
-                        span: bin_expr.span,
-                        exprs: vec![bin_expr.left.clone(), bin_expr.right.clone()],
-                    }
-                    .into();
-                }
-                return;
-            }
-
-            if let Value::Known(true) = bin_expr.left.as_pure_bool(&self.expr_ctx) {
-                self.changed = true;
-                report_change!("evaluate: `true && foo` => `foo`");
-
-                *e = *bin_expr.right.take();
-            }
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         }
     }
 
@@ -653,6 +790,10 @@ impl Pure<'_> {
     }
 
     pub(super) fn eval_member_expr(&mut self, e: &mut Expr) {
+        if self.ctx.contains(Ctx::IN_OPT_CHAIN) {
+            return;
+        }
+
         let member_expr = match e {
             Expr::Member(x) => x,
             _ => return,
@@ -685,7 +826,7 @@ impl Pure<'_> {
 
             if let AssignTarget::Simple(SimpleAssignTarget::Ident(a_left)) = a_left {
                 if let Expr::Ident(b_id) = b {
-                    if b_id.to_id() == a_left.id.to_id() {
+                    if b_id.ctxt == a_left.id.ctxt && b_id.sym == a_left.id.sym {
                         report_change!("evaluate: Trivial: `{}`", a_left.id);
                         *b = *a_right.clone();
                         self.changed = true;
@@ -704,7 +845,11 @@ impl Pure<'_> {
             return;
         }
 
-        if self.ctx.in_delete || self.ctx.is_update_arg || self.ctx.is_lhs_of_assign {
+        if self.ctx.intersects(
+            Ctx::IN_DELETE
+                .union(Ctx::IS_UPDATE_ARG)
+                .union(Ctx::IS_LHS_OF_ASSIGN),
+        ) {
             return;
         }
 
@@ -726,6 +871,8 @@ impl Pure<'_> {
                 },
                 _ => return,
             },
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         };
 
         let new_val = match &*method {
@@ -741,14 +888,10 @@ impl Pure<'_> {
                     }
 
                     let idx = value.round() as i64 as usize;
-                    let c = s.value.chars().nth(idx);
+                    let c = s.value.to_ill_formed_utf16().nth(idx);
 
                     match c {
                         Some(v) => {
-                            let mut b = [0; 2];
-                            v.encode_utf16(&mut b);
-                            let v = b[0];
-
                             self.changed = true;
                             report_change!(
                                 "evaluate: Evaluated `charCodeAt` of a string literal as `{}`",
@@ -766,7 +909,7 @@ impl Pure<'_> {
                             report_change!(
                                 "evaluate: Evaluated `charCodeAt` of a string literal as `NaN`",
                             );
-                            *e = Ident::new("NaN".into(), e.span(), SyntaxContext::empty()).into()
+                            *e = Ident::new(atom!("NaN"), e.span(), SyntaxContext::empty()).into()
                         }
                     }
                 }
@@ -782,20 +925,49 @@ impl Pure<'_> {
                     }
 
                     let idx = value.round() as i64 as usize;
-                    let c = s.value.chars().nth(idx);
-                    match c {
+                    let mut c = s.value.to_ill_formed_utf16().skip(idx).peekable();
+                    match c.next() {
                         Some(v) => {
-                            self.changed = true;
-                            report_change!(
-                                "evaluate: Evaluated `codePointAt` of a string literal as `{}`",
-                                v
-                            );
-                            *e = Lit::Num(Number {
-                                span: call.span,
-                                value: v as usize as f64,
-                                raw: None,
-                            })
-                            .into()
+                            match (v, c.peek()) {
+                                (high, Some(&low))
+                                    if is_high_surrogate(high as u32)
+                                        && is_low_surrogate(low as u32) =>
+                                {
+                                    // Decode surrogate pair
+                                    let code_point = swc_ecma_utils::unicode::pair_to_code_point(
+                                        high as u32,
+                                        low as u32,
+                                    );
+                                    self.changed = true;
+                                    report_change!(
+                                        "evaluate: Evaluated `codePointAt` of a string literal as \
+                                         `{}`",
+                                        code_point
+                                    );
+                                    *e = Lit::Num(Number {
+                                        span: call.span,
+                                        value: code_point as f64,
+                                        raw: None,
+                                    })
+                                    .into();
+                                    return;
+                                }
+                                _ => {
+                                    // Not a surrogate pair
+                                    self.changed = true;
+                                    report_change!(
+                                        "evaluate: Evaluated `codePointAt` of a string literal as \
+                                         `{}`",
+                                        v
+                                    );
+                                    *e = Lit::Num(Number {
+                                        span: call.span,
+                                        value: v as usize as f64,
+                                        raw: None,
+                                    })
+                                    .into()
+                                }
+                            }
                         }
                         None => {
                             self.changed = true;
@@ -803,7 +975,7 @@ impl Pure<'_> {
                                 "evaluate: Evaluated `codePointAt` of a string literal as `NaN`",
                             );
                             *e = Ident::new(
-                                "NaN".into(),
+                                atom!("NaN"),
                                 e.span(),
                                 SyntaxContext::empty().apply_mark(self.marks.unresolved_mark),
                             )

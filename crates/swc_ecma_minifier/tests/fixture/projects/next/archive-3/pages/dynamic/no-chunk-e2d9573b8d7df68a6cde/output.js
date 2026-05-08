@@ -142,20 +142,24 @@
                 return target;
             }
             exports.default = function(dynamicOptions, options) {
-                var loadableOptions, loadableFn = _loadable.default, loadableOptions1 = {
+                var loadableFn = _loadable.default, loadableOptions = {
                     // A loading component is not required, so we default it
                     loading: function(_ref) {
                         return _ref.error, _ref.isLoading, _ref.pastDelay, null;
                     }
                 };
-                if (dynamicOptions instanceof Promise ? loadableOptions1.loader = function() {
+                if (dynamicOptions instanceof Promise ? loadableOptions.loader = function() {
                     return dynamicOptions;
-                } : "function" == typeof dynamicOptions ? loadableOptions1.loader = dynamicOptions : "object" == typeof dynamicOptions && (loadableOptions1 = _objectSpread(_objectSpread({}, loadableOptions1), dynamicOptions)), (loadableOptions1 = _objectSpread(_objectSpread({}, loadableOptions1), options)).loadableGenerated && (loadableOptions1 = _objectSpread(_objectSpread({}, loadableOptions1), loadableOptions1.loadableGenerated), delete loadableOptions1.loadableGenerated), "boolean" == typeof loadableOptions1.ssr) {
-                    if (!loadableOptions1.ssr) return delete loadableOptions1.ssr, loadableOptions = loadableOptions1, // Removing webpack and modules means react-loadable won't try preloading
-                    delete loadableOptions.webpack, delete loadableOptions.modules, loadableFn(loadableOptions);
-                    delete loadableOptions1.ssr;
+                } : "function" == typeof dynamicOptions ? loadableOptions.loader = dynamicOptions : "object" == typeof dynamicOptions && (loadableOptions = _objectSpread(_objectSpread({}, loadableOptions), dynamicOptions)), (loadableOptions = _objectSpread(_objectSpread({}, loadableOptions), options)).loadableGenerated && (loadableOptions = _objectSpread(_objectSpread({}, loadableOptions), loadableOptions.loadableGenerated), delete loadableOptions.loadableGenerated), "boolean" == typeof loadableOptions.ssr) {
+                    if (!loadableOptions.ssr) {
+                        delete loadableOptions.ssr;
+                        var loadableOptions1 = loadableOptions;
+                        return(// Removing webpack and modules means react-loadable won't try preloading
+                        delete loadableOptions1.webpack, delete loadableOptions1.modules, loadableFn(loadableOptions1));
+                    }
+                    delete loadableOptions.ssr;
                 }
-                return loadableFn(loadableOptions1);
+                return loadableFn(loadableOptions);
             }, _interopRequireDefault(__webpack_require__(2735));
             var _loadable = _interopRequireDefault(__webpack_require__(880));
             function _interopRequireDefault(obj) {
@@ -166,13 +170,12 @@
         /***/ },
         /***/ 8183: /***/ function(__unused_webpack_module, exports, __webpack_require__) {
             "use strict";
+            var obj;
             Object.defineProperty(exports, "__esModule", {
                 value: !0
-            }), exports.LoadableContext = void 0;
-            var obj, LoadableContext = ((obj = __webpack_require__(2735)) && obj.__esModule ? obj : {
+            }), exports.LoadableContext = void 0, exports.LoadableContext = ((obj = __webpack_require__(2735)) && obj.__esModule ? obj : {
                 default: obj
             }).default.createContext(null);
-            exports.LoadableContext = LoadableContext;
         /***/ },
         /***/ 880: /***/ function(__unused_webpack_module, exports, __webpack_require__) {
             "use strict";
@@ -316,9 +319,9 @@
                     if (!initialized && "function" == typeof opts.webpack) {
                         var moduleIds = opts.webpack();
                         READY_INITIALIZERS.push(function(ids) {
-                            var _step, _iterator = function(o, allowArrayLike) {
-                                if ("undefined" == typeof Symbol || null == o[Symbol.iterator]) {
-                                    if (Array.isArray(o) || (it = function(o, minLen) {
+                            var _step, _iterator = function(o) {
+                                if ("u" < typeof Symbol || null == o[Symbol.iterator]) {
+                                    if (Array.isArray(o) || (it = function(o) {
                                         if (o) {
                                             if ("string" == typeof o) return _arrayLikeToArray(o, void 0);
                                             var n = Object.prototype.toString.call(o).slice(8, -1);
@@ -440,7 +443,7 @@
             /* harmony import */ var react_jsx_runtime__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(4512), _Users_timneutkens_projects_next_js_node_modules_babel_runtime_helpers_esm_classCallCheck__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(8436), _Users_timneutkens_projects_next_js_node_modules_babel_runtime_helpers_esm_createClass__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(8370), _Users_timneutkens_projects_next_js_node_modules_babel_runtime_helpers_esm_assertThisInitialized__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(2911), _Users_timneutkens_projects_next_js_node_modules_babel_runtime_helpers_esm_inherits__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(3001), _Users_timneutkens_projects_next_js_node_modules_babel_runtime_helpers_esm_possibleConstructorReturn__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(7130), _Users_timneutkens_projects_next_js_node_modules_babel_runtime_helpers_esm_getPrototypeOf__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(2374), _Users_timneutkens_projects_next_js_node_modules_babel_runtime_helpers_esm_defineProperty__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(9178), Welcome = /*#__PURE__*/ function(_React$Component) {
                 (0, _Users_timneutkens_projects_next_js_node_modules_babel_runtime_helpers_esm_inherits__WEBPACK_IMPORTED_MODULE_4__ /* .default */ .Z)(Welcome, _React$Component);
                 var hasNativeReflectConstruct, _super = (hasNativeReflectConstruct = function() {
-                    if ("undefined" == typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
+                    if ("u" < typeof Reflect || !Reflect.construct || Reflect.construct.sham) return !1;
                     if ("function" == typeof Proxy) return !0;
                     try {
                         return Date.prototype.toString.call(Reflect.construct(Date, [], function() {})), !0;

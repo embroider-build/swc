@@ -1,9 +1,5 @@
 //// [file.js]
-/**
- * @namespace myTypes
- * @global
- * @type {Object<string,*>}
- */ "use strict";
+"use strict";
 Object.defineProperty(exports, "__esModule", {
     value: true
 });
@@ -13,7 +9,11 @@ Object.defineProperty(exports, "myTypes", {
         return myTypes;
     }
 });
-const myTypes = {
+/**
+ * @namespace myTypes
+ * @global
+ * @type {Object<string,*>}
+ */ const myTypes = {
 };
 //// [file2.js]
 "use strict";
@@ -23,14 +23,14 @@ Object.defineProperty(exports, "__esModule", {
 function _export(target, all) {
     for(var name in all)Object.defineProperty(target, name, {
         enumerable: true,
-        get: all[name]
+        get: Object.getOwnPropertyDescriptor(all, name).get
     });
 }
 _export(exports, {
-    testFn: function() {
+    get testFn () {
         return testFn;
     },
-    testFnTypes: function() {
+    get testFnTypes () {
         return testFnTypes;
     }
 });

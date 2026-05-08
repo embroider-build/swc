@@ -134,11 +134,7 @@ impl Annotation {
 
     pub fn len(&self) -> usize {
         // Account for usize underflows
-        if self.end_col > self.start_col {
-            self.end_col - self.start_col
-        } else {
-            self.start_col - self.end_col
-        }
+        self.end_col.abs_diff(self.start_col)
     }
 
     pub fn has_label(&self) -> bool {
@@ -184,8 +180,12 @@ pub struct StyledString {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(u32)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(u32))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::ast_node::Encode, ::ast_node::Decode)
+)]
 pub enum Style {
     MainHeaderMsg,
     HeaderMsg,

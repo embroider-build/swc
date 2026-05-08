@@ -43,20 +43,19 @@ use pass::mangle_names::mangle_names;
 use swc_common::{comments::Comments, pass::Repeated, sync::Lrc, SourceMap, SyntaxContext};
 use swc_ecma_ast::*;
 use swc_ecma_transforms_optimization::debug_assert_valid;
-use swc_ecma_usage_analyzer::marks::Marks;
 use swc_ecma_visit::VisitMutWith;
 use swc_timer::timer;
 
 pub use crate::pass::global_defs::globals_defs;
+use crate::usage_analyzer::marks::Marks;
 use crate::{
     compress::{compressor, pure_optimizer, PureOptimizerConfig},
     metadata::info_marker,
-    mode::{Minification, Mode},
+    mode::Minification,
     option::{CompressOptions, ExtraOptions, MinifyOptions},
     pass::{
         global_defs, mangle_names::idents_to_preserve, mangle_props::mangle_properties,
         merge_exports::merge_exports, postcompress::postcompress_optimizer,
-        precompress::precompress_optimizer,
     },
     // program_data::ModuleInfo,
     timing::Timings,
@@ -68,6 +67,7 @@ mod macros;
 mod compress;
 mod debug;
 pub mod eval;
+mod hook_utils;
 #[doc(hidden)]
 pub mod js;
 mod metadata;
@@ -77,10 +77,11 @@ mod pass;
 mod program_data;
 mod size_hint;
 pub mod timing;
+mod usage_analyzer;
 mod util;
 
 pub mod marks {
-    pub use swc_ecma_usage_analyzer::marks::Marks;
+    pub use crate::usage_analyzer::marks::Marks;
 }
 
 const DISABLE_BUGGY_PASSES: bool = true;
@@ -123,13 +124,6 @@ pub fn optimize(
         }
     }
 
-    if let Some(_options) = &options.compress {
-        let _timer = timer!("precompress");
-
-        n.visit_mut_with(&mut precompress_optimizer());
-        debug_assert_valid(&n);
-    }
-
     if options.compress.is_some() {
         n.visit_mut_with(&mut info_marker(
             options.compress.as_ref(),
@@ -149,21 +143,6 @@ pub fn optimize(
         // TODO: enclose
         // toplevel = toplevel.wrap_enclose(options.enclose);
     }
-    if let Some(ref mut t) = timings {
-        t.section("compress");
-    }
-    if let Some(options) = &options.compress {
-        if options.unused {
-            perform_dce(&mut n, options, extra);
-            debug_assert_valid(&n);
-        }
-    }
-
-    // We don't need validation.
-
-    if let Some(ref mut _t) = timings {
-        // TODO: store `rename`
-    }
 
     // Noop.
     // https://github.com/mishoo/UglifyJS2/issues/2794
@@ -180,39 +159,31 @@ pub fn optimize(
         {
             let _timer = timer!("compress ast");
 
-            n.visit_mut_with(&mut compressor(
+            perform_dce(&mut n, c, marks);
+
+            n.mutate(&mut compressor(
                 marks,
                 c,
                 options.mangle.as_ref(),
                 &Minification,
-            ))
+            ));
+
+            perform_dce(&mut n, c, marks);
         }
 
         // Again, we don't need to validate ast
 
         let _timer = timer!("postcompress");
 
-        n.visit_mut_with(&mut postcompress_optimizer(c));
+        postcompress_optimizer(&mut n, c);
 
-        let mut pass = 0;
-        loop {
-            pass += 1;
-
-            let mut v = pure_optimizer(
-                c,
-                marks,
-                PureOptimizerConfig {
-                    force_str_for_tpl: Minification.force_str_for_tpl(),
-                    enable_join_vars: true,
-                    #[cfg(feature = "debug")]
-                    debug_infinite_loop: false,
-                },
-            );
-            n.visit_mut_with(&mut v);
-            if !v.changed() || c.passes <= pass {
-                break;
-            }
-        }
+        n.visit_mut_with(&mut pure_optimizer(
+            c,
+            marks,
+            PureOptimizerConfig {
+                enable_join_vars: true,
+            },
+        ));
     }
 
     if let Some(ref mut _t) = timings {
@@ -232,24 +203,25 @@ pub fn optimize(
 
         let preserved = idents_to_preserve(mangle, marks, &n);
 
-        let chars = CharFreq::compute(
-            &n,
-            &preserved,
-            SyntaxContext::empty().apply_mark(marks.unresolved_mark),
-        )
-        .compile();
+        let chars = if !mangle.disable_char_freq {
+            debug_assert!(preserved.idents.is_some());
+            CharFreq::compute(&n, preserved.idents.as_ref().unwrap()).compile()
+        } else {
+            debug_assert!(preserved.idents.is_none());
+            CharFreq::default().compile()
+        };
 
         mangle_names(
             &mut n,
             mangle,
-            preserved,
+            preserved.preserved,
             chars,
             extra.top_level_mark,
             extra.mangle_name_cache.clone(),
         );
 
         if let Some(property_mangle_options) = &mangle.props {
-            mangle_properties(&mut n, property_mangle_options.clone(), chars);
+            mangle_properties(&mut n, property_mangle_options, chars);
         }
     }
 
@@ -263,7 +235,11 @@ pub fn optimize(
     n
 }
 
-fn perform_dce(m: &mut Program, options: &CompressOptions, extra: &ExtraOptions) {
+fn perform_dce(m: &mut Program, options: &CompressOptions, extra: Marks) {
+    if !options.unused && !options.dead_code {
+        return;
+    }
+
     let _timer = timer!("remove dead code");
 
     let mut visitor = swc_ecma_transforms_optimization::simplify::dce::dce(

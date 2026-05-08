@@ -13,6 +13,12 @@ env:
   # https://github.com/actions/setup-node/issues/899#issuecomment-1819151595
   SKIP_YARN_COREPACK_CHECK: 1
 
+permissions:
+  contents: write
+  id-token: write
+  issues: write
+  pull-requests: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -41,77 +47,11 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  cargo-bump:
-    name: "Bump crates"
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-
-      - name: Install cargo-edit
-        uses: taiki-e/install-action@v2
-        if: inputs.skipBuild == false
-        with:
-          tool: cargo-edit@0.12.2
-
-      - run: cargo bump
-        if: inputs.skipBuild == false
-        continue-on-error: true
-
-      - uses: webfactory/ssh-agent@v0.9.0
-        if: inputs.skipBuild == false
-        with:
-          ssh-private-key: ${{ secrets.SWC_BOT_SSH }}
-
-      - name: Push bump commit
-        if: inputs.skipBuild == false
-        run: |
-          git push git@github.com:swc-project/swc.git --no-verify
-
-  publish-cargo:
-    name: "Publish cargo crates"
-    runs-on: ubuntu-latest
-    needs:
-      - cargo-bump
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: ./.github/actions/setup-node
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-
-      - name: Install cargo-edit
-        if: inputs.skipBuild == false
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-edit@0.12.2
-
-      - name: Install cargo-mono
-        if: inputs.skipBuild == false
-        uses: taiki-e/install-action@v2
-        with:
-          tool: cargo-mono@0.4.1
-
-      - name: Update constant of swc_core
-        if: inputs.skipBuild == false
-        run: npx ts-node .github/bot/src/cargo/update-constants.ts
-
-      - name: Publish crates
-        if: inputs.skipBuild == false
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
-        run: |
-          cargo mono publish --no-verify
-
   determine-nightly-version:
     name: "Determine nightly version"
     runs-on: ubuntu-latest
-
+    # Run only on main branch
+    if: github.ref == 'refs/heads/main'
     outputs:
       version: ${{ steps.determine-nightly-version.outputs.version }}
     steps:
@@ -126,7 +66,6 @@ jobs:
     name: "Git tag nightly"
     runs-on: ubuntu-latest
     needs:
-      - publish-cargo
       - determine-nightly-version
     steps:
       - uses: actions/checkout@v4
@@ -144,17 +83,20 @@ jobs:
         package:
           - core
           - html
+          - minifier
+          - react-compiler
     needs:
       - git-tag-nightly
-      - publish-cargo
       - determine-nightly-version
     uses: ./.github/workflows/publish-npm-package.yml
     secrets: inherit
     with:
+      buildType: "nightly"
       package: ${{ matrix.package }}
       version: ${{ needs.determine-nightly-version.outputs.version }}
       buildCli: true
       skipBuild: ${{ inputs.skipBuild || false }}
+      publishWasm: ${{ matrix.package == 'core' }}
       skipPublishing: ${{ github.event_name == 'pull_request' }}
 
   run-ecosystem-ci-with-nightly:
@@ -173,8 +115,9 @@ jobs:
   git-tag-stable:
     name: "Git tag stable"
     runs-on: ubuntu-latest
+    if: inputs.onlyNightly == false
     needs:
-      - publish-cargo
+      - git-tag-nightly
       - run-ecosystem-ci-with-nightly
     steps:
       - uses: actions/checkout@v4
@@ -184,6 +127,22 @@ jobs:
           version: ${{ inputs.version }}
           ssh-private-key: ${{ secrets.SWC_BOT_SSH }}
 
+  manage-milestone:
+    name: "Manage milestone for ${{ inputs.version }}"
+    runs-on: ubuntu-latest
+    if: inputs.onlyNightly == false
+    needs:
+      - git-tag-stable
+      - publish-npm-stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-node
+      - name: Manage milestone
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          npx ts-node .github/bot/src/milestone-manager.ts ${{ inputs.version }}
+
   publish-npm-stable:
     name: "Publish ${{ matrix.package }}@${{ inputs.version || 'stable' }} to npm"
     strategy:
@@ -192,16 +151,19 @@ jobs:
         package:
           - core
           - html
+          - minifier
+          - react-compiler
     needs:
-      - publish-cargo
       - run-ecosystem-ci-with-nightly
       - git-tag-stable
 
     uses: ./.github/workflows/publish-npm-package.yml
     secrets: inherit
     with:
+      buildType: "stable"
       package: ${{ matrix.package }}
       version: ${{ inputs.version }}
       buildCli: true
       skipBuild: ${{ inputs.skipBuild || inputs.onlyNightly || false }}
+      publishWasm: ${{ matrix.package == 'core' }}
       skipPublishing: ${{ github.event_name == 'pull_request' }}

@@ -8,10 +8,9 @@ use std::{
 use swc_ecma_codegen::{Config, Emitter};
 use swc_ecma_parser::{EsSyntax, Parser, StringInput};
 use swc_ecma_transforms_base::{fixer::fixer, hygiene, resolver};
-use swc_ecma_transforms_compat::{
-    es2015::{arrow, classes},
-    es3::property_literals,
-};
+use swc_ecma_transforms_compat::es2015::{arrow, classes};
+#[cfg(feature = "es3")]
+use swc_ecma_transforms_compat::es3::property_literals;
 use swc_ecma_transforms_testing::{parse_options, test, test_fixture, FixtureTestConfig, Tester};
 use testing::NormalizedOutput;
 
@@ -405,6 +404,7 @@ class App extends React.Component {
 "#
 );
 
+#[cfg(feature = "es3")]
 test!(
     module,
     ::swc_ecma_parser::Syntax::Es(::swc_ecma_parser::EsSyntax {
@@ -765,6 +765,161 @@ test!(
     r#"<div>&nbsp;</div>;"#
 );
 
+// See https://github.com/swc-project/swc/issues/11392
+// HTML entity-encoded whitespace should not be trimmed even in multiline JSX
+test!(
+    module,
+    ::swc_ecma_parser::Syntax::Es(::swc_ecma_parser::EsSyntax {
+        jsx: true,
+        ..Default::default()
+    }),
+    |t| tr(t, Default::default(), Mark::fresh(Mark::root())),
+    react_should_not_strip_entity_encoded_whitespace_multiline,
+    r#"<example>
+  foo
+  <hr />&#32;
+  bar
+</example>;"#
+);
+
+// Numeric entity &#32; should be preserved as space
+test!(
+    module,
+    ::swc_ecma_parser::Syntax::Es(::swc_ecma_parser::EsSyntax {
+        jsx: true,
+        ..Default::default()
+    }),
+    |t| tr(t, Default::default(), Mark::fresh(Mark::root())),
+    react_should_preserve_entity_encoded_space,
+    r#"<div>&#32;content</div>;"#
+);
+
+// Numeric entity &#32; at end of line should be preserved
+test!(
+    module,
+    ::swc_ecma_parser::Syntax::Es(::swc_ecma_parser::EsSyntax {
+        jsx: true,
+        ..Default::default()
+    }),
+    |t| tr(t, Default::default(), Mark::fresh(Mark::root())),
+    react_should_preserve_trailing_entity_encoded_space,
+    r#"<div>content&#32;</div>;"#
+);
+
+// See https://github.com/swc-project/swc/issues/11520
+// Whitespace before HTML entity should be preserved when preceded by expression
+test!(
+    module,
+    ::swc_ecma_parser::Syntax::Es(::swc_ecma_parser::EsSyntax {
+        jsx: true,
+        ..Default::default()
+    }),
+    |t| tr(t, Default::default(), Mark::fresh(Mark::root())),
+    react_should_preserve_whitespace_before_entity,
+    r#"const variable = 'foo';
+const x = <div>{variable} &ndash; something</div>;"#
+);
+
+// See https://github.com/swc-project/swc/issues/11541
+// First-line leading whitespace should be preserved for entity-aware JSX text.
+test!(
+    module,
+    ::swc_ecma_parser::Syntax::Es(::swc_ecma_parser::EsSyntax {
+        jsx: true,
+        ..Default::default()
+    }),
+    |t| tr(t, Default::default(), Mark::fresh(Mark::root())),
+    react_should_preserve_first_line_leading_whitespace_before_entity,
+    r#"const x = <span> &#8226;
+text</span>;"#
+);
+
+// Non-first lines should still trim plain leading whitespace.
+test!(
+    module,
+    ::swc_ecma_parser::Syntax::Es(::swc_ecma_parser::EsSyntax {
+        jsx: true,
+        ..Default::default()
+    }),
+    |t| tr(t, Default::default(), Mark::fresh(Mark::root())),
+    react_should_trim_non_first_line_leading_whitespace_before_entity,
+    r#"const x = <span>
+ &#8226; text
+</span>;"#
+);
+
+// Non-first lines should preserve leading whitespace if it comes from entities.
+test!(
+    module,
+    ::swc_ecma_parser::Syntax::Es(::swc_ecma_parser::EsSyntax {
+        jsx: true,
+        ..Default::default()
+    }),
+    |t| tr(t, Default::default(), Mark::fresh(Mark::root())),
+    react_should_preserve_non_first_line_entity_leading_whitespace,
+    r#"const x = <span>
+&#32;&#8226; text
+</span>;"#
+);
+
+// Intermediate lines should trim plain trailing whitespace.
+test!(
+    module,
+    ::swc_ecma_parser::Syntax::Es(::swc_ecma_parser::EsSyntax {
+        jsx: true,
+        ..Default::default()
+    }),
+    |t| tr(t, Default::default(), Mark::fresh(Mark::root())),
+    react_should_trim_intermediate_line_trailing_plain_whitespace_after_entity,
+    r#"const x = <span>
+&#8226; 
+text
+</span>;"#
+);
+
+// Intermediate lines should preserve trailing whitespace from entities.
+test!(
+    module,
+    ::swc_ecma_parser::Syntax::Es(::swc_ecma_parser::EsSyntax {
+        jsx: true,
+        ..Default::default()
+    }),
+    |t| tr(t, Default::default(), Mark::fresh(Mark::root())),
+    react_should_preserve_intermediate_line_trailing_entity_whitespace,
+    r#"const x = <span>
+&#8226;&#32;
+text
+</span>;"#
+);
+
+// Final lines should trim plain leading whitespace.
+test!(
+    module,
+    ::swc_ecma_parser::Syntax::Es(::swc_ecma_parser::EsSyntax {
+        jsx: true,
+        ..Default::default()
+    }),
+    |t| tr(t, Default::default(), Mark::fresh(Mark::root())),
+    react_should_trim_final_line_leading_plain_whitespace_before_entity,
+    r#"const x = <span>
+foo
+ &#8226;</span>;"#
+);
+
+// Final lines should preserve leading whitespace when it comes from entities.
+test!(
+    module,
+    ::swc_ecma_parser::Syntax::Es(::swc_ecma_parser::EsSyntax {
+        jsx: true,
+        ..Default::default()
+    }),
+    |t| tr(t, Default::default(), Mark::fresh(Mark::root())),
+    react_should_preserve_final_line_leading_entity_whitespace_before_entity_char,
+    r#"const x = <span>
+foo
+&#32;&#8226;</span>;"#
+);
+
 test!(
     module,
     // Comments are currently stripped out
@@ -955,9 +1110,129 @@ test!(
 
 #[test]
 fn jsx_text() {
-    assert_eq!(jsx_text_to_str(" ".into()), *" ");
-    assert_eq!(jsx_text_to_str("Hello world".into()), *"Hello world");
-    //    assert_eq!(jsx_text_to_str(" \n".into()), *" ");
+    // Basic cases
+    assert_eq!(jsx_text_to_str(" "), *" ");
+    assert_eq!(jsx_text_to_str("Hello world"), *"Hello world");
+
+    // Single line with whitespace at edges (should keep as-is)
+    assert_eq!(jsx_text_to_str("  Hello world  "), *"  Hello world  ");
+
+    // Empty string
+    assert_eq!(jsx_text_to_str(""), *"");
+
+    // Only whitespace (single line)
+    assert_eq!(jsx_text_to_str("   "), *"   ");
+    assert_eq!(jsx_text_to_str("\t\t"), *"\t\t");
+
+    // Multi-line cases
+    assert_eq!(jsx_text_to_str("Hello\nworld"), *"Hello world");
+    assert_eq!(jsx_text_to_str("  Hello  \n  world  "), *"  Hello world  ");
+
+    // Multi-line with empty lines
+    assert_eq!(jsx_text_to_str("Hello\n\nworld"), *"Hello world");
+    assert_eq!(jsx_text_to_str("Hello\n  \n  world"), *"Hello world");
+
+    // Leading/trailing whitespace on multiple lines
+    assert_eq!(
+        jsx_text_to_str("  Hello  \n  world  \n  test  "),
+        *"  Hello world test  "
+    );
+
+    // Only whitespace (multi-line) should return empty
+    assert_eq!(jsx_text_to_str(" \n "), *"");
+    assert_eq!(jsx_text_to_str("\n\n\n"), *"");
+    assert_eq!(jsx_text_to_str("  \n  \n  "), *"");
+
+    // Different line endings
+    assert_eq!(jsx_text_to_str("Hello\rworld"), *"Hello world");
+    assert_eq!(jsx_text_to_str("Hello\r\nworld"), *"Hello world");
+
+    // Mixed whitespace types
+    assert_eq!(
+        jsx_text_to_str("\t Hello \t\n\t world \t"),
+        *"\t Hello world \t"
+    );
+}
+
+#[test]
+fn jsx_attr_str_preserves_line_terminators() {
+    let cases = [
+        ("bruh\nbruh", "bruh\nbruh"),
+        ("bruh\rbruh", "bruh\rbruh"),
+        ("bruh\r\nbruh", "bruh\r\nbruh"),
+    ];
+
+    for (input, expected) in cases {
+        assert_eq!(
+            transform_jsx_attr_str(Wtf8::from_str(input)),
+            Wtf8Buf::from_str(expected)
+        );
+    }
+}
+
+#[test]
+fn jsx_text_with_raw_entity_whitespace_matrix() {
+    fn convert(value: &str, raw: &str) -> String {
+        let value: Atom = value.into();
+        let raw: Atom = raw.into();
+
+        jsx_text_to_str_with_raw(&value, &raw)
+            .to_string_lossy()
+            .into_owned()
+    }
+
+    let cases = [
+        // Single line keeps all whitespace.
+        (" • ", " &#8226; ", " • "),
+        // First line keeps plain leading whitespace (issue #11541).
+        (" •\ntext", " &#8226;\ntext", " • text"),
+        (" •\rtext", " &#8226;\rtext", " • text"),
+        (" •\r\ntext", " &#8226;\r\ntext", " • text"),
+        // Non-first line trims plain leading whitespace.
+        ("\n • text", "\n &#8226; text", "• text"),
+        // Non-first line keeps leading whitespace from entity.
+        ("\n • text", "\n&#32;&#8226; text", " • text"),
+        // Intermediate line trims plain trailing whitespace.
+        ("• \ntext", "&#8226; \ntext", "• text"),
+        // Intermediate line keeps trailing whitespace from entity.
+        ("• \ntext", "&#8226;&#32;\ntext", "•  text"),
+        // Final line trims plain leading whitespace in multiline input.
+        ("foo\n •", "foo\n &#8226;", "foo •"),
+        // Final line keeps leading whitespace from entity in multiline input.
+        ("foo\n •", "foo\n&#32;&#8226;", "foo  •"),
+        // Entity-only middle line should be preserved.
+        ("\n \n", "\n&#32;\n", " "),
+    ];
+
+    for (value, raw, expected) in cases {
+        assert_eq!(
+            convert(value, raw),
+            expected,
+            "value={value:?}, raw={raw:?}"
+        );
+    }
+}
+
+#[test]
+fn build_entity_mask_valid_invalid_and_numeric_entities() {
+    assert_eq!(
+        build_entity_mask("a • b", "a &#8226; b"),
+        vec![false, false, true, false, false]
+    );
+    assert_eq!(
+        build_entity_mask("A A A", "A&#32;A&#x20;A"),
+        vec![false, true, false, true, false]
+    );
+    assert_eq!(
+        build_entity_mask("\u{00a0}", "&nbsp;"),
+        vec![true],
+        "named entities should be marked"
+    );
+    assert_eq!(
+        build_entity_mask("&bogus;", "&bogus;"),
+        vec![false; "&bogus;".chars().count()],
+        "invalid entities must not be marked"
+    );
 }
 
 // https://github.com/swc-project/swc/issues/542
@@ -1110,7 +1385,7 @@ fn test_script(src: &str, output: &Path, options: Options) {
     Tester::run(|tester| {
         let fm = tester
             .cm
-            .new_source_file(FileName::Real("input.js".into()).into(), src.into());
+            .new_source_file(FileName::Real("input.js".into()).into(), src.to_string());
 
         let syntax = Syntax::Es(EsSyntax {
             jsx: true,

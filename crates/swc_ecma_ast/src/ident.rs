@@ -4,8 +4,10 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
+use once_cell::sync::Lazy;
 use phf::phf_set;
-use swc_atoms::{js_word, Atom};
+use rustc_hash::FxHashSet;
+use swc_atoms::{atom, Atom, UnsafeAtom};
 use swc_common::{
     ast_node, util::take::Take, BytePos, EqIgnoreSpan, Mark, Span, Spanned, SyntaxContext, DUMMY_SP,
 };
@@ -20,26 +22,39 @@ use crate::{typescript::TsTypeAnn, Expr};
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
 #[cfg_attr(
-    feature = "rkyv",
-    archive(bound(serialize = "__S: rkyv::ser::ScratchSpace + rkyv::ser::Serializer"))
+    feature = "rkyv-impl",
+    rkyv(serialize_bounds(__S: rkyv::ser::Writer + rkyv::ser::Allocator,
+        __S::Error: rkyv::rancor::Source))
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
 #[cfg_attr(
     feature = "rkyv-impl",
-    archive_attr(check_bytes(bound = "__C: rkyv::validation::ArchiveContext, <__C as \
-                                      rkyv::Fallible>::Error: std::error::Error"))
+    rkyv(deserialize_bounds(__D::Error: rkyv::rancor::Source))
 )]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(
+    feature = "rkyv-impl",
+    rkyv(bytecheck(bounds(
+        __C: rkyv::validation::ArchiveContext,
+        __C::Error: rkyv::rancor::Source
+    )))
+)]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
 #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::swc_common::Encode, ::swc_common::Decode)
+)]
 pub struct BindingIdent {
     #[cfg_attr(feature = "serde-impl", serde(flatten))]
-    #[cfg_attr(feature = "__rkyv", omit_bounds)]
-    #[cfg_attr(feature = "__rkyv", archive_attr(omit_bounds))]
+    #[cfg_attr(feature = "__rkyv", rkyv(omit_bounds))]
     pub id: Ident,
 
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "typeAnnotation"))]
-    #[cfg_attr(feature = "__rkyv", omit_bounds)]
-    #[cfg_attr(feature = "__rkyv", archive_attr(omit_bounds))]
+    #[cfg_attr(feature = "__rkyv", rkyv(omit_bounds))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub type_ann: Option<Box<TsTypeAnn>>,
 }
 
@@ -164,11 +179,12 @@ bridge_from!(BindingIdent, Ident, Id);
 /// distinguish identifiers.
 #[ast_node("Identifier")]
 #[derive(Eq, Hash, Default)]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct Ident {
-    #[cfg_attr(feature = "__rkyv", omit_bounds)]
+    #[cfg_attr(feature = "__rkyv", rkyv(omit_bounds))]
     pub span: Span,
 
-    #[cfg_attr(feature = "__rkyv", omit_bounds)]
+    #[cfg_attr(feature = "__rkyv", rkyv(omit_bounds))]
     pub ctxt: SyntaxContext,
 
     #[cfg_attr(feature = "serde-impl", serde(rename = "value"))]
@@ -253,9 +269,9 @@ impl Ident {
         (self.sym.clone(), self.ctxt)
     }
 
-    /// Returns true if `c` is a valid character for an identifier start.
     #[inline]
-    pub fn is_valid_start(c: char) -> bool {
+    pub fn is_valid_ascii_start(c: u8) -> bool {
+        debug_assert!(c.is_ascii());
         // This contains `$` (36) and `_` (95)
         const ASCII_START: Align64<[bool; 128]> = Align64([
             F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
@@ -264,18 +280,33 @@ impl Ident {
             T, T, T, T, F, F, F, F, T, F, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T,
             T, T, T, T, T, T, T, F, F, F, F, F,
         ]);
+        ASCII_START.0[c as usize]
+    }
 
-        if c.is_ascii() {
-            return ASCII_START.0[c as usize];
-        }
-
+    pub fn is_valid_non_ascii_start(c: char) -> bool {
+        debug_assert!(!c.is_ascii());
         unicode_id_start::is_id_start_unicode(c)
     }
 
-    /// Returns true if `c` is a valid character for an identifier part after
-    /// start.
+    /// Returns true if `c` is a valid character for an identifier start.
     #[inline]
-    pub fn is_valid_continue(c: char) -> bool {
+    pub fn is_valid_start(c: char) -> bool {
+        if c.is_ascii() {
+            Self::is_valid_ascii_start(c as u8)
+        } else {
+            Self::is_valid_non_ascii_start(c)
+        }
+    }
+
+    #[inline]
+    pub fn is_valid_non_ascii_continue(c: char) -> bool {
+        debug_assert!(!c.is_ascii());
+        unicode_id_start::is_id_continue_unicode(c)
+    }
+
+    #[inline]
+    pub fn is_valid_ascii_continue(c: u8) -> bool {
+        debug_assert!(c.is_ascii());
         // This contains `$` (36)
         const ASCII_CONTINUE: Align64<[bool; 128]> = Align64([
             F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F, F,
@@ -284,12 +315,18 @@ impl Ident {
             T, T, T, T, F, F, F, F, T, F, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T, T,
             T, T, T, T, T, T, T, F, F, F, F, F,
         ]);
+        ASCII_CONTINUE.0[c as usize]
+    }
 
+    /// Returns true if `c` is a valid character for an identifier part after
+    /// start.
+    #[inline]
+    pub fn is_valid_continue(c: char) -> bool {
         if c.is_ascii() {
-            return ASCII_CONTINUE.0[c as usize];
+            Self::is_valid_ascii_continue(c as u8)
+        } else {
+            Self::is_valid_non_ascii_continue(c)
         }
-
-        unicode_id_start::is_id_continue_unicode(c)
     }
 
     /// Alternative for `toIdentifier` of babel.
@@ -368,7 +405,7 @@ impl Ident {
 
     #[inline]
     pub fn is_dummy(&self) -> bool {
-        self.sym == js_word!("") && self.span.is_dummy()
+        self.sym == atom!("") && self.span.is_dummy()
     }
 
     /// Create a new identifier with the given position.
@@ -381,8 +418,9 @@ impl Ident {
 #[ast_node("Identifier")]
 #[derive(Eq, Hash, Default, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct IdentName {
-    #[cfg_attr(feature = "__rkyv", omit_bounds)]
+    #[cfg_attr(feature = "__rkyv", rkyv(omit_bounds))]
     pub span: Span,
 
     #[cfg_attr(feature = "serde-impl", serde(rename = "value"))]
@@ -461,12 +499,45 @@ impl From<IdentName> for BindingIdent {
     }
 }
 
+/// UnsafeId is a wrapper around [Id] that does not allocate, but extremely
+/// unsafe.
+///
+/// Do not use this unless you know what you are doing.
+///
+/// **Currently, it's considered as a unstable API and may be changed in the
+/// future without a semver bump.**
+pub type UnsafeId = (UnsafeAtom, SyntaxContext);
+
+/// This is extremely unsafe so don't use it unless you know what you are doing.
+///
+/// # Safety
+///
+/// See [`UnsafeAtom::new`] for constraints.
+///
+/// **Currently, it's considered as a unstable API and may be changed in the
+/// future without a semver bump.**
+pub unsafe fn unsafe_id(id: &Id) -> UnsafeId {
+    (UnsafeAtom::new(&id.0), id.1)
+}
+
+/// This is extremely unsafe so don't use it unless you know what you are doing.
+///
+/// # Safety
+///
+/// See [`UnsafeAtom::new`] for constraints.
+///
+/// **Currently, it's considered as a unstable API and may be changed in the
+/// future without a semver bump.**
+pub unsafe fn unsafe_id_from_ident(id: &Ident) -> UnsafeId {
+    (UnsafeAtom::new(&id.sym), id.ctxt)
+}
+
 /// See [Ident] for documentation.
 pub type Id = (Atom, SyntaxContext);
 
 impl Take for Ident {
     fn dummy() -> Self {
-        Ident::new_no_ctxt(js_word!(""), DUMMY_SP)
+        Ident::new_no_ctxt(atom!(""), DUMMY_SP)
     }
 }
 
@@ -509,6 +580,7 @@ impl<'a> arbitrary::Arbitrary<'a> for Ident {
 #[ast_node("PrivateName")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct PrivateName {
     pub span: Span,
     #[cfg_attr(feature = "serde-impl", serde(rename = "value"))]
@@ -531,6 +603,14 @@ impl Ident {
         }
     }
 
+    /// Creates a new private identifier. A private identifier is an identifier
+    /// that is guaranteed to be unique.
+    ///
+    /// See https://swc.rs/docs/contributing/es-commons/variable-management for more details.
+    ///
+    /// Note: This method requires configuring
+    /// [GLOBALS](`swc_common::GLOBALS`) because this method use [`Mark::new`]
+    /// internally.
     #[inline(never)]
     pub fn new_private(sym: Atom, span: Span) -> Self {
         Self::new(sym, span, SyntaxContext::empty().apply_mark(Mark::new()))
@@ -541,110 +621,291 @@ impl Ident {
     }
 }
 
-static RESERVED: phf::Set<&str> = phf_set!(
-    "break",
-    "case",
-    "catch",
-    "class",
-    "const",
-    "continue",
-    "debugger",
-    "default",
-    "delete",
-    "do",
-    "else",
-    "enum",
-    "export",
-    "extends",
-    "false",
-    "finally",
-    "for",
-    "function",
-    "if",
-    "import",
-    "in",
-    "instanceof",
-    "new",
-    "null",
-    "package",
-    "return",
-    "super",
-    "switch",
-    "this",
-    "throw",
-    "true",
-    "try",
-    "typeof",
-    "var",
-    "void",
-    "while",
-    "with",
+macro_rules! gen_reserved_set {
+    ($set: ident, $set_atoms: ident, [$($item: expr),*]) => {
+        static $set: phf::Set<&str> = phf_set!($($item),*);
+        static $set_atoms: Lazy<FxHashSet<Atom>> = Lazy::new(|| {
+            let mut set = FxHashSet::with_capacity_and_hasher($set.len(), rustc_hash::FxBuildHasher);
+            $(
+                set.insert(atom!($item));
+            )*
+            set
+        });
+    };
+}
+
+gen_reserved_set!(
+    RESERVED,
+    RESERVED_ATOMS,
+    [
+        "break",
+        "case",
+        "catch",
+        "class",
+        "const",
+        "continue",
+        "debugger",
+        "default",
+        "delete",
+        "do",
+        "else",
+        "enum",
+        "export",
+        "extends",
+        "false",
+        "finally",
+        "for",
+        "function",
+        "if",
+        "import",
+        "in",
+        "instanceof",
+        "new",
+        "null",
+        "package",
+        "return",
+        "super",
+        "switch",
+        "this",
+        "throw",
+        "true",
+        "try",
+        "typeof",
+        "var",
+        "void",
+        "while",
+        "with"
+    ]
 );
 
-static RESSERVED_IN_STRICT_MODE: phf::Set<&str> = phf_set!(
-    "implements",
-    "interface",
-    "let",
-    "package",
-    "private",
-    "protected",
-    "public",
-    "static",
-    "yield",
+gen_reserved_set!(
+    RESSERVED_IN_STRICT_MODE,
+    RESSERVED_IN_STRICT_MODE_ATOMS,
+    [
+        "implements",
+        "interface",
+        "let",
+        "package",
+        "private",
+        "protected",
+        "public",
+        "static",
+        "yield"
+    ]
 );
 
-static RESSERVED_IN_STRICT_BIND: phf::Set<&str> = phf_set!("eval", "arguments",);
-
-static RESERVED_IN_ES3: phf::Set<&str> = phf_set!(
-    "abstract",
-    "boolean",
-    "byte",
-    "char",
-    "double",
-    "final",
-    "float",
-    "goto",
-    "int",
-    "long",
-    "native",
-    "short",
-    "synchronized",
-    "throws",
-    "transient",
-    "volatile",
+gen_reserved_set!(
+    RESSERVED_IN_STRICT_BIND,
+    RESSERVED_IN_STRICT_BIND_ATOMS,
+    ["eval", "arguments"]
 );
 
-pub trait EsReserved: AsRef<str> {
+gen_reserved_set!(
+    RESERVED_IN_ES3,
+    RESERVED_IN_ES3_ATOMS,
+    [
+        "abstract",
+        "boolean",
+        "byte",
+        "char",
+        "double",
+        "final",
+        "float",
+        "goto",
+        "int",
+        "long",
+        "native",
+        "short",
+        "synchronized",
+        "throws",
+        "transient",
+        "volatile"
+    ]
+);
+
+pub trait EsReserved {
+    fn is_reserved(&self) -> bool;
+    fn is_reserved_in_strict_mode(&self, is_module: bool) -> bool;
+    fn is_reserved_in_strict_bind(&self) -> bool;
+    fn is_reserved_in_es3(&self) -> bool;
+    fn is_reserved_in_any(&self) -> bool;
+}
+
+impl EsReserved for Atom {
     fn is_reserved(&self) -> bool {
-        RESERVED.contains(self.as_ref())
+        is_reserved_for_atom(self)
     }
 
     fn is_reserved_in_strict_mode(&self, is_module: bool) -> bool {
-        if is_module && self.as_ref() == "await" {
-            return true;
-        }
-        RESSERVED_IN_STRICT_MODE.contains(self.as_ref())
+        is_reserved_in_strict_mode_for_atom(self, is_module)
     }
 
     fn is_reserved_in_strict_bind(&self) -> bool {
-        RESSERVED_IN_STRICT_BIND.contains(self.as_ref())
+        is_reserved_in_strict_bind_for_atom(self)
     }
 
     fn is_reserved_in_es3(&self) -> bool {
-        RESERVED_IN_ES3.contains(self.as_ref())
+        is_reserved_in_es3_for_atom(self)
     }
 
     fn is_reserved_in_any(&self) -> bool {
-        RESERVED.contains(self.as_ref())
-            || RESSERVED_IN_STRICT_MODE.contains(self.as_ref())
-            || RESSERVED_IN_STRICT_BIND.contains(self.as_ref())
-            || RESERVED_IN_ES3.contains(self.as_ref())
+        is_reserved_in_any_for_atom(self)
+    }
+}
+impl EsReserved for IdentName {
+    fn is_reserved(&self) -> bool {
+        is_reserved_for_atom(&self.sym)
+    }
+
+    fn is_reserved_in_strict_mode(&self, is_module: bool) -> bool {
+        is_reserved_in_strict_mode_for_atom(&self.sym, is_module)
+    }
+
+    fn is_reserved_in_strict_bind(&self) -> bool {
+        is_reserved_in_strict_bind_for_atom(&self.sym)
+    }
+
+    fn is_reserved_in_es3(&self) -> bool {
+        is_reserved_in_es3_for_atom(&self.sym)
+    }
+
+    fn is_reserved_in_any(&self) -> bool {
+        is_reserved_in_any_for_atom(&self.sym)
+    }
+}
+impl EsReserved for Ident {
+    fn is_reserved(&self) -> bool {
+        is_reserved_for_atom(&self.sym)
+    }
+
+    fn is_reserved_in_strict_mode(&self, is_module: bool) -> bool {
+        is_reserved_in_strict_mode_for_atom(&self.sym, is_module)
+    }
+
+    fn is_reserved_in_strict_bind(&self) -> bool {
+        is_reserved_in_strict_bind_for_atom(&self.sym)
+    }
+
+    fn is_reserved_in_es3(&self) -> bool {
+        is_reserved_in_es3_for_atom(&self.sym)
+    }
+
+    fn is_reserved_in_any(&self) -> bool {
+        is_reserved_in_any_for_atom(&self.sym)
+    }
+}
+impl EsReserved for BindingIdent {
+    fn is_reserved(&self) -> bool {
+        is_reserved_for_atom(&self.sym)
+    }
+
+    fn is_reserved_in_strict_mode(&self, is_module: bool) -> bool {
+        is_reserved_in_strict_mode_for_atom(&self.sym, is_module)
+    }
+
+    fn is_reserved_in_strict_bind(&self) -> bool {
+        is_reserved_in_strict_bind_for_atom(&self.sym)
+    }
+
+    fn is_reserved_in_es3(&self) -> bool {
+        is_reserved_in_es3_for_atom(&self.sym)
+    }
+
+    fn is_reserved_in_any(&self) -> bool {
+        is_reserved_in_any_for_atom(&self.sym)
+    }
+}
+impl EsReserved for &'_ str {
+    fn is_reserved(&self) -> bool {
+        is_reserved_for_str(self)
+    }
+
+    fn is_reserved_in_strict_mode(&self, is_module: bool) -> bool {
+        is_reserved_in_strict_mode_for_str(self, is_module)
+    }
+
+    fn is_reserved_in_strict_bind(&self) -> bool {
+        is_reserved_in_strict_bind_for_str(self)
+    }
+
+    fn is_reserved_in_es3(&self) -> bool {
+        is_reserved_in_es3_for_str(self)
+    }
+
+    fn is_reserved_in_any(&self) -> bool {
+        is_reserved_in_any_for_str(self)
+    }
+}
+impl EsReserved for String {
+    fn is_reserved(&self) -> bool {
+        is_reserved_for_str(self)
+    }
+
+    fn is_reserved_in_strict_mode(&self, is_module: bool) -> bool {
+        is_reserved_in_strict_mode_for_str(self, is_module)
+    }
+
+    fn is_reserved_in_strict_bind(&self) -> bool {
+        is_reserved_in_strict_bind_for_str(self)
+    }
+
+    fn is_reserved_in_es3(&self) -> bool {
+        is_reserved_in_es3_for_str(self)
+    }
+
+    fn is_reserved_in_any(&self) -> bool {
+        is_reserved_in_any_for_str(self)
     }
 }
 
-impl EsReserved for Atom {}
-impl EsReserved for IdentName {}
-impl EsReserved for Ident {}
-impl EsReserved for BindingIdent {}
-impl EsReserved for &'_ str {}
-impl EsReserved for String {}
+fn is_reserved_for_str(n: impl AsRef<str>) -> bool {
+    RESERVED.contains(n.as_ref())
+}
+
+fn is_reserved_in_strict_mode_for_str(n: impl AsRef<str>, is_module: bool) -> bool {
+    if is_module && n.as_ref() == "await" {
+        return true;
+    }
+    RESSERVED_IN_STRICT_MODE.contains(n.as_ref())
+}
+
+fn is_reserved_in_strict_bind_for_str(n: impl AsRef<str>) -> bool {
+    RESSERVED_IN_STRICT_BIND.contains(n.as_ref())
+}
+
+fn is_reserved_in_es3_for_str(n: impl AsRef<str>) -> bool {
+    RESERVED_IN_ES3.contains(n.as_ref())
+}
+
+fn is_reserved_in_any_for_str(n: impl AsRef<str>) -> bool {
+    RESERVED.contains(n.as_ref())
+        || RESSERVED_IN_STRICT_MODE.contains(n.as_ref())
+        || RESSERVED_IN_STRICT_BIND.contains(n.as_ref())
+        || RESERVED_IN_ES3.contains(n.as_ref())
+}
+
+fn is_reserved_for_atom(n: &Atom) -> bool {
+    RESERVED_ATOMS.contains(n)
+}
+
+fn is_reserved_in_strict_mode_for_atom(n: &Atom, is_module: bool) -> bool {
+    if is_module && *n == atom!("await") {
+        return true;
+    }
+    RESSERVED_IN_STRICT_MODE_ATOMS.contains(n)
+}
+
+fn is_reserved_in_strict_bind_for_atom(n: &Atom) -> bool {
+    RESSERVED_IN_STRICT_BIND_ATOMS.contains(n)
+}
+
+fn is_reserved_in_es3_for_atom(n: &Atom) -> bool {
+    RESERVED_IN_ES3_ATOMS.contains(n)
+}
+
+fn is_reserved_in_any_for_atom(n: &Atom) -> bool {
+    RESERVED_ATOMS.contains(n)
+        || RESSERVED_IN_STRICT_MODE_ATOMS.contains(n)
+        || RESSERVED_IN_STRICT_BIND_ATOMS.contains(n)
+        || RESERVED_IN_ES3_ATOMS.contains(n)
+}

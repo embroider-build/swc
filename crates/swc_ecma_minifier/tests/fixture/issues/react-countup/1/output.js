@@ -142,7 +142,7 @@
                 }(arr = _useIntersection.useIntersection({
                     rootMargin: void 0 === _lazyBoundary ? "200px" : _lazyBoundary,
                     disabled: !isLazy
-                })) || function(arr, i) {
+                })) || function(arr) {
                     var _arr = [], _n = !0, _d = !1, _e = void 0;
                     try {
                         for(var _s, _i = arr[Symbol.iterator](); !(_n = (_s = _i.next()).done) && (_arr.push(_s.value), 2 !== _arr.length); _n = !0);
@@ -156,7 +156,7 @@
                         }
                     }
                     return _arr;
-                }(arr, 0) || function() {
+                }(arr) || function() {
                     throw TypeError("Invalid attempt to destructure non-iterable instance");
                 }(), setRef = ref2[0], isIntersected = ref2[1], isVisible = !isLazy || isIntersected, wrapperStyle = {
                     boxSizing: "border-box",
@@ -253,26 +253,22 @@
                     "data-nimg": layout,
                     className: className,
                     ref: function(img) {
-                        setRef(img), // See https://stackoverflow.com/q/39777833/266535 for why we use this ref
-                        // handler instead of the img's onLoad attribute.
-                        function(img, src, layout, placeholder, onLoadingComplete) {
-                            if (img) {
-                                var handleLoad = function() {
-                                    img.src !== emptyDataURL && ("decode" in img ? img.decode() : Promise.resolve()).catch(function() {}).then(function() {
-                                        "blur" === placeholder && (img.style.filter = "none", img.style.backgroundSize = "none", img.style.backgroundImage = "none"), loadedImageURLs.add(src), onLoadingComplete && // Pass back read-only primitive values but not the
-                                        // underlying DOM element because it could be misused.
-                                        onLoadingComplete({
-                                            naturalWidth: img.naturalWidth,
-                                            naturalHeight: img.naturalHeight
-                                        });
+                        if (setRef(img), img) {
+                            var handleLoad = function() {
+                                img.src !== emptyDataURL && ("decode" in img ? img.decode() : Promise.resolve()).catch(function() {}).then(function() {
+                                    "blur" === placeholder && (img.style.filter = "none", img.style.backgroundSize = "none", img.style.backgroundImage = "none"), loadedImageURLs.add(srcString), onLoadingComplete && // Pass back read-only primitive values but not the
+                                    // underlying DOM element because it could be misused.
+                                    onLoadingComplete({
+                                        naturalWidth: img.naturalWidth,
+                                        naturalHeight: img.naturalHeight
                                     });
-                                };
-                                img.complete ? // If the real image fails to load, this will still remove the placeholder.
-                                // This is the desired behavior for now, and will be revisited when error
-                                // handling is worked on for the image component itself.
-                                handleLoad() : img.onload = handleLoad;
-                            }
-                        }(img, srcString, 0, placeholder, onLoadingComplete);
+                                });
+                            };
+                            img.complete ? // If the real image fails to load, this will still remove the placeholder.
+                            // This is the desired behavior for now, and will be revisited when error
+                            // handling is worked on for the image component itself.
+                            handleLoad() : img.onload = handleLoad;
+                        }
                     },
                     style: _objectSpread({}, imgStyle, blurStyle)
                 })), /*#__PURE__*/ _react.default.createElement("noscript", null, /*#__PURE__*/ _react.default.createElement("img", Object.assign({}, all, generateImgAttrs({
@@ -409,7 +405,7 @@
                 var ref = function(width, layout, sizes) {
                     if (sizes && ("fill" === layout || "responsive" === layout)) {
                         for(// Find all the "vw" percent sizes used in the sizes prop
-                        var viewportWidthRe = /(^|\s)(1?\d?\d)vw/g, percentSizes = []; match = viewportWidthRe.exec(sizes); match)percentSizes.push(parseInt(match[2]));
+                        var viewportWidthRe = /(^|\s)(1?\d?\d)vw/g, percentSizes = []; match = viewportWidthRe.exec(sizes);)percentSizes.push(parseInt(match[2]));
                         if (percentSizes.length) {
                             var match, _Math, smallestRatio = 0.01 * (_Math = Math).min.apply(_Math, _toConsumableArray(percentSizes));
                             return {
@@ -493,7 +489,7 @@
             }), exports.useIntersection = function(param) {
                 var arr, rootMargin = param.rootMargin, isDisabled = param.disabled || !hasIntersectionObserver, unobserve = _react.useRef(), ref = function(arr) {
                     if (Array.isArray(arr)) return arr;
-                }(arr = _react.useState(!1)) || function(arr, i) {
+                }(arr = _react.useState(!1)) || function(arr) {
                     var _arr = [], _n = !0, _d = !1, _e = void 0;
                     try {
                         for(var _s, _i = arr[Symbol.iterator](); !(_n = (_s = _i.next()).done) && (_arr.push(_s.value), 2 !== _arr.length); _n = !0);
@@ -507,13 +503,11 @@
                         }
                     }
                     return _arr;
-                }(arr, 0) || function() {
+                }(arr) || function() {
                     throw TypeError("Invalid attempt to destructure non-iterable instance");
                 }(), visible = ref[0], setVisible = ref[1], setRef = _react.useCallback(function(el) {
-                    var callback, ref, id, observer, elements;
-                    unobserve.current && (unobserve.current(), unobserve.current = void 0), !isDisabled && !visible && el && el.tagName && (unobserve.current = (callback = function(isVisible) {
-                        return isVisible && setVisible(isVisible);
-                    }, id = (ref = function(options) {
+                    var ref, id, observer, elements;
+                    unobserve.current && (unobserve.current(), unobserve.current = void 0), !isDisabled && !visible && el && el.tagName && (id = (ref = function(options) {
                         var id = options.rootMargin || "", instance = observers.get(id);
                         if (instance) return instance;
                         var elements = new Map(), observer = new IntersectionObserver(function(entries) {
@@ -530,9 +524,11 @@
                     } //# sourceMappingURL=use-intersection.js.map
                     ({
                         rootMargin: rootMargin
-                    })).id, observer = ref.observer, (elements = ref.elements).set(el, callback), observer.observe(el), function() {
+                    })).id, observer = ref.observer, (elements = ref.elements).set(el, function(isVisible) {
+                        return isVisible && setVisible(isVisible);
+                    }), observer.observe(el), unobserve.current = function() {
                         elements.delete(el), observer.unobserve(el), 0 === elements.size && (observer.disconnect(), observers.delete(id));
-                    }));
+                    });
                 }, [
                     isDisabled,
                     rootMargin,
@@ -554,7 +550,7 @@
                     visible
                 ];
             };
-            var _react = __webpack_require__(7294), _requestIdleCallback = __webpack_require__(9311), hasIntersectionObserver = "undefined" != typeof IntersectionObserver, observers = new Map();
+            var _react = __webpack_require__(7294), _requestIdleCallback = __webpack_require__(9311), hasIntersectionObserver = "u" > typeof IntersectionObserver, observers = new Map();
         /***/ },
         /***/ 6978: /***/ function(__unused_webpack_module, exports) {
             "use strict";
@@ -673,7 +669,7 @@
                  * Borrowed from Formik v2.1.1, Licensed MIT.
                  *
                  * https://github.com/formium/formik/blob/9316a864478f8fcd4fa99a0735b1d37afdf507dc/LICENSE
-                 */ var useIsomorphicLayoutEffect = "undefined" != typeof window && void 0 !== window.document && void 0 !== window.document.createElement ? React.useLayoutEffect : React.useEffect;
+                 */ var useIsomorphicLayoutEffect = "u" > typeof window && void 0 !== window.document && void 0 !== window.document.createElement ? React.useLayoutEffect : React.useEffect;
             /* eslint-disable @typescript-eslint/no-explicit-any */ /**
                  * Create a stable reference to a callback which is updated after each render is committed.
                  * Typed version borrowed from Formik v2.2.1. Licensed MIT.
@@ -819,11 +815,8 @@
                 }), update = useEventCallback(function(end) {
                     props.preserveValue || reset(), updateCountUp(end);
                 }), initializeOnMount = useEventCallback(function() {
-                    if ("function" == typeof props.children && !(containerRef.current instanceof Element)) {
-                        console.error('Couldn\'t find attached element to hook the CountUp instance into! Try to attach "containerRef" from the render prop to a an Element, eg. <span ref={containerRef} />.');
-                        return;
-                    } // unlike the hook, the CountUp component initializes on mount
-                    getCountUp();
+                    "function" != typeof props.children || containerRef.current instanceof Element ? getCountUp() : console.error('Couldn\'t find attached element to hook the CountUp instance into! Try to attach "containerRef" from the render prop to a an Element, eg. <span ref={containerRef} />.') // unlike the hook, the CountUp component initializes on mount
+                    ;
                 });
                 React.useEffect(function() {
                     initializeOnMount();

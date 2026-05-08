@@ -9,11 +9,151 @@ use swc_ecma_utils::{ExprExt, ExprFactory, IdentUsageFinder, StmtExt, StmtLike};
 use super::Optimizer;
 use crate::{
     compress::{
-        optimize::Ctx,
+        optimize::BitCtx,
         util::{negate, negate_cost},
     },
+    program_data::{ProgramData, VarUsageInfoFlags},
     DISABLE_BUGGY_PASSES,
 };
+
+impl ProgramData {
+    fn opt_chain_expr_contains_unresolved(&self, o: &OptChainExpr) -> bool {
+        match &*o.base {
+            OptChainBase::Member(me) => self.member_expr_contains_unresolved(me),
+            OptChainBase::Call(OptCall { callee, args, .. }) => {
+                if self.contains_unresolved(callee) {
+                    return true;
+                }
+
+                if args.iter().any(|arg| self.contains_unresolved(&arg.expr)) {
+                    return true;
+                }
+
+                false
+            }
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
+        }
+    }
+
+    fn member_expr_contains_unresolved(&self, n: &MemberExpr) -> bool {
+        if self.contains_unresolved(&n.obj) {
+            return true;
+        }
+
+        if let MemberProp::Computed(prop) = &n.prop {
+            if self.contains_unresolved(&prop.expr) {
+                return true;
+            }
+        }
+
+        false
+    }
+
+    fn simple_assign_target_contains_unresolved(&self, n: &SimpleAssignTarget) -> bool {
+        match n {
+            SimpleAssignTarget::Ident(i) => self.ident_is_unresolved(&i.id),
+            SimpleAssignTarget::Member(me) => self.member_expr_contains_unresolved(me),
+            SimpleAssignTarget::SuperProp(n) => {
+                if let SuperProp::Computed(prop) = &n.prop {
+                    if self.contains_unresolved(&prop.expr) {
+                        return true;
+                    }
+                }
+
+                false
+            }
+            SimpleAssignTarget::Paren(n) => self.contains_unresolved(&n.expr),
+            SimpleAssignTarget::OptChain(n) => self.opt_chain_expr_contains_unresolved(n),
+            SimpleAssignTarget::TsAs(..)
+            | SimpleAssignTarget::TsSatisfies(..)
+            | SimpleAssignTarget::TsNonNull(..)
+            | SimpleAssignTarget::TsTypeAssertion(..)
+            | SimpleAssignTarget::TsInstantiation(..) => false,
+            SimpleAssignTarget::Invalid(..) => true,
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
+        }
+    }
+
+    pub(self) fn contains_unresolved(&self, e: &Expr) -> bool {
+        match e {
+            Expr::Ident(i) => self.ident_is_unresolved(i),
+
+            Expr::Member(MemberExpr { obj, prop, .. }) => {
+                if self.contains_unresolved(obj) {
+                    return true;
+                }
+
+                if let MemberProp::Computed(prop) = prop {
+                    if self.contains_unresolved(&prop.expr) {
+                        return true;
+                    }
+                }
+
+                false
+            }
+            Expr::Bin(BinExpr { left, right, .. }) => {
+                self.contains_unresolved(left) || self.contains_unresolved(right)
+            }
+            Expr::Unary(UnaryExpr { arg, .. }) => self.contains_unresolved(arg),
+            Expr::Update(UpdateExpr { arg, .. }) => self.contains_unresolved(arg),
+            Expr::Seq(SeqExpr { exprs, .. }) => exprs.iter().any(|e| self.contains_unresolved(e)),
+            Expr::Assign(AssignExpr { left, right, .. }) => {
+                // TODO
+                (match left {
+                    AssignTarget::Simple(left) => {
+                        self.simple_assign_target_contains_unresolved(left)
+                    }
+                    AssignTarget::Pat(_) => false,
+                    #[cfg(swc_ast_unknown)]
+                    _ => panic!("unable to access unknown nodes"),
+                }) || self.contains_unresolved(right)
+            }
+            Expr::Cond(CondExpr {
+                test, cons, alt, ..
+            }) => {
+                self.contains_unresolved(test)
+                    || self.contains_unresolved(cons)
+                    || self.contains_unresolved(alt)
+            }
+            Expr::New(NewExpr { args, .. }) => args.iter().flatten().any(|arg| match arg.spread {
+                Some(..) => self.contains_unresolved(&arg.expr),
+                None => false,
+            }),
+            Expr::Yield(YieldExpr { arg, .. }) => {
+                matches!(arg, Some(arg) if self.contains_unresolved(arg))
+            }
+            Expr::Tpl(Tpl { exprs, .. }) => exprs.iter().any(|e| self.contains_unresolved(e)),
+            Expr::Paren(ParenExpr { expr, .. }) => self.contains_unresolved(expr),
+            Expr::Await(AwaitExpr { arg, .. }) => self.contains_unresolved(arg),
+            Expr::Array(ArrayLit { elems, .. }) => elems.iter().any(|elem| match elem {
+                Some(elem) => self.contains_unresolved(&elem.expr),
+                None => false,
+            }),
+
+            Expr::Call(CallExpr {
+                callee: Callee::Expr(callee),
+                args,
+                ..
+            }) => {
+                if self.contains_unresolved(callee) {
+                    return true;
+                }
+
+                if args.iter().any(|arg| self.contains_unresolved(&arg.expr)) {
+                    return true;
+                }
+
+                false
+            }
+
+            Expr::OptChain(o) => self.opt_chain_expr_contains_unresolved(o),
+
+            _ => false,
+        }
+    }
+}
 
 /// Methods related to the option `conditionals`. All methods are noop if
 /// `conditionals` is false.
@@ -30,12 +170,9 @@ impl Optimizer<'_> {
             _ => {}
         }
 
-        if negate_cost(&self.ctx.expr_ctx, &stmt.test, true, false) < 0 {
+        if negate_cost(self.ctx.expr_ctx, &stmt.test, true, false) < 0 {
             report_change!("if_return: Negating `cond` of an if statement which has cons and alt");
-            let ctx = Ctx {
-                in_bool_ctx: true,
-                ..self.ctx.clone()
-            };
+            let ctx = self.ctx.clone().with(BitCtx::InBoolCtx, true);
             self.with_ctx(ctx).negate(&mut stmt.test, false);
             swap(alt, &mut *stmt.cons);
             return;
@@ -63,7 +200,7 @@ impl Optimizer<'_> {
             _ => return,
         };
 
-        if !cond.cons.may_have_side_effects(&self.ctx.expr_ctx) {
+        if !cond.cons.may_have_side_effects(self.ctx.expr_ctx) {
             self.changed = true;
             report_change!("conditionals: `cond ? useless : alt` => `cond || alt`");
             *e = BinExpr {
@@ -76,7 +213,7 @@ impl Optimizer<'_> {
             return;
         }
 
-        if !cond.alt.may_have_side_effects(&self.ctx.expr_ctx) {
+        if !cond.alt.may_have_side_effects(self.ctx.expr_ctx) {
             self.changed = true;
             report_change!("conditionals: `cond ? cons : useless` => `cond && cons`");
             *e = BinExpr {
@@ -114,6 +251,14 @@ impl Optimizer<'_> {
             return;
         }
 
+        // we must inline first to avoid https://github.com/swc-project/swc/issues/11517
+        stmts
+            .iter_mut()
+            .filter_map(|s| s.as_stmt_mut().and_then(|s| s.as_mut_if_stmt()))
+            .for_each(|s| {
+                self.changed |= self.vars.inline_with_multi_replacer(s);
+            });
+
         let has_work =
             stmts
                 .windows(2)
@@ -121,7 +266,9 @@ impl Optimizer<'_> {
                     (
                         Some(Stmt::If(l @ IfStmt { alt: None, .. })),
                         Some(Stmt::If(r @ IfStmt { alt: None, .. })),
-                    ) => SyntaxContext::within_ignored_ctxt(|| l.cons.eq_ignore_span(&r.cons)),
+                    ) => SyntaxContext::within_ignored_ctxt(|| {
+                        l.cons.eq_ignore_span(&r.cons) && l.cons.terminates()
+                    }),
                     _ => false,
                 });
         if !has_work {
@@ -142,7 +289,6 @@ impl Optimizer<'_> {
 
                             match &mut cur {
                                 Some(cur_if) => {
-                                    // If cons is same, we merge conditions.
                                     if SyntaxContext::within_ignored_ctxt(|| {
                                         cur_if.cons.eq_ignore_span(&stmt.cons)
                                     }) {
@@ -381,12 +527,18 @@ impl Optimizer<'_> {
 
         match (cons, alt) {
             (Expr::Call(cons), Expr::Call(alt)) => {
+                // Test expr may change the variables that cons and alt **may use** in their
+                // common args. For example:
+                // from (a = 1) ? f(a, true) : f(a, false)
+                // to   f(a, a = 1 ? true : false)
+                let side_effects_in_test = test.may_have_side_effects(self.ctx.expr_ctx);
+
                 if self.data.contains_unresolved(test) {
                     return None;
                 }
 
                 let cons_callee = cons.callee.as_expr().and_then(|e| e.as_ident())?;
-                if IdentUsageFinder::find(&cons_callee.to_id(), &**test) {
+                if IdentUsageFinder::find(cons_callee, &**test) {
                     return None;
                 }
                 //
@@ -399,7 +551,11 @@ impl Optimizer<'_> {
                     .data
                     .vars
                     .get(&cons_callee.to_id())
-                    .map(|v| v.is_fn_local && v.declared)
+                    .map(|v| {
+                        v.flags.contains(
+                            VarUsageInfoFlags::IS_FN_LOCAL.union(VarUsageInfoFlags::DECLARED),
+                        )
+                    })
                     .unwrap_or(false);
 
                 if side_effect_free
@@ -407,24 +563,28 @@ impl Optimizer<'_> {
                     && cons.args.iter().all(|arg| arg.spread.is_none())
                     && alt.args.iter().all(|arg| arg.spread.is_none())
                 {
-                    let diff_count = cons
-                        .args
-                        .iter()
-                        .zip(alt.args.iter())
-                        .filter(|(cons, alt)| !cons.eq_ignore_span(alt))
-                        .count();
+                    let mut diff_count = 0;
+                    let mut diff_idx = None;
+
+                    for (idx, (cons, alt)) in cons.args.iter().zip(alt.args.iter()).enumerate() {
+                        if !cons.eq_ignore_span(alt) {
+                            diff_count += 1;
+                            diff_idx = Some(idx);
+                        } else {
+                            // See the comments for `side_effects_in_test`
+                            if side_effects_in_test && !cons.expr.is_pure(self.ctx.expr_ctx) {
+                                return None;
+                            }
+                        }
+                    }
 
                     if diff_count == 1 {
+                        let diff_idx = diff_idx.unwrap();
+
                         report_change!(
                             "conditionals: Merging cons and alt as only one argument differs"
                         );
                         self.changed = true;
-                        let diff_idx = cons
-                            .args
-                            .iter()
-                            .zip(alt.args.iter())
-                            .position(|(cons, alt)| !cons.eq_ignore_span(alt))
-                            .unwrap();
 
                         let mut new_args = Vec::new();
 
@@ -442,7 +602,6 @@ impl Optimizer<'_> {
                                     .into(),
                                 })
                             } else {
-                                //
                                 new_args.push(arg)
                             }
                         }
@@ -524,33 +683,31 @@ impl Optimizer<'_> {
                     && alt.args.as_ref().map(|v| v.len() <= 1).unwrap_or(true)
                     && cons.args.as_ref().map(|v| v.len()).unwrap_or(0)
                         == alt.args.as_ref().map(|v| v.len()).unwrap_or(0)
-                    && (cons.args.is_some()
-                        && cons
-                            .args
-                            .as_ref()
-                            .unwrap()
-                            .iter()
-                            .all(|arg| arg.spread.is_none()))
-                    && (alt.args.is_some()
-                        && alt
-                            .args
-                            .as_ref()
-                            .unwrap()
-                            .iter()
-                            .all(|arg| arg.spread.is_none()))
+                    && cons
+                        .args
+                        .as_ref()
+                        .is_some_and(|args| args.iter().all(|arg| arg.spread.is_none()))
+                    && alt
+                        .args
+                        .as_ref()
+                        .is_some_and(|args| args.iter().all(|arg| arg.spread.is_none()))
                 {
                     let mut args = Vec::new();
 
-                    if cons.args.as_ref().map(|v| v.len()).unwrap_or(0) == 1 {
-                        args = vec![ExprOrSpread {
-                            spread: None,
-                            expr: Box::new(Expr::Cond(CondExpr {
-                                span: DUMMY_SP,
-                                test: test.take(),
-                                cons: cons.args.as_mut().unwrap()[0].expr.take(),
-                                alt: alt.args.as_mut().unwrap()[0].expr.take(),
-                            })),
-                        }];
+                    if let (Some(cons_args), Some(alt_args)) =
+                        (cons.args.as_mut(), alt.args.as_mut())
+                    {
+                        if cons_args.len() == 1 {
+                            args = vec![ExprOrSpread {
+                                spread: None,
+                                expr: Box::new(Expr::Cond(CondExpr {
+                                    span: DUMMY_SP,
+                                    test: test.take(),
+                                    cons: cons_args[0].expr.take(),
+                                    alt: alt_args[0].expr.take(),
+                                })),
+                            }];
+                        }
                     }
 
                     report_change!(
@@ -575,7 +732,10 @@ impl Optimizer<'_> {
                 Expr::Assign(cons @ AssignExpr { op: op!("="), .. }),
                 Expr::Assign(alt @ AssignExpr { op: op!("="), .. }),
             ) if cons.left.eq_ignore_span(&alt.left) && cons.left.as_ident().is_some() => {
-                if !test.is_ident() && self.data.contains_unresolved(test) {
+                if self
+                    .data
+                    .ident_is_unresolved(&cons.left.as_ident().unwrap().id)
+                {
                     return None;
                 }
 
@@ -612,6 +772,26 @@ impl Optimizer<'_> {
                         .into(),
                         cons: cons.cons.take(),
                         alt: cons.alt.take(),
+                    }
+                    .into(),
+                )
+            }
+
+            // a ? c() : b ? c() : d() => a || b ? c() : d()
+            (cons, Expr::Cond(alt)) if cons.eq_ignore_span(&*alt.cons) => {
+                report_change!("conditionals: a ? c() : b ? c() : d() => a || b ? c() : d()");
+                Some(
+                    CondExpr {
+                        span: DUMMY_SP,
+                        test: BinExpr {
+                            span: DUMMY_SP,
+                            left: test.take(),
+                            op: op!("||"),
+                            right: alt.test.take(),
+                        }
+                        .into(),
+                        cons: alt.cons.take(),
+                        alt: alt.alt.take(),
                     }
                     .into(),
                 )
@@ -878,7 +1058,7 @@ impl Optimizer<'_> {
                         ) = (&*cons, &*alt)
                         {
                             // I don't know why, but terser behaves differently
-                            negate(&self.ctx.expr_ctx, &mut test, true, false);
+                            negate(self.ctx.expr_ctx, &mut test, true, false);
 
                             swap(&mut cons, &mut alt);
                         }

@@ -1,9 +1,6 @@
-use rustc_hash::FxHashSet;
-use swc_atoms::JsWord;
-use swc_common::{
-    collections::{AHashMap, AHashSet},
-    Mark, SyntaxContext,
-};
+use rustc_hash::{FxHashMap, FxHashSet};
+use swc_atoms::Atom;
+use swc_common::{Mark, SyntaxContext};
 use swc_ecma_ast::*;
 use swc_ecma_utils::{find_pat_ids, stack_size::maybe_grow_default};
 use swc_ecma_visit::{
@@ -117,7 +114,7 @@ const LOG: bool = false && cfg!(debug_assertions);
 ///
 /// # FAQ
 ///
-/// ## Does a pair `(JsWord, SyntaxContext)` always uniquely identifiers a
+/// ## Does a pair `(Atom, SyntaxContext)` always uniquely identifiers a
 /// variable binding?
 ///
 /// Yes, but multiple variables can have the exactly same name.
@@ -128,7 +125,7 @@ const LOG: bool = false && cfg!(debug_assertions);
 /// var a = 1, a = 2;
 /// ```
 ///
-/// both of them have the same name, so the `(JsWord, SyntaxContext)` pair will
+/// both of them have the same name, so the `(Atom, SyntaxContext)` pair will
 /// be also identical.
 pub fn resolver(
     unresolved_mark: Mark,
@@ -172,10 +169,10 @@ struct Scope<'a> {
     mark: Mark,
 
     /// All declarations in the scope
-    declared_symbols: AHashMap<JsWord, DeclKind>,
+    declared_symbols: FxHashMap<Atom, DeclKind>,
 
     /// All types declared in the scope
-    declared_types: AHashSet<JsWord>,
+    declared_types: FxHashSet<Atom>,
 }
 
 impl<'a> Scope<'a> {
@@ -189,7 +186,7 @@ impl<'a> Scope<'a> {
         }
     }
 
-    fn is_declared(&self, symbol: &JsWord) -> Option<&DeclKind> {
+    fn is_declared(&self, symbol: &Atom) -> Option<&DeclKind> {
         self.declared_symbols
             .get(symbol)
             .or_else(|| self.parent?.is_declared(symbol))
@@ -269,11 +266,11 @@ impl<'a> Resolver<'a> {
     }
 
     /// Returns a [Mark] for an identifier reference.
-    fn mark_for_ref(&self, sym: &JsWord) -> Option<Mark> {
+    fn mark_for_ref(&self, sym: &Atom) -> Option<Mark> {
         self.mark_for_ref_inner(sym, false)
     }
 
-    fn mark_for_ref_inner(&self, sym: &JsWord, stop_an_fn_scope: bool) -> Option<Mark> {
+    fn mark_for_ref_inner(&self, sym: &Atom, stop_an_fn_scope: bool) -> Option<Mark> {
         if self.config.handle_types && self.in_type {
             let mut mark = self.current.mark;
             let mut scope = Some(&self.current);
@@ -539,8 +536,7 @@ impl VisitMut for Resolver<'_> {
                     .params
                     .iter()
                     .filter(|p| !p.is_rest())
-                    .flat_map(find_pat_ids)
-                    .collect::<Vec<Id>>();
+                    .flat_map(find_pat_ids::<_, Id>);
 
                 for id in params {
                     child.current.declared_symbols.insert(id.0, DeclKind::Param);
@@ -567,6 +563,8 @@ impl VisitMut for Resolver<'_> {
                     child.strict_mode = old_strict_mode;
                 }
                 BlockStmtOrExpr::Expr(e) => e.visit_mut_with(child),
+                #[cfg(swc_ast_unknown)]
+                _ => (),
             }
 
             e.return_type.visit_mut_with(child);
@@ -647,6 +645,9 @@ impl VisitMut for Resolver<'_> {
     }
 
     fn visit_mut_class_decl(&mut self, n: &mut ClassDecl) {
+        if n.declare && !self.config.handle_types {
+            return;
+        }
         self.modify(&mut n.ident, DeclKind::Lexical);
 
         n.class.decorators.visit_mut_with(self);
@@ -711,6 +712,8 @@ impl VisitMut for Resolver<'_> {
                 ParamOrTsParamProp::Param(p) => {
                     p.decorators.visit_mut_with(self);
                 }
+                #[cfg(swc_ast_unknown)]
+                _ => (),
             }
         }
 
@@ -724,9 +727,10 @@ impl VisitMut for Resolver<'_> {
                     .filter(|p| match p {
                         ParamOrTsParamProp::TsParamProp(_) => false,
                         ParamOrTsParamProp::Param(p) => !p.pat.is_rest(),
+                        #[cfg(swc_ast_unknown)]
+                        _ => false,
                     })
-                    .flat_map(find_pat_ids)
-                    .collect::<Vec<Id>>();
+                    .flat_map(find_pat_ids::<_, Id>);
 
                 for id in params {
                     child.current.declared_symbols.insert(id.0, DeclKind::Param);
@@ -789,6 +793,8 @@ impl VisitMut for Resolver<'_> {
                     self.try_resolving_as_type(orig);
                 }
                 ModuleExportName::Str(_) => {}
+                #[cfg(swc_ast_unknown)]
+                _ => {}
             }
         }
     }
@@ -814,6 +820,10 @@ impl VisitMut for Resolver<'_> {
     }
 
     fn visit_mut_fn_decl(&mut self, node: &mut FnDecl) {
+        if node.declare && !self.config.handle_types {
+            return;
+        }
+
         // We don't fold ident as Hoister handles this.
         node.function.decorators.visit_mut_with(self);
 
@@ -880,8 +890,7 @@ impl VisitMut for Resolver<'_> {
                 .params
                 .iter()
                 .filter(|p| !p.pat.is_rest())
-                .flat_map(find_pat_ids)
-                .collect::<Vec<Id>>();
+                .flat_map(find_pat_ids::<_, Id>);
 
             for id in params {
                 self.current.declared_symbols.insert(id.0, DeclKind::Param);
@@ -1017,6 +1026,8 @@ impl VisitMut for Resolver<'_> {
             | ImportSpecifier::Namespace(..)
             | ImportSpecifier::Default(..) => s.visit_mut_children_with(self),
             ImportSpecifier::Named(s) => s.local.visit_mut_with(self),
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
 
         self.ident_type = old;
@@ -1241,14 +1252,39 @@ impl VisitMut for Resolver<'_> {
     }
 
     fn visit_mut_ts_enum_decl(&mut self, decl: &mut TsEnumDecl) {
+        if decl.declare && !self.config.handle_types {
+            return;
+        }
         self.modify(&mut decl.id, DeclKind::Lexical);
 
         self.with_child(ScopeKind::Block, |child| {
+            // Predeclare enum members in a child scope marked with `unresolved_mark`.
+            // Enum initializers may reference other members, including quoted names whose
+            // text is a valid identifier:
+            //
+            // ```TypeScript
+            //   enum E {
+            //       A = "A",
+            //       "B" = "B",
+            //       C = (() => { console.log(A, B); })(),
+            //   }
+            // ```
+            //
+            // This keeps references like `A`, `B`, and `b = a` in the unresolved
+            // context instead of resolving them to the enum's lexical scope, so the
+            // TypeScript enum transform can rewrite them later using
+            // `semantic.enum_record`.
+            child.current.mark = self.config.unresolved_mark;
             // add the enum member names as declared symbols for this scope
             // Ex. `enum Foo { a, b = a }`
             let member_names = decl.members.iter().filter_map(|m| match &m.id {
                 TsEnumMemberId::Ident(id) => Some((id.sym.clone(), DeclKind::Lexical)),
-                TsEnumMemberId::Str(_) => None,
+                TsEnumMemberId::Str(s) => s
+                    .value
+                    .as_atom()
+                    .map(|atom| (atom.clone(), DeclKind::Lexical)),
+                #[cfg(swc_ast_unknown)]
+                _ => None,
             });
             child.current.declared_symbols.extend(member_names);
 
@@ -1371,11 +1407,17 @@ impl VisitMut for Resolver<'_> {
     }
 
     fn visit_mut_ts_module_decl(&mut self, decl: &mut TsModuleDecl) {
+        if decl.declare && !self.config.handle_types {
+            return;
+        }
+
         match &mut decl.id {
             TsModuleName::Ident(i) => {
                 self.modify(i, DeclKind::Lexical);
             }
             TsModuleName::Str(_) => {}
+            #[cfg(swc_ast_unknown)]
+            _ => {}
         }
 
         self.with_child(ScopeKind::Block, |child| {
@@ -1386,6 +1428,10 @@ impl VisitMut for Resolver<'_> {
     }
 
     fn visit_mut_ts_namespace_decl(&mut self, n: &mut TsNamespaceDecl) {
+        if n.declare && !self.config.handle_types {
+            return;
+        }
+
         self.modify(&mut n.id, DeclKind::Lexical);
 
         n.body.visit_mut_with(self);
@@ -1498,7 +1544,7 @@ impl VisitMut for Resolver<'_> {
     }
 
     fn visit_mut_var_decl(&mut self, decl: &mut VarDecl) {
-        if decl.declare {
+        if decl.declare && !self.config.handle_types {
             return;
         }
 
@@ -1538,8 +1584,8 @@ struct Hoister<'a, 'b> {
 
     in_catch_body: bool,
 
-    excluded_from_catch: FxHashSet<JsWord>,
-    catch_param_decls: FxHashSet<JsWord>,
+    excluded_from_catch: FxHashSet<Atom>,
+    catch_param_decls: FxHashSet<Atom>,
 }
 
 impl Hoister<'_, '_> {
@@ -1627,13 +1673,13 @@ impl VisitMut for Hoister<'_, '_> {
 
         let params: Vec<Id> = find_pat_ids(&c.param);
 
+        let orig = self.catch_param_decls.clone();
+
         self.catch_param_decls
             .extend(params.into_iter().map(|v| v.0));
 
         self.in_catch_body = true;
         c.body.visit_mut_with(self);
-
-        let orig = self.catch_param_decls.clone();
 
         // let mut excluded = find_ids::<_, Id>(&c.body);
 
@@ -1654,6 +1700,9 @@ impl VisitMut for Hoister<'_, '_> {
     }
 
     fn visit_mut_class_decl(&mut self, node: &mut ClassDecl) {
+        if node.declare && !self.resolver.config.handle_types {
+            return;
+        }
         if self.in_block {
             return;
         }
@@ -1694,13 +1743,11 @@ impl VisitMut for Hoister<'_, '_> {
                     self.resolver.in_type = old_in_type;
                 }
 
-                Decl::TsEnum(e) => {
-                    if !self.in_block {
-                        let old_in_type = self.resolver.in_type;
-                        self.resolver.in_type = false;
-                        self.resolver.modify(&mut e.id, DeclKind::Lexical);
-                        self.resolver.in_type = old_in_type;
-                    }
+                Decl::TsEnum(e) if !self.in_block => {
+                    let old_in_type = self.resolver.in_type;
+                    self.resolver.in_type = false;
+                    self.resolver.modify(&mut e.id, DeclKind::Lexical);
+                    self.resolver.in_type = old_in_type;
                 }
 
                 Decl::TsModule(v)
@@ -1711,15 +1758,13 @@ impl VisitMut for Hoister<'_, '_> {
                             id: TsModuleName::Ident(_),
                             ..
                         },
-                    ) =>
+                    ) && !self.in_block =>
                 {
-                    if !self.in_block {
-                        let old_in_type = self.resolver.in_type;
-                        self.resolver.in_type = false;
-                        let id = v.id.as_mut_ident().unwrap();
-                        self.resolver.modify(id, DeclKind::Lexical);
-                        self.resolver.in_type = old_in_type;
-                    }
+                    let old_in_type = self.resolver.in_type;
+                    self.resolver.in_type = false;
+                    let id = v.id.as_mut_ident().unwrap();
+                    self.resolver.modify(id, DeclKind::Lexical);
+                    self.resolver.in_type = old_in_type;
                 }
                 _ => {}
             }
@@ -1754,6 +1799,10 @@ impl VisitMut for Hoister<'_, '_> {
     fn visit_mut_expr(&mut self, _: &mut Expr) {}
 
     fn visit_mut_fn_decl(&mut self, node: &mut FnDecl) {
+        if node.declare && !self.resolver.config.handle_types {
+            return;
+        }
+
         if self.catch_param_decls.contains(&node.ident.sym) {
             return;
         }
@@ -1855,10 +1904,19 @@ impl VisitMut for Hoister<'_, '_> {
     fn visit_mut_ts_module_block(&mut self, _: &mut TsModuleBlock) {}
 
     #[inline]
-    fn visit_mut_using_decl(&mut self, _: &mut UsingDecl) {}
+    fn visit_mut_using_decl(&mut self, node: &mut UsingDecl) {
+        if self.in_block {
+            return;
+        }
+
+        let old_kind = self.kind;
+        self.kind = DeclKind::Lexical;
+        node.visit_mut_children_with(self);
+        self.kind = old_kind;
+    }
 
     fn visit_mut_var_decl(&mut self, node: &mut VarDecl) {
-        if node.declare {
+        if node.declare && !self.resolver.config.handle_types {
             return;
         }
 
@@ -1938,39 +1996,30 @@ impl VisitMut for Hoister<'_, '_> {
     /// that there is already an global declaration of Ic when deal with the try
     /// block.
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
-        let others = items
-            .iter_mut()
-            .filter_map(|item| match item {
-                ModuleItem::Stmt(Stmt::Decl(Decl::Var(v)))
-                | ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl {
-                    decl: Decl::Var(v),
+        items.iter_mut().for_each(|item| match item {
+            ModuleItem::Stmt(Stmt::Decl(Decl::Var(v)))
+            | ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl {
+                decl: Decl::Var(v),
+                ..
+            })) if matches!(
+                &**v,
+                VarDecl {
+                    kind: VarDeclKind::Var,
                     ..
-                })) if matches!(
-                    &**v,
-                    VarDecl {
-                        kind: VarDeclKind::Var,
-                        ..
-                    }
-                ) =>
-                {
-                    item.visit_mut_with(self);
-                    None
                 }
+            ) =>
+            {
+                item.visit_mut_with(self);
+            }
 
-                ModuleItem::Stmt(Stmt::Decl(Decl::Fn(..)))
-                | ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl {
-                    decl: Decl::Fn(..),
-                    ..
-                })) => {
-                    item.visit_mut_with(self);
-                    None
-                }
-                _ => Some(item),
-            })
-            .collect::<Vec<_>>();
-
-        others.into_iter().for_each(|item| {
-            item.visit_mut_with(self);
+            ModuleItem::Stmt(Stmt::Decl(Decl::Fn(..)))
+            | ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl {
+                decl: Decl::Fn(..),
+                ..
+            })) => {
+                item.visit_mut_with(self);
+            }
+            _ => item.visit_mut_with(self),
         });
     }
 

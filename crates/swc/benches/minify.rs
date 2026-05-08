@@ -59,12 +59,12 @@ fn bench_minify(b: &mut Bencher, filename: &str) {
 }
 
 fn files_group(c: &mut Criterion) {
-    let mut group = c.benchmark_group("es/full/minify/libraries");
+    let mut group = c.benchmark_group("es/large/minify/libraries");
     group.sample_size(10);
 
     let mut bench_file = |name: &str| {
-        group.bench_function(format!("es/full/minify/libraries/{name}"), |b| {
-            bench_minify(b, &format!("{}.js", name));
+        group.bench_function(format!("es/large/minify/libraries/{name}"), |b| {
+            bench_minify(b, &format!("{name}.js"));
         });
     };
 

@@ -3,23 +3,23 @@ var global, factory;
 global = this, factory = function(exports1) {
     Object.defineProperty(exports1, "__esModule", {
         value: !0
-    }), function(target, all) {
-        for(var name in all)Object.defineProperty(target, name, {
-            enumerable: !0,
-            get: all[name]
-        });
-    }(exports1, {
-        a: function() {
+    });
+    var all = {
+        get a () {
             return a;
         },
-        b: function() {
+        get b () {
             return b;
         }
+    };
+    for(var name in all)Object.defineProperty(exports1, name, {
+        enumerable: !0,
+        get: Object.getOwnPropertyDescriptor(all, name).get
     });
     var a = 1, b = 2;
 }, "object" == typeof module && "object" == typeof module.exports ? factory(exports) : "function" == typeof define && define.amd ? define([
     "exports"
-], factory) : (global = "undefined" != typeof globalThis ? globalThis : global || self) && factory(global.0Ts = {});
+], factory) : (global = "u" > typeof globalThis ? globalThis : global || self) && factory(global.0Ts = {});
 //// [1.ts]
 var global, factory;
 global = this, factory = function(exports1, _interop_require_wildcard, _0) {
@@ -35,7 +35,7 @@ global = this, factory = function(exports1, _interop_require_wildcard, _0) {
     "exports",
     "@swc/helpers/_/_interop_require_wildcard",
     "./0"
-], factory) : (global = "undefined" != typeof globalThis ? globalThis : global || self) && factory(global.1Ts = {}, global.interopRequireWildcard, global["0"]);
+], factory) : (global = "u" > typeof globalThis ? globalThis : global || self) && factory(global.1Ts = {}, global.interopRequireWildcard, global["0"]);
 //// [11.ts]
 var global, factory;
 global = this, factory = function(exports1, _interop_require_wildcard, _0) {
@@ -52,7 +52,7 @@ global = this, factory = function(exports1, _interop_require_wildcard, _0) {
     "exports",
     "@swc/helpers/_/_interop_require_wildcard",
     "./0"
-], factory) : (global = "undefined" != typeof globalThis ? globalThis : global || self) && factory(global.11Ts = {}, global.interopRequireWildcard, global["0"]);
+], factory) : (global = "u" > typeof globalThis ? globalThis : global || self) && factory(global.11Ts = {}, global.interopRequireWildcard, global["0"]);
 //// [2.ts]
 var global, factory;
 global = this, factory = function(exports1, _interop_require_default, _1, _11) {
@@ -64,4 +64,4 @@ global = this, factory = function(exports1, _interop_require_default, _1, _11) {
     "@swc/helpers/_/_interop_require_default",
     "./1",
     "./11"
-], factory) : (global = "undefined" != typeof globalThis ? globalThis : global || self) && factory(global.2Ts = {}, global.interopRequireDefault, global["1"], global["11"]);
+], factory) : (global = "u" > typeof globalThis ? globalThis : global || self) && factory(global.2Ts = {}, global.interopRequireDefault, global["1"], global["11"]);

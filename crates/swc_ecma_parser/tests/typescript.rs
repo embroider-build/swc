@@ -53,7 +53,7 @@ fn shifted(file: PathBuf) {
         {
             panic!()
         }
-        if StdErr::from(format!("{:#?}", comments))
+        if StdErr::from(format!("{comments:#?}"))
             .compare_to_file(format!("{}.comments", file.display()))
             .is_err()
         {
@@ -174,10 +174,7 @@ fn run_spec(file: &Path, output_json: &Path) {
             buf
         };
 
-        eprintln!(
-            "\n\n========== Running reference test {}\nSource:\n{}\n",
-            file_name, input
-        );
+        eprintln!("\n\n========== Running reference test {file_name}\nSource:\n{input}\n");
     }
 
     with_parser(false, file, true, false, |p, _| {
@@ -211,10 +208,7 @@ fn run_spec(file: &Path, output_json: &Path) {
                     return Ok(());
                 }
 
-                panic!(
-                    "failed to deserialize json back to module: {}\n{}",
-                    err, json
-                )
+                panic!("failed to deserialize json back to module: {err}\n{json}")
             }
         };
 
@@ -241,11 +235,17 @@ fn with_parser<F, Ret>(
 where
     F: FnOnce(&mut Parser<Lexer>, &SingleThreadedComments) -> PResult<Ret>,
 {
-    let fname = file_name.display().to_string();
+    let fname = pathdiff::diff_paths(
+        file_name,
+        PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap()),
+    )
+    .unwrap()
+    .display()
+    .to_string();
 
     ::testing::run_test(treat_error_as_bug, |cm, handler| {
         if shift {
-            cm.new_source_file(FileName::Anon.into(), "".into());
+            cm.new_source_file(FileName::Anon.into(), "");
         }
 
         let comments = SingleThreadedComments::default();
@@ -298,10 +298,7 @@ fn errors(file: PathBuf) {
             buf
         };
 
-        eprintln!(
-            "\n\n========== Running reference test {}\nSource:\n{}\n",
-            file_name, input
-        );
+        eprintln!("\n\n========== Running reference test {file_name}\nSource:\n{input}\n");
     }
 
     let module = with_parser(false, &file, false, false, |p, _| {

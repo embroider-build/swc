@@ -6,20 +6,20 @@ Object.defineProperty(exports, "__esModule", {
 function _export(target, all) {
     for(var name in all)Object.defineProperty(target, name, {
         enumerable: true,
-        get: all[name]
+        get: Object.getOwnPropertyDescriptor(all, name).get
     });
 }
 _export(exports, {
-    default: function() {
+    get default () {
         return _default;
     },
-    w: function() {
+    get w () {
         return w;
     },
-    x: function() {
+    get x () {
         return x;
     },
-    y: function() {
+    get y () {
         return y;
     }
 });
@@ -31,11 +31,10 @@ const env = {
     hasError: false
 };
 try {
-    const z = _ts_add_disposable_resource._(env, {
+    var z = _ts_add_disposable_resource._(env, {
         [Symbol.dispose] () {}
     }, false);
-    ;
-    const y = 2;
+    var y = 2;
     console.log(w, x, y, z);
 } catch (e) {
     env.error = e;

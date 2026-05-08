@@ -1,22 +1,19 @@
-#[cfg(not(feature = "parking_lot"))]
-use std::sync::Mutex;
 use std::{
     borrow::Cow,
     cmp, fmt,
     hash::{Hash, Hasher},
     ops::{Add, Sub},
     path::PathBuf,
-    sync::atomic::AtomicU32,
+    sync::{atomic::AtomicU32, Mutex},
 };
 
-#[cfg(feature = "parking_lot")]
-use parking_lot::Mutex;
+use bytes_str::BytesStr;
 use serde::{Deserialize, Serialize};
 use url::Url;
 
 use self::hygiene::MarkData;
 pub use self::hygiene::{Mark, SyntaxContext};
-use crate::{rustc_data_structures::stable_hasher::StableHasher, sync::Lrc};
+use crate::{cache::CacheCell, rustc_data_structures::stable_hasher::StableHasher, sync::Lrc};
 
 mod analyze_source_file;
 pub mod hygiene;
@@ -36,14 +33,19 @@ pub mod hygiene;
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::ast_node::Encode, ::ast_node::Decode)
+)]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct Span {
     #[serde(rename = "start")]
-    #[cfg_attr(feature = "__rkyv", omit_bounds)]
+    #[cfg_attr(feature = "__rkyv", rkyv(omit_bounds))]
     pub lo: BytePos,
     #[serde(rename = "end")]
-    #[cfg_attr(feature = "__rkyv", omit_bounds)]
+    #[cfg_attr(feature = "__rkyv", rkyv(omit_bounds))]
     pub hi: BytePos,
 }
 
@@ -85,9 +87,16 @@ pub const DUMMY_SP: Span = Span {
     hi: BytePos::DUMMY,
 };
 
+/// PURE span, will emit `/* #__PURE__ */` comment in codegen.
 pub const PURE_SP: Span = Span {
     lo: BytePos::PURE,
     hi: BytePos::PURE,
+};
+
+/// Used for some special cases. e.g. mark the generated AST.
+pub const PLACEHOLDER_SP: Span = Span {
+    lo: BytePos::PLACEHOLDER,
+    hi: BytePos::PLACEHOLDER,
 };
 
 pub struct Globals {
@@ -116,6 +125,17 @@ impl Globals {
             dummy_cnt: AtomicU32::new(DUMMY_RESERVE),
         }
     }
+
+    /// Clone the data from the current globals.
+    ///
+    /// Do not use this unless you know what you are doing.
+    pub fn clone_data(&self) -> Self {
+        Globals {
+            hygiene_data: Mutex::new(self.hygiene_data.lock().unwrap().clone()),
+            marks: Mutex::new(self.marks.lock().unwrap().clone()),
+            dummy_cnt: AtomicU32::new(self.dummy_cnt.load(std::sync::atomic::Ordering::SeqCst)),
+        }
+    }
 }
 
 better_scoped_tls::scoped_tls!(
@@ -127,6 +147,16 @@ better_scoped_tls::scoped_tls!(
     /// between threads.
     ///
     /// # Usages
+    ///
+    /// ## Configuring
+    ///
+    /// ```rust
+    /// use swc_common::GLOBALS;
+    ///
+    /// GLOBALS.set(&Default::default(), || {
+    ///     // Do operations that require span hygiene
+    /// });
+    /// ```
     ///
     /// ## Span hygiene
     ///
@@ -141,11 +171,17 @@ better_scoped_tls::scoped_tls!(
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(u32)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(u32))]
 #[derive(Debug, Eq, PartialEq, Clone, Ord, PartialOrd, Hash)]
 pub enum FileName {
-    Real(#[cfg_attr(any(feature = "rkyv-impl"), with(crate::source_map::EncodePathBuf))] PathBuf),
+    Real(
+        #[cfg_attr(
+            any(feature = "rkyv-impl"),
+            rkyv(with = crate::source_map::EncodePathBuf)
+        )]
+        PathBuf,
+    ),
     /// A macro. This includes the full name of the macro, so that there are no
     /// clashes.
     Macros(String),
@@ -156,10 +192,108 @@ pub enum FileName {
     /// Hack in src/libsyntax/parse.rs
     MacroExpansion,
     ProcMacroSourceCode,
-    Url(#[cfg_attr(any(feature = "rkyv-impl"), with(crate::source_map::EncodeUrl))] Url),
+    Url(#[cfg_attr(any(feature = "rkyv-impl"), rkyv(with = crate::source_map::EncodeUrl))] Url),
     Internal(String),
     /// Custom sources for explicit parser calls from plugins and drivers
     Custom(String),
+}
+
+#[cfg(feature = "encoding-impl")]
+impl cbor4ii::core::enc::Encode for FileName {
+    #[inline]
+    fn encode<W: cbor4ii::core::enc::Write>(
+        &self,
+        writer: &mut W,
+    ) -> Result<(), cbor4ii::core::enc::Error<W::Error>> {
+        use cbor4ii::core::types::{Array, Nothing, Tag};
+
+        match self {
+            FileName::Real(name) => {
+                let name = name.to_str().unwrap();
+                Tag(1, name).encode(writer)?;
+            }
+            FileName::Macros(name) => Tag(2, name).encode(writer)?,
+            FileName::QuoteExpansion => {
+                Tag(3, Nothing).encode(writer)?;
+                Array::bounded(0, writer)?;
+            }
+            FileName::Anon => {
+                Tag(4, Nothing).encode(writer)?;
+                Array::bounded(0, writer)?;
+            }
+            FileName::MacroExpansion => {
+                Tag(5, Nothing).encode(writer)?;
+                Array::bounded(0, writer)?;
+            }
+            FileName::ProcMacroSourceCode => {
+                Tag(6, Nothing).encode(writer)?;
+                Array::bounded(0, writer)?;
+            }
+            FileName::Url(name) => Tag(7, name.as_str()).encode(writer)?,
+            FileName::Internal(name) => Tag(8, name).encode(writer)?,
+            FileName::Custom(name) => Tag(9, name).encode(writer)?,
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(feature = "encoding-impl")]
+impl<'de> cbor4ii::core::dec::Decode<'de> for FileName {
+    #[inline]
+    fn decode<R: cbor4ii::core::dec::Read<'de>>(
+        reader: &mut R,
+    ) -> Result<Self, cbor4ii::core::dec::Error<R::Error>> {
+        use cbor4ii::core::types::{Array, Tag};
+
+        let tag = Tag::tag(reader)?;
+        match tag {
+            1 => {
+                let name = String::decode(reader)?;
+                Ok(FileName::Real(PathBuf::from(name)))
+            }
+            2 => {
+                let name = String::decode(reader)?;
+                Ok(FileName::Macros(name))
+            }
+            3 => {
+                let n = Array::len(reader)?;
+                debug_assert_eq!(n, Some(0));
+                Ok(FileName::QuoteExpansion)
+            }
+            4 => {
+                let n = Array::len(reader)?;
+                debug_assert_eq!(n, Some(0));
+                Ok(FileName::Anon)
+            }
+            5 => {
+                let n = Array::len(reader)?;
+                debug_assert_eq!(n, Some(0));
+                Ok(FileName::MacroExpansion)
+            }
+            6 => {
+                let n = Array::len(reader)?;
+                debug_assert_eq!(n, Some(0));
+                Ok(FileName::ProcMacroSourceCode)
+            }
+            7 => {
+                let name = <&str>::decode(reader)?;
+                Ok(FileName::Url(Url::parse(name).unwrap()))
+            }
+            8 => {
+                let name = String::decode(reader)?;
+                Ok(FileName::Internal(name))
+            }
+            9 => {
+                let name = String::decode(reader)?;
+                Ok(FileName::Custom(name))
+            }
+            tag => Err(cbor4ii::core::error::DecodeError::Custom {
+                name: &"FileName",
+                num: tag as u32,
+            }),
+        }
+    }
 }
 
 /// A wrapper that attempts to convert a type to and from UTF-8.
@@ -173,7 +307,7 @@ pub enum FileName {
 /// version accepts errors
 #[cfg(feature = "rkyv-impl")]
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "rkyv-impl", derive(rkyv::bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
 #[cfg_attr(feature = "rkyv-impl", repr(C))]
 pub struct EncodePathBuf;
 
@@ -183,22 +317,18 @@ impl rkyv::with::ArchiveWith<PathBuf> for EncodePathBuf {
     type Resolver = rkyv::string::StringResolver;
 
     #[inline]
-    unsafe fn resolve_with(
-        field: &PathBuf,
-        pos: usize,
-        resolver: Self::Resolver,
-        out: *mut Self::Archived,
-    ) {
+    fn resolve_with(field: &PathBuf, resolver: Self::Resolver, out: rkyv::Place<Self::Archived>) {
         // It's safe to unwrap here because if the OsString wasn't valid UTF-8 it would
         // have failed to serialize
-        rkyv::string::ArchivedString::resolve_from_str(field.to_str().unwrap(), pos, resolver, out);
+        rkyv::string::ArchivedString::resolve_from_str(field.to_str().unwrap(), resolver, out);
     }
 }
 
 #[cfg(feature = "rkyv-impl")]
 impl<S> rkyv::with::SerializeWith<PathBuf, S> for EncodePathBuf
 where
-    S: ?Sized + rkyv::ser::Serializer,
+    S: ?Sized + rancor::Fallible + rkyv::ser::Writer,
+    S::Error: rancor::Source,
 {
     #[inline]
     fn serialize_with(field: &PathBuf, serializer: &mut S) -> Result<Self::Resolver, S::Error> {
@@ -210,7 +340,7 @@ where
 #[cfg(feature = "rkyv-impl")]
 impl<D> rkyv::with::DeserializeWith<rkyv::string::ArchivedString, PathBuf, D> for EncodePathBuf
 where
-    D: ?Sized + rkyv::Fallible,
+    D: ?Sized + rancor::Fallible,
 {
     #[inline]
     fn deserialize_with(
@@ -224,7 +354,7 @@ where
 /// A wrapper that attempts to convert a Url to and from String.
 #[cfg(feature = "rkyv-impl")]
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "rkyv-impl", derive(rkyv::bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
 #[cfg_attr(feature = "rkyv-impl", repr(C))]
 pub struct EncodeUrl;
 
@@ -234,20 +364,16 @@ impl rkyv::with::ArchiveWith<Url> for EncodeUrl {
     type Resolver = rkyv::string::StringResolver;
 
     #[inline]
-    unsafe fn resolve_with(
-        field: &Url,
-        pos: usize,
-        resolver: Self::Resolver,
-        out: *mut Self::Archived,
-    ) {
-        rkyv::string::ArchivedString::resolve_from_str(field.as_str(), pos, resolver, out);
+    fn resolve_with(field: &Url, resolver: Self::Resolver, out: rkyv::Place<Self::Archived>) {
+        rkyv::string::ArchivedString::resolve_from_str(field.as_str(), resolver, out);
     }
 }
 
 #[cfg(feature = "rkyv-impl")]
 impl<S> rkyv::with::SerializeWith<Url, S> for EncodeUrl
 where
-    S: ?Sized + rkyv::ser::Serializer,
+    S: ?Sized + rancor::Fallible + rkyv::ser::Writer,
+    S::Error: rancor::Source,
 {
     #[inline]
     fn serialize_with(field: &Url, serializer: &mut S) -> Result<Self::Resolver, S::Error> {
@@ -259,7 +385,7 @@ where
 #[cfg(feature = "rkyv-impl")]
 impl<D> rkyv::with::DeserializeWith<rkyv::Archived<String>, Url, D> for EncodeUrl
 where
-    D: ?Sized + rkyv::Fallible,
+    D: ?Sized + rancor::Fallible,
 {
     #[inline]
     fn deserialize_with(field: &rkyv::string::ArchivedString, _: &mut D) -> Result<Url, D::Error> {
@@ -271,16 +397,16 @@ impl std::fmt::Display for FileName {
     fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match *self {
             FileName::Real(ref path) => write!(fmt, "{}", path.display()),
-            FileName::Macros(ref name) => write!(fmt, "<{} macros>", name),
+            FileName::Macros(ref name) => write!(fmt, "<{name} macros>"),
             FileName::QuoteExpansion => write!(fmt, "<quote expansion>"),
             FileName::MacroExpansion => write!(fmt, "<macro expansion>"),
             FileName::Anon => write!(fmt, "<anon>"),
             FileName::ProcMacroSourceCode => write!(fmt, "<proc-macro source code>"),
-            FileName::Url(ref u) => write!(fmt, "{}", u),
+            FileName::Url(ref u) => write!(fmt, "{u}"),
             FileName::Custom(ref s) => {
-                write!(fmt, "{}", s)
+                write!(fmt, "{s}")
             }
-            FileName::Internal(ref s) => write!(fmt, "<{}>", s),
+            FileName::Internal(ref s) => write!(fmt, "<{s}>"),
         }
     }
 }
@@ -337,8 +463,12 @@ impl FileName {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::ast_node::Encode, ::ast_node::Decode)
+)]
 pub struct PrimarySpanLabel(pub Span, pub String);
 
 /// A collection of spans. Spans have two orthogonal attributes:
@@ -356,13 +486,18 @@ pub struct PrimarySpanLabel(pub Span, pub String);
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::ast_node::Encode, ::ast_node::Decode)
+)]
 pub struct MultiSpan {
     primary_spans: Vec<Span>,
     span_labels: Vec<PrimarySpanLabel>,
 }
 
+#[cfg_attr(target_arch = "wasm32", link(wasm_import_module = "env"))]
 extern "C" {
     fn __span_dummy_with_cmt_proxy() -> u32;
 }
@@ -383,11 +518,18 @@ impl Span {
     }
 
     #[inline]
+    #[track_caller]
+    pub fn new_with_checked(lo: BytePos, hi: BytePos) -> Self {
+        debug_assert!(lo <= hi, "lo: {lo:#?}, hi: {hi:#?}");
+        Span { lo, hi }
+    }
+
+    #[inline]
     pub fn with_lo(&self, lo: BytePos) -> Span {
         Span::new(lo, self.hi)
     }
 
-    #[inline]
+    #[inline(always)]
     pub fn hi(self) -> BytePos {
         self.hi
     }
@@ -406,6 +548,11 @@ impl Span {
     #[inline]
     pub fn is_pure(self) -> bool {
         self.lo.is_pure()
+    }
+
+    #[inline]
+    pub fn is_placeholder(self) -> bool {
+        self.lo.is_placeholder()
     }
 
     /// Returns `true` if this is a dummy span with any hygienic context.
@@ -652,8 +799,8 @@ pub const NO_EXPANSION: SyntaxContext = SyntaxContext::empty();
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub struct MultiByteChar {
     /// The absolute offset of the character in the SourceMap
@@ -682,14 +829,14 @@ impl MultiByteChar {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(u32)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(u32))]
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum NonNarrowChar {
     /// Represents a zero-width character
     ZeroWidth(BytePos),
     /// Represents a wide (fullwidth) character
-    Wide(BytePos),
+    Wide(BytePos, usize),
     /// Represents a tab character, represented visually with a width of 4
     /// characters
     Tab(BytePos),
@@ -699,16 +846,15 @@ impl NonNarrowChar {
     fn new(pos: BytePos, width: usize) -> Self {
         match width {
             0 => NonNarrowChar::ZeroWidth(pos),
-            2 => NonNarrowChar::Wide(pos),
             4 => NonNarrowChar::Tab(pos),
-            _ => panic!("width {} given for non-narrow character", width),
+            w => NonNarrowChar::Wide(pos, w),
         }
     }
 
     /// Returns the absolute offset of the character in the SourceMap
     pub fn pos(self) -> BytePos {
         match self {
-            NonNarrowChar::ZeroWidth(p) | NonNarrowChar::Wide(p) | NonNarrowChar::Tab(p) => p,
+            NonNarrowChar::ZeroWidth(p) | NonNarrowChar::Wide(p, _) | NonNarrowChar::Tab(p) => p,
         }
     }
 
@@ -716,7 +862,7 @@ impl NonNarrowChar {
     pub fn width(self) -> usize {
         match self {
             NonNarrowChar::ZeroWidth(_) => 0,
-            NonNarrowChar::Wide(_) => 2,
+            NonNarrowChar::Wide(_, width) => width,
             NonNarrowChar::Tab(_) => 4,
         }
     }
@@ -728,7 +874,7 @@ impl Add<BytePos> for NonNarrowChar {
     fn add(self, rhs: BytePos) -> Self {
         match self {
             NonNarrowChar::ZeroWidth(pos) => NonNarrowChar::ZeroWidth(pos + rhs),
-            NonNarrowChar::Wide(pos) => NonNarrowChar::Wide(pos + rhs),
+            NonNarrowChar::Wide(pos, width) => NonNarrowChar::Wide(pos + rhs, width),
             NonNarrowChar::Tab(pos) => NonNarrowChar::Tab(pos + rhs),
         }
     }
@@ -740,60 +886,9 @@ impl Sub<BytePos> for NonNarrowChar {
     fn sub(self, rhs: BytePos) -> Self {
         match self {
             NonNarrowChar::ZeroWidth(pos) => NonNarrowChar::ZeroWidth(pos - rhs),
-            NonNarrowChar::Wide(pos) => NonNarrowChar::Wide(pos - rhs),
+            NonNarrowChar::Wide(pos, width) => NonNarrowChar::Wide(pos - rhs, width),
             NonNarrowChar::Tab(pos) => NonNarrowChar::Tab(pos - rhs),
         }
-    }
-}
-
-/// This is not a public interface, workaround for https://github.com/swc-project/swc/issues/7238
-#[doc(hidden)]
-#[cfg(feature = "rkyv-impl")]
-#[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "rkyv-impl", derive(rkyv::bytecheck::CheckBytes))]
-#[cfg_attr(feature = "rkyv-impl", repr(C))]
-pub struct EncodeArcString;
-
-#[cfg(feature = "rkyv-impl")]
-impl rkyv::with::ArchiveWith<Lrc<String>> for EncodeArcString {
-    type Archived = rkyv::Archived<String>;
-    type Resolver = rkyv::Resolver<String>;
-
-    unsafe fn resolve_with(
-        field: &Lrc<String>,
-        pos: usize,
-        resolver: Self::Resolver,
-        out: *mut Self::Archived,
-    ) {
-        let s = field.to_string();
-        rkyv::Archive::resolve(&s, pos, resolver, out);
-    }
-}
-
-#[cfg(feature = "rkyv-impl")]
-impl<S> rkyv::with::SerializeWith<Lrc<String>, S> for EncodeArcString
-where
-    S: ?Sized + rkyv::ser::Serializer,
-{
-    fn serialize_with(field: &Lrc<String>, serializer: &mut S) -> Result<Self::Resolver, S::Error> {
-        rkyv::string::ArchivedString::serialize_from_str(field, serializer)
-    }
-}
-
-#[cfg(feature = "rkyv-impl")]
-impl<D> rkyv::with::DeserializeWith<rkyv::Archived<String>, Lrc<String>, D> for EncodeArcString
-where
-    D: ?Sized + rkyv::Fallible,
-{
-    fn deserialize_with(
-        field: &rkyv::Archived<String>,
-        deserializer: &mut D,
-    ) -> Result<Lrc<String>, D::Error> {
-        use rkyv::Deserialize;
-
-        let s: String = field.deserialize(deserializer)?;
-
-        Ok(s.into())
     }
 }
 
@@ -802,39 +897,61 @@ where
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(feature = "encoding-impl", derive(crate::Encode, crate::Decode))]
 #[derive(Clone)]
 pub struct SourceFile {
     /// The name of the file that the source came from. Source that doesn't
     /// originate from files has names between angle brackets by convention,
     /// e.g. `<anon>`
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "encoding_helper::LrcHelper")
+    )]
     pub name: Lrc<FileName>,
     /// True if the `name` field above has been modified by
     /// `--remap-path-prefix`
     pub name_was_remapped: bool,
     /// The unmapped path of the file that the source came from.
     /// Set to `None` if the `SourceFile` was imported from an external crate.
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "encoding_helper::LrcHelper")
+    )]
     pub unmapped_path: Option<Lrc<FileName>>,
     /// Indicates which crate this `SourceFile` was imported from.
     pub crate_of_origin: u32,
     /// The complete source code
-    #[cfg_attr(any(feature = "rkyv-impl"), with(EncodeArcString))]
-    pub src: Lrc<String>,
+    #[cfg_attr(feature = "encoding-impl", encoding(with = "encoding_helper::Str"))]
+    pub src: BytesStr,
     /// The source code's hash
     pub src_hash: u128,
     /// The start position of this source in the `SourceMap`
     pub start_pos: BytePos,
     /// The end position of this source in the `SourceMap`
     pub end_pos: BytePos,
+    /// A hash of the filename, used for speeding up the incr. comp. hashing.
+    pub name_hash: u128,
+
+    #[cfg_attr(feature = "encoding-impl", encoding(ignore))]
+    lazy: CacheCell<SourceFileAnalysis>,
+}
+
+#[cfg_attr(
+    any(feature = "rkyv-impl"),
+    derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
+)]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[derive(Clone)]
+pub struct SourceFileAnalysis {
     /// Locations of lines beginnings in the source code
     pub lines: Vec<BytePos>,
     /// Locations of multi-byte characters in the source code
     pub multibyte_chars: Vec<MultiByteChar>,
     /// Width of characters that are not narrow in the source code
     pub non_narrow_chars: Vec<NonNarrowChar>,
-    /// A hash of the filename, used for speeding up the incr. comp. hashing.
-    pub name_hash: u128,
 }
 
 impl fmt::Debug for SourceFile {
@@ -844,30 +961,12 @@ impl fmt::Debug for SourceFile {
 }
 
 impl SourceFile {
+    /// `src` should not have UTF8 BOM
     pub fn new(
         name: Lrc<FileName>,
         name_was_remapped: bool,
         unmapped_path: Lrc<FileName>,
-        mut src: String,
-        start_pos: BytePos,
-    ) -> SourceFile {
-        remove_bom(&mut src);
-
-        Self::new_from(
-            name,
-            name_was_remapped,
-            unmapped_path,
-            Lrc::new(src),
-            start_pos,
-        )
-    }
-
-    /// `src` should not have UTF8 BOM
-    pub fn new_from(
-        name: Lrc<FileName>,
-        name_was_remapped: bool,
-        unmapped_path: Lrc<FileName>,
-        src: Lrc<String>,
+        src: BytesStr,
         start_pos: BytePos,
     ) -> SourceFile {
         debug_assert_ne!(
@@ -888,9 +987,6 @@ impl SourceFile {
         };
         let end_pos = start_pos.to_usize() + src.len();
 
-        let (lines, multibyte_chars, non_narrow_chars) =
-            analyze_source_file::analyze_source_file(&src[..], start_pos);
-
         SourceFile {
             name,
             name_was_remapped,
@@ -900,17 +996,16 @@ impl SourceFile {
             src_hash,
             start_pos,
             end_pos: SmallPos::from_usize(end_pos),
-            lines,
-            multibyte_chars,
-            non_narrow_chars,
             name_hash,
+            lazy: CacheCell::new(),
         }
     }
 
     /// Return the BytePos of the beginning of the current line.
     pub fn line_begin_pos(&self, pos: BytePos) -> BytePos {
         let line_index = self.lookup_line(pos).unwrap();
-        self.lines[line_index]
+        let analysis = self.analyze();
+        analysis.lines[line_index]
     }
 
     /// Get a line from the list of pre-computed line-beginnings.
@@ -928,7 +1023,8 @@ impl SourceFile {
         }
 
         let begin = {
-            let line = self.lines.get(line_number)?;
+            let analysis = self.analyze();
+            let line = analysis.lines.get(line_number)?;
             let begin: BytePos = *line - self.start_pos;
             begin.to_usize()
         };
@@ -945,7 +1041,8 @@ impl SourceFile {
     }
 
     pub fn count_lines(&self) -> usize {
-        self.lines.len()
+        let analysis = self.analyze();
+        analysis.lines.len()
     }
 
     /// Find the line containing the given position. The return value is the
@@ -953,12 +1050,13 @@ impl SourceFile {
     /// number. If the `source_file` is empty or the position is located before
     /// the first line, `None` is returned.
     pub fn lookup_line(&self, pos: BytePos) -> Option<usize> {
-        if self.lines.is_empty() {
+        let analysis = self.analyze();
+        if analysis.lines.is_empty() {
             return None;
         }
 
-        let line_index = lookup_line(&self.lines[..], pos);
-        assert!(line_index < self.lines.len() as isize);
+        let line_index = lookup_line(&analysis.lines, pos);
+        assert!(line_index < analysis.lines.len() as isize);
         if line_index >= 0 {
             Some(line_index as usize)
         } else {
@@ -971,11 +1069,13 @@ impl SourceFile {
             return (self.start_pos, self.end_pos);
         }
 
-        assert!(line_index < self.lines.len());
-        if line_index == (self.lines.len() - 1) {
-            (self.lines[line_index], self.end_pos)
+        let analysis = self.analyze();
+
+        assert!(line_index < analysis.lines.len());
+        if line_index == (analysis.lines.len() - 1) {
+            (analysis.lines[line_index], self.end_pos)
         } else {
-            (self.lines[line_index], self.lines[line_index + 1])
+            (analysis.lines[line_index], analysis.lines[line_index + 1])
         }
     }
 
@@ -983,12 +1083,17 @@ impl SourceFile {
     pub fn contains(&self, byte_pos: BytePos) -> bool {
         byte_pos >= self.start_pos && byte_pos <= self.end_pos
     }
-}
 
-/// Remove utf-8 BOM if any.
-pub(super) fn remove_bom(src: &mut String) {
-    if src.starts_with('\u{feff}') {
-        src.drain(..3);
+    pub fn analyze(&self) -> &SourceFileAnalysis {
+        self.lazy.get_or_init(|| {
+            let (lines, multibyte_chars, non_narrow_chars) =
+                analyze_source_file::analyze_source_file(&self.src[..], self.start_pos);
+            SourceFileAnalysis {
+                lines,
+                multibyte_chars,
+                non_narrow_chars,
+            }
+        })
     }
 }
 
@@ -1024,14 +1129,40 @@ pub trait SmallPos {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
-pub struct BytePos(#[cfg_attr(feature = "__rkyv", omit_bounds)] pub u32);
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
+pub struct BytePos(#[cfg_attr(feature = "__rkyv", rkyv(omit_bounds))] pub u32);
+
+#[cfg(feature = "encoding-impl")]
+impl cbor4ii::core::enc::Encode for BytePos {
+    #[inline]
+    fn encode<W: cbor4ii::core::enc::Write>(
+        &self,
+        writer: &mut W,
+    ) -> Result<(), cbor4ii::core::enc::Error<W::Error>> {
+        self.0.encode(writer)
+    }
+}
+
+#[cfg(feature = "encoding-impl")]
+impl<'de> cbor4ii::core::dec::Decode<'de> for BytePos {
+    #[inline]
+    fn decode<R: cbor4ii::core::dec::Read<'de>>(
+        reader: &mut R,
+    ) -> Result<Self, cbor4ii::core::dec::Error<R::Error>> {
+        u32::decode(reader).map(BytePos)
+    }
+}
 
 impl BytePos {
     /// Dummy position. This is reserved for synthesized spans.
     pub const DUMMY: Self = BytePos(0);
     const MIN_RESERVED: Self = BytePos(DUMMY_RESERVE);
+    /// Placeholders, commonly used where names are required, but the names are
+    /// not referenced elsewhere.
+    pub const PLACEHOLDER: Self = BytePos(u32::MAX - 2);
+    /// Reserved for PURE comments. e.g. `/* #__PURE__ */`
     pub const PURE: Self = BytePos(u32::MAX - 1);
     /// Synthesized, but should be stored in a source map.
     pub const SYNTHESIZED: Self = BytePos(u32::MAX);
@@ -1050,6 +1181,10 @@ impl BytePos {
         self.0 == Self::PURE.0
     }
 
+    pub const fn is_placeholder(self) -> bool {
+        self.0 == Self::PLACEHOLDER.0
+    }
+
     /// Returns `true`` if this is explicitly synthesized or has relevant input
     /// source so can have a comment.
     pub const fn can_have_comment(self) -> bool {
@@ -1064,10 +1199,13 @@ impl BytePos {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(feature = "encoding-impl", derive(crate::Encode, crate::Decode))]
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
-pub struct CharPos(pub usize);
+pub struct CharPos(
+    #[cfg_attr(feature = "encoding-impl", encoding(with = "encoding_helper::Usize"))] pub usize,
+);
 
 // FIXME: Lots of boilerplate in these impls, but so far my attempts to fix
 // have been unsuccessful
@@ -1180,12 +1318,20 @@ pub struct Loc {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Debug, Clone)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(feature = "encoding-impl", derive(crate::Encode, crate::Decode))]
 pub struct PartialLoc {
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "encoding_helper::LrcHelper")
+    )]
     pub source_file: Option<Lrc<SourceFile>>,
+    #[cfg_attr(feature = "encoding-impl", encoding(with = "encoding_helper::Usize"))]
     pub line: usize,
+    #[cfg_attr(feature = "encoding-impl", encoding(with = "encoding_helper::Usize"))]
     pub col: usize,
+    #[cfg_attr(feature = "encoding-impl", encoding(with = "encoding_helper::Usize"))]
     pub col_display: usize,
 }
 
@@ -1211,10 +1357,18 @@ pub struct SourceFileAndLine {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::ast_node::Encode, ::ast_node::Decode)
+)]
 #[derive(Debug)]
 pub struct SourceFileAndBytePos {
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "encoding_helper::LrcHelper")
+    )]
     pub sf: Lrc<SourceFile>,
     pub pos: BytePos,
 }
@@ -1224,10 +1378,12 @@ pub struct SourceFileAndBytePos {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(feature = "encoding-impl", derive(crate::Encode, crate::Decode))]
 pub struct LineInfo {
     /// Index of line, starting from 0.
+    #[cfg_attr(feature = "encoding-impl", encoding(with = "encoding_helper::Usize"))]
     pub line_index: usize,
 
     /// Column in line where span begins, starting from 0.
@@ -1264,9 +1420,17 @@ pub struct FileLines {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Debug, Clone)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::ast_node::Encode, ::ast_node::Decode)
+)]
 pub struct PartialFileLines {
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "encoding_helper::LrcHelper")
+    )]
     pub file: Option<Lrc<SourceFile>>,
     pub lines: Vec<LineInfo>,
 }
@@ -1285,8 +1449,12 @@ pub type PartialFileLinesResult = Result<PartialFileLines, Box<SpanLinesError>>;
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(u32)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(u32))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::ast_node::Encode, ::ast_node::Decode)
+)]
 pub enum SpanLinesError {
     IllFormedSpan(Span),
     DistinctSources(DistinctSources),
@@ -1297,8 +1465,8 @@ pub enum SpanLinesError {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(u32)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(u32))]
 pub enum SpanSnippetError {
     DummyBytePos,
     IllFormedSpan(Span),
@@ -1306,6 +1474,59 @@ pub enum SpanSnippetError {
     MalformedForSourcemap(MalformedSourceMapPositions),
     SourceNotAvailable { filename: FileName },
     LookupFailed(SourceMapLookupError),
+}
+
+#[cfg(feature = "encoding-impl")]
+impl cbor4ii::core::enc::Encode for SpanSnippetError {
+    #[inline]
+    fn encode<W: cbor4ii::core::enc::Write>(
+        &self,
+        writer: &mut W,
+    ) -> Result<(), cbor4ii::core::enc::Error<W::Error>> {
+        use cbor4ii::core::types::{Array, Nothing, Tag};
+
+        match self {
+            SpanSnippetError::DummyBytePos => {
+                Tag(1, Nothing).encode(writer)?;
+                Array::bounded(0, writer)
+            }
+            SpanSnippetError::IllFormedSpan(span) => Tag(2, span).encode(writer),
+            SpanSnippetError::DistinctSources(src) => Tag(3, src).encode(writer),
+            SpanSnippetError::MalformedForSourcemap(pos) => Tag(4, pos).encode(writer),
+            SpanSnippetError::SourceNotAvailable { filename } => Tag(5, filename).encode(writer),
+            SpanSnippetError::LookupFailed(err) => Tag(6, err).encode(writer),
+        }
+    }
+}
+
+#[cfg(feature = "encoding-impl")]
+impl<'de> cbor4ii::core::dec::Decode<'de> for SpanSnippetError {
+    #[inline]
+    fn decode<R: cbor4ii::core::dec::Read<'de>>(
+        reader: &mut R,
+    ) -> Result<Self, cbor4ii::core::dec::Error<R::Error>> {
+        use cbor4ii::core::types::{Array, Tag};
+
+        let tag = Tag::tag(reader)?;
+        match tag {
+            1 => {
+                let n = Array::len(reader)?;
+                debug_assert_eq!(n, Some(0));
+                Ok(SpanSnippetError::DummyBytePos)
+            }
+            2 => Span::decode(reader).map(SpanSnippetError::IllFormedSpan),
+            3 => DistinctSources::decode(reader).map(SpanSnippetError::DistinctSources),
+            4 => MalformedSourceMapPositions::decode(reader)
+                .map(SpanSnippetError::MalformedForSourcemap),
+            5 => FileName::decode(reader)
+                .map(|filename| SpanSnippetError::SourceNotAvailable { filename }),
+            6 => SourceMapLookupError::decode(reader).map(SpanSnippetError::LookupFailed),
+            tag => Err(cbor4ii::core::error::DecodeError::Custom {
+                name: &"SpanSnippetError",
+                num: tag as u32,
+            }),
+        }
+    }
 }
 
 /// An error type for looking up source maps.
@@ -1317,8 +1538,12 @@ pub enum SpanSnippetError {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(u32)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(u32))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::ast_node::Encode, ::ast_node::Decode)
+)]
 pub enum SourceMapLookupError {
     NoFileFor(BytePos),
 }
@@ -1328,17 +1553,32 @@ pub enum SourceMapLookupError {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
-pub struct FilePos(pub Lrc<FileName>, pub BytePos);
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::ast_node::Encode, ::ast_node::Decode)
+)]
+pub struct FilePos(
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "encoding_helper::LrcHelper")
+    )]
+    pub Lrc<FileName>,
+    pub BytePos,
+);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 #[cfg_attr(
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::ast_node::Encode, ::ast_node::Decode)
+)]
 pub struct DistinctSources {
     pub begin: FilePos,
     pub end: FilePos,
@@ -1349,10 +1589,19 @@ pub struct DistinctSources {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::ast_node::Encode, ::ast_node::Decode)
+)]
 pub struct MalformedSourceMapPositions {
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "encoding_helper::LrcHelper")
+    )]
     pub name: Lrc<FileName>,
+    #[cfg_attr(feature = "encoding-impl", encoding(with = "encoding_helper::Usize"))]
     pub source_len: usize,
     pub begin_pos: BytePos,
     pub end_pos: BytePos,
@@ -1372,6 +1621,101 @@ impl From<SourceMapLookupError> for Box<SpanSnippetError> {
     #[cold]
     fn from(err: SourceMapLookupError) -> Self {
         Box::new(SpanSnippetError::LookupFailed(err))
+    }
+}
+
+#[cfg(feature = "encoding-impl")]
+mod encoding_helper {
+    use super::Lrc;
+
+    pub struct LrcHelper<T>(pub T);
+
+    impl<T: cbor4ii::core::enc::Encode> cbor4ii::core::enc::Encode for LrcHelper<&'_ Lrc<T>> {
+        fn encode<W: cbor4ii::core::enc::Write>(
+            &self,
+            writer: &mut W,
+        ) -> Result<(), cbor4ii::core::enc::Error<W::Error>> {
+            self.0.encode(writer)
+        }
+    }
+
+    impl<'de, T: cbor4ii::core::dec::Decode<'de>> cbor4ii::core::dec::Decode<'de>
+        for LrcHelper<Lrc<T>>
+    {
+        fn decode<R: cbor4ii::core::dec::Read<'de>>(
+            reader: &mut R,
+        ) -> Result<Self, cbor4ii::core::dec::Error<R::Error>> {
+            T::decode(reader).map(Lrc::new).map(LrcHelper)
+        }
+    }
+
+    impl<T: cbor4ii::core::enc::Encode> cbor4ii::core::enc::Encode for LrcHelper<&'_ Option<Lrc<T>>> {
+        fn encode<W: cbor4ii::core::enc::Write>(
+            &self,
+            writer: &mut W,
+        ) -> Result<(), cbor4ii::core::enc::Error<W::Error>> {
+            // when MSRV supports version 1.75.0 and later, `.as_slice()` should be used.
+            let v = self.0.as_deref();
+            cbor4ii::core::types::Array::bounded(v.is_some() as usize, writer)?;
+            if let Some(v) = v {
+                v.encode(writer)?;
+            }
+            Ok(())
+        }
+    }
+
+    impl<'de, T: cbor4ii::core::dec::Decode<'de>> cbor4ii::core::dec::Decode<'de>
+        for LrcHelper<Option<Lrc<T>>>
+    {
+        fn decode<R: cbor4ii::core::dec::Read<'de>>(
+            reader: &mut R,
+        ) -> Result<Self, cbor4ii::core::dec::Error<R::Error>> {
+            <cbor4ii::core::types::Maybe<Option<T>>>::decode(reader)
+                .map(|maybe| maybe.0.map(Lrc::new))
+                .map(LrcHelper)
+        }
+    }
+
+    pub struct Usize<T>(pub T);
+
+    impl cbor4ii::core::enc::Encode for Usize<&'_ usize> {
+        fn encode<W: cbor4ii::core::enc::Write>(
+            &self,
+            writer: &mut W,
+        ) -> Result<(), cbor4ii::core::enc::Error<W::Error>> {
+            (*self.0 as u64).encode(writer)
+        }
+    }
+
+    impl<'de> cbor4ii::core::dec::Decode<'de> for Usize<usize> {
+        fn decode<R: cbor4ii::core::dec::Read<'de>>(
+            reader: &mut R,
+        ) -> Result<Self, cbor4ii::core::dec::Error<R::Error>> {
+            <u64>::decode(reader)
+                .map(|n| n.try_into().unwrap())
+                .map(Usize)
+        }
+    }
+
+    pub struct Str<T>(pub T);
+
+    impl cbor4ii::core::enc::Encode for Str<&'_ bytes_str::BytesStr> {
+        fn encode<W: cbor4ii::core::enc::Write>(
+            &self,
+            writer: &mut W,
+        ) -> Result<(), cbor4ii::core::enc::Error<W::Error>> {
+            cbor4ii::core::enc::Encode::encode(&self.0.as_str(), writer)
+        }
+    }
+
+    impl<'de> cbor4ii::core::dec::Decode<'de> for Str<bytes_str::BytesStr> {
+        fn decode<R: cbor4ii::core::dec::Read<'de>>(
+            reader: &mut R,
+        ) -> Result<Self, cbor4ii::core::dec::Error<R::Error>> {
+            String::decode(reader)
+                .map(bytes_str::BytesStr::from)
+                .map(Str)
+        }
     }
 }
 

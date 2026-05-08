@@ -1,10 +1,7 @@
 use anyhow::{Context, Error};
-use swc_atoms::JsWord;
-use swc_common::{
-    collections::{AHashMap, AHashSet},
-    sync::Lrc,
-    FileName, Mark, Spanned, SyntaxContext, DUMMY_SP,
-};
+use rustc_hash::{FxHashMap, FxHashSet};
+use swc_atoms::Atom;
+use swc_common::{sync::Lrc, FileName, Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_utils::find_pat_ids;
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
@@ -58,7 +55,7 @@ where
                 .resolver
                 .resolve(base, module_specifier)
                 .map(|v| v.filename)
-                .with_context(|| format!("failed to resolve {} from {}", module_specifier, base))?;
+                .with_context(|| format!("failed to resolve {module_specifier} from {base}"))?;
 
             let path = Lrc::new(path);
 
@@ -95,7 +92,7 @@ pub(super) struct RawImports {
     /// function bar() {}
     /// foo[bar()]
     /// ```
-    pub forced_ns: AHashSet<JsWord>,
+    pub forced_ns: FxHashSet<Atom>,
 }
 
 /// This type implements two operation (analysis, deglobbing) to reduce binary
@@ -115,13 +112,13 @@ where
 
     /// HashMap from the local identifier of a namespace import to used
     /// properties.
-    usages: AHashMap<Id, Vec<Id>>,
+    usages: FxHashMap<Id, Vec<Id>>,
 
     /// While deglobbing, we also marks imported identifiers.
-    imported_idents: AHashMap<Id, SyntaxContext>,
+    imported_idents: FxHashMap<Id, SyntaxContext>,
 
     deglob_phase: bool,
-    idents_to_deglob: AHashSet<Id>,
+    idents_to_deglob: FxHashSet<Id>,
 
     /// `true` while folding objects of a member expression.
     ///
@@ -149,7 +146,7 @@ where
     R: Resolve,
 {
     /// Returns (local, export)
-    fn ctxt_for(&self, src: &JsWord) -> Option<(SyntaxContext, SyntaxContext)> {
+    fn ctxt_for(&self, src: &Atom) -> Option<(SyntaxContext, SyntaxContext)> {
         // Don't apply mark if it's a core module.
         if self.bundler.is_external(src) {
             return None;
@@ -163,7 +160,7 @@ where
         ))
     }
 
-    fn mark_as_wrapping_required(&self, src: &JsWord) {
+    fn mark_as_wrapping_required(&self, src: &Atom) {
         // Don't apply mark if it's a core module.
         if self.bundler.is_external(src) {
             return;
@@ -178,7 +175,7 @@ where
         self.bundler.scope.mark_as_wrapping_required(id);
     }
 
-    fn mark_as_cjs(&self, src: &JsWord) {
+    fn mark_as_cjs(&self, src: &Atom) {
         let path = self.bundler.resolve(self.path, src);
         let path = match path {
             Ok(v) => v,
@@ -206,7 +203,7 @@ where
             })
             .map(|import| import.src.value.clone())
         {
-            self.info.forced_ns.insert(src);
+            self.info.forced_ns.insert(src.to_atom_lossy().into_owned());
         }
     }
 
@@ -225,12 +222,13 @@ where
                     Callee::Expr(callee)
                         if self.bundler.config.require && callee.is_ident_ref_to("require") =>
                     {
-                        if self.bundler.is_external(&src.value) {
+                        let src_atom = src.value.to_atom_lossy();
+                        if self.bundler.is_external(src_atom.as_ref()) {
                             return;
                         }
                         if let Expr::Ident(i) = &mut **callee {
-                            self.mark_as_cjs(&src.value);
-                            if let Some((_, export_ctxt)) = self.ctxt_for(&src.value) {
+                            self.mark_as_cjs(src_atom.as_ref());
+                            if let Some((_, export_ctxt)) = self.ctxt_for(src_atom.as_ref()) {
                                 i.ctxt = export_ctxt;
                             }
                         }
@@ -305,7 +303,8 @@ where
                     None => return,
                 };
 
-                let mark = self.ctxt_for(&import.src.value);
+                let src_atom = import.src.value.to_atom_lossy();
+                let mark = self.ctxt_for(src_atom.as_ref());
                 let exported_ctxt = match mark {
                     None => return,
                     Some(ctxts) => ctxts.1,
@@ -371,6 +370,8 @@ where
         let orig = match &s.orig {
             ModuleExportName::Ident(ident) => ident,
             ModuleExportName::Str(..) => unimplemented!("module string names unimplemented"),
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         };
 
         self.add_forced_ns_for(orig.to_id());
@@ -381,6 +382,8 @@ where
                 exported.ctxt = self.module_ctxt;
             }
             Some(ModuleExportName::Str(..)) => unimplemented!("module string names unimplemented"),
+            #[cfg(swc_ast_unknown)]
+            Some(_) => panic!("unable to access unknown nodes"),
             None => {
                 let exported = Ident::new(orig.sym.clone(), orig.span, self.module_ctxt);
                 s.exported = Some(ModuleExportName::Ident(exported));
@@ -415,13 +418,14 @@ where
     }
 
     fn visit_mut_import_decl(&mut self, import: &mut ImportDecl) {
+        let src_atom = import.src.value.to_atom_lossy().into_owned();
         // Ignore if it's a core module.
-        if self.bundler.is_external(&import.src.value) {
+        if self.bundler.is_external(&src_atom) {
             return;
         }
 
         if !self.deglob_phase {
-            if let Some((_, export_ctxt)) = self.ctxt_for(&import.src.value) {
+            if let Some((_, export_ctxt)) = self.ctxt_for(&src_atom) {
                 // Firstly we attach proper syntax contexts.
                 ExportMetadata {
                     export_ctxt: Some(export_ctxt),
@@ -441,6 +445,8 @@ where
                                 Some(ModuleExportName::Str(..)) => {
                                     unimplemented!("module string names unimplemented")
                                 }
+                                #[cfg(swc_ast_unknown)]
+                                Some(_) => panic!("unable to access unknown nodes"),
                                 None => {
                                     let mut imported: Ident = n.local.clone();
                                     imported.ctxt = export_ctxt;
@@ -454,6 +460,8 @@ where
                         ImportSpecifier::Namespace(n) => {
                             self.imported_idents.insert(n.local.to_id(), export_ctxt);
                         }
+                        #[cfg(swc_ast_unknown)]
+                        _ => panic!("unable to access unknown nodes"),
                     }
                 }
             }
@@ -510,7 +518,9 @@ where
                 }
 
                 // We failed to found property usage.
-                self.info.forced_ns.insert(import.src.value.clone());
+                self.info
+                    .forced_ns
+                    .insert(import.src.value.clone().to_atom_lossy().into_owned());
             }
         }
     }
@@ -546,12 +556,9 @@ where
         if self.deglob_phase {
             let mut wrapping_required = Vec::new();
             for import in self.info.imports.iter_mut() {
+                let src_atom = import.src.value.to_atom_lossy().into_owned();
                 let use_ns = self.info.forced_ns.contains(&import.src.value)
-                    || self
-                        .bundler
-                        .config
-                        .external_modules
-                        .contains(&import.src.value);
+                    || self.bundler.config.external_modules.contains(&src_atom);
 
                 if use_ns {
                     wrapping_required.push(import.src.value.clone());
@@ -564,7 +571,8 @@ where
             }
 
             for id in wrapping_required {
-                self.mark_as_wrapping_required(&id);
+                let id_atom = id.to_atom_lossy();
+                self.mark_as_wrapping_required(id_atom.as_ref());
             }
         }
     }
@@ -617,14 +625,20 @@ where
                         _ => return,
                     };
                     // Ignore core modules.
-                    if self.bundler.config.external_modules.contains(&src.value) {
+                    let src_atom = src.value.to_atom_lossy();
+                    if self
+                        .bundler
+                        .config
+                        .external_modules
+                        .contains(src_atom.as_ref())
+                    {
                         return;
                     }
 
-                    self.mark_as_cjs(&src.value);
+                    self.mark_as_cjs(src_atom.as_ref());
 
                     if let Expr::Ident(i) = &mut **callee {
-                        if let Some((_, export_ctxt)) = self.ctxt_for(&src.value) {
+                        if let Some((_, export_ctxt)) = self.ctxt_for(src_atom.as_ref()) {
                             i.ctxt = export_ctxt;
                         }
                     }

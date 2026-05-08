@@ -1,3 +1,4 @@
+use swc_atoms::atom;
 use swc_css_ast::*;
 
 use super::Compressor;
@@ -151,7 +152,7 @@ impl Compressor {
                     };
                     length.unit = Ident {
                         span: length.unit.span,
-                        value: "in".into(),
+                        value: atom!("in"),
                         raw: None,
                     };
                 } else if value <= 0.1 {
@@ -164,7 +165,7 @@ impl Compressor {
                     };
                     length.unit = Ident {
                         span: length.unit.span,
-                        value: "mm".into(),
+                        value: atom!("mm"),
                         raw: None,
                     };
                 }
@@ -180,7 +181,7 @@ impl Compressor {
                     };
                     length.unit = Ident {
                         span: length.unit.span,
-                        value: "in".into(),
+                        value: atom!("in"),
                         raw: None,
                     };
                 } else if value % 10.0 == 0.0 {
@@ -193,7 +194,7 @@ impl Compressor {
                     };
                     length.unit = Ident {
                         span: length.unit.span,
-                        value: "cm".into(),
+                        value: atom!("cm"),
                         raw: None,
                     };
                 }
@@ -209,7 +210,7 @@ impl Compressor {
                     };
                     length.unit = Ident {
                         span: length.unit.span,
-                        value: "cm".into(),
+                        value: atom!("cm"),
                         raw: None,
                     };
                 } else if value % 101.6 == 0.0 {
@@ -222,26 +223,24 @@ impl Compressor {
                     };
                     length.unit = Ident {
                         span: length.unit.span,
-                        value: "in".into(),
+                        value: atom!("in"),
                         raw: None,
                     };
                 }
             }
-            "pc" => {
-                if value % 6.0 == 0.0 {
-                    let new_value = self.convert_length(value, &length.unit.value, "in");
+            "pc" if value % 6.0 == 0.0 => {
+                let new_value = self.convert_length(value, &length.unit.value, "in");
 
-                    length.value = Number {
-                        span: length.value.span,
-                        value: new_value,
-                        raw: None,
-                    };
-                    length.unit = Ident {
-                        span: length.unit.span,
-                        value: "in".into(),
-                        raw: None,
-                    };
-                }
+                length.value = Number {
+                    span: length.value.span,
+                    value: new_value,
+                    raw: None,
+                };
+                length.unit = Ident {
+                    span: length.unit.span,
+                    value: atom!("in"),
+                    raw: None,
+                };
             }
             "pt" => {
                 if value % 72.0 == 0.0 {
@@ -254,7 +253,7 @@ impl Compressor {
                     };
                     length.unit = Ident {
                         span: length.unit.span,
-                        value: "in".into(),
+                        value: atom!("in"),
                         raw: None,
                     };
                 } else if value % 12.0 == 0.0 {
@@ -267,7 +266,7 @@ impl Compressor {
                     };
                     length.unit = Ident {
                         span: length.unit.span,
-                        value: "pc".into(),
+                        value: atom!("pc"),
                         raw: None,
                     };
                 } else if value % 0.75 == 0.0 {
@@ -280,7 +279,7 @@ impl Compressor {
                     };
                     length.unit = Ident {
                         span: length.unit.span,
-                        value: "px".into(),
+                        value: atom!("px"),
                         raw: None,
                     };
                 }

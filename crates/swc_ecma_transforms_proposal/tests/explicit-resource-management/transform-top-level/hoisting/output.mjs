@@ -4,20 +4,13 @@ const env = {
     hasError: false
 };
 try {
-    function f() {
-        a;
-        B;
-    }
-    function h() {
-        b;
-        A;
-    }
     doSomething();
-    let c = 2;
-    class A {
-    }
-    const x = _ts_add_disposable_resource(env, null, false);
-    ;
+    var c = 2;
+    var A = class A {
+    };
+    var B = class B {
+    };
+    var x = _ts_add_disposable_resource(env, null, false);
 } catch (e) {
     env.error = e;
     env.hasError = true;
@@ -27,10 +20,17 @@ try {
 import { doSomething } from "somewhere";
 export * from "somewhere else";
 export * as ns from "somewhere else";
+function f() {
+    a;
+    B;
+}
+function h() {
+    b;
+    A;
+}
 export function g() {
     c;
 }
 export { f };
 export let { b } = {};
-export class B {
-}
+export { B };

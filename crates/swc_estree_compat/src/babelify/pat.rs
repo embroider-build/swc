@@ -37,6 +37,8 @@ impl Babelify for Pat {
                 "illegal conversion: Cannot convert {:?} to PatOutput",
                 &self
             ),
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         }
     }
 }
@@ -127,7 +129,7 @@ impl From<PatOutput> for Param {
             PatOutput::Array(p) => Param::Pat(Pattern::Array(p)),
             PatOutput::Object(p) => Param::Pat(Pattern::Object(p)),
             PatOutput::Assign(p) => Param::Pat(Pattern::Assignment(p)),
-            PatOutput::Expr(p) => panic!("Cannot convert {:?} to Param", p),
+            PatOutput::Expr(p) => panic!("Cannot convert {p:?} to Param"),
         }
     }
 }
@@ -188,6 +190,8 @@ impl Babelify for ObjectPatProp {
             ObjectPatProp::KeyValue(p) => ObjectPatternProp::Prop(p.babelify(ctx)),
             ObjectPatProp::Rest(r) => ObjectPatternProp::Rest(r.babelify(ctx)),
             ObjectPatProp::Assign(a) => ObjectPatternProp::Prop(a.babelify(ctx)),
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         }
     }
 }

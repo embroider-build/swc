@@ -6,14 +6,18 @@ use std::{
 
 use is_macro::Is;
 use num_bigint::BigInt as BigIntValue;
-use swc_atoms::{js_word, Atom};
-use swc_common::{ast_node, util::take::Take, EqIgnoreSpan, Span, DUMMY_SP};
+use swc_atoms::{
+    wtf8::{CodePoint, Wtf8Buf},
+    Atom, Wtf8Atom,
+};
+use swc_common::{ast_node, errors::HANDLER, util::take::Take, EqIgnoreSpan, Span, DUMMY_SP};
 
-use crate::jsx::JSXText;
+use crate::{jsx::JSXText, TplElement};
 
 #[ast_node]
 #[derive(Eq, Hash, EqIgnoreSpan, Is)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum Lit {
     #[tag("StringLiteral")]
     Str(Str),
@@ -54,6 +58,7 @@ bridge_expr_from!(Lit, JSXText);
 
 bridge_lit_from!(Str, &'_ str);
 bridge_lit_from!(Str, Atom);
+bridge_lit_from!(Str, Wtf8Atom);
 bridge_lit_from!(Str, Cow<'_, str>);
 bridge_lit_from!(Str, String);
 bridge_lit_from!(Bool, bool);
@@ -71,6 +76,8 @@ impl Lit {
             Lit::BigInt(n) => n.span = span,
             Lit::Regex(n) => n.span = span,
             Lit::JSXText(n) => n.span = span,
+            #[cfg(all(swc_ast_unknown, feature = "encoding-impl"))]
+            _ => swc_common::unknown!(),
         }
     }
 }
@@ -79,12 +86,23 @@ impl Lit {
 #[derive(Eq, Hash)]
 pub struct BigInt {
     pub span: Span,
-    #[cfg_attr(any(feature = "rkyv-impl"), with(EncodeBigInt))]
+    #[cfg_attr(any(feature = "rkyv-impl"), rkyv(with = EncodeBigInt))]
+    #[cfg_attr(feature = "encoding-impl", encoding(with = "EncodeBigInt2"))]
     pub value: Box<BigIntValue>,
 
     /// Use `None` value only for transformations to avoid recalculate
     /// characters in big integer
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub raw: Option<Atom>,
+}
+
+#[cfg(feature = "shrink-to-fit")]
+impl shrink_to_fit::ShrinkToFit for BigInt {
+    #[inline(always)]
+    fn shrink_to_fit(&mut self) {}
 }
 
 impl EqIgnoreSpan for BigInt {
@@ -93,9 +111,36 @@ impl EqIgnoreSpan for BigInt {
     }
 }
 
+#[cfg(feature = "encoding-impl")]
+struct EncodeBigInt2<T>(T);
+
+#[cfg(feature = "encoding-impl")]
+impl cbor4ii::core::enc::Encode for EncodeBigInt2<&'_ Box<BigIntValue>> {
+    #[inline]
+    fn encode<W: cbor4ii::core::enc::Write>(
+        &self,
+        writer: &mut W,
+    ) -> Result<(), cbor4ii::core::enc::Error<W::Error>> {
+        cbor4ii::core::types::Bytes(self.0.to_signed_bytes_le().as_slice()).encode(writer)
+    }
+}
+
+#[cfg(feature = "encoding-impl")]
+impl<'de> cbor4ii::core::dec::Decode<'de> for EncodeBigInt2<Box<BigIntValue>> {
+    #[inline]
+    fn decode<R: cbor4ii::core::dec::Read<'de>>(
+        reader: &mut R,
+    ) -> Result<Self, cbor4ii::core::dec::Error<R::Error>> {
+        let buf = <cbor4ii::core::types::Bytes<&'de [u8]>>::decode(reader)?;
+        Ok(EncodeBigInt2(Box::new(BigIntValue::from_signed_bytes_le(
+            buf.0,
+        ))))
+    }
+}
+
 #[cfg(feature = "rkyv-impl")]
 #[derive(Debug, Clone, Copy)]
-#[cfg_attr(feature = "rkyv-impl", derive(rkyv::bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
 #[cfg_attr(feature = "rkyv-impl", repr(C))]
 pub struct EncodeBigInt;
 
@@ -104,23 +149,23 @@ impl rkyv::with::ArchiveWith<Box<BigIntValue>> for EncodeBigInt {
     type Archived = rkyv::Archived<String>;
     type Resolver = rkyv::Resolver<String>;
 
-    unsafe fn resolve_with(
+    fn resolve_with(
         field: &Box<BigIntValue>,
-        pos: usize,
         resolver: Self::Resolver,
-        out: *mut Self::Archived,
+        out: rkyv::Place<Self::Archived>,
     ) {
         use rkyv::Archive;
 
         let s = field.to_string();
-        s.resolve(pos, resolver, out);
+        s.resolve(resolver, out);
     }
 }
 
 #[cfg(feature = "rkyv-impl")]
 impl<S> rkyv::with::SerializeWith<Box<BigIntValue>, S> for EncodeBigInt
 where
-    S: ?Sized + rkyv::ser::Serializer,
+    S: ?Sized + rancor::Fallible + rkyv::ser::Writer,
+    S::Error: rancor::Source,
 {
     fn serialize_with(
         field: &Box<BigIntValue>,
@@ -134,7 +179,7 @@ where
 #[cfg(feature = "rkyv-impl")]
 impl<D> rkyv::with::DeserializeWith<rkyv::Archived<String>, Box<BigIntValue>, D> for EncodeBigInt
 where
-    D: ?Sized + rkyv::Fallible,
+    D: ?Sized + rancor::Fallible,
 {
     fn deserialize_with(
         field: &rkyv::Archived<String>,
@@ -174,13 +219,18 @@ impl From<BigIntValue> for BigInt {
 /// A string literal.
 #[ast_node("StringLiteral")]
 #[derive(Eq, Hash)]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct Str {
     pub span: Span,
 
-    pub value: Atom,
+    pub value: Wtf8Atom,
 
     /// Use `None` value only for transformations to avoid recalculate escaped
     /// characters in strings
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub raw: Option<Atom>,
 }
 
@@ -188,7 +238,7 @@ impl Take for Str {
     fn dummy() -> Self {
         Str {
             span: DUMMY_SP,
-            value: js_word!(""),
+            value: Wtf8Atom::default(),
             raw: None,
         }
     }
@@ -199,11 +249,17 @@ impl Take for Str {
 impl<'a> arbitrary::Arbitrary<'a> for Str {
     fn arbitrary(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Self> {
         let span = u.arbitrary()?;
-        let value = u.arbitrary::<String>()?.into();
+        let value = u.arbitrary::<Wtf8Atom>()?.into();
         let raw = Some(u.arbitrary::<String>()?.into());
 
         Ok(Self { span, value, raw })
     }
+}
+
+fn emit_span_error(span: Span, msg: &str) {
+    HANDLER.with(|handler| {
+        handler.struct_span_err(span, msg).emit();
+    });
 }
 
 impl Str {
@@ -212,47 +268,177 @@ impl Str {
         self.value.is_empty()
     }
 
-    pub fn from_tpl_raw(tpl_raw: &str) -> Atom {
-        let mut buf = String::with_capacity(tpl_raw.len());
-
+    pub fn from_tpl_raw(tpl: &TplElement) -> Wtf8Atom {
+        let tpl_raw = &tpl.raw;
+        let span = tpl.span;
+        let mut buf: Wtf8Buf = Wtf8Buf::with_capacity(tpl_raw.len());
         let mut iter = tpl_raw.chars();
-
+        // prev_result can only be less than 0xdc00
+        // so init with 0xdc00 as no prev result
+        const NO_PREV_RESULT: u32 = 0xdc00;
+        let mut prev_result: u32 = NO_PREV_RESULT;
         while let Some(c) = iter.next() {
             match c {
                 '\\' => {
-                    if let Some(next) = iter.next() {
-                        match next {
+                    if let Some(c) = iter.next() {
+                        match c {
                             '`' | '$' | '\\' => {
-                                buf.push(next);
+                                buf.push_char(c);
                             }
                             'b' => {
-                                buf.push('\u{0008}');
+                                buf.push_char('\u{0008}');
                             }
                             'f' => {
-                                buf.push('\u{000C}');
+                                buf.push_char('\u{000C}');
                             }
                             'n' => {
-                                buf.push('\n');
+                                buf.push_char('\n');
                             }
                             'r' => {
-                                buf.push('\r');
+                                buf.push_char('\r');
                             }
                             't' => {
-                                buf.push('\t');
+                                buf.push_char('\t');
                             }
                             'v' => {
-                                buf.push('\u{000B}');
+                                buf.push_char('\u{000B}');
+                            }
+                            '\r' => {
+                                let mut next_iter = iter.clone();
+                                if let Some('\n') = next_iter.next() {
+                                    iter = next_iter;
+                                }
+                            }
+                            '\n' | '\u{2028}' | '\u{2029}' => {}
+                            'u' | 'x' => {
+                                let mut count: u8 = 0;
+                                // result is a 4 digit hex value
+                                let mut result: u32 = 0;
+                                let mut max_len = if c == 'u' { 4 } else { 2 };
+                                for c in &mut iter {
+                                    match c {
+                                        '{' if max_len == 4 && count == 0 => {
+                                            max_len = 6;
+                                            continue;
+                                        }
+                                        '}' if max_len == 6 => {
+                                            break;
+                                        }
+                                        '0'..='9' => {
+                                            result = (result << 4) | (c as u32 - '0' as u32);
+                                            count += 1;
+                                        }
+                                        'a'..='f' => {
+                                            result = (result << 4) | (c as u32 - 'a' as u32 + 10);
+                                            count += 1;
+                                        }
+                                        'A'..='F' => {
+                                            result = (result << 4) | (c as u32 - 'A' as u32 + 10);
+                                            count += 1;
+                                        }
+                                        _ => emit_span_error(
+                                            span,
+                                            "Uncaught SyntaxError: Invalid Unicode escape sequence",
+                                        ),
+                                    }
+                                    if count >= max_len {
+                                        if result > 0x10ffff {
+                                            emit_span_error(
+                                                span,
+                                                "Uncaught SyntaxError: Undefined Unicode \
+                                                 code-point",
+                                            )
+                                        } else {
+                                            break;
+                                        }
+                                    }
+                                }
+                                if max_len == 2 && max_len != count {
+                                    emit_span_error(
+                                        span,
+                                        "Uncaught SyntaxError: Invalid hexadecimal escape sequence",
+                                    );
+                                }
+                                if (0xd800..=0xdfff).contains(&result) {
+                                    // Handle UTF-16 surrogate pair
+                                    if result < 0xdc00 {
+                                        // High surrogate pair
+                                        if prev_result != NO_PREV_RESULT {
+                                            // If the previous result is a high surrogate
+                                            // We can be sure `prev_result` is less than 0xdc00
+                                            buf.push(unsafe {
+                                                CodePoint::from_u32_unchecked(prev_result)
+                                            });
+                                        }
+                                        let mut iter = iter.clone();
+                                        if let Some('\\') = iter.next() {
+                                            if let Some('u') = iter.next() {
+                                                // less than 0xdc00
+                                                prev_result = result;
+                                                continue;
+                                            }
+                                        }
+                                    } else if prev_result != NO_PREV_RESULT {
+                                        // Low surrogate pair
+                                        // Decode to supplementary plane code point
+                                        // (0x10000-0x10FFFF)
+                                        result = 0x10000
+                                            + ((result & 0x3ff) | ((prev_result & 0x3ff) << 10));
+                                        // We can be sure result is a valid code point here
+                                        buf.push(unsafe { CodePoint::from_u32_unchecked(result) });
+                                        prev_result = NO_PREV_RESULT;
+                                        continue;
+                                    }
+                                }
+                                if prev_result != NO_PREV_RESULT {
+                                    // Could not find a valid low surrogate pair
+                                    // We can be sure `prev_result` is less than 0xdc00
+                                    buf.push(unsafe { CodePoint::from_u32_unchecked(prev_result) });
+                                    prev_result = NO_PREV_RESULT;
+                                }
+                                if result <= 0x10ffff {
+                                    // We can be sure result is a valid code point here
+                                    buf.push(unsafe { CodePoint::from_u32_unchecked(result) });
+                                } else {
+                                    emit_span_error(
+                                        span,
+                                        "Uncaught SyntaxError: Undefined Unicode code-point",
+                                    );
+                                }
+                            }
+                            '0'..='7' => {
+                                let next = iter.clone().next();
+                                if c == '0' {
+                                    match next {
+                                        Some(next) => {
+                                            if !next.is_digit(8) {
+                                                buf.push_char('\u{0000}');
+                                                continue;
+                                            }
+                                        }
+                                        // \0 is not an octal literal nor decimal literal.
+                                        _ => {
+                                            buf.push_char('\u{0000}');
+                                            continue;
+                                        }
+                                    }
+                                }
+                                emit_span_error(
+                                    span,
+                                    "Uncaught SyntaxError: Octal escape sequences are not allowed \
+                                     in template strings.",
+                                );
                             }
                             _ => {
-                                buf.push('\\');
-                                buf.push(next);
+                                // output raw value when this is not supported
+                                buf.push_char(c);
                             }
                         }
                     }
                 }
 
                 c => {
-                    buf.push(c);
+                    buf.push_char(c);
                 }
             }
         }
@@ -270,6 +456,17 @@ impl EqIgnoreSpan for Str {
 impl From<Atom> for Str {
     #[inline]
     fn from(value: Atom) -> Self {
+        Str {
+            span: DUMMY_SP,
+            value: value.into(),
+            raw: None,
+        }
+    }
+}
+
+impl From<Wtf8Atom> for Str {
+    #[inline]
+    fn from(value: Wtf8Atom) -> Self {
         Str {
             span: DUMMY_SP,
             value,
@@ -294,6 +491,7 @@ bridge_from!(Str, Atom, Cow<'_, str>);
 #[ast_node("BooleanLiteral")]
 #[derive(Copy, Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct Bool {
     pub span: Span,
     pub value: bool,
@@ -321,6 +519,7 @@ impl From<bool> for Bool {
 #[ast_node("NullLiteral")]
 #[derive(Copy, Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct Null {
     pub span: Span,
 }
@@ -333,6 +532,7 @@ impl Take for Null {
 
 #[ast_node("RegExpLiteral")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct Regex {
     pub span: Span,
 
@@ -357,9 +557,11 @@ impl Take for Regex {
 #[cfg_attr(docsrs, doc(cfg(feature = "arbitrary")))]
 impl<'a> arbitrary::Arbitrary<'a> for Regex {
     fn arbitrary(u: &mut arbitrary::Unstructured<'_>) -> arbitrary::Result<Self> {
+        use swc_atoms::atom;
+
         let span = u.arbitrary()?;
         let exp = u.arbitrary::<String>()?.into();
-        let flags = "".into(); // TODO
+        let flags = atom!(""); // TODO
 
         Ok(Self { span, exp, flags })
     }
@@ -377,6 +579,7 @@ impl<'a> arbitrary::Arbitrary<'a> for Regex {
 /// `From<usize>`.
 
 #[ast_node("NumericLiteral")]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct Number {
     pub span: Span,
     /// **Note**: This should not be `NaN`. Use [crate::Ident] to represent NaN.
@@ -386,6 +589,10 @@ pub struct Number {
 
     /// Use `None` value only for transformations to avoid recalculate
     /// characters in number literal
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub raw: Option<Atom>,
 }
 
@@ -398,7 +605,7 @@ impl EqIgnoreSpan for Number {
 }
 
 #[allow(clippy::derived_hash_with_manual_eq)]
-#[allow(clippy::transmute_float_to_int)]
+#[allow(unnecessary_transmutes)]
 impl Hash for Number {
     fn hash<H: Hasher>(&self, state: &mut H) {
         fn integer_decode(val: f64) -> (u64, i16, i8) {

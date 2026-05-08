@@ -1,8 +1,8 @@
 use std::{fmt::Debug, sync::Arc};
 
 use auto_impl::auto_impl;
+use par_iter::prelude::*;
 use parking_lot::Mutex;
-use rayon::prelude::*;
 use serde::Serialize;
 use swc_common::{
     errors::{Diagnostic, DiagnosticBuilder, Emitter, Handler, HANDLER},
@@ -64,8 +64,8 @@ struct Capturing {
 }
 
 impl Emitter for Capturing {
-    fn emit(&mut self, db: &DiagnosticBuilder<'_>) {
-        self.errors.lock().push((**db).clone());
+    fn emit(&mut self, db: &mut DiagnosticBuilder<'_>) {
+        self.errors.lock().push(db.take());
     }
 }
 

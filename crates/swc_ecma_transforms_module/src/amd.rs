@@ -1,15 +1,17 @@
+use std::borrow::Cow;
+
 use anyhow::Context;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
-use swc_atoms::JsWord;
+use swc_atoms::{atom, Atom};
 use swc_common::{
     comments::{CommentKind, Comments},
     source_map::PURE_SP,
     util::take::Take,
-    Mark, Span, SyntaxContext, DUMMY_SP,
+    Mark, Span, Spanned, SyntaxContext, DUMMY_SP,
 };
 use swc_ecma_ast::*;
-use swc_ecma_transforms_base::{feature::FeatureFlag, helper_expr};
+use swc_ecma_transforms_base::helper_expr;
 use swc_ecma_utils::{
     member_expr, private_ident, quote_ident, quote_str, ExprFactory, FunctionFactory, IsDirective,
 };
@@ -22,8 +24,8 @@ use crate::{
     path::Resolver,
     top_level_this::top_level_this,
     util::{
-        define_es_module, emit_export_stmts, local_name_for_src, use_strict, ImportInterop,
-        VecStmtLike,
+        define_es_module, emit_export_stmts, local_name_for_src, sort_export_obj_prop_list,
+        use_strict, ImportInterop, VecStmtLike,
     },
     SpanCtx,
 };
@@ -36,6 +38,12 @@ pub struct Config {
 
     #[serde(flatten, default)]
     pub config: InnerConfig,
+}
+
+#[derive(Default)]
+pub struct FeatureFlag {
+    pub support_block_scoping: bool,
+    pub support_arrow: bool,
 }
 
 pub fn amd<C>(
@@ -57,13 +65,12 @@ where
         resolver,
         comments,
 
-        support_arrow: caniuse!(available_features.ArrowFunctions),
-        const_var_kind: if caniuse!(available_features.BlockScoping) {
+        support_arrow: available_features.support_arrow,
+        const_var_kind: if available_features.support_block_scoping {
             VarDeclKind::Const
         } else {
             VarDeclKind::Var
         },
-
         dep_list: Default::default(),
         require: quote_ident!(
             SyntaxContext::empty().apply_mark(unresolved_mark),
@@ -88,7 +95,7 @@ where
     support_arrow: bool,
     const_var_kind: VarDeclKind,
 
-    dep_list: Vec<(Ident, JsWord, SpanCtx)>,
+    dep_list: Vec<(Ident, Atom, SpanCtx)>,
     require: Ident,
     exports: Option<Ident>,
     module: Option<Ident>,
@@ -148,10 +155,7 @@ where
 
         let mut import_map = Default::default();
 
-        stmts.extend(
-            self.handle_import_export(&mut import_map, link, export, is_export_assign)
-                .map(From::from),
-        );
+        stmts.extend(self.handle_import_export(&mut import_map, link, export, is_export_assign));
 
         stmts.extend(n.body.take().into_iter().filter_map(|item| match item {
             ModuleItem::Stmt(stmt) if !stmt.is_empty() => Some(stmt),
@@ -197,7 +201,7 @@ where
                 let src_path = match &self.resolver {
                     Resolver::Real { resolver, base } => resolver
                         .resolve_import(base, &src_path)
-                        .with_context(|| format!("failed to resolve `{}`", src_path))
+                        .with_context(|| format!("failed to resolve `{src_path}`"))
                         .unwrap(),
                     Resolver::Default => src_path,
                 };
@@ -265,7 +269,10 @@ where
                 args.get_mut(0).into_iter().for_each(|x| {
                     if let ExprOrSpread { spread: None, expr } = x {
                         if let Expr::Lit(Lit::Str(Str { value, raw, .. })) = &mut **expr {
-                            *value = self.resolver.resolve(value.clone());
+                            *value = self
+                                .resolver
+                                .resolve(value.to_atom_lossy().into_owned())
+                                .into();
                             *raw = None;
                         }
                     }
@@ -283,17 +290,105 @@ where
                 );
             }
             Expr::Member(MemberExpr { span, obj, prop })
-                if prop.is_ident_with("url")
-                    && !self.config.preserve_import_meta
+                if !self.config.preserve_import_meta
                     && obj
                         .as_meta_prop()
                         .map(|p| p.kind == MetaPropKind::ImportMeta)
                         .unwrap_or_default() =>
             {
-                obj.visit_mut_with(self);
-
-                *n = amd_import_meta_url(*span, self.module());
+                let p = match prop {
+                    MemberProp::Ident(IdentName { sym, .. }) => Cow::Borrowed(&**sym),
+                    MemberProp::Computed(ComputedPropName { expr, .. }) => match &**expr {
+                        Expr::Lit(Lit::Str(s)) => s.value.to_string_lossy(),
+                        _ => return,
+                    },
+                    MemberProp::PrivateName(..) => return,
+                    #[cfg(swc_ast_unknown)]
+                    _ => panic!("unable to access unknown nodes"),
+                };
                 self.found_import_meta = true;
+
+                match &*p {
+                    // new URL(module.uri, document.baseURI).href
+                    "url" => {
+                        *n = amd_import_meta_url(*span, self.module());
+                    }
+                    // require.toUrl()
+                    "resolve" => {
+                        let mut require = self.require.clone();
+                        require.span = obj.span();
+                        *obj = require.into();
+
+                        match prop {
+                            MemberProp::Ident(IdentName { sym, .. }) => *sym = atom!("toUrl"),
+                            MemberProp::Computed(ComputedPropName { expr, .. }) => {
+                                match &mut **expr {
+                                    Expr::Lit(Lit::Str(s)) => {
+                                        s.value = atom!("toUrl").into();
+                                        s.raw = None;
+                                    }
+                                    _ => unreachable!(),
+                                }
+                            }
+                            MemberProp::PrivateName(..) => unreachable!(),
+                            #[cfg(swc_ast_unknown)]
+                            _ => panic!("unable to access unknown nodes"),
+                        }
+                    }
+                    // module.uri.split("/").pop()
+                    "filename" => {
+                        *n = amd_import_meta_filename(*span, self.module());
+                    }
+                    // require.toUrl(".")
+                    "dirname" => {
+                        let mut require = self.require.clone();
+                        require.span = obj.span();
+                        *obj = require.into();
+
+                        match prop {
+                            MemberProp::Ident(IdentName { sym, .. }) => *sym = atom!("toUrl"),
+                            MemberProp::Computed(ComputedPropName { expr, .. }) => {
+                                match &mut **expr {
+                                    Expr::Lit(Lit::Str(s)) => {
+                                        s.value = atom!("toUrl").into();
+                                        s.raw = None;
+                                    }
+                                    _ => unreachable!(),
+                                }
+                            }
+                            MemberProp::PrivateName(..) => unreachable!(),
+                            #[cfg(swc_ast_unknown)]
+                            _ => panic!("unable to access unknown nodes"),
+                        }
+
+                        *n = n.take().as_call(n.span(), vec![quote_str!(".").as_arg()]);
+                    }
+                    "main" => {
+                        *n = BinExpr {
+                            span: *span,
+                            left: self.module().make_member(quote_ident!("id")).into(),
+                            op: op!("=="),
+                            right: quote_str!("main").into(),
+                        }
+                        .into();
+                    }
+                    _ => {}
+                }
+            }
+            Expr::OptChain(OptChainExpr { base, .. }) if !self.config.preserve_import_meta => {
+                if let OptChainBase::Member(member) = &mut **base {
+                    if member
+                        .obj
+                        .as_meta_prop()
+                        .is_some_and(|meta_prop| meta_prop.kind == MetaPropKind::ImportMeta)
+                    {
+                        *n = member.take().into();
+                        n.visit_mut_with(self);
+                        return;
+                    }
+                };
+
+                n.visit_mut_children_with(self);
             }
             _ => n.visit_mut_children_with(self),
         }
@@ -396,7 +491,7 @@ where
         let mut export_stmts = Default::default();
 
         if !export_obj_prop_list.is_empty() && !is_export_assign {
-            export_obj_prop_list.sort_by_cached_key(|(key, ..)| key.clone());
+            sort_export_obj_prop_list(&mut export_obj_prop_list);
 
             let exports = self.exports();
 
@@ -509,7 +604,17 @@ fn amd_import_meta_url(span: Span, module: Ident) -> Expr {
                 ]),
             )
             .into(),
-        prop: MemberProp::Ident("href".into()),
+        prop: MemberProp::Ident(atom!("href").into()),
     }
     .into()
+}
+
+// module.uri.split("/").pop()
+fn amd_import_meta_filename(span: Span, module: Ident) -> Expr {
+    module
+        .make_member(quote_ident!("uri"))
+        .make_member(quote_ident!("split"))
+        .as_call(DUMMY_SP, vec![quote_str!("/").as_arg()])
+        .make_member(quote_ident!("pop"))
+        .as_call(span, vec![])
 }

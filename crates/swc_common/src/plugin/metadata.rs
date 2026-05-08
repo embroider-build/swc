@@ -1,8 +1,7 @@
 use std::env;
 
 use once_cell::sync::Lazy;
-
-use crate::collections::AHashMap;
+use rustc_hash::FxHashMap;
 
 /// Indexable key to the metadata context for a transform plugin.
 ///
@@ -41,14 +40,14 @@ pub struct TransformPluginMetadataContext {
     pub env: String,
     /// The current working directory.
     pub cwd: Option<String>,
-    pub experimental: AHashMap<String, String>,
+    pub experimental: FxHashMap<String, String>,
 }
 
 impl TransformPluginMetadataContext {
     pub fn new(
         filename: Option<String>,
         env: String,
-        experimental: Option<AHashMap<String, String>>,
+        experimental: Option<FxHashMap<String, String>>,
     ) -> Self {
         static CWD: Lazy<Option<String>> = Lazy::new(|| {
             env::current_dir()
@@ -70,5 +69,50 @@ impl TransformPluginMetadataContext {
             TransformPluginMetadataContextKind::Env => Some(self.env.clone()),
             TransformPluginMetadataContextKind::Cwd => self.cwd.clone(),
         }
+    }
+}
+
+pub struct Context(pub FxHashMap<String, String>);
+
+#[cfg(feature = "encoding-impl")]
+impl cbor4ii::core::enc::Encode for Context {
+    #[inline]
+    fn encode<W: cbor4ii::core::enc::Write>(
+        &self,
+        writer: &mut W,
+    ) -> Result<(), cbor4ii::core::enc::Error<W::Error>> {
+        use cbor4ii::core::types;
+
+        types::Map::bounded(self.0.len(), writer)?;
+        for (k, v) in self.0.iter() {
+            k.encode(writer)?;
+            v.encode(writer)?;
+        }
+
+        Ok(())
+    }
+}
+
+#[cfg(feature = "encoding-impl")]
+impl<'de> cbor4ii::core::dec::Decode<'de> for Context {
+    #[inline]
+    fn decode<R: cbor4ii::core::dec::Read<'de>>(
+        reader: &mut R,
+    ) -> Result<Self, cbor4ii::core::dec::Error<R::Error>> {
+        use cbor4ii::core::types;
+
+        let len = types::Map::len(reader)?.ok_or_else(|| cbor4ii::core::dec::Error::Mismatch {
+            name: &"Context",
+            found: 0,
+        })?;
+        let len = std::cmp::min(len, 4096);
+        let mut map = FxHashMap::with_capacity_and_hasher(len, Default::default());
+        for _ in 0..len {
+            let k = String::decode(reader)?;
+            let v = String::decode(reader)?;
+            map.insert(k, v);
+        }
+
+        Ok(Context(map))
     }
 }

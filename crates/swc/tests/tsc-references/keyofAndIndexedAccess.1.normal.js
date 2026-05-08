@@ -23,7 +23,6 @@ var Options = function Options() {
     "use strict";
     _class_call_check(this, Options);
 };
-;
 function getProperty(obj, key) {
     return obj[key];
 }
@@ -391,7 +390,7 @@ function f1(thing) {
     ]); // any
 }
 // Repro from comment in #12114
-var assignTo2 = function(object, key1, key2) {
+var assignTo2 = function assignTo2(object, key1, key2) {
     return function(value) {
         return object[key1][key2] = value;
     };
@@ -399,10 +398,10 @@ var assignTo2 = function(object, key1, key2) {
 var empty = one(function() {}) // inferred as {}, expected
 ;
 var hashOfEmpty1 = on({
-    test: function() {}
+    test: function test() {}
 }); // {}
 var hashOfEmpty2 = on({
-    test: function(x) {}
+    test: function test(x) {}
 }); // { test: boolean }
 var c1 = new Component1({
     data: {
@@ -515,8 +514,7 @@ new AnotherSampleClass({});
 // Positive repro from #17166
 function f3(t, k, tk) {
     for(var key in t){
-        key = k // ok, K ==> keyof T
-        ;
+        key = k; // ok, K ==> keyof T
         t[key] = tk; // ok, T[K] ==> T[keyof T]
     }
 }
@@ -555,11 +553,11 @@ function ff2(dd, k1, k2) {
     return d[k2];
 }
 // Repro from #26409
-var cf1 = function(t, k) {
+var cf1 = function cf1(t, k) {
     var s = t[k];
     t.cool;
 };
-var cf2 = function(t, k) {
+var cf2 = function cf2(t, k) {
     var s = t[k];
     t.cool;
 };

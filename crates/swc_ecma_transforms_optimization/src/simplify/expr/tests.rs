@@ -23,6 +23,7 @@ fn fold(src: &str, expected: &str) {
                         // This is hack
                         is_unresolved_ref_safe: true,
                         in_strict: false,
+                        remaining_depth: 4,
                     },
                     config: super::Config {},
                     changed: false,
@@ -1017,15 +1018,15 @@ fn test_fold_comparison4() {
 
 #[test]
 fn test_fold_get_elem1() {
-    fold("x = [,10][0]", "x = (0, void 0);");
-    fold("x = [10, 20][0]", "x = (0, 10);");
-    fold("x = [10, 20][1]", "x = (0, 20);");
+    fold("x = [,10][0]", "x = void 0;");
+    fold("x = [10, 20][0]", "x = 10;");
+    fold("x = [10, 20][1]", "x = 20;");
 
     // fold("x = [10, 20][-1]", "x = void 0;");
     // fold("x = [10, 20][2]", "x = void 0;");
 
     fold("x = [foo(), 0][1]", "x = (foo(), 0);");
-    fold("x = [0, foo()][1]", "x = (0, foo());");
+    fold("x = [0, foo()][1]", "x = foo();");
     // fold("x = [0, foo()][0]", "x = (foo(), 0)");
     fold_same("for([1][0] in {});");
 }
@@ -1035,8 +1036,17 @@ fn test_fold_get_elem2_1() {
     fold("x = 'string'[5]", "x = \"g\"");
     fold("x = 'string'[0]", "x = \"s\"");
     fold("x = 's'[0]", "x = \"s\"");
+
+    // Surrogate Pair
     fold("x = '\\uD83D\\uDCA9'[0]", "x = \"\\uD83D\"");
     fold("x = '\\uD83D\\uDCA9'[1]", "x = \"\\uDCA9\"");
+
+    // Lone Surrogate
+    fold("x = '\\uD83D'[0]", "x = \"\\uD83D\"");
+    fold("x = 'foo\\uD83D'[3]", "x = \"\\uD83D\"");
+    fold("x = 'foo\\uD83D\\uD83D\\uDCA9'[4]", "x = \"\\uD83D\"");
+    fold("x = 'foo\\uD83D\\uD83D\\uDCA9'[5]", "x = \"\\uDCA9\"");
+    fold("x = 'a\\uD83Db\\uD83D\\uDCA9'[3]", "x = \"\\uD83D\"");
 }
 
 #[test]
@@ -1048,11 +1058,11 @@ fn test_fold_get_elem2_2() {
 
 #[test]
 fn test_fold_array_lit_spread_get_elem() {
-    fold("x = [...[0    ]][0]", "x = (0, 0);");
-    fold("x = [0, 1, ...[2, 3, 4]][3]", "x = (0, 3);");
-    fold("x = [...[0, 1], 2, ...[3, 4]][3]", "x = (0, 3);");
-    fold("x = [...[...[0, 1], 2, 3], 4][0]", "x = (0, 0);");
-    fold("x = [...[...[0, 1], 2, 3], 4][3]", "x = (0, 3);");
+    fold("x = [...[0    ]][0]", "x = 0;");
+    fold("x = [0, 1, ...[2, 3, 4]][3]", "x = 3;");
+    fold("x = [...[0, 1], 2, ...[3, 4]][3]", "x = 3;");
+    fold("x = [...[...[0, 1], 2, 3], 4][0]", "x = 0;");
+    fold("x = [...[...[0, 1], 2, 3], 4][3]", "x = 3;");
     // fold("x = [...[]][100]", "x = void 0;");
     // fold("x = [...[0]][100]", "x = void 0;");
 }
@@ -1637,7 +1647,7 @@ fn test_issue_8747() {
 
     // Index with an expression.
     fold("'a'[0 + []]", "\"a\";");
-    fold("[1][0 + []]", "0, 1;");
+    fold("[1][0 + []]", "1;");
 
     // Don't replace if side effects exist.
     fold_same("[f(), f()][0]");

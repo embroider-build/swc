@@ -41,10 +41,8 @@ impl NoPrototypeBuiltins {
     }
 
     fn emit_error(&self, span: Span, method: &str) {
-        let message = format!(
-            "Do not access Object.prototype method '{}' from target object",
-            method
-        );
+        let message =
+            format!("Do not access Object.prototype method '{method}' from target object");
 
         HANDLER.with(|handler| match self.expected_reaction {
             LintRuleReaction::Error => {
@@ -101,12 +99,10 @@ impl NoPrototypeBuiltins {
                 self.extract_path(exprs.last().unwrap().as_ref());
             }
             Expr::Lit(Lit::Str(lit_str)) => {
-                self.extend_chain(lit_str.span, lit_str.value.clone());
+                self.extend_chain(lit_str.span, lit_str.value.to_atom_lossy().into_owned());
             }
-            Expr::Tpl(tpl) => {
-                if tpl.exprs.is_empty() && tpl.quasis.len() == 1 {
-                    self.extend_chain(tpl.span, tpl.quasis[0].raw.clone());
-                }
+            Expr::Tpl(tpl) if tpl.exprs.is_empty() && tpl.quasis.len() == 1 => {
+                self.extend_chain(tpl.span, tpl.quasis[0].raw.clone());
             }
             Expr::Ident(ident) => {
                 self.extend_chain(ident.span, ident.sym.clone());

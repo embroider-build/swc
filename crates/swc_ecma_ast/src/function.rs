@@ -12,6 +12,7 @@ use crate::{
 #[ast_node]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct Function {
     pub params: Vec<Param>,
 
@@ -23,6 +24,10 @@ pub struct Function {
     pub ctxt: SyntaxContext,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub body: Option<BlockStmt>,
 
     /// if it's a generator.
@@ -34,9 +39,17 @@ pub struct Function {
     pub is_async: bool,
 
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "typeParameters"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub type_params: Option<Box<TsTypeParamDecl>>,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub return_type: Option<Box<TsTypeAnn>>,
 }
 
@@ -51,6 +64,7 @@ impl Take for Function {
 #[ast_node("Parameter")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct Param {
     pub span: Span,
     #[cfg_attr(feature = "serde-impl", serde(default))]
@@ -71,6 +85,7 @@ impl From<Pat> for Param {
 #[ast_node]
 #[derive(Eq, Hash, Is, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum ParamOrTsParamProp {
     #[tag("TsParameterProperty")]
     TsParamProp(TsParamProp),

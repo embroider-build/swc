@@ -1,14 +1,19 @@
 //! Compatibility for terser config.
 
+use std::fmt;
+
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use swc_atoms::JsWord;
-use swc_common::{collections::AHashMap, sync::Lrc, FileName, SourceMap, DUMMY_SP};
+use swc_atoms::Atom;
+use swc_common::{sync::Lrc, FileName, SourceMap, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_parser::parse_file_as_expr;
 use swc_ecma_utils::drop_span;
 
-use super::{default_passes, true_by_default, CompressOptions, TopLevelOptions};
+use super::{
+    default_passes, true_by_default, CompressExperimentalOptions, CompressOptions, TopLevelOptions,
+};
 use crate::option::PureGetterOption;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -65,7 +70,15 @@ pub enum TerserSequenceOptions {
 #[serde(untagged)]
 pub enum TerserTopRetainOption {
     Str(String),
-    Seq(Vec<JsWord>),
+    Seq(Vec<Atom>),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct TerserExperimentalOptions {
+    #[serde(default)]
+    pub reduce_escaped_newline: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -120,7 +133,7 @@ pub struct TerserCompressorOptions {
     pub expression: bool,
 
     #[serde(default)]
-    pub global_defs: AHashMap<JsWord, Value>,
+    pub global_defs: FxHashMap<Atom, Value>,
 
     #[serde(default)]
     pub hoist_funs: bool,
@@ -230,6 +243,12 @@ pub struct TerserCompressorOptions {
     pub unsafe_undefined: bool,
 
     #[serde(default)]
+    pub unsafe_hoist_static_method_alias: bool,
+
+    #[serde(default)]
+    pub unsafe_hoist_global_objects_alias: bool,
+
+    #[serde(default)]
     pub unused: Option<bool>,
 
     #[serde(default)]
@@ -240,6 +259,9 @@ pub struct TerserCompressorOptions {
 
     #[serde(default)]
     pub pristine_globals: Option<bool>,
+
+    #[serde(default)]
+    pub experimental: Option<TerserExperimentalOptions>,
 }
 
 impl_default!(TerserCompressorOptions);
@@ -278,10 +300,7 @@ impl TerserCompressorOptions {
                         )
                         .map(drop_span)
                         .unwrap_or_else(|err| {
-                            panic!(
-                                "failed to parse `global_defs.{}` of minifier options: {:?}",
-                                k, err
-                            )
+                            panic!("failed to parse `global_defs.{k}` of minifier options: {err:?}")
                         })
                     };
                     let key = parse(if let Some(k) = k.strip_prefix('@') {
@@ -297,8 +316,7 @@ impl TerserCompressorOptions {
                                 v.as_str()
                                     .unwrap_or_else(|| {
                                         panic!(
-                                            "Value of `global_defs.{}` must be a string literal: ",
-                                            k
+                                            "Value of `global_defs.{k}` must be a string literal: "
                                         )
                                     })
                                     .into(),
@@ -333,6 +351,7 @@ impl TerserCompressorOptions {
             keep_fnames: self.keep_fnames,
             keep_infinity: self.keep_infinity,
             loops: self.loops.unwrap_or(self.defaults),
+            merge_imports: self.defaults,
             module: self.module,
             negate_iife: self.negate_iife.unwrap_or(self.defaults),
             passes: self.passes,
@@ -374,6 +393,8 @@ impl TerserCompressorOptions {
             unsafe_proto: self.unsafe_proto,
             unsafe_regexp: self.unsafe_regexp,
             unsafe_undefined: self.unsafe_undefined,
+            unsafe_hoist_static_method_alias: self.unsafe_hoist_static_method_alias,
+            unsafe_hoist_global_objects_alias: self.unsafe_hoist_global_objects_alias,
             unused: self.unused.unwrap_or(self.defaults),
             const_to_let: self.const_to_let.unwrap_or(self.defaults),
             pristine_globals: self.pristine_globals.unwrap_or(self.defaults),
@@ -392,13 +413,19 @@ impl TerserCompressorOptions {
                     )
                     .map(drop_span)
                     .unwrap_or_else(|err| {
-                        panic!(
-                            "failed to parse `pure_funcs` of minifier options: {:?}",
-                            err
-                        )
+                        panic!("failed to parse `pure_funcs` of minifier options: {err:?}")
                     })
                 })
                 .collect(),
+            experimental: self
+                .experimental
+                .map(|experimental| {
+                    CompressExperimentalOptions::from_terser_with_defaults(
+                        experimental,
+                        self.defaults,
+                    )
+                })
+                .unwrap_or(CompressExperimentalOptions::from_defaults(self.defaults)),
         }
     }
 }
@@ -415,33 +442,42 @@ impl From<TerserTopLevelOptions> for TopLevelOptions {
     }
 }
 
-impl From<TerserEcmaVersion> for EsVersion {
-    fn from(v: TerserEcmaVersion) -> Self {
-        match v {
-            TerserEcmaVersion::Num(v) => match v {
-                3 => EsVersion::Es3,
-                5 => EsVersion::Es5,
-                6 | 2015 => EsVersion::Es2015,
-                2016 => EsVersion::Es2016,
-                2017 => EsVersion::Es2017,
-                2018 => EsVersion::Es2018,
-                2019 => EsVersion::Es2019,
-                2020 => EsVersion::Es2020,
-                2021 => EsVersion::Es2021,
-                2022 => EsVersion::Es2022,
-                _ => {
-                    panic!("`{}` is not a valid ecmascript version", v)
-                }
-            },
-            TerserEcmaVersion::Str(v) => {
-                TerserEcmaVersion::Num(v.parse().expect("failed to parse version of ecmascript"))
-                    .into()
-            }
+impl fmt::Display for TerserEcmaVersion {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            TerserEcmaVersion::Num(value) => value.fmt(f),
+            TerserEcmaVersion::Str(value) => value.fmt(f),
         }
     }
 }
 
-impl From<TerserTopRetainOption> for Vec<JsWord> {
+impl From<TerserEcmaVersion> for EsVersion {
+    fn from(value: TerserEcmaVersion) -> Self {
+        let raw = value.to_string();
+        let normalized = match value {
+            TerserEcmaVersion::Num(value) => normalize_terser_ecma_num(value),
+            TerserEcmaVersion::Str(value) => match value.parse::<usize>() {
+                Ok(value) => normalize_terser_ecma_num(value),
+                Err(..) => Some(value),
+            },
+        }
+        .unwrap_or_else(|| panic!("`{raw}` is not a valid ecmascript version"));
+
+        serde_json::from_value(Value::String(normalized))
+            .unwrap_or_else(|_| panic!("`{raw}` is not a valid ecmascript version"))
+    }
+}
+
+fn normalize_terser_ecma_num(value: usize) -> Option<String> {
+    match value {
+        3 | 5 => Some(format!("es{value}")),
+        6 => Some(String::from("es2015")),
+        2015.. => Some(format!("es{value}")),
+        _ => None,
+    }
+}
+
+impl From<TerserTopRetainOption> for Vec<Atom> {
     fn from(v: TerserTopRetainOption) -> Self {
         match v {
             TerserTopRetainOption::Str(s) => s
@@ -473,7 +509,7 @@ fn value_to_expr(v: Value) -> Box<Expr> {
             .into()
         }
         Value::String(v) => {
-            let value: JsWord = v.into();
+            let value = v.into();
 
             Lit::Str(Str {
                 span: DUMMY_SP,
@@ -519,5 +555,52 @@ fn value_to_expr(v: Value) -> Box<Expr> {
             }
             .into()
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use swc_ecma_ast::EsVersion;
+
+    use super::TerserEcmaVersion;
+
+    #[test]
+    fn parses_numeric_terser_versions() {
+        assert_eq!(
+            EsVersion::from(TerserEcmaVersion::Num(2023)),
+            EsVersion::Es2023
+        );
+        assert_eq!(
+            EsVersion::from(TerserEcmaVersion::Num(2024)),
+            EsVersion::Es2024
+        );
+    }
+
+    #[test]
+    fn parses_string_terser_versions() {
+        assert_eq!(
+            EsVersion::from(TerserEcmaVersion::Str(String::from("2023"))),
+            EsVersion::Es2023
+        );
+        assert_eq!(
+            EsVersion::from(TerserEcmaVersion::Str(String::from("es2023"))),
+            EsVersion::Es2023
+        );
+        assert_eq!(
+            EsVersion::from(TerserEcmaVersion::Str(String::from("esnext"))),
+            EsVersion::EsNext
+        );
+    }
+
+    #[test]
+    #[should_panic(expected = "`2025` is not a valid ecmascript version")]
+    fn rejects_invalid_numeric_version() {
+        let _: EsVersion = TerserEcmaVersion::Num(2025).into();
+    }
+
+    #[test]
+    #[should_panic(expected = "`foo` is not a valid ecmascript version")]
+    fn rejects_invalid_string_version() {
+        let _: EsVersion = TerserEcmaVersion::Str(String::from("foo")).into();
     }
 }

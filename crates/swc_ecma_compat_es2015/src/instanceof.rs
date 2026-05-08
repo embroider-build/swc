@@ -1,9 +1,4 @@
-use swc_common::{util::take::Take, Span, Spanned};
-use swc_ecma_ast::*;
-use swc_ecma_transforms_base::{helper, perf::Parallel};
-use swc_ecma_utils::ExprFactory;
-use swc_ecma_visit::{noop_visit_mut_type, visit_mut_pass, VisitMut, VisitMutWith};
-use swc_trace_macro::swc_trace;
+use swc_ecma_ast::Pass;
 
 /// `@babel/plugin-transform-instanceof`
 ///
@@ -31,44 +26,60 @@ use swc_trace_macro::swc_trace;
 /// _instanceof(foo, Bar);
 /// ```
 pub fn instance_of() -> impl Pass {
-    visit_mut_pass(InstanceOf)
-}
-struct InstanceOf;
-
-impl Parallel for InstanceOf {
-    fn merge(&mut self, _: Self) {}
-
-    fn create(&self) -> Self {
-        InstanceOf
-    }
+    let mut options = swc_ecma_transformer::Options::default();
+    options.env.es2015.instanceof = true;
+    options.into_pass()
 }
 
-#[swc_trace]
-impl VisitMut for InstanceOf {
-    noop_visit_mut_type!(fail);
+#[cfg(test)]
+mod tests {
+    use swc_ecma_parser::Syntax;
+    use swc_ecma_transforms_testing::test;
 
-    fn visit_mut_expr(&mut self, expr: &mut Expr) {
-        expr.visit_mut_children_with(self);
+    use super::*;
 
-        if let Expr::Bin(BinExpr {
-            span,
-            left,
-            op: op!("instanceof"),
-            right,
-        }) = expr
-        {
-            let instanceof_span = Span {
-                lo: left.span_hi(),
-                hi: right.span_lo(),
-            };
+    test!(
+        Syntax::default(),
+        |_| instance_of(),
+        basic,
+        "foo instanceof Bar;"
+    );
 
-            *expr = CallExpr {
-                span: *span,
-                callee: helper!(instanceof_span, instanceof),
-                args: vec![left.take().as_arg(), right.take().as_arg()],
-                ..Default::default()
-            }
-            .into();
+    test!(
+        Syntax::default(),
+        |_| instance_of(),
+        skip_helper_fn_decl_by_name,
+        "
+        function _instanceof(left, right) {
+            return left instanceof right;
         }
-    }
+        foo instanceof Bar;
+        "
+    );
+
+    test!(
+        Syntax::default(),
+        |_| instance_of(),
+        skip_helper_fn_expr_by_swc_directive,
+        "
+        const helper = function(left, right) {
+            '@swc/helpers - instanceof';
+            return left instanceof right;
+        };
+        foo instanceof Bar;
+        "
+    );
+
+    test!(
+        Syntax::default(),
+        |_| instance_of(),
+        skip_helper_fn_expr_by_babel_directive,
+        "
+        const helper = function(left, right) {
+            '@babel/helpers - instanceof';
+            return left instanceof right;
+        };
+        foo instanceof Bar;
+        "
+    );
 }

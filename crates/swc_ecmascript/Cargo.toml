@@ -2,18 +2,21 @@
 authors       = ["강동윤 <kdy1997.dev@gmail.com>"]
 description   = "Ecmascript"
 documentation = "https://rustdoc.swc.rs/swc_ecmascript/"
-edition       = "2021"
-license       = "Apache-2.0"
+edition       = { workspace = true }
+license       = { workspace = true }
 name          = "swc_ecmascript"
-repository    = "https://github.com/swc-project/swc.git"
-version       = "5.0.0"
+repository    = { workspace = true }
+version       = "60.0.0"
 
-  [package.metadata.docs.rs]
-  all-features = true
-  rustdoc-args = ["--cfg", "docsrs"]
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
 
 [lib]
 bench = false
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(swc_ast_unknown)'] }
 
 [features]
 codegen    = ["swc_ecma_codegen"]
@@ -38,14 +41,15 @@ react        = ["swc_ecma_transforms/react"]
 typescript   = ["typescript-parser", "swc_ecma_transforms/typescript"]
 
 [dependencies]
-swc_ecma_ast        = { version = "4.0.1", path = "../swc_ecma_ast" }
-swc_ecma_codegen    = { version = "4.0.2", path = "../swc_ecma_codegen", optional = true }
-swc_ecma_minifier   = { version = "5.0.0", path = "../swc_ecma_minifier", optional = true }
-swc_ecma_parser     = { version = "5.0.0", path = "../swc_ecma_parser", optional = true, default-features = false }
-swc_ecma_preset_env = { version = "5.0.0", path = "../swc_ecma_preset_env", optional = true }
-swc_ecma_quote      = { version = "5.0.0", path = "../swc_ecma_quote", optional = true }
-swc_ecma_transforms = { version = "5.0.0", path = "../swc_ecma_transforms", optional = true }
-swc_ecma_utils      = { version = "5.0.0", path = "../swc_ecma_utils", optional = true }
-swc_ecma_visit      = { version = "4.0.0", path = "../swc_ecma_visit", optional = true }
+swc_ecma_ast        = { version = "23.0.0", path = "../swc_ecma_ast" }
+swc_ecma_codegen    = { version = "26.0.1", path = "../swc_ecma_codegen", optional = true }
+swc_ecma_minifier   = { version = "52.0.4", path = "../swc_ecma_minifier", optional = true }
+swc_ecma_parser     = { version = "39.0.2", path = "../swc_ecma_parser", optional = true, default-features = false }
+swc_ecma_preset_env = { version = "53.0.0", path = "../swc_ecma_preset_env", optional = true }
+swc_ecma_quote      = { version = "39.0.0", path = "../swc_ecma_quote", optional = true }
+swc_ecma_transforms = { version = "52.0.0", path = "../swc_ecma_transforms", optional = true }
+swc_ecma_utils      = { version = "29.1.0", path = "../swc_ecma_utils", optional = true }
+swc_ecma_visit      = { version = "23.0.0", path = "../swc_ecma_visit", optional = true }
 
 [dev-dependencies]
+par-core = { workspace = true, features = ["chili"] }

@@ -11,6 +11,7 @@ use std::{
 
 use once_cell::sync::Lazy;
 use regex::Regex;
+use rustc_hash::FxHashSet;
 use serde::de::DeserializeOwned;
 use serde_json::from_str;
 use swc::{
@@ -19,9 +20,7 @@ use swc::{
     },
     try_with_handler, Compiler,
 };
-use swc_common::{
-    collections::AHashSet, errors::ColorConfig, FileName, SourceFile, SourceMap, GLOBALS,
-};
+use swc_common::{errors::ColorConfig, FileName, SourceFile, SourceMap, GLOBALS};
 use swc_ecma_ast::EsVersion;
 use swc_ecma_parser::{Syntax, TsSyntax};
 use testing::NormalizedOutput;
@@ -147,25 +146,21 @@ fn matrix(input: &Path) -> Vec<TestUnitData> {
                 "alwaysstrict" => {}
                 "allowsyntheticdefaultimports" => {}
                 "esmoduleinterop" => {}
-                "emitdecoratormetadata" => {
-                    if meta_data_value.trim() == "true" {
-                        decorator_metadata = true;
-                    }
+                "emitdecoratormetadata" if meta_data_value.trim() == "true" => {
+                    decorator_metadata = true;
                 }
-                "experimentaldecorators" => {
-                    if meta_data_value.trim() == "true" {
-                        decorators = true;
-                    }
+                "experimentaldecorators" if meta_data_value.trim() == "true" => {
+                    decorators = true;
                 }
+                "emitdecoratormetadata" | "experimentaldecorators" => {}
                 "skipdefaultlibcheck" => {}
                 "preserveconstenums" => {}
                 "skiplibcheck" => {}
                 "exactoptionalpropertytypes" => {}
-                "usedefineforclassfields" => {
-                    if meta_data_value.trim() == "true" {
-                        use_define_for_class_fields = true;
-                    }
+                "usedefineforclassfields" if meta_data_value.trim() == "true" => {
+                    use_define_for_class_fields = true;
                 }
+                "usedefineforclassfields" => {}
                 "useunknownincatchvariables" => {}
                 "nouncheckedindexedaccess" => {}
                 "nopropertyaccessfromindexsignature" => {}
@@ -174,11 +169,10 @@ fn matrix(input: &Path) -> Vec<TestUnitData> {
 
                     sub_filename = Cow::from(meta_data_value.trim());
                 }
-                "verbatimmodulesyntax" => {
-                    if meta_data_value.trim() == "true" {
-                        verbatim_module_syntax = true;
-                    }
+                "verbatimmodulesyntax" if meta_data_value.trim() == "true" => {
+                    verbatim_module_syntax = true;
                 }
+                "verbatimmodulesyntax" => {}
                 _ => {}
             }
         } else {
@@ -216,8 +210,8 @@ fn matrix(input: &Path) -> Vec<TestUnitData> {
 
     // "ES3", "ES5", "ES6", "ES2015", "ES2016", "ES2017", "ES2018", "ES2019",
     // "ES2020", "ES2021", "ES2022", "ESNext"
-    fn target(value: &str) -> AHashSet<EsVersion> {
-        let mut versions = AHashSet::<EsVersion>::default();
+    fn target(value: &str) -> FxHashSet<EsVersion> {
+        let mut versions = FxHashSet::<EsVersion>::default();
 
         value.split(',').for_each(|v| {
             let mut v = v.trim();
@@ -246,7 +240,7 @@ fn matrix(input: &Path) -> Vec<TestUnitData> {
                         v = &v[1..];
                     }
 
-                    if let Some(v) = from_str(&format!(r##""{}""##, v)).unwrap_or_default() {
+                    if let Some(v) = from_str(&format!(r##""{v}""##)).unwrap_or_default() {
                         if is_remove {
                             versions.remove(&v);
                         } else {
@@ -262,8 +256,8 @@ fn matrix(input: &Path) -> Vec<TestUnitData> {
 
     // "CommonJS", "AMD", "System", "UMD", "ES6", "ES2015", "ES2020", "ESNext",
     // "None", "ES2022", "Node16", "NodeNext"
-    fn module(value: &str) -> AHashSet<Module> {
-        let mut modules = AHashSet::<Module>::default();
+    fn module(value: &str) -> FxHashSet<Module> {
+        let mut modules = FxHashSet::<Module>::default();
 
         value.split(',').for_each(|v| {
             let v = v.trim();
@@ -443,7 +437,7 @@ fn compile(output: &Path, test_unit_data: TestUnitData) {
             _ => unreachable!(),
         };
 
-        writeln!(result, "//// [{}]", filename).unwrap();
+        writeln!(result, "//// [{filename}]").unwrap();
 
         GLOBALS.set(&Default::default(), || {
             match try_with_handler(
@@ -457,9 +451,9 @@ fn compile(output: &Path, test_unit_data: TestUnitData) {
                 Ok(res) => {
                     result += &res.code;
                 }
-                Err(ref err) => {
-                    for line in err.to_string().lines() {
-                        writeln!(result, "//! {}", line).unwrap();
+                Err(err) => {
+                    for e in err.to_pretty_error().to_string().lines() {
+                        writeln!(result, "//! {e}").unwrap();
                     }
                 }
             }

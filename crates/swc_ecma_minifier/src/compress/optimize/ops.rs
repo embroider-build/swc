@@ -3,11 +3,8 @@ use swc_ecma_ast::*;
 use swc_ecma_utils::{ExprExt, Type, Value};
 use Value::Known;
 
-use super::Optimizer;
-use crate::{
-    compress::util::negate,
-    util::{make_bool, ValueExt},
-};
+use super::{BitCtx, Optimizer};
+use crate::{compress::util::negate, util::make_bool};
 
 impl Optimizer<'_> {
     ///
@@ -24,10 +21,8 @@ impl Optimizer<'_> {
                     if let Some(t) = self.typeofs.get(&id.to_id()) {
                         match &**t {
                             "object" | "function" => {
-                                e.left = Box::new(make_bool(
-                                    e.span,
-                                    e.op == op!("===") || e.op == op!("=="),
-                                ));
+                                *e.left =
+                                    make_bool(e.span, e.op == op!("===") || e.op == op!("=="));
                                 e.right.take();
 
                                 self.changed = true;
@@ -45,7 +40,10 @@ impl Optimizer<'_> {
         }
 
         if e.op == op!("===") || e.op == op!("!==") {
-            if (e.left.is_ident() || e.left.is_member()) && e.left.eq_ignore_span(&e.right) {
+            if (e.left.is_ident() || e.left.is_member())
+                && e.left.eq_ignore_span(&e.right)
+                && !contains_update_or_assign(&e.left)
+            {
                 self.changed = true;
                 report_change!("Reducing comparison of same variable ({})", e.op);
 
@@ -58,12 +56,9 @@ impl Optimizer<'_> {
             }
         }
 
-        let lt = e.left.get_type();
-        let rt = e.right.get_type();
-
         if e.op == op!("===") {
-            if let Known(lt) = lt {
-                if let Known(rt) = rt {
+            if let Known(lt) = e.left.get_type(self.ctx.expr_ctx) {
+                if let Known(rt) = e.right.get_type(self.ctx.expr_ctx) {
                     if lt == rt {
                         e.op = op!("==");
                         self.changed = true;
@@ -110,51 +105,6 @@ impl Optimizer<'_> {
     }
 
     ///
-    /// - `1 == 1` => `true`
-    /// - `1 == 2` => `false`
-    pub(super) fn optimize_lit_cmp(&mut self, n: &mut BinExpr) -> Option<Expr> {
-        if n.op != op!("==") && n.op != op!("!=") {
-            return None;
-        }
-        let flag = n.op == op!("!=");
-        let mut make_lit_bool = |value: bool| {
-            self.changed = true;
-            Some(
-                Lit::Bool(Bool {
-                    span: n.span,
-                    value: flag ^ value,
-                })
-                .into(),
-            )
-        };
-        match (n.left.get_type().opt()?, n.right.get_type().opt()?) {
-            // Abort if types differ, or one of them is unknown.
-            (lt, rt) if lt != rt => {}
-            (Type::Obj, Type::Obj) => {}
-            (Type::Num, Type::Num) => {
-                let l = n.left.as_pure_number(&self.ctx.expr_ctx).opt()?;
-                let r = n.right.as_pure_number(&self.ctx.expr_ctx).opt()?;
-                report_change!("Optimizing: literal comparison => num");
-                return make_lit_bool(l == r);
-            }
-            (Type::Str, Type::Str) => {
-                let l = &n.left.as_pure_string(&self.ctx.expr_ctx).opt()?;
-                let r = &n.right.as_pure_string(&self.ctx.expr_ctx).opt()?;
-                report_change!("Optimizing: literal comparison => str");
-                return make_lit_bool(l == r);
-            }
-            (_, _) => {
-                let l = n.left.as_pure_bool(&self.ctx.expr_ctx).opt()?;
-                let r = n.right.as_pure_bool(&self.ctx.expr_ctx).opt()?;
-                report_change!("Optimizing: literal comparison => bool");
-                return make_lit_bool(l == r);
-            }
-        };
-
-        None
-    }
-
-    ///
     /// - `!!(a in b)` => `a in b`
     /// - `!!(function() {})()` => `!(function() {})()`
     pub(super) fn optimize_bangbang(&mut self, e: &mut Expr) {
@@ -181,7 +131,7 @@ impl Optimizer<'_> {
                     | Expr::Bin(BinExpr { op: op!("<"), .. })
                     | Expr::Bin(BinExpr { op: op!(">="), .. })
                     | Expr::Bin(BinExpr { op: op!(">"), .. }) => {
-                        if let Known(Type::Bool) = arg.get_type() {
+                        if let Known(Type::Bool) = arg.get_type(self.ctx.expr_ctx) {
                             self.changed = true;
                             report_change!("Optimizing: `!!expr` => `expr`");
                             *e = *arg.take();
@@ -202,73 +152,11 @@ impl Optimizer<'_> {
 
     pub(super) fn negate(&mut self, e: &mut Expr, is_ret_val_ignored: bool) {
         negate(
-            &self.ctx.expr_ctx,
+            self.ctx.expr_ctx,
             e,
-            self.ctx.in_bool_ctx,
+            self.ctx.bit_ctx.contains(BitCtx::InBoolCtx),
             is_ret_val_ignored,
         )
-    }
-
-    /// This method does
-    ///
-    /// - `x *= 3` => `x = 3 * x`
-    /// - `x = 3 | x` `x |= 3`
-    /// - `x = 3 & x` => `x &= 3;`
-    /// - `x ^= 3` => `x = 3 ^ x`
-    pub(super) fn compress_bin_assignment_to_right(&mut self, e: &mut AssignExpr) {
-        if e.op != op!("=") {
-            return;
-        }
-
-        // TODO: Handle pure properties.
-        let lhs = match &e.left {
-            AssignTarget::Simple(SimpleAssignTarget::Ident(i)) => i,
-            _ => return,
-        };
-
-        let (op, left) = match &mut *e.right {
-            Expr::Bin(BinExpr {
-                left, op, right, ..
-            }) => match &**right {
-                Expr::Ident(r) if lhs.sym == r.sym && lhs.ctxt == r.ctxt => {
-                    // We need this check because a function call like below can change value of
-                    // operand.
-                    //
-                    // x = g() * x;
-
-                    match &**left {
-                        Expr::This(..) | Expr::Ident(..) | Expr::Lit(..) => {}
-                        _ => return,
-                    }
-
-                    (op, left)
-                }
-                _ => return,
-            },
-            _ => return,
-        };
-
-        let op = match op {
-            BinaryOp::Mul => {
-                op!("*=")
-            }
-            BinaryOp::BitOr => {
-                op!("|=")
-            }
-            BinaryOp::BitXor => {
-                op!("^=")
-            }
-            BinaryOp::BitAnd => {
-                op!("&=")
-            }
-            _ => return,
-        };
-
-        report_change!("Compressing: `e = 3 & e` => `e &= 3`");
-
-        self.changed = true;
-        e.op = op;
-        e.right = left.take();
     }
 
     /// Remove meaningless literals in a binary expressions.
@@ -299,14 +187,14 @@ impl Optimizer<'_> {
             _ => {}
         }
 
-        let lt = bin.left.get_type();
+        let lt = bin.left.get_type(self.ctx.expr_ctx);
         match lt {
             // Don't change type
             Known(Type::Bool) => {}
             _ => return,
         }
 
-        let rt = bin.right.get_type();
+        let rt = bin.right.get_type(self.ctx.expr_ctx);
         match rt {
             Known(Type::Bool) => {}
             _ => return,
@@ -314,7 +202,7 @@ impl Optimizer<'_> {
 
         match bin.op {
             op!("&&") => {
-                let rb = bin.right.as_pure_bool(&self.ctx.expr_ctx);
+                let rb = bin.right.as_pure_bool(self.ctx.expr_ctx);
                 let rb = match rb {
                     Value::Known(v) => v,
                     _ => return,
@@ -329,7 +217,7 @@ impl Optimizer<'_> {
                 }
             }
             op!("||") => {
-                let rb = bin.right.as_pure_bool(&self.ctx.expr_ctx);
+                let rb = bin.right.as_pure_bool(self.ctx.expr_ctx);
                 let rb = match rb {
                     Value::Known(v) => v,
                     _ => return,
@@ -369,7 +257,7 @@ impl Optimizer<'_> {
                         *e = Lit::Str(Str {
                             span: *span,
                             raw: None,
-                            value,
+                            value: value.into(),
                         })
                         .into();
                     }
@@ -399,5 +287,75 @@ impl Optimizer<'_> {
                 _ => {}
             }
         }
+    }
+}
+
+/// Check if an expression contains update expressions (++, --) or assignments
+/// that would make duplicate evaluations produce different results.
+fn contains_update_or_assign(expr: &Expr) -> bool {
+    match expr {
+        Expr::Update(..) | Expr::Assign(..) => true,
+
+        Expr::Bin(BinExpr { left, right, .. }) => {
+            contains_update_or_assign(left) || contains_update_or_assign(right)
+        }
+
+        Expr::Unary(UnaryExpr { arg, .. }) => contains_update_or_assign(arg),
+
+        Expr::Cond(CondExpr {
+            test, cons, alt, ..
+        }) => {
+            contains_update_or_assign(test)
+                || contains_update_or_assign(cons)
+                || contains_update_or_assign(alt)
+        }
+
+        Expr::Member(MemberExpr { obj, prop, .. }) => {
+            contains_update_or_assign(obj)
+                || match prop {
+                    MemberProp::Computed(ComputedPropName { expr, .. }) => {
+                        contains_update_or_assign(expr)
+                    }
+                    _ => false,
+                }
+        }
+
+        Expr::Call(CallExpr {
+            callee: Callee::Expr(callee),
+            args,
+            ..
+        }) => {
+            contains_update_or_assign(callee)
+                || args.iter().any(|arg| contains_update_or_assign(&arg.expr))
+        }
+
+        Expr::Seq(SeqExpr { exprs, .. }) => {
+            exprs.iter().any(|expr| contains_update_or_assign(expr))
+        }
+
+        Expr::Paren(ParenExpr { expr, .. }) => contains_update_or_assign(expr),
+
+        Expr::OptChain(OptChainExpr { base, .. }) => match &**base {
+            OptChainBase::Member(member) => {
+                contains_update_or_assign(&member.obj)
+                    || match &member.prop {
+                        MemberProp::Computed(ComputedPropName { expr, .. }) => {
+                            contains_update_or_assign(expr)
+                        }
+                        _ => false,
+                    }
+            }
+            OptChainBase::Call(call) => {
+                contains_update_or_assign(&call.callee)
+                    || call
+                        .args
+                        .iter()
+                        .any(|arg| contains_update_or_assign(&arg.expr))
+            }
+            #[cfg(swc_ast_unknown)]
+            _ => false,
+        },
+
+        _ => false,
     }
 }

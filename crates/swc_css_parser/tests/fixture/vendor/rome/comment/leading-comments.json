@@ -9,22 +9,22 @@
       "text": "/* comment */"
     }
   ],
-  "82": [
-    {
-      "kind": "Block",
-      "span": {
-        "start": 68,
-        "end": 82
-      },
-      "text": "/* comment */"
-    }
-  ],
   "108": [
     {
       "kind": "Block",
       "span": {
         "start": 94,
         "end": 108
+      },
+      "text": "/* comment */"
+    }
+  ],
+  "82": [
+    {
+      "kind": "Block",
+      "span": {
+        "start": 68,
+        "end": 82
       },
       "text": "/* comment */"
     }

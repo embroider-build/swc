@@ -5,28 +5,34 @@ use std::{
 
 use anyhow::{Context, Error};
 use base64::prelude::{Engine, BASE64_STANDARD};
+use bytes_str::BytesStr;
 use once_cell::sync::Lazy;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use serde::{Deserialize, Serialize};
-use swc_allocator::maybe::vec::Vec;
-use swc_atoms::JsWord;
+use swc_atoms::Atom;
 use swc_common::{
-    collections::AHashMap,
     comments::{Comment, CommentKind, Comments, SingleThreadedComments},
     errors::Handler,
     source_map::SourceMapGenConfig,
     sync::Lrc,
     BytePos, FileName, SourceFile, SourceMap,
 };
-use swc_config::config_types::BoolOr;
-pub use swc_config::IsModule;
+use swc_config::{file_pattern::FilePattern, is_module::IsModule, types::BoolOr};
 use swc_ecma_ast::{EsVersion, Ident, IdentName, Program};
-use swc_ecma_codegen::{text_writer::WriteJs, Emitter, Node};
+use swc_ecma_codegen::{
+    text_writer::{ScopeRecord, WriteJs},
+    Emitter, Node,
+};
 use swc_ecma_minifier::js::JsMinifyCommentOption;
-use swc_ecma_parser::{parse_file_as_module, parse_file_as_program, parse_file_as_script, Syntax};
+use swc_ecma_parser::{
+    parse_file_as_commonjs, parse_file_as_module, parse_file_as_program, parse_file_as_script,
+    Syntax,
+};
 use swc_ecma_visit::{noop_visit_type, Visit, VisitWith};
 use swc_timer::timer;
+
+mod source_map_scopes;
 
 #[cfg(feature = "node")]
 #[napi_derive::napi(object)]
@@ -38,17 +44,28 @@ pub struct TransformOutput {
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub output: Option<String>,
+
+    #[serde(rename = "extractedComments", skip_serializing_if = "Option::is_none")]
+    pub extracted_comments: Option<Vec<String>>,
+
+    pub diagnostics: std::vec::Vec<String>,
 }
 
 #[cfg(not(feature = "node"))]
 #[derive(Debug, Serialize)]
 pub struct TransformOutput {
     pub code: String,
+
     #[serde(skip_serializing_if = "Option::is_none")]
     pub map: Option<String>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub output: Option<String>,
+
+    #[serde(rename = "extractedComments", skip_serializing_if = "Option::is_none")]
+    pub extracted_comments: Option<Vec<String>>,
+
+    pub diagnostics: std::vec::Vec<String>,
 }
 
 /// This method parses a javascript / typescript file
@@ -76,6 +93,10 @@ pub fn parse_js(
                 parse_file_as_script(&fm, syntax, target, comments, &mut errors)
                     .map(Program::Script)
             }
+            IsModule::CommonJS => {
+                parse_file_as_commonjs(&fm, syntax, target, comments, &mut errors)
+                    .map(Program::Script)
+            }
             IsModule::Unknown => parse_file_as_program(&fm, syntax, target, comments, &mut errors),
         };
 
@@ -97,7 +118,7 @@ pub fn parse_js(
     })();
 
     if env::var("SWC_DEBUG").unwrap_or_default() == "1" {
-        res = res.with_context(|| format!("Parser config: {:?}", syntax));
+        res = res.with_context(|| format!("Parser config: {syntax:?}"));
     }
 
     res
@@ -109,18 +130,21 @@ pub struct PrintArgs<'a> {
     pub output_path: Option<PathBuf>,
     pub inline_sources_content: bool,
     pub source_map: SourceMapsConfig,
-    pub source_map_names: &'a AHashMap<BytePos, JsWord>,
-    pub orig: Option<&'a sourcemap::SourceMap>,
+    pub source_map_names: &'a FxHashMap<BytePos, Atom>,
+    pub orig: Option<swc_sourcemap::SourceMap>,
     pub comments: Option<&'a dyn Comments>,
     pub emit_source_map_columns: bool,
+    pub emit_source_map_scopes: bool,
     pub preamble: &'a str,
     pub codegen_config: swc_ecma_codegen::Config,
-    pub output: Option<FxHashMap<String, serde_json::Value>>,
+    pub output: Option<FxHashMap<String, String>>,
+    pub source_map_url: Option<&'a str>,
+    pub source_map_ignore_list: Option<FilePattern>,
 }
 
 impl Default for PrintArgs<'_> {
     fn default() -> Self {
-        static DUMMY_NAMES: Lazy<AHashMap<BytePos, JsWord>> = Lazy::new(Default::default);
+        static DUMMY_NAMES: Lazy<FxHashMap<BytePos, Atom>> = Lazy::new(Default::default);
 
         PrintArgs {
             source_root: None,
@@ -132,9 +156,12 @@ impl Default for PrintArgs<'_> {
             orig: None,
             comments: None,
             emit_source_map_columns: false,
+            emit_source_map_scopes: false,
             preamble: "",
             codegen_config: Default::default(),
             output: None,
+            source_map_url: None,
+            source_map_ignore_list: None,
         }
     }
 }
@@ -162,9 +189,12 @@ pub fn print<T>(
         orig,
         comments,
         emit_source_map_columns,
+        emit_source_map_scopes,
         preamble,
         codegen_config,
         output,
+        source_map_url,
+        source_map_ignore_list,
     }: PrintArgs,
 ) -> Result<TransformOutput, Error>
 where
@@ -173,11 +203,13 @@ where
     let _timer = timer!("Compiler::print");
 
     let mut src_map_buf = Vec::new();
+    let should_emit_scope_map = source_map.enabled() && emit_source_map_scopes && orig.is_none();
+    let mut scope_buf = should_emit_scope_map.then(Vec::<ScopeRecord>::new);
 
-    let src = {
+    let mut src = {
         let mut buf = std::vec::Vec::new();
         {
-            let mut w = swc_ecma_codegen::text_writer::JsWriter::new(
+            let mut w = swc_ecma_codegen::text_writer::JsWriter::new_with_scopes(
                 cm.clone(),
                 "\n",
                 &mut buf,
@@ -186,6 +218,7 @@ where
                 } else {
                     None
                 },
+                scope_buf.as_mut(),
             );
             w.preamble(preamble).unwrap();
             let mut wr = Box::new(w) as Box<dyn WriteJs>;
@@ -214,19 +247,26 @@ where
         && src.lines().count() >= 3
         && option_env!("SWC_DEBUG") == Some("1")
     {
-        panic!("The module contains only dummy spans\n{}", src);
+        panic!("The module contains only dummy spans\n{src}");
     }
 
+    let additional_scope_names = scope_buf
+        .as_deref()
+        .map(source_map_scopes::collect_additional_names)
+        .unwrap_or_default();
+
     let mut map = if source_map.enabled() {
-        Some(cm.build_source_map_with_config(
+        Some(cm.build_source_map(
             &src_map_buf,
             orig,
             SwcSourceMapConfig {
                 source_file_name,
                 output_path: output_path.as_deref(),
                 names: source_map_names,
+                additional_names: &additional_scope_names,
                 inline_sources_content,
                 emit_columns: emit_source_map_columns,
+                ignore_list: source_map_ignore_list,
             },
         ))
     } else {
@@ -234,8 +274,21 @@ where
     };
 
     if let Some(map) = &mut map {
-        if source_root.is_some() {
-            map.set_source_root(source_root)
+        if should_emit_scope_map {
+            if let Some(scope_buf) = scope_buf.as_deref() {
+                let encoded_scopes =
+                    source_map_scopes::encode_scopes(scope_buf, &cm, map, |file_name| {
+                        map_file_name_to_source(source_file_name, output_path.as_deref(), file_name)
+                    });
+
+                if let Some(scopes) = encoded_scopes {
+                    map.set_scopes(Some(scopes));
+                }
+            }
+        }
+
+        if let Some(source_root) = source_root {
+            map.set_source_root(Some(BytesStr::from_str_slice(source_root)))
         }
     }
 
@@ -248,13 +301,18 @@ where
                     .to_writer(&mut buf)
                     .context("failed to write source map")?;
                 let map = String::from_utf8(buf).context("source map is not utf-8")?;
+
+                if let Some(source_map_url) = source_map_url {
+                    src.push_str("\n//# sourceMappingURL=");
+                    src.push_str(source_map_url);
+                }
+
                 (src, Some(map))
             } else {
                 (src, None)
             }
         }
         SourceMapsConfig::Str(_) => {
-            let mut src = src;
             let mut buf = std::vec::Vec::new();
 
             map.unwrap()
@@ -274,6 +332,8 @@ where
         output: output
             .map(|v| serde_json::to_string(&v).context("failed to serilaize output"))
             .transpose()?,
+        extracted_comments: None,
+        diagnostics: Default::default(),
     })
 }
 
@@ -282,44 +342,60 @@ struct SwcSourceMapConfig<'a> {
     /// Output path of the `.map` file.
     output_path: Option<&'a Path>,
 
-    names: &'a AHashMap<BytePos, JsWord>,
+    names: &'a FxHashMap<BytePos, Atom>,
+    additional_names: &'a [String],
 
     inline_sources_content: bool,
 
     emit_columns: bool,
+
+    ignore_list: Option<FilePattern>,
+}
+
+fn map_file_name_to_source(
+    source_file_name: Option<&str>,
+    output_path: Option<&Path>,
+    f: &FileName,
+) -> String {
+    if let Some(file_name) = source_file_name {
+        return file_name.to_string();
+    }
+
+    let Some(base_path) = output_path.and_then(|v| v.parent()) else {
+        return f.to_string();
+    };
+    let target = match f {
+        FileName::Real(v) => v,
+        _ => return f.to_string(),
+    };
+
+    let rel = pathdiff::diff_paths(target, base_path);
+    match rel {
+        Some(v) => {
+            let s = v.to_string_lossy().to_string();
+            if cfg!(target_os = "windows") {
+                s.replace('\\', "/")
+            } else {
+                s
+            }
+        }
+        None => f.to_string(),
+    }
 }
 
 impl SourceMapGenConfig for SwcSourceMapConfig<'_> {
     fn file_name_to_source(&self, f: &FileName) -> String {
-        if let Some(file_name) = self.source_file_name {
-            return file_name.to_string();
-        }
-
-        let base_path = match self.output_path {
-            Some(v) => v,
-            None => return f.to_string(),
-        };
-        let target = match f {
-            FileName::Real(v) => v,
-            _ => return f.to_string(),
-        };
-
-        let rel = pathdiff::diff_paths(target, base_path);
-        match rel {
-            Some(v) => {
-                let s = v.to_string_lossy().to_string();
-                if cfg!(target_os = "windows") {
-                    s.replace('\\', "/")
-                } else {
-                    s
-                }
-            }
-            None => f.to_string(),
-        }
+        map_file_name_to_source(self.source_file_name, self.output_path, f)
     }
 
     fn name_for_bytepos(&self, pos: BytePos) -> Option<&str> {
         self.names.get(&pos).map(|v| &**v)
+    }
+
+    fn for_each_additional_name(&self, op: &mut dyn FnMut(&str)) {
+        for name in self.additional_names {
+            op(name);
+        }
     }
 
     fn inline_sources_content(&self, _: &FileName) -> bool {
@@ -337,44 +413,121 @@ impl SourceMapGenConfig for SwcSourceMapConfig<'_> {
             _ => false,
         }
     }
+
+    fn ignore_list(&self, f: &FileName) -> bool {
+        if let Some(ignore_list) = &self.ignore_list {
+            match f {
+                FileName::Real(path_buf) => {
+                    ignore_list.is_match(path_buf.to_string_lossy().as_ref())
+                }
+                FileName::Custom(s) => ignore_list.is_match(s),
+                _ => true,
+            }
+        } else {
+            false
+        }
+    }
 }
 
 pub fn minify_file_comments(
     comments: &SingleThreadedComments,
     preserve_comments: BoolOr<JsMinifyCommentOption>,
-) {
+    extract_comments: BoolOr<JsMinifyCommentOption>,
+    preserve_annotations: bool,
+) -> Vec<String> {
+    let (mut leading, mut trailing) = comments.borrow_all_mut();
+    let mut entries = leading
+        .drain()
+        .map(|(pos, bucket)| (pos, false, bucket))
+        .chain(trailing.drain().map(|(pos, bucket)| (pos, true, bucket)))
+        .collect::<Vec<_>>();
+    let mut extracted = Vec::new();
+    let mut seen = FxHashSet::default();
+
+    entries.sort_by_key(|(pos, is_trailing, _)| (*pos, *is_trailing));
+
+    for (pos, is_trailing, bucket) in entries {
+        let mut preserved = Vec::with_capacity(bucket.len());
+
+        for comment in bucket {
+            if should_extract_comment(&extract_comments, &comment) {
+                let rendered = render_comment(&comment);
+
+                if seen.insert(rendered.clone()) {
+                    extracted.push(rendered);
+                }
+            }
+
+            if should_preserve_comment(&preserve_comments, preserve_annotations, &comment) {
+                preserved.push(comment);
+            }
+        }
+
+        if preserved.is_empty() {
+            continue;
+        }
+
+        if is_trailing {
+            trailing.insert(pos, preserved);
+        } else {
+            leading.insert(pos, preserved);
+        }
+    }
+
+    extracted
+}
+
+fn should_preserve_comment(
+    preserve_comments: &BoolOr<JsMinifyCommentOption>,
+    preserve_annotations: bool,
+    comment: &Comment,
+) -> bool {
     match preserve_comments {
-        BoolOr::Bool(true) | BoolOr::Data(JsMinifyCommentOption::PreserveAllComments) => {}
-
+        BoolOr::Bool(true) | BoolOr::Data(JsMinifyCommentOption::PreserveAllComments) => true,
         BoolOr::Data(JsMinifyCommentOption::PreserveSomeComments) => {
-            let preserve_excl = |_: &BytePos, vc: &mut std::vec::Vec<Comment>| -> bool {
-                // Preserve license comments.
-                //
-                // See https://github.com/terser/terser/blob/798135e04baddd94fea403cfaab4ba8b22b1b524/lib/output.js#L175-L181
-                vc.retain(|c: &Comment| {
-                    c.text.contains("@lic")
-                        || c.text.contains("@preserve")
-                        || c.text.contains("@copyright")
-                        || c.text.contains("@cc_on")
-                        || c.text.contains("__PURE__")
-                        || c.text.contains("__INLINE__")
-                        || c.text.contains("__NOINLINE__")
-                        || c.text.contains("@vite-ignore")
-                        || (c.kind == CommentKind::Block && c.text.starts_with('!'))
-                });
-                !vc.is_empty()
-            };
-            let (mut l, mut t) = comments.borrow_all_mut();
-
-            l.retain(preserve_excl);
-            t.retain(preserve_excl);
+            is_legal_comment(comment)
+                || (preserve_annotations
+                    && (comment.text.contains("__PURE__")
+                        || comment.text.contains("__INLINE__")
+                        || comment.text.contains("__NOINLINE__")
+                        || comment.text.contains("@vite-ignore")))
         }
-
-        BoolOr::Bool(false) => {
-            let (mut l, mut t) = comments.borrow_all_mut();
-            l.clear();
-            t.clear();
+        BoolOr::Data(JsMinifyCommentOption::PreserveRegexComments { regex }) => {
+            regex.find(&comment.text).is_some()
         }
+        BoolOr::Bool(false) => false,
+    }
+}
+
+fn should_extract_comment(
+    extract_comments: &BoolOr<JsMinifyCommentOption>,
+    comment: &Comment,
+) -> bool {
+    match extract_comments {
+        BoolOr::Bool(true) | BoolOr::Data(JsMinifyCommentOption::PreserveSomeComments) => {
+            is_legal_comment(comment)
+        }
+        BoolOr::Data(JsMinifyCommentOption::PreserveAllComments) => true,
+        BoolOr::Data(JsMinifyCommentOption::PreserveRegexComments { regex }) => {
+            regex.find(&comment.text).is_some()
+        }
+        BoolOr::Bool(false) => false,
+    }
+}
+
+fn is_legal_comment(comment: &Comment) -> bool {
+    // See https://github.com/terser/terser/blob/798135e04baddd94fea403cfaab4ba8b22b1b524/lib/output.js#L175-L181
+    comment.text.contains("@lic")
+        || comment.text.contains("@preserve")
+        || comment.text.contains("@copyright")
+        || comment.text.contains("@cc_on")
+        || (comment.kind == CommentKind::Block && comment.text.starts_with('!'))
+}
+
+fn render_comment(comment: &Comment) -> String {
+    match comment.kind {
+        CommentKind::Block => format!("/*{}*/", comment.text),
+        CommentKind::Line => format!("//{}", comment.text),
     }
 }
 
@@ -405,7 +558,7 @@ impl Default for SourceMapsConfig {
 }
 
 pub struct IdentCollector {
-    pub names: AHashMap<BytePos, JsWord>,
+    pub names: FxHashMap<BytePos, Atom>,
 }
 
 impl Visit for IdentCollector {
@@ -416,6 +569,13 @@ impl Visit for IdentCollector {
     }
 
     fn visit_ident_name(&mut self, ident: &IdentName) {
+        // We don't want to specifically include the constructor name in the source map
+        // so that the source map name in thrown errors refers to the class name
+        // instead of the constructor name.
+        if ident.sym == "constructor" {
+            return;
+        }
+
         self.names.insert(ident.span.lo, ident.sym.clone());
     }
 }

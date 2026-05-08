@@ -1,2 +1,2 @@
-const used = /*#__PURE__*/ forwardRef(/* harden */ Foo);
+let used = forwardRef(/* harden */ Foo);
 export default used;

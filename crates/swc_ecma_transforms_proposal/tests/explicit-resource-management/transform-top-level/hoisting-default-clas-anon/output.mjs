@@ -4,13 +4,13 @@ const env = {
     hasError: false
 };
 try {
-    const x = _ts_add_disposable_resource(env, null, false);
-    ;
+    var x = _ts_add_disposable_resource(env, null, false);
+    var _default = class {
+    };
 } catch (e) {
     env.error = e;
     env.hasError = true;
 } finally{
     _ts_dispose_resources(env);
 }
-export default class {
-}
+export { _default as default };

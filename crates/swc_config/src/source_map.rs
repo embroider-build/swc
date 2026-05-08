@@ -1,8 +1,7 @@
-use std::sync::Arc;
-
 use anyhow::{bail, Context, Result};
+use bytes_str::BytesStr;
 use serde::{Deserialize, Serialize};
-use sourcemap::{vlq::parse_vlq_segment, RawToken, SourceMap};
+use swc_sourcemap::{vlq::parse_vlq_segment, RawToken, SourceMap};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -11,19 +10,19 @@ pub enum SourceMapContent {
     #[serde(rename_all = "camelCase")]
     Parsed {
         #[serde(default)]
-        sources: Vec<Arc<str>>,
+        sources: Vec<BytesStr>,
         #[serde(default)]
-        names: Vec<Arc<str>>,
+        names: Vec<BytesStr>,
         #[serde(default)]
         mappings: String,
         #[serde(default)]
         range_mappings: String,
         #[serde(default)]
-        file: Option<Arc<str>>,
+        file: Option<BytesStr>,
         #[serde(default)]
         source_root: Option<String>,
         #[serde(default)]
-        sources_content: Option<Vec<Option<Arc<str>>>>,
+        sources_content: Option<Vec<Option<BytesStr>>>,
     },
 }
 
@@ -81,7 +80,7 @@ impl SourceMapContent {
                             }
                             src_id = (i64::from(src_id) + nums[1]) as u32;
                             if src_id >= sources.len() as u32 {
-                                bail!("invalid source reference: {}", src_id);
+                                bail!("invalid source reference: {src_id}");
                             }
 
                             src = src_id;
@@ -91,7 +90,7 @@ impl SourceMapContent {
                             if nums.len() > 4 {
                                 name_id = (i64::from(name_id) + nums[4]) as u32;
                                 if name_id >= names.len() as u32 {
-                                    bail!("invalid name reference: {}", name_id);
+                                    bail!("invalid name reference: {name_id}");
                                 }
                                 name = name_id;
                             }

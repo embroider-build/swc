@@ -12,8 +12,8 @@ use swc_core::diagnostics::get_core_engine_diagnostics;
 pub enum PluginTargetType {
     /// wasm32-unknown-unknown target.
     Wasm32UnknownUnknown,
-    /// wasm32-wasi target.
-    Wasm32Wasi,
+    /// wasm32-wasip1 target.
+    Wasm32Wasip1,
 }
 
 #[derive(Parser, Debug)]
@@ -24,7 +24,7 @@ pub struct PluginScaffoldOptions {
 
     /// Sets default build target type of the plugin.
     ///
-    /// "wasm32-wasi" enables wasi (https://github.com/WebAssembly/WASI) support for the generated
+    /// "wasm32-wasip1" enables wasi (https://github.com/WebAssembly/WASI) support for the generated
     /// binary which allows to use macros like 'println!' or 'dbg!' and other
     /// system-related calls.
     ///
@@ -50,10 +50,7 @@ fn get_name(option: &PluginScaffoldOptions) -> Result<&str> {
     })?;
 
     file_name.to_str().ok_or_else(|| {
-        anyhow::format_err!(
-            "cannot create package with a non-unicode name: {:?}",
-            file_name
-        )
+        anyhow::format_err!("cannot create package with a non-unicode name: {file_name:?}")
     })
 }
 
@@ -103,7 +100,7 @@ fn write_ignore_file(base_path: &Path) -> Result<()> {
         .create(true)
         .open(&ignore_file_path)?;
 
-    write!(f, "{}", ignore).context("failed to write to .gitignore file")?;
+    write!(f, "{ignore}").context("failed to write to .gitignore file")?;
 
     Ok(())
 }
@@ -151,7 +148,7 @@ impl super::CommandRunner for PluginScaffoldOptions {
             path.join("Cargo.toml"),
             format!(
                 r#"[package]
-name = "{}"
+name = "{name}"
 version = "0.1.0"
 edition = "2021"
 
@@ -163,13 +160,12 @@ lto = true
 
 [dependencies]
 serde = "1"
-swc_core = {{ version = "{}", features = ["ecma_plugin_transform"] }}
+swc_core = {{ version = "{swc_core_version}", features = ["ecma_plugin_transform"] }}
 
-# .cargo/config defines few alias to build plugin.
-# cargo build-wasi generates wasm-wasi32 binary
+# .cargo/config.toml defines few alias to build plugin.
+# cargo build-wasip1 generates wasm32-wasip1 binary
 # cargo build-wasm32 generates wasm32-unknown-unknown binary.
-"#,
-                name, swc_core_version
+"#
             )
             .as_bytes(),
         )
@@ -177,24 +173,29 @@ swc_core = {{ version = "{}", features = ["ecma_plugin_transform"] }}
 
         let build_target = match self.target_type {
             PluginTargetType::Wasm32UnknownUnknown => "wasm32-unknown-unknown",
-            PluginTargetType::Wasm32Wasi => "wasm32-wasi",
+            PluginTargetType::Wasm32Wasip1 => "wasm32-wasip1",
         };
 
         let build_alias = match self.target_type {
             PluginTargetType::Wasm32UnknownUnknown => "build-wasm32",
-            PluginTargetType::Wasm32Wasi => "build-wasi",
+            PluginTargetType::Wasm32Wasip1 => "build-wasip1",
         };
 
-        // Create cargo config for build target
+        // Create `.cargo/config.toml` file for build target
         let cargo_config_path = path.join(".cargo");
         create_dir_all(&cargo_config_path).context("`create_dir_all` failed")?;
         fs::write(
-            cargo_config_path.join("config"),
+            cargo_config_path.join("config.toml"),
             r#"# These command aliases are not final, may change
 [alias]
 # Alias to build actual plugin binary for the specified target.
-build-wasi = "build --target wasm32-wasi"
+build-wasip1 = "build --target wasm32-wasip1"
 build-wasm32 = "build --target wasm32-unknown-unknown"
+
+[target.'cfg(target_arch = "wasm32")']
+rustflags = [
+  "--cfg=swc_ast_unknown"
+]
 "#
             .as_bytes(),
         )
@@ -210,21 +211,20 @@ build-wasm32 = "build --target wasm32-unknown-unknown"
             path.join("package.json"),
             format!(
                 r#"{{
-    "name": "{}",
+    "name": "{name}",
     "version": "0.1.0",
     "description": "",
     "author": "",
     "license": "ISC",
     "keywords": ["swc-plugin"],
-    "main": "{}",
+    "main": "{dist_output_path}",
     "scripts": {{
-        "prepublishOnly": "cargo {} --release"
+        "prepublishOnly": "cargo {build_alias} --release"
     }},
     "files": [],
     "preferUnplugged": true
 }}
-"#,
-                name, dist_output_path, build_alias
+"#
             )
             .as_bytes(),
         )
@@ -238,7 +238,7 @@ build-wasm32 = "build --target wasm32-unknown-unknown"
             r##"use swc_core::ecma::{
     ast::Program,
     transforms::testing::test_inline,
-    visit::{visit_mut_pass, FoldWith, VisitMut},
+    visit::{visit_mut_pass, VisitMut},
 };
 use swc_core::plugin::{plugin_transform, proxies::TransformPluginProgramMetadata};
 
@@ -266,8 +266,9 @@ impl VisitMut for TransformVisitor {
 /// This requires manual handling of serialization / deserialization from ptrs.
 /// Refer swc_plugin_macro to see how does it work internally.
 #[plugin_transform]
-pub fn process_transform(program: Program, _metadata: TransformPluginProgramMetadata) -> Program {
-    program.fold_with(&mut visit_mut_pass(TransformVisitor))
+pub fn process_transform(mut program: Program, _metadata: TransformPluginProgramMetadata) -> Program {
+    program.visit_mut_with(&mut TransformVisitor);
+    program
 }
 
 // An example to test plugin transform.

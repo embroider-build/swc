@@ -4,10 +4,10 @@
 use std::{fs, mem::take, path::PathBuf};
 
 use common::{document_span_visualizer, DomVisualizer};
+use rustc_hash::FxHashSet;
 use serde_json::Value;
-use swc_atoms::JsWord;
+use swc_atoms::{atom, Atom};
 use swc_common::{
-    collections::AHashSet,
     input::{SourceFileInput, StringInput},
     BytePos,
 };
@@ -110,7 +110,7 @@ fn html5lib_test_tokenizer(input: PathBuf) {
         };
 
         for state in states.iter() {
-            eprintln!("==== ==== Description ==== ====\n{}\n", description);
+            eprintln!("==== ==== Description ==== ====\n{description}\n");
 
             let json_input = test["input"].clone();
             let mut input: String =
@@ -127,12 +127,12 @@ fn html5lib_test_tokenizer(input: PathBuf) {
                 };
             }
 
-            eprintln!("==== ==== Input ==== ====\n{}\n", input);
+            eprintln!("==== ==== Input ==== ====\n{input}\n");
 
             let json_output = test["output"].clone();
             let output = json_output.to_string();
 
-            eprintln!("==== ==== Output ==== ====\n{}\n", output);
+            eprintln!("==== ==== Output ==== ====\n{output}\n");
 
             let lexer_str_input = StringInput::new(&input, BytePos(0), BytePos(input.len() as u32));
             let mut lexer = Lexer::new(lexer_str_input);
@@ -140,7 +140,7 @@ fn html5lib_test_tokenizer(input: PathBuf) {
             lexer.set_input_state(state.clone());
 
             if let Some(last_start_tag) = test.get("lastStartTag") {
-                let last_start_tag: JsWord = serde_json::from_value(last_start_tag.clone())
+                let last_start_tag: Atom = serde_json::from_value(last_start_tag.clone())
                     .expect("failed to get lastStartTag in test");
 
                 lexer.set_last_start_tag_name(&last_start_tag);
@@ -169,7 +169,7 @@ fn html5lib_test_tokenizer(input: PathBuf) {
                         *raw_tag_name = None;
 
                         let mut new_attributes = Vec::new();
-                        let mut already_seen: AHashSet<JsWord> = Default::default();
+                        let mut already_seen: FxHashSet<Atom> = Default::default();
 
                         for mut attribute in take(attributes) {
                             if already_seen.contains(&attribute.name) {
@@ -179,7 +179,7 @@ fn html5lib_test_tokenizer(input: PathBuf) {
                             already_seen.insert(attribute.name.clone());
 
                             if attribute.value.is_none() {
-                                attribute.value = Some("".into());
+                                attribute.value = Some(atom!(""));
                             }
 
                             attribute.span = Default::default();
@@ -378,7 +378,7 @@ fn html5lib_test_tokenizer(input: PathBuf) {
                 let expected_errors = json_errors.as_array().expect("failed to deserialize error");
                 let actual_errors = lexer.take_errors();
 
-                eprintln!("==== ==== Errors ==== ====\n{:?}\n", actual_errors);
+                eprintln!("==== ==== Errors ==== ====\n{actual_errors:?}\n");
 
                 assert_eq!(actual_errors.len(), expected_errors.len());
 

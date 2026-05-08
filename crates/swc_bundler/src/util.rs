@@ -2,6 +2,10 @@
 
 use std::hash::Hash;
 
+use rustc_hash::FxBuildHasher;
+#[cfg(not(feature = "concurrent"))]
+use rustc_hash::FxHashMap;
+use swc_atoms::atom;
 use swc_common::{SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_utils::ident::IdentLike;
@@ -30,7 +34,7 @@ pub(crate) trait VarDeclaratorExt: Into<VarDeclarator> {
                         raw: None,
                         value: name.into(),
                     }
-                    .assign_to(Ident::new_no_ctxt("INJECTED_FROM".into(), DUMMY_SP)),
+                    .assign_to(Ident::new_no_ctxt(atom!("INJECTED_FROM"), DUMMY_SP)),
                 ]
             } else {
                 vec![self.into()]
@@ -103,9 +107,9 @@ where
     V: Clone,
 {
     #[cfg(feature = "concurrent")]
-    inner: dashmap::DashMap<K, V, swc_common::collections::ARandomState>,
+    inner: dashmap::DashMap<K, V, FxBuildHasher>,
     #[cfg(not(feature = "concurrent"))]
-    inner: std::cell::RefCell<swc_common::collections::AHashMap<K, V>>,
+    inner: std::cell::RefCell<FxHashMap<K, V>>,
 }
 
 impl<K, V> Default for CloneMap<K, V>
@@ -257,8 +261,10 @@ impl ExportMetadata {
                             }
                         } else if *sym == "__swc_bundler__export_ctxt__" {
                             if let Expr::Lit(Lit::Str(Str { value, .. })) = &**value {
-                                if let Ok(v) = value.parse() {
-                                    data.export_ctxt = Some(SyntaxContext::from_u32(v));
+                                if let Some(value) = value.as_str() {
+                                    if let Ok(v) = value.parse() {
+                                        data.export_ctxt = Some(SyntaxContext::from_u32(v));
+                                    }
                                 }
                             }
                         }

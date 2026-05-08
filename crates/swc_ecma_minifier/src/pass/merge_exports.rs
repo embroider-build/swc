@@ -16,7 +16,7 @@ struct Merger {
 }
 
 impl VisitMut for Merger {
-    noop_visit_mut_type!();
+    noop_visit_mut_type!(fail);
 
     fn visit_mut_module_items(&mut self, stmts: &mut Vec<ModuleItem>) {
         let was_module = maybe_par!(
@@ -55,7 +55,8 @@ impl VisitMut for Merger {
         }
 
         // export {}, to preserve module semantics
-        if was_module && stmts.iter().all(|s| matches!(s, ModuleItem::Stmt(..))) {
+        if stmts.iter().all(|s| matches!(s, ModuleItem::Stmt(..))) {
+            debug_assert!(was_module);
             stmts.push(
                 NamedExport {
                     src: None,

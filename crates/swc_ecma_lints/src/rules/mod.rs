@@ -5,10 +5,7 @@ use swc_ecma_ast::*;
 
 use crate::{config::LintConfig, rule::Rule};
 
-mod const_assign;
-mod duplicate_bindings;
-mod duplicate_exports;
-mod no_dupe_args;
+mod critical_rules;
 mod utils;
 
 #[cfg(feature = "non_critical_lints")]
@@ -63,16 +60,13 @@ pub struct LintParams<'a> {
     pub source_map: Arc<SourceMap>,
 }
 
-pub fn all(lint_params: LintParams) -> Vec<Box<dyn Rule>> {
-    let mut rules = vec![
-        const_assign::const_assign(),
-        duplicate_bindings::duplicate_bindings(),
-        duplicate_exports::duplicate_exports(),
-        no_dupe_args::no_dupe_args(),
-    ];
+pub fn all(#[allow(unused)] lint_params: LintParams) -> Vec<Box<dyn Rule>> {
+    let rules = vec![critical_rules::critical_rules()];
 
     #[cfg(feature = "non_critical_lints")]
-    {
+    let rules = {
+        let mut rules = rules;
+
         let LintParams {
             program,
             lint_config,
@@ -211,12 +205,14 @@ pub fn all(lint_params: LintParams) -> Vec<Box<dyn Rule>> {
             unresolved_ctxt,
             es_version,
         ));
-    }
+
+        rules
+    };
 
     rules
 }
 
-pub fn lint_to_fold<R>(r: R) -> impl Pass
+pub fn lint_pass<R>(r: R) -> impl Pass
 where
     R: Rule,
 {
@@ -235,6 +231,8 @@ where
         match program {
             Program::Module(m) => self.0.lint_module(m),
             Program::Script(s) => self.0.lint_script(s),
+            #[cfg(swc_ast_unknown)]
+            _ => (),
         }
     }
 }

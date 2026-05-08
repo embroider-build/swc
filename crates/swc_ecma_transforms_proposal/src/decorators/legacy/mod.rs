@@ -1,8 +1,9 @@
 use std::{iter, mem};
 
 use metadata::remove_span;
-use swc_atoms::JsWord;
-use swc_common::{collections::AHashMap, util::take::Take, BytePos, DUMMY_SP};
+use rustc_hash::FxHashMap;
+use swc_atoms::Atom;
+use swc_common::{util::take::Take, BytePos, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_transforms_base::helper;
 use swc_ecma_utils::{private_ident, prop_name_to_expr_value, quote_ident, ExprFactory, StmtLike};
@@ -37,7 +38,7 @@ pub(super) fn new(metadata: bool) -> TscDecorator {
 pub(super) struct TscDecorator {
     metadata: bool,
 
-    enums: AHashMap<JsWord, EnumKind>,
+    enums: FxHashMap<Atom, EnumKind>,
 
     /// Used for computed keys, and this variables are not initialized.
     vars: Vec<VarDeclarator>,
@@ -147,7 +148,7 @@ impl TscDecorator {
                 return Lit::Str(Str {
                     span: DUMMY_SP,
                     raw: None,
-                    value: i.sym.clone(),
+                    value: i.sym.clone().into(),
                 })
                 .into()
             }
@@ -223,6 +224,10 @@ impl Visit for TscDecorator {
             .map(|member| member.init.as_ref())
             .map(|init| match init {
                 Some(e) => match &**e {
+                    Expr::Unary(UnaryExpr {
+                        op: op!(unary, "-"),
+                        ..
+                    }) => EnumKind::Num,
                     Expr::Lit(lit) => match lit {
                         Lit::Str(_) => EnumKind::Str,
                         Lit::Num(_) => EnumKind::Num,
@@ -341,7 +346,7 @@ impl VisitMut for TscDecorator {
     }
 
     fn visit_mut_class_decl(&mut self, n: &mut ClassDecl) {
-        let old = mem::replace(&mut self.class_name, Some(n.ident.clone()));
+        let old = self.class_name.replace(n.ident.clone());
 
         n.visit_mut_children_with(self);
 
@@ -388,7 +393,7 @@ impl VisitMut for TscDecorator {
             .get_or_insert_with(|| private_ident!("_class"))
             .clone();
 
-        let old = mem::replace(&mut self.class_name, Some(ident.clone()));
+        let old = self.class_name.replace(ident.clone());
 
         n.visit_mut_children_with(self);
 

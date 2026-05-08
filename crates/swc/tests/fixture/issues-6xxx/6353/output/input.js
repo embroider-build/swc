@@ -1,41 +1,16 @@
-var _async_to_generator = require("@swc/helpers/_/_async_to_generator");
-/*#__PURE__*/ (function() {
-    var _ref = _async_to_generator._(function*(x) {
+import { _ as _async_to_generator } from "@swc/helpers/_/_async_to_generator";
+((x)=>_async_to_generator(function*() {
         return 0;
-    });
-    return function(x) {
-        return _ref.apply(this, arguments);
-    };
-})().x++;
-/*#__PURE__*/ (function() {
-    var _ref = _async_to_generator._(function*(x) {
+    })()).x++;
+((x)=>_async_to_generator(function*() {
         return 0;
-    });
-    return function(x) {
-        return _ref.apply(this, arguments);
-    };
-})().x--;
-++/*#__PURE__*/ function() {
-    var _ref = _async_to_generator._(function*(x) {
+    })()).x--;
+++((x)=>_async_to_generator(function*() {
         return 0;
-    });
-    return function(x) {
-        return _ref.apply(this, arguments);
-    };
-}().x;
---/*#__PURE__*/ function() {
-    var _ref = _async_to_generator._(function*(x) {
+    })()).x;
+--((x)=>_async_to_generator(function*() {
         return 0;
-    });
-    return function(x) {
-        return _ref.apply(this, arguments);
-    };
-}().x;
-/*#__PURE__*/ (function() {
-    var _ref = _async_to_generator._(function*(x) {
+    })()).x;
+((x)=>_async_to_generator(function*() {
         return 0;
-    });
-    return function(x) {
-        return _ref.apply(this, arguments);
-    };
-})()`y`;
+    })())`y`;

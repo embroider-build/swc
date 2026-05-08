@@ -1,7 +1,8 @@
 use std::mem;
 
 use indexmap::IndexMap;
-use swc_atoms::JsWord;
+use rustc_hash::FxBuildHasher;
+use swc_atoms::{atom, Atom};
 use swc_common::{util::take::Take, Span, Spanned, SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut, VisitMutWith};
@@ -11,7 +12,7 @@ use crate::ExprFactory;
 #[derive(Default)]
 struct SuperField {
     computed: Option<Ident>,
-    ident: IndexMap<JsWord, Ident>,
+    ident: IndexMap<Atom, Ident, FxBuildHasher>,
 }
 
 /// Don't use it against function, it will stop if come across any function
@@ -95,7 +96,7 @@ impl FnEnvHoister {
             decls.push(VarDeclarator {
                 span: DUMMY_SP,
                 name: id.into(),
-                init: Some(Ident::new_no_ctxt("arguments".into(), DUMMY_SP).into()),
+                init: Some(Ident::new_no_ctxt(atom!("arguments"), DUMMY_SP).into()),
                 definite: false,
             });
         }
@@ -158,7 +159,7 @@ impl FnEnvHoister {
             decls.push(VarDeclarator {
                 span: DUMMY_SP,
                 name: id.into(),
-                init: Some(Ident::new_no_ctxt("arguments".into(), DUMMY_SP).into()),
+                init: Some(Ident::new_no_ctxt(atom!("arguments"), DUMMY_SP).into()),
                 definite: false,
             });
         }
@@ -202,7 +203,7 @@ impl FnEnvHoister {
             .clone()
     }
 
-    fn super_get(&mut self, prop_name: &JsWord, prop_span: Span) -> Ident {
+    fn super_get(&mut self, prop_name: &Atom, prop_span: Span) -> Ident {
         if let Some(callee) = self.super_get.ident.get(prop_name) {
             callee.clone()
         } else {
@@ -221,7 +222,7 @@ impl FnEnvHoister {
             .clone()
     }
 
-    fn super_set(&mut self, prop_name: &JsWord, prop_span: Span) -> Ident {
+    fn super_set(&mut self, prop_name: &Atom, prop_span: Span) -> Ident {
         if let Some(callee) = self.super_set.ident.get(prop_name) {
             callee.clone()
         } else {
@@ -240,7 +241,7 @@ impl FnEnvHoister {
             .clone()
     }
 
-    fn super_update(&mut self, prop_name: &JsWord, prop_span: Span) -> Ident {
+    fn super_update(&mut self, prop_name: &Atom, prop_span: Span) -> Ident {
         if let Some(callee) = self.super_update.ident.get(prop_name) {
             callee.clone()
         } else {
@@ -392,6 +393,8 @@ impl VisitMut for FnEnvHoister {
                         e.visit_mut_children_with(self);
                         return;
                     }
+                    #[cfg(swc_ast_unknown)]
+                    _ => return,
                 };
                 if !self.super_disabled {
                     if let SimpleAssignTarget::SuperProp(super_prop) = &mut *expr {
@@ -462,6 +465,8 @@ impl VisitMut for FnEnvHoister {
                                 }
                                 .into();
                             }
+                            #[cfg(swc_ast_unknown)]
+                            _ => (),
                         }
                     }
                 }
@@ -507,6 +512,8 @@ impl VisitMut for FnEnvHoister {
 
                                 *e = call.call_fn(*span, new_args);
                             }
+                            #[cfg(swc_ast_unknown)]
+                            _ => (),
                         }
                     };
                 }
@@ -531,7 +538,7 @@ impl VisitMut for FnEnvHoister {
                             callee: self.super_update_computed(*span).as_callee(),
                             ..Default::default()
                         })
-                        .make_member("_".into())
+                        .make_member(atom!("_").into())
                         .into()
                     } else {
                         CallExpr {
@@ -558,6 +565,8 @@ impl VisitMut for FnEnvHoister {
                         .into()
                     };
                 }
+                #[cfg(swc_ast_unknown)]
+                _ => (),
             },
             _ => e.visit_mut_children_with(self),
         }
@@ -660,7 +669,7 @@ fn extend_super(
                     props: vec![
                         Prop::Getter(GetterProp {
                             span: DUMMY_SP,
-                            key: PropName::Ident("_".into()),
+                            key: PropName::Ident(atom!("_").into()),
                             type_ann: None,
                             body: Some(BlockStmt {
                                 stmts: vec![Expr::Ident(
@@ -678,7 +687,7 @@ fn extend_super(
                         }),
                         Prop::Setter(SetterProp {
                             span: DUMMY_SP,
-                            key: PropName::Ident("_".into()),
+                            key: PropName::Ident(atom!("_").into()),
                             this_param: None,
                             param: value.clone().into(),
                             body: Some(BlockStmt {
@@ -722,7 +731,7 @@ fn extend_super(
                             props: vec![
                                 Prop::Getter(GetterProp {
                                     span: DUMMY_SP,
-                                    key: PropName::Ident("_".into()),
+                                    key: PropName::Ident(atom!("_").into()),
                                     type_ann: None,
                                     body: Some(BlockStmt {
                                         stmts: vec![Expr::Ident(
@@ -739,7 +748,7 @@ fn extend_super(
                                 }),
                                 Prop::Setter(SetterProp {
                                     span: DUMMY_SP,
-                                    key: PropName::Ident("_".into()),
+                                    key: PropName::Ident(atom!("_").into()),
                                     this_param: None,
                                     param: value.clone().into(),
                                     body: Some(BlockStmt {

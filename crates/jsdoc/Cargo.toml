@@ -2,30 +2,38 @@
 authors       = ["강동윤 <kdy1997.dev@gmail.com>"]
 description   = "JsDoc parser writen in rust"
 documentation = "https://rustdoc.swc.rs/jsdoc/"
-edition       = "2021"
+edition       = { workspace = true }
 include       = ["Cargo.toml", "src/**/*.rs"]
-license       = "Apache-2.0"
+license       = { workspace = true }
 name          = "jsdoc"
 repository    = { workspace = true }
-version       = "4.0.0"
+version       = "21.0.0"
 
 [lib]
 bench = false
 
 [features]
+__rkyv = []
+encoding-impl = [
+  "cbor4ii",
+  "swc_atoms/encoding-impl",
+  "swc_common/encoding-impl",
+]
+rkyv-impl = []
 serde-impl = ["serde"]
 
-[dependencies]
-nom   = { workspace = true }
-serde = { workspace = true, features = ["derive"], optional = true }
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(swc_ast_unknown)'] }
 
-swc_atoms  = { version = "2.0.0", path = "../swc_atoms" }
-swc_common = { version = "4.0.0", path = "../swc_common" }
+[dependencies]
+cbor4ii = { workspace = true, features = ["use_std"], optional = true }
+nom     = { workspace = true }
+serde   = { workspace = true, features = ["derive"], optional = true }
+
+swc_atoms  = { version = "9.0.0", path = "../swc_atoms" }
+swc_common = { version = "21.0.1", path = "../swc_common" }
 
 [dev-dependencies]
-anyhow  = { workspace = true }
-dashmap = { workspace = true }
-
-swc_ecma_ast    = { version = "4.0.1", path = "../swc_ecma_ast" }
-swc_ecma_parser = { version = "5.0.0", path = "../swc_ecma_parser" }
-testing         = { version = "4.0.0", path = "../testing" }
+dashmap         = { workspace = true }
+swc_ecma_parser = { version = "39.0.2", path = "../swc_ecma_parser" }
+testing         = { version = "22.0.0", path = "../testing" }

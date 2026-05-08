@@ -5,6 +5,7 @@ use swc_ecma_ast::*;
 pub use swc_ecma_utils::parallel::*;
 use swc_ecma_visit::{Fold, FoldWith, Visit, VisitMut, VisitMutWith, VisitWith};
 
+#[cfg(feature = "concurrent")]
 use crate::helpers::Helpers;
 #[cfg(feature = "concurrent")]
 use crate::helpers::HELPERS;
@@ -51,43 +52,20 @@ where
         N: Send + Sync + VisitWith<Self>,
     {
         if nodes.len() >= threshold {
-            GLOBALS.with(|globals| {
-                HELPERS.with(|helpers| {
-                    let helpers = helpers.data();
+            HELPERS.with(|helpers| {
+                let helpers = helpers.data();
 
-                    HANDLER.with(|handler| {
-                        use rayon::prelude::*;
-
-                        let visitor = nodes
-                            .into_par_iter()
-                            .map(|node| {
-                                let helpers = Helpers::from_data(helpers);
-
-                                GLOBALS.set(globals, || {
-                                    HELPERS.set(&helpers, || {
-                                        HANDLER.set(handler, || {
-                                            let mut visitor = Parallel::create(&*self);
-                                            node.visit_with(&mut visitor);
-
-                                            visitor
-                                        })
-                                    })
-                                })
-                            })
-                            .reduce(
-                                || Parallel::create(&*self),
-                                |mut a, b| {
-                                    Parallel::merge(&mut a, b);
-
-                                    a
-                                },
-                            );
-
-                        Parallel::merge(self, visitor);
-                    })
+                HANDLER.with(|handler| {
+                    self.maybe_par(threshold, nodes, |visitor, node| {
+                        let helpers = Helpers::from_data(helpers);
+                        HELPERS.set(&helpers, || {
+                            HANDLER.set(handler, || {
+                                node.visit_with(visitor);
+                            });
+                        });
+                    });
                 })
             });
-
             return;
         }
 
@@ -113,38 +91,18 @@ where
         N: Send + Sync + VisitMutWith<Self>,
     {
         if nodes.len() >= threshold {
-            GLOBALS.with(|globals| {
-                HELPERS.with(|helpers| {
-                    let helpers = helpers.data();
-                    HANDLER.with(|handler| {
-                        use rayon::prelude::*;
+            HELPERS.with(|helpers| {
+                let helpers = helpers.data();
 
-                        let visitor = nodes
-                            .into_par_iter()
-                            .map(|node| {
-                                let helpers = Helpers::from_data(helpers);
-                                GLOBALS.set(globals, || {
-                                    HELPERS.set(&helpers, || {
-                                        HANDLER.set(handler, || {
-                                            let mut visitor = Parallel::create(&*self);
-                                            node.visit_mut_with(&mut visitor);
-
-                                            visitor
-                                        })
-                                    })
-                                })
-                            })
-                            .reduce(
-                                || Parallel::create(&*self),
-                                |mut a, b| {
-                                    Parallel::merge(&mut a, b);
-
-                                    a
-                                },
-                            );
-
-                        Parallel::merge(self, visitor);
-                    })
+                HANDLER.with(|handler| {
+                    self.maybe_par(threshold, nodes, |visitor, node| {
+                        let helpers = Helpers::from_data(helpers);
+                        HELPERS.set(&helpers, || {
+                            HANDLER.set(handler, || {
+                                node.visit_mut_with(visitor);
+                            });
+                        });
+                    });
                 })
             });
 
@@ -173,7 +131,7 @@ where
         N: Send + Sync + FoldWith<Self>,
     {
         if nodes.len() >= threshold {
-            use rayon::prelude::*;
+            use par_iter::prelude::*;
 
             let (visitor, nodes) = GLOBALS.with(|globals| {
                 HELPERS.with(|helpers| {

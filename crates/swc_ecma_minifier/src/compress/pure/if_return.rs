@@ -109,7 +109,7 @@ impl Pure<'_> {
         match if_stmt {
             Stmt::If(mut s) => {
                 assert_eq!(s.alt, None);
-                negate(&self.expr_ctx, &mut s.test, false, false);
+                negate(self.expr_ctx, &mut s.test, true, false);
 
                 s.cons = if cons.len() == 1 && is_fine_for_if_cons(&cons[0]) {
                     Box::new(cons.into_iter().next().unwrap())
@@ -153,14 +153,12 @@ impl Pure<'_> {
             match &mut **alt_of_alt {
                 Stmt::Block(..) => {}
                 Stmt::Expr(..) => {
-                    *alt_of_alt = Box::new(
-                        BlockStmt {
-                            span: DUMMY_SP,
-                            stmts: vec![*alt_of_alt.take()],
-                            ..Default::default()
-                        }
-                        .into(),
-                    );
+                    **alt_of_alt = BlockStmt {
+                        span: DUMMY_SP,
+                        stmts: vec![*alt_of_alt.take()],
+                        ..Default::default()
+                    }
+                    .into();
                 }
                 _ => {
                     return;

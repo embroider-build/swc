@@ -3,7 +3,11 @@ use swc_common::Mark;
 #[cfg(feature = "__plugin_mode")]
 use swc_trace_macro::swc_trace;
 
-#[cfg(all(feature = "__rkyv", feature = "__plugin_mode", target_arch = "wasm32"))]
+#[cfg(all(
+    feature = "encoding-impl",
+    feature = "__plugin_mode",
+    target_arch = "wasm32"
+))]
 use crate::memory_interop::read_returned_result_from_host;
 #[cfg(feature = "__plugin_mode")]
 #[cfg_attr(not(target_arch = "wasm32"), allow(unused))]
@@ -27,6 +31,7 @@ pub struct TransformPluginProgramMetadata {
 }
 
 #[cfg(target_arch = "wasm32")] // Allow testing
+#[link(wasm_import_module = "env")]
 extern "C" {
     fn __copy_context_key_to_host_env(bytes_ptr: u32, bytes_ptr_len: u32);
     fn __get_transform_plugin_config(allocated_ret_ptr: u32) -> u32;
@@ -98,9 +103,7 @@ impl TransformPluginProgramMetadata {
     /// Each time this is called, it'll require a call between host-plugin which
     /// involves serialization / deserialization.
     #[allow(unreachable_code)]
-    pub fn get_raw_experimental_context(
-        &self,
-    ) -> swc_common::collections::AHashMap<String, String> {
+    pub fn get_raw_experimental_context(&self) -> swc_common::plugin::metadata::Context {
         // TODO: There is no clear usecase yet - enable when we have a correct usecase.
         unimplemented!("Not supported yet");
 
@@ -111,6 +114,6 @@ impl TransformPluginProgramMetadata {
         .expect("Raw experimental metadata should exists, even if it's empty map");
 
         #[cfg(not(target_arch = "wasm32"))]
-        swc_common::collections::AHashMap::default()
+        swc_common::plugin::metadata::Context(rustc_hash::FxHashMap::default())
     }
 }

@@ -7,8 +7,10 @@ use std::{collections::HashMap, fs::write, path::PathBuf, process::Command};
 
 use anyhow::Error;
 use ntest::timeout;
+use rustc_hash::FxHashSet;
+use swc_atoms::atom;
 use swc_bundler::{Bundler, Load, ModuleRecord};
-use swc_common::{collections::AHashSet, errors::HANDLER, FileName, Mark, Span, GLOBALS};
+use swc_common::{errors::HANDLER, FileName, Mark, Span, GLOBALS};
 use swc_ecma_ast::*;
 use swc_ecma_codegen::{
     text_writer::{omit_trailing_semi, JsWriter, WriteJs},
@@ -998,7 +1000,7 @@ fn run(url: &str, exports: &[&str]) {
     })
     .unwrap();
 
-    println!("{}", src);
+    println!("{src}");
 
     let output = Command::new("deno")
         .arg("run")
@@ -1113,7 +1115,7 @@ impl swc_bundler::Hook for Hook {
 
         Ok(vec![
             KeyValueProp {
-                key: PropName::Ident(IdentName::new("url".into(), span)),
+                key: PropName::Ident(IdentName::new(atom!("url"), span)),
                 value: Box::new(Expr::Lit(Lit::Str(Str {
                     span,
                     raw: None,
@@ -1121,7 +1123,7 @@ impl swc_bundler::Hook for Hook {
                 }))),
             },
             KeyValueProp {
-                key: PropName::Ident(IdentName::new("main".into(), span)),
+                key: PropName::Ident(IdentName::new(atom!("main"), span)),
                 value: Box::new(if module_record.is_entry {
                     Expr::Member(MemberExpr {
                         span,
@@ -1129,7 +1131,7 @@ impl swc_bundler::Hook for Hook {
                             span,
                             kind: MetaPropKind::ImportMeta,
                         })),
-                        prop: MemberProp::Ident(IdentName::new("main".into(), span)),
+                        prop: MemberProp::Ident(IdentName::new(atom!("main"), span)),
                     })
                 } else {
                     Expr::Lit(Lit::Bool(Bool { span, value: false }))
@@ -1139,7 +1141,7 @@ impl swc_bundler::Hook for Hook {
     }
 }
 
-fn collect_exports(module: &Module) -> AHashSet<String> {
+fn collect_exports(module: &Module) -> FxHashSet<String> {
     let mut v = ExportCollector::default();
     module.visit_with(&mut v);
 
@@ -1148,7 +1150,7 @@ fn collect_exports(module: &Module) -> AHashSet<String> {
 
 #[derive(Default)]
 struct ExportCollector {
-    exports: AHashSet<String>,
+    exports: FxHashSet<String>,
 }
 
 impl Visit for ExportCollector {

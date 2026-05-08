@@ -123,15 +123,11 @@ impl PreferRegexLiterals {
             match (self.first_arg.as_ref(), self.second_arg.as_ref()) {
                 (Some(Str(_)), None) => self.emit_report(UNEXPECTED_REG_EXP_MESSAGE),
                 (Some(Str(_)), Some(Str(_))) => self.emit_report(UNEXPECTED_REG_EXP_MESSAGE),
-                (Some(RegExp { .. }), None) => {
-                    if self.disallow_redundant_wrapping {
-                        self.emit_report(UNEXPECTED_REDUNDANT_REG_EXP_MESSAGE);
-                    }
+                (Some(RegExp { .. }), None) if self.disallow_redundant_wrapping => {
+                    self.emit_report(UNEXPECTED_REDUNDANT_REG_EXP_MESSAGE);
                 }
-                (Some(RegExp { .. }), Some(Str(_))) => {
-                    if self.disallow_redundant_wrapping {
-                        self.emit_report(UNEXPECTED_REDUNDANT_REG_EXP_WITH_FLAGS_MESSAGE);
-                    }
+                (Some(RegExp { .. }), Some(Str(_))) if self.disallow_redundant_wrapping => {
+                    self.emit_report(UNEXPECTED_REDUNDANT_REG_EXP_WITH_FLAGS_MESSAGE);
                 }
                 _ => {}
             }
@@ -213,7 +209,7 @@ impl Visit for PreferRegexLiterals {
             }
             MemberProp::Computed(comp) => {
                 if let Expr::Lit(Lit::Str(Str { value, .. })) = comp.expr.as_ref() {
-                    self.check(value);
+                    self.check(&value.to_string_lossy());
                 }
             }
             _ => {}

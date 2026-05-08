@@ -1,14 +1,42 @@
-//! 12.1 Identifiers
 use either::Either;
 use swc_atoms::atom;
+use swc_common::BytePos;
+use swc_ecma_ast::*;
 
-use super::*;
-use crate::token::{IdentLike, Keyword};
+use crate::{error::SyntaxError, input::Tokens, lexer::Token, Context, PResult, Parser};
 
 impl<I: Tokens> Parser<I> {
-    pub(super) fn parse_maybe_private_name(&mut self) -> PResult<Either<PrivateName, IdentName>> {
-        let is_private = is!(self, '#');
+    // https://tc39.es/ecma262/#prod-ModuleExportName
+    pub(crate) fn parse_module_export_name(&mut self) -> PResult<ModuleExportName> {
+        let cur = self.input().cur();
+        let module_export_name = if cur == Token::Str {
+            ModuleExportName::Str(self.parse_str_lit())
+        } else if cur.is_word() {
+            ModuleExportName::Ident(self.parse_ident_name()?.into())
+        } else {
+            unexpected!(self, "identifier or string");
+        };
+        Ok(module_export_name)
+    }
 
+    /// Use this when spec says "IdentifierName".
+    /// This allows idents like `catch`.
+    pub(crate) fn parse_ident_name(&mut self) -> PResult<IdentName> {
+        let token_and_span = self.input().get_cur();
+        let start = token_and_span.span.lo;
+        let cur = token_and_span.token;
+        let w = if cur.is_word() {
+            self.input_mut().expect_word_token_and_bump()
+        } else if cur == Token::JSXName && self.ctx().contains(Context::InType) {
+            self.input_mut().expect_jsx_name_token_and_bump()
+        } else {
+            syntax_error!(self, SyntaxError::ExpectedIdent)
+        };
+        Ok(IdentName::new(w, self.span(start)))
+    }
+
+    pub(crate) fn parse_maybe_private_name(&mut self) -> PResult<Either<PrivateName, IdentName>> {
+        let is_private = self.input().is(Token::Hash);
         if is_private {
             self.parse_private_name().map(Either::Left)
         } else {
@@ -16,164 +44,169 @@ impl<I: Tokens> Parser<I> {
         }
     }
 
-    pub(super) fn parse_private_name(&mut self) -> PResult<PrivateName> {
-        let start = cur_pos!(self);
-        assert_and_bump!(self, '#');
-
-        let hash_end = self.input.prev_span().hi;
-        if self.input.cur_pos() - hash_end != BytePos(0) {
+    pub(crate) fn parse_private_name(&mut self) -> PResult<PrivateName> {
+        let start = self.cur_pos();
+        self.assert_and_bump(Token::Hash);
+        let hash_end = self.input().prev_span().hi;
+        if self.input().cur_pos() - hash_end != BytePos(0) {
             syntax_error!(
                 self,
-                span!(self, start),
+                self.span(start),
                 SyntaxError::SpaceBetweenHashAndIdent
             );
         }
-
         let id = self.parse_ident_name()?;
         Ok(PrivateName {
-            span: span!(self, start),
+            span: self.span(start),
             name: id.sym,
         })
     }
 
     /// IdentifierReference
-    pub(super) fn parse_ident_ref(&mut self) -> PResult<Ident> {
+    #[inline]
+    fn parse_ident_ref(&mut self) -> PResult<Ident> {
         let ctx = self.ctx();
-
-        self.parse_ident(!ctx.in_generator, !ctx.in_async)
+        self.parse_ident(
+            !ctx.contains(Context::InGenerator),
+            !ctx.contains(Context::InAsync),
+        )
     }
 
     /// LabelIdentifier
-    pub(super) fn parse_label_ident(&mut self) -> PResult<Ident> {
-        let ctx = self.ctx();
-
-        self.parse_ident(!ctx.in_generator, !ctx.in_async)
+    #[inline]
+    pub(crate) fn parse_label_ident(&mut self) -> PResult<Ident> {
+        self.parse_ident_ref()
     }
 
-    /// Use this when spec says "IdentifierName".
-    /// This allows idents like `catch`.
-    pub(super) fn parse_ident_name(&mut self) -> PResult<IdentName> {
-        let in_type = self.ctx().in_type;
+    /// babel: `parseBindingIdentifier`
+    ///
+    /// spec: `BindingIdentifier`
+    pub(crate) fn parse_binding_ident(&mut self, disallow_let: bool) -> PResult<BindingIdent> {
+        trace_cur!(self, parse_binding_ident);
 
-        let start = cur_pos!(self);
-
-        let w = match cur!(self, true) {
-            Word(..) => match bump!(self) {
-                Word(w) => w.into(),
-                _ => unreachable!(),
-            },
-
-            Token::JSXName { .. } if in_type => match bump!(self) {
-                Token::JSXName { name } => name,
-                _ => unreachable!(),
-            },
-
-            _ => syntax_error!(self, SyntaxError::ExpectedIdent),
-        };
-
-        Ok(IdentName::new(w, span!(self, start)))
-    }
-
-    // https://tc39.es/ecma262/#prod-ModuleExportName
-    pub(super) fn parse_module_export_name(&mut self) -> PResult<ModuleExportName> {
-        let module_export_name = match cur!(self, false) {
-            Ok(&Token::Str { .. }) => match self.parse_lit()? {
-                Lit::Str(str_lit) => ModuleExportName::Str(str_lit),
-                _ => unreachable!(),
-            },
-            Ok(&Word(..)) => ModuleExportName::Ident(self.parse_ident_name()?.into()),
-            _ => {
-                unexpected!(self, "identifier or string");
+        let cur = self.input().cur();
+        if disallow_let && cur == Token::Let {
+            unexpected!(self, "let is reserved in const, let, class declaration")
+        } else if cur == Token::Ident {
+            let span = self.input().cur_span();
+            let word = self.input_mut().expect_word_token_and_bump();
+            if atom!("arguments") == word || atom!("eval") == word {
+                self.emit_strict_mode_err(span, SyntaxError::EvalAndArgumentsInStrict);
             }
-        };
-        Ok(module_export_name)
+            return Ok(Ident::new_no_ctxt(word, span).into());
+        }
+
+        // "yield" and "await" is **lexically** accepted.
+        let token = self.input().cur();
+        let ident = self.parse_ident(true, true)?;
+        let ctx = self.ctx();
+        if (ctx.intersects(Context::InAsync.union(Context::InStaticBlock)) && token == Token::Await)
+            || (ctx.contains(Context::InGenerator) && token == Token::Yield)
+        {
+            self.emit_err(ident.span, SyntaxError::ExpectedIdent);
+        }
+
+        Ok(ident.into())
+    }
+
+    pub(crate) fn parse_opt_binding_ident(
+        &mut self,
+        disallow_let: bool,
+    ) -> PResult<Option<BindingIdent>> {
+        trace_cur!(self, parse_opt_binding_ident);
+        let token_and_span = self.input().get_cur();
+        let cur = token_and_span.token;
+        if cur == Token::This && self.input().syntax().typescript() {
+            let start = token_and_span.span.lo;
+            Ok(Some(
+                Ident::new_no_ctxt(atom!("this"), self.span(start)).into(),
+            ))
+        } else if cur.is_word() && !cur.is_reserved(self.ctx()) {
+            self.parse_binding_ident(disallow_let).map(Some)
+        } else {
+            Ok(None)
+        }
     }
 
     /// Identifier
     ///
     /// In strict mode, "yield" is SyntaxError if matched.
-    pub(super) fn parse_ident(&mut self, incl_yield: bool, incl_await: bool) -> PResult<Ident> {
+    pub(crate) fn parse_ident(&mut self, incl_yield: bool, incl_await: bool) -> PResult<Ident> {
         trace_cur!(self, parse_ident);
 
-        let start = cur_pos!(self);
+        let token_and_span = self.input().get_cur();
+        if !token_and_span.token.is_word() {
+            syntax_error!(self, SyntaxError::ExpectedIdent)
+        }
+        let span = token_and_span.span;
+        let start = span.lo;
+        let t = token_and_span.token;
 
-        let word = self.parse_with(|p| {
-            let w = match cur!(p, true) {
-                &Word(..) => match bump!(p) {
-                    Word(w) => w,
-                    _ => unreachable!(),
-                },
-                _ => syntax_error!(p, SyntaxError::ExpectedIdent),
-            };
+        // Spec:
+        // It is a Syntax Error if this phrase is contained in strict mode code and the
+        // StringValue of IdentifierName is: "implements", "interface", "let",
+        // "package", "private", "protected", "public", "static", or "yield".
+        if t == Token::Enum {
+            let word = self.input_mut().expect_word_token_and_bump();
+            self.emit_err(span, SyntaxError::InvalidIdentInStrict(word.clone()));
+            return Ok(Ident::new_no_ctxt(word, self.span(start)));
+        } else if t == Token::Yield
+            || t == Token::Let
+            || t == Token::Static
+            || t == Token::Implements
+            || t == Token::Interface
+            || t == Token::Package
+            || t == Token::Private
+            || t == Token::Protected
+            || t == Token::Public
+        {
+            let word = self.input_mut().expect_word_token_and_bump();
+            self.emit_strict_mode_err(span, SyntaxError::InvalidIdentInStrict(word.clone()));
+            return Ok(Ident::new_no_ctxt(word, self.span(start)));
+        };
 
-            // Spec:
-            // It is a Syntax Error if this phrase is contained in strict mode code and the
-            // StringValue of IdentifierName is: "implements", "interface", "let",
-            // "package", "private", "protected", "public", "static", or "yield".
-            match w {
-                Word::Ident(ref name @ ident_like!("enum")) => {
-                    p.emit_err(
-                        p.input.prev_span(),
-                        SyntaxError::InvalidIdentInStrict(name.clone().into()),
-                    );
-                }
-                Word::Keyword(name @ Keyword::Yield) | Word::Keyword(name @ Keyword::Let) => {
-                    p.emit_strict_mode_err(
-                        p.input.prev_span(),
-                        SyntaxError::InvalidIdentInStrict(name.into_js_word()),
-                    );
-                }
+        let word;
 
-                Word::Ident(
-                    ref name @ ident_like!("static")
-                    | ref name @ ident_like!("implements")
-                    | ref name @ ident_like!("interface")
-                    | ref name @ ident_like!("package")
-                    | ref name @ ident_like!("private")
-                    | ref name @ ident_like!("protected")
-                    | ref name @ ident_like!("public"),
-                ) => {
-                    p.emit_strict_mode_err(
-                        p.input.prev_span(),
-                        SyntaxError::InvalidIdentInStrict(name.clone().into()),
-                    );
-                }
-                _ => {}
+        // Spec:
+        // It is a Syntax Error if StringValue of IdentifierName is the same String
+        // value as the StringValue of any ReservedWord except for yield or await.
+        if t == Token::Await {
+            let ctx = self.ctx();
+            if ctx.contains(Context::InDeclare) {
+                word = atom!("await");
+            } else if ctx.contains(Context::InStaticBlock) {
+                syntax_error!(self, span, SyntaxError::ExpectedIdent)
+            } else if ctx.contains(Context::InAsync)
+                || (ctx.contains(Context::Module) && !self.syntax().flow())
+            {
+                syntax_error!(self, span, SyntaxError::InvalidIdentInAsync)
+            } else if incl_await {
+                word = atom!("await")
+            } else {
+                syntax_error!(self, span, SyntaxError::ExpectedIdent)
             }
-
-            // Spec:
-            // It is a Syntax Error if StringValue of IdentifierName is the same String
-            // value as the StringValue of any ReservedWord except for yield or await.
-            match w {
-                Word::Keyword(Keyword::Await) if p.ctx().in_declare => Ok(atom!("await")),
-
-                Word::Keyword(Keyword::Await) if p.ctx().in_static_block => {
-                    syntax_error!(p, p.input.prev_span(), SyntaxError::ExpectedIdent)
-                }
-
-                // It is a Syntax Error if the goal symbol of the syntactic grammar is Module
-                // and the StringValue of IdentifierName is "await".
-                Word::Keyword(Keyword::Await) if p.ctx().module | p.ctx().in_async => {
-                    syntax_error!(p, p.input.prev_span(), SyntaxError::InvalidIdentInAsync)
-                }
-                Word::Keyword(Keyword::This) if p.input.syntax().typescript() => Ok(atom!("this")),
-                Word::Keyword(Keyword::Let) => Ok(atom!("let")),
-                Word::Ident(ident) => {
-                    if matches!(&ident, IdentLike::Other(arguments) if &**arguments == "arguments")
-                        && p.ctx().in_class_field
-                    {
-                        p.emit_err(p.input.prev_span(), SyntaxError::ArgumentsInClassField)
-                    }
-                    Ok(ident.into())
-                }
-                Word::Keyword(Keyword::Yield) if incl_yield => Ok(atom!("yield")),
-                Word::Keyword(Keyword::Await) if incl_await => Ok(atom!("await")),
-                Word::Keyword(..) | Word::Null | Word::True | Word::False => {
-                    syntax_error!(p, p.input.prev_span(), SyntaxError::ExpectedIdent)
-                }
+        } else if t == Token::This && self.input().syntax().typescript() {
+            word = atom!("this")
+        } else if t == Token::Let {
+            word = atom!("let")
+        } else if t.is_known_ident() {
+            let ident = t.take_known_ident(&self.input);
+            word = ident
+        } else if t == Token::Ident {
+            let word = self.input_mut().expect_word_token_and_bump();
+            if self.ctx().contains(Context::InClassField) && word == atom!("arguments") {
+                self.emit_err(span, SyntaxError::ArgumentsInClassField)
             }
-        })?;
+            return Ok(Ident::new_no_ctxt(word, self.span(start)));
+        } else if t == Token::Yield && incl_yield {
+            word = atom!("yield")
+        } else if t == Token::Null || t == Token::True || t == Token::False || t.is_keyword() {
+            syntax_error!(self, span, SyntaxError::ExpectedIdent)
+        } else {
+            unreachable!()
+        }
+        self.bump();
 
-        Ok(Ident::new_no_ctxt(word, span!(self, start)))
+        Ok(Ident::new_no_ctxt(word, self.span(start)))
     }
 }

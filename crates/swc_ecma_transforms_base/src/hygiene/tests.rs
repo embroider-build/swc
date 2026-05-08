@@ -1,15 +1,19 @@
-use swc_atoms::JsWord;
-use swc_common::{collections::AHashMap, hygiene::*, DUMMY_SP};
+use rustc_hash::FxHashMap;
+use swc_atoms::{atom, Atom};
+use swc_common::{hygiene::*, DUMMY_SP};
 use swc_ecma_parser::Syntax;
 use swc_ecma_utils::quote_ident;
 use swc_ecma_visit::{Fold, FoldWith};
 use testing::{assert_eq, DebugUsingDisplay};
 
 use super::*;
-use crate::tests::{HygieneVisualizer, Tester};
+use crate::{
+    rename::renamer_keep_contexts,
+    tests::{HygieneVisualizer, Tester},
+};
 
 struct Marker {
-    map: AHashMap<JsWord, Mark>,
+    map: FxHashMap<Atom, Mark>,
 }
 
 fn marker(markers: &[(&str, Mark)]) -> Marker {
@@ -29,7 +33,7 @@ impl Fold for Marker {
 }
 
 struct OnceMarker {
-    map: AHashMap<JsWord, Vec<Mark>>,
+    map: FxHashMap<Atom, Vec<Mark>>,
 }
 
 impl OnceMarker {
@@ -60,6 +64,25 @@ impl Fold for OnceMarker {
     }
 }
 
+/// Apply the n-th mark to idents of the form `name$2`.
+struct InlineContextMarker {
+    marks: Vec<Mark>,
+}
+impl VisitMut for InlineContextMarker {
+    fn visit_mut_ident(&mut self, ident: &mut Ident) {
+        let sym = ident.sym.to_string();
+        let split = sym.split("$").collect::<Vec<_>>();
+        if let [name, index] = *split {
+            ident.sym = name.into();
+            ident.ctxt = ident
+                .ctxt
+                .apply_mark(self.marks[index.parse::<usize>().unwrap()]);
+        } else {
+            panic!("couldn't find index in ident");
+        }
+    }
+}
+
 fn test<F>(op: F, expected: &str)
 where
     F: FnOnce(&mut Tester<'_>) -> Result<Vec<Stmt>, ()>,
@@ -85,7 +108,7 @@ where
         let mut module = Program::Module(op(tester)?);
 
         let hygiene_src = tester.print(&module.clone().fold_with(&mut HygieneVisualizer));
-        println!("----- Hygiene -----\n{}", hygiene_src);
+        println!("----- Hygiene -----\n{hygiene_src}");
 
         hygiene_with_config(config()).process(&mut module);
 
@@ -101,7 +124,7 @@ where
         };
 
         if actual != expected {
-            println!("----- Actual -----\n{}", actual);
+            println!("----- Actual -----\n{actual}");
             println!("----- Diff -----");
 
             assert_eq!(DebugUsingDisplay(&actual), DebugUsingDisplay(&expected));
@@ -648,7 +671,7 @@ fn params_in_fn() {
                             span: DUMMY_SP,
                             decorators: Default::default(),
                             pat: Ident::new(
-                                "param".into(),
+                                atom!("param"),
                                 DUMMY_SP,
                                 SyntaxContext::empty().apply_mark(mark1),
                             )
@@ -658,7 +681,7 @@ fn params_in_fn() {
                             span: DUMMY_SP,
                             decorators: Default::default(),
                             pat: Ident::new(
-                                "param".into(),
+                                atom!("param"),
                                 DUMMY_SP,
                                 SyntaxContext::empty().apply_mark(mark2),
                             )
@@ -1754,4 +1777,75 @@ fn issue_2539() {
         }
         ",
     );
+}
+
+#[test]
+fn rename_keep_contexts() {
+    crate::tests::Tester::run(|tester| {
+        let marks = vec![
+            Mark::root(),
+            Mark::fresh(Mark::root()),
+            Mark::fresh(Mark::root()),
+            Mark::fresh(Mark::root()),
+            Mark::fresh(Mark::root()),
+        ];
+
+        let mut program = Program::Module(tester.parse_module(
+            "actual1.js",
+            "
+                    const bar$1 = (patch$2)=>patch$2 + 1;
+                    const foo$1 = (patch$3)=>patch$3 !== patch$4;
+                ",
+        )?);
+
+        let expected = "
+        const bar$1 = (patch1$7)=>patch1$7 + 1;
+        const foo$1 = (patch1$8)=>patch1$8 !== patch$4;
+        ";
+
+        program.visit_mut_with(&mut InlineContextMarker { marks });
+
+        struct HygieneRenamer;
+        impl Renamer for HygieneRenamer {
+            type Target = Id;
+
+            const MANGLE: bool = false;
+            const RESET_N: bool = true;
+
+            fn new_name_for(&self, orig: &Id, n: &mut usize) -> swc_atoms::Atom {
+                let res = if *n == 0 {
+                    orig.0.clone()
+                } else {
+                    format!("{}{}", orig.0, n).into()
+                };
+                *n += 1;
+                res
+            }
+        }
+        program.visit_mut_with(&mut renamer_keep_contexts(
+            Default::default(),
+            HygieneRenamer,
+        ));
+        let program = program.fold_with(&mut HygieneVisualizer {});
+
+        let actual = tester.print(&program);
+
+        let expected = {
+            let expected = tester
+                .with_parser("expected.js", Syntax::default(), expected, |p| {
+                    p.parse_module()
+                })
+                .map(Program::Module)?;
+            tester.print(&expected)
+        };
+
+        if actual != expected {
+            println!("----- Actual -----\n{actual}");
+            println!("----- Diff -----");
+
+            assert_eq!(DebugUsingDisplay(&actual), DebugUsingDisplay(&expected));
+        }
+
+        Ok(())
+    });
 }

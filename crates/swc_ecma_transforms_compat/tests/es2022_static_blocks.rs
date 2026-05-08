@@ -20,15 +20,19 @@ fn fixture(input: PathBuf) {
 
             let config = class_properties::Config::default();
             let pass: Box<dyn Pass> = if input.to_string_lossy().contains("class-properties") {
+                // When class_properties is enabled, static_blocks runs first
+                // and marks the generated private properties with placeholder spans,
+                // so class_properties can recognize and handle them specially
                 Box::new((
                     resolver(unresolved_mark, top_level_mark, false),
-                    static_blocks(config.static_blocks_mark),
+                    static_blocks(),
                     class_properties(config, unresolved_mark),
                 ))
             } else {
+                // When class_properties is not enabled, use standalone static_blocks
                 Box::new((
                     resolver(unresolved_mark, top_level_mark, false),
-                    static_blocks(config.static_blocks_mark),
+                    static_blocks(),
                 ))
             };
             pass

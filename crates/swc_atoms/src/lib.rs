@@ -1,4 +1,4 @@
-//! See [JsWord] and [Atom]
+//! See [Atom] and [UnsafeAtom]
 
 #![allow(clippy::unreadable_literal)]
 
@@ -10,27 +10,55 @@ pub extern crate hstr;
 pub extern crate once_cell;
 
 use std::{
-    borrow::Cow,
+    borrow::{Borrow, Cow},
     cell::UnsafeCell,
     fmt::{self, Display, Formatter},
     hash::Hash,
+    mem::transmute,
     ops::Deref,
     rc::Rc,
 };
 
+pub use hstr::wtf8;
 use once_cell::sync::Lazy;
 use serde::Serializer;
+use wtf8::Wtf8;
 
-pub use self::{atom as js_word, Atom as JsWord};
+pub use crate::{fast::UnsafeAtom, wtf8_atom::Wtf8Atom};
+
+mod fast;
+mod wtf8_atom;
 
 /// Clone-on-write string.
 ///
 ///
 /// See [tendril] for more details.
 #[derive(Clone, Default, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "rkyv-impl", derive(rkyv::bytecheck::CheckBytes))]
-#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[repr(transparent)]
 pub struct Atom(hstr::Atom);
+
+#[cfg(feature = "encoding-impl")]
+impl cbor4ii::core::enc::Encode for Atom {
+    #[inline]
+    fn encode<W: cbor4ii::core::enc::Write>(
+        &self,
+        writer: &mut W,
+    ) -> Result<(), cbor4ii::core::enc::Error<W::Error>> {
+        self.as_str().encode(writer)
+    }
+}
+
+#[cfg(feature = "encoding-impl")]
+impl<'de> cbor4ii::core::dec::Decode<'de> for Atom {
+    #[inline]
+    fn decode<R: cbor4ii::core::dec::Read<'de>>(
+        reader: &mut R,
+    ) -> Result<Self, cbor4ii::core::dec::Error<R::Error>> {
+        let s = <&str>::decode(reader)?;
+        Ok(Atom::new(s))
+    }
+}
 
 #[cfg(feature = "arbitrary")]
 #[cfg_attr(docsrs, doc(cfg(feature = "arbitrary")))]
@@ -73,6 +101,23 @@ impl Atom {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// Converts a WTF-8 encoded [Wtf8Atom] to a regular UTF-8 [Atom] without
+    /// validation.
+    ///
+    /// # Safety
+    ///
+    /// The caller must ensure that the WTF-8 atom contains only valid UTF-8
+    /// data (no unpaired surrogates). This function performs no validation
+    /// and will create an invalid `Atom` if the input contains unpaired
+    /// surrogates.
+    ///
+    /// This is a zero-cost conversion that preserves all internal optimizations
+    /// (inline storage, precomputed hashes, etc.) since both types have
+    /// identical internal representation.
+    pub unsafe fn from_wtf8_unchecked(s: Wtf8Atom) -> Self {
+        Atom(unsafe { hstr::Atom::from_wtf8_unchecked(s.0) })
+    }
 }
 
 impl Deref for Atom {
@@ -102,6 +147,20 @@ macro_rules! impl_from {
             }
         }
     };
+}
+
+impl From<hstr::Atom> for Atom {
+    #[inline(always)]
+    fn from(s: hstr::Atom) -> Self {
+        Atom(s)
+    }
+}
+
+impl From<Atom> for hstr::Wtf8Atom {
+    #[inline(always)]
+    fn from(s: Atom) -> Self {
+        hstr::Wtf8Atom::from(&*s)
+    }
 }
 
 impl PartialEq<str> for Atom {
@@ -152,6 +211,20 @@ impl Ord for Atom {
     }
 }
 
+impl Borrow<Wtf8Atom> for Atom {
+    fn borrow(&self) -> &Wtf8Atom {
+        // SAFETY:
+        // 1. Wtf8Atom is #[repr(transparent)] over hstr::Wtf8Atom, so as hstr::Wtf8Atom
+        //    over TaggedValue
+        // 2. Atom is #[repr(transparent)] over hstr::Atom, so as hstr::Atom over
+        //    TaggedValue
+        // 3. hstr::Atom and hstr::Wtf8Atom share the same TaggedValue
+        const _: () = assert!(std::mem::size_of::<Atom>() == std::mem::size_of::<Wtf8Atom>());
+        const _: () = assert!(std::mem::align_of::<Atom>() == std::mem::align_of::<Wtf8Atom>());
+        unsafe { transmute::<&Atom, &Wtf8Atom>(self) }
+    }
+}
+
 impl serde::ser::Serialize for Atom {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -174,7 +247,7 @@ impl<'de> serde::de::Deserialize<'de> for Atom {
 #[macro_export]
 macro_rules! atom {
     ($s:tt) => {{
-        $crate::Atom::new($crate::hstr::atom!($s))
+        $crate::Atom::from($crate::hstr::atom!($s))
     }};
 }
 
@@ -182,7 +255,7 @@ macro_rules! atom {
 #[macro_export]
 macro_rules! lazy_atom {
     ($s:tt) => {{
-        $crate::Atom::new($crate::hstr::atom!($s))
+        $crate::Atom::from($crate::hstr::atom!($s))
     }};
 }
 
@@ -199,16 +272,19 @@ impl rkyv::Archive for Atom {
     type Resolver = rkyv::string::StringResolver;
 
     #[allow(clippy::unit_arg)]
-    unsafe fn resolve(&self, pos: usize, resolver: Self::Resolver, out: *mut Self::Archived) {
-        rkyv::string::ArchivedString::resolve_from_str(self, pos, resolver, out)
+    fn resolve(&self, resolver: Self::Resolver, out: rkyv::Place<Self::Archived>) {
+        rkyv::string::ArchivedString::resolve_from_str(self, resolver, out)
     }
 }
 
 /// NOT A PUBLIC API
 #[cfg(feature = "rkyv-impl")]
-impl<S: rkyv::ser::Serializer + ?Sized> rkyv::Serialize<S> for Atom {
+impl<S: rancor::Fallible + rkyv::ser::Writer + ?Sized> rkyv::Serialize<S> for Atom
+where
+    <S as rancor::Fallible>::Error: rancor::Source,
+{
     fn serialize(&self, serializer: &mut S) -> Result<Self::Resolver, S::Error> {
-        String::serialize(&self.to_string(), serializer)
+        rkyv::string::ArchivedString::serialize_from_str(self.as_str(), serializer)
     }
 }
 
@@ -216,12 +292,10 @@ impl<S: rkyv::ser::Serializer + ?Sized> rkyv::Serialize<S> for Atom {
 #[cfg(feature = "rkyv-impl")]
 impl<D> rkyv::Deserialize<Atom, D> for rkyv::string::ArchivedString
 where
-    D: ?Sized + rkyv::Fallible,
+    D: ?Sized + rancor::Fallible,
 {
-    fn deserialize(&self, deserializer: &mut D) -> Result<Atom, <D as rkyv::Fallible>::Error> {
-        let s: String = self.deserialize(deserializer)?;
-
-        Ok(Atom::new(s))
+    fn deserialize(&self, _: &mut D) -> Result<Atom, <D as rancor::Fallible>::Error> {
+        Ok(Atom::new(self.as_str()))
     }
 }
 
@@ -241,6 +315,11 @@ impl AtomStore {
     pub fn atom<'a>(&mut self, s: impl Into<Cow<'a, str>>) -> Atom {
         Atom(self.0.atom(s))
     }
+
+    #[inline]
+    pub fn wtf8_atom<'a>(&mut self, s: impl Into<Cow<'a, Wtf8>>) -> Wtf8Atom {
+        Wtf8Atom(self.0.wtf8_atom(s))
+    }
 }
 
 /// A fast internally mutable cell for [AtomStore].
@@ -258,4 +337,22 @@ impl AtomStoreCell {
         // only to this block.
         unsafe { (*self.0.get()).atom(s) }
     }
+
+    #[inline]
+    pub fn wtf8_atom<'a>(&self, s: impl Into<Cow<'a, Wtf8>>) -> Wtf8Atom {
+        // evaluate the into before borrowing (see #8362)
+        let s: Cow<'a, Wtf8> = s.into();
+        // SAFETY: We can skip the borrow check of RefCell because
+        // this API enforces a safe contract. It is slightly faster
+        // to use an UnsafeCell. Note the borrow here is short lived
+        // only to this block.
+        unsafe { (*self.0.get()).wtf8_atom(s) }
+    }
+}
+
+/// noop
+#[cfg(feature = "shrink-to-fit")]
+impl shrink_to_fit::ShrinkToFit for Atom {
+    #[inline(always)]
+    fn shrink_to_fit(&mut self) {}
 }

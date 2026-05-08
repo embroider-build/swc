@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use is_macro::Is;
 use swc_atoms::Atom;
 use swc_common::{ast_node, util::take::Take, EqIgnoreSpan, Span, DUMMY_SP};
@@ -14,6 +16,7 @@ use crate::{
 #[ast_node]
 #[derive(Eq, Hash, Is, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum ModuleDecl {
     #[tag("ImportDeclaration")]
     Import(ImportDecl),
@@ -93,6 +96,7 @@ impl Take for ModuleDecl {
 #[ast_node("ExportDefaultExpression")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ExportDefaultExpr {
     pub span: Span,
 
@@ -103,6 +107,7 @@ pub struct ExportDefaultExpr {
 #[ast_node("ExportDeclaration")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ExportDecl {
     pub span: Span,
 
@@ -113,6 +118,7 @@ pub struct ExportDecl {
 #[ast_node("ImportDeclaration")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ImportDecl {
     pub span: Span,
 
@@ -126,6 +132,10 @@ pub struct ImportDecl {
     pub type_only: bool,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub with: Option<Box<ObjectLit>>,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
@@ -134,13 +144,19 @@ pub struct ImportDecl {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Default, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 #[cfg_attr(
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(u32)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(u32))]
 #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::swc_common::Encode, ::swc_common::Decode)
+)]
+#[cfg_attr(swc_ast_unknown, non_exhaustive)]
 pub enum ImportPhase {
     #[default]
     #[cfg_attr(feature = "serde-impl", serde(rename = "evaluation"))]
@@ -168,6 +184,7 @@ impl Take for ImportDecl {
 #[ast_node("ExportAllDeclaration")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ExportAll {
     pub span: Span,
 
@@ -178,6 +195,10 @@ pub struct ExportAll {
     pub type_only: bool,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub with: Option<Box<ObjectLit>>,
 }
 
@@ -197,18 +218,27 @@ impl Take for ExportAll {
 #[ast_node("ExportNamedDeclaration")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct NamedExport {
     pub span: Span,
 
     pub specifiers: Vec<ExportSpecifier>,
 
     #[cfg_attr(feature = "serde-impl", serde(rename = "source"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub src: Option<Box<Str>>,
 
     #[cfg_attr(feature = "serde-impl", serde(rename = "typeOnly"))]
     pub type_only: bool,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub with: Option<Box<ObjectLit>>,
 }
 
@@ -227,6 +257,7 @@ impl Take for NamedExport {
 #[ast_node("ExportDefaultDeclaration")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ExportDefaultDecl {
     pub span: Span,
 
@@ -236,6 +267,7 @@ pub struct ExportDefaultDecl {
 #[ast_node]
 #[derive(Eq, Hash, Is, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum DefaultDecl {
     #[tag("ClassExpression")]
     Class(ClassExpr),
@@ -251,6 +283,7 @@ pub enum DefaultDecl {
 #[ast_node]
 #[derive(Eq, Hash, Is, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum ImportSpecifier {
     #[tag("ImportSpecifier")]
     Named(ImportNamedSpecifier),
@@ -265,6 +298,8 @@ impl ImportSpecifier {
         match self {
             ImportSpecifier::Named(named) => named.is_type_only,
             ImportSpecifier::Default(..) | ImportSpecifier::Namespace(..) => false,
+            #[cfg(all(swc_ast_unknown, feature = "encoding-impl"))]
+            _ => swc_common::unknown!(),
         }
     }
 
@@ -273,6 +308,8 @@ impl ImportSpecifier {
             ImportSpecifier::Named(named) => &named.local,
             ImportSpecifier::Default(default) => &default.local,
             ImportSpecifier::Namespace(ns) => &ns.local,
+            #[cfg(all(swc_ast_unknown, feature = "encoding-impl"))]
+            _ => swc_common::unknown!(),
         }
     }
 
@@ -281,6 +318,8 @@ impl ImportSpecifier {
             ImportSpecifier::Named(named) => &mut named.local,
             ImportSpecifier::Default(default) => &mut default.local,
             ImportSpecifier::Namespace(ns) => &mut ns.local,
+            #[cfg(all(swc_ast_unknown, feature = "encoding-impl"))]
+            _ => swc_common::unknown!(),
         }
     }
 }
@@ -289,6 +328,7 @@ impl ImportSpecifier {
 #[ast_node("ImportDefaultSpecifier")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ImportDefaultSpecifier {
     pub span: Span,
 
@@ -298,6 +338,7 @@ pub struct ImportDefaultSpecifier {
 #[ast_node("ImportNamespaceSpecifier")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ImportStarAsSpecifier {
     pub span: Span,
 
@@ -309,12 +350,17 @@ pub struct ImportStarAsSpecifier {
 #[ast_node("ImportSpecifier")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ImportNamedSpecifier {
     pub span: Span,
 
     pub local: Ident,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub imported: Option<ModuleExportName>,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
@@ -324,6 +370,7 @@ pub struct ImportNamedSpecifier {
 #[ast_node]
 #[derive(Eq, Hash, Is, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum ExportSpecifier {
     #[tag("ExportNamespaceSpecifier")]
     Namespace(ExportNamespaceSpecifier),
@@ -339,6 +386,7 @@ pub enum ExportSpecifier {
 #[ast_node("ExportNamespaceSpecifier")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ExportNamespaceSpecifier {
     pub span: Span,
 
@@ -349,6 +397,7 @@ pub struct ExportNamespaceSpecifier {
 #[ast_node("ExportDefaultSpecifier")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ExportDefaultSpecifier {
     #[span]
     pub exported: Ident,
@@ -357,12 +406,17 @@ pub struct ExportDefaultSpecifier {
 #[ast_node("ExportSpecifier")]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ExportNamedSpecifier {
     pub span: Span,
     /// `foo` in `export { foo as bar }`
     pub orig: ModuleExportName,
     /// `Some(bar)` in `export { foo as bar }`
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub exported: Option<ModuleExportName>,
     /// `type` in `export { type foo as bar }`
     #[cfg_attr(feature = "serde-impl", serde(default))]
@@ -372,6 +426,7 @@ pub struct ExportNamedSpecifier {
 #[ast_node]
 #[derive(Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 // https://tc39.es/ecma262/#prod-ModuleExportName
 pub enum ModuleExportName {
     #[tag("Identifier")]
@@ -386,10 +441,21 @@ bridge_from!(ModuleExportName, Ident, IdentName);
 
 impl ModuleExportName {
     /// Get the atom of the export name.
-    pub fn atom(&self) -> &Atom {
+    ///
+    /// If the name is a string literal that has ill-formed UTF16, it will be
+    /// converted to a UTF-8 valid string using lossy conversion (Unpaired
+    /// surrogates are replaced with Replacement Character).  This is
+    /// a SyntaxError if it's fully complied to the spec.
+    /// See: https://tc39.es/ecma262/#sec-module-semantics-static-semantics-early-errors
+    pub fn atom(&self) -> Cow<'_, Atom> {
         match self {
-            ModuleExportName::Ident(i) => &i.sym,
-            ModuleExportName::Str(s) => &s.value,
+            ModuleExportName::Ident(i) => Cow::Borrowed(&i.sym),
+            ModuleExportName::Str(s) => match s.value.clone().try_into_atom() {
+                Ok(atom) => Cow::Owned(atom),
+                Err(original) => Cow::Owned(Atom::from(&*original.to_string_lossy())),
+            },
+            #[cfg(all(swc_ast_unknown, feature = "encoding-impl"))]
+            _ => swc_common::unknown!(),
         }
     }
 }

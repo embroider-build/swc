@@ -186,10 +186,10 @@
                         };
                     },
                     requestAnimationFrame: function(callback) {
-                        return "undefined" == typeof setTimeout ? (callback(), null) : setTimeout(callback, 0);
+                        return "u" < typeof setTimeout ? (callback(), null) : setTimeout(callback, 0);
                     },
                     cancelAnimationFrame: function(id) {
-                        "undefined" != typeof setTimeout && clearTimeout(id);
+                        "u" > typeof setTimeout && clearTimeout(id);
                     },
                     setTimeout: function() {
                         return 0;
@@ -359,7 +359,7 @@
                     var d = max - min;
                     switch(s = l > 0.5 ? d / (2 - max - min) : d / (max + min), max){
                         case r:
-                            h = (g - b) / d + (g < b ? 6 : 0);
+                            h = (g - b) / d + 6 * (g < b);
                             break;
                         case g:
                             h = (b - r) / d + 2;
@@ -389,7 +389,7 @@
                 else {
                     switch(max){
                         case r:
-                            h = (g - b) / d + (g < b ? 6 : 0);
+                            h = (g - b) / d + 6 * (g < b);
                             break;
                         case g:
                             h = (b - r) / d + 2;
@@ -599,15 +599,15 @@
                     if (void 0 === color && (color = ""), void 0 === opts && (opts = {}), color instanceof TinyColor) // eslint-disable-next-line no-constructor-return
                     return color;
                     "number" == typeof color && (color = {
-                        r: (color1 = color) >> 16,
-                        g: (0xff00 & color1) >> 8,
-                        b: 0xff & color1
+                        r: (color2 = color) >> 16,
+                        g: (0xff00 & color2) >> 8,
+                        b: 0xff & color2
                     }), this.originalInput = color;
-                    var color1, color2, r, g, b, h, s, v, i, f, p, q, t, mod, rgb, a, s1, v1, l, ok, format, _a, rgb1 = (rgb = {
+                    var color1, r, g, b, h, s, v, i, f, p, q, t, mod, rgb, a, s1, v1, l, ok, format, color2, _a, rgb1 = (rgb = {
                         r: 0,
                         g: 0,
                         b: 0
-                    }, a = 1, s1 = null, v1 = null, l = null, ok = !1, format = !1, "string" == typeof (color2 = color) && (color2 = /**
+                    }, a = 1, s1 = null, v1 = null, l = null, ok = !1, format = !1, "string" == typeof (color1 = color) && (color1 = /**
              * Permissive string parsing.  Take in a number of formats, and output an object
              * based on detected format.  Returns `{ r, g, b }` or `{ h, s, l }` or `{ h, s, v}`
              */ function(color) {
@@ -676,11 +676,11 @@
                             b: parseIntFromHex(match[3] + match[3]),
                             format: named ? "name" : "hex"
                         };
-                    }(color2)), "object" == typeof color2 && (isValidCSSUnit(color2.r) && isValidCSSUnit(color2.g) && isValidCSSUnit(color2.b) ? (r = color2.r, g = color2.g, b = color2.b, rgb = {
+                    }(color1)), "object" == typeof color1 && (isValidCSSUnit(color1.r) && isValidCSSUnit(color1.g) && isValidCSSUnit(color1.b) ? (r = color1.r, g = color1.g, b = color1.b, rgb = {
                         r: 255 * bound01(r, 255),
                         g: 255 * bound01(g, 255),
                         b: 255 * bound01(b, 255)
-                    }, ok = !0, format = "%" === String(color2.r).substr(-1) ? "prgb" : "rgb") : isValidCSSUnit(color2.h) && isValidCSSUnit(color2.s) && isValidCSSUnit(color2.v) ? (s1 = convertToPercentage(color2.s), v1 = convertToPercentage(color2.v), h = color2.h, s = s1, v = v1, h = 6 * bound01(h, 360), s = bound01(s, 100), v = bound01(v, 100), i = Math.floor(h), f = h - i, p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s), rgb = {
+                    }, ok = !0, format = "%" === String(color1.r).substr(-1) ? "prgb" : "rgb") : isValidCSSUnit(color1.h) && isValidCSSUnit(color1.s) && isValidCSSUnit(color1.v) ? (s1 = convertToPercentage(color1.s), v1 = convertToPercentage(color1.v), h = color1.h, s = s1, v = v1, h = 6 * bound01(h, 360), s = bound01(s, 100), v = bound01(v, 100), i = Math.floor(h), f = h - i, p = v * (1 - s), q = v * (1 - f * s), t = v * (1 - (1 - f) * s), rgb = {
                         r: 255 * [
                             v,
                             q,
@@ -705,7 +705,7 @@
                             v,
                             q
                         ][mod]
-                    }, ok = !0, format = "hsv") : isValidCSSUnit(color2.h) && isValidCSSUnit(color2.s) && isValidCSSUnit(color2.l) && (s1 = convertToPercentage(color2.s), l = convertToPercentage(color2.l), rgb = /**
+                    }, ok = !0, format = "hsv") : isValidCSSUnit(color1.h) && isValidCSSUnit(color1.s) && isValidCSSUnit(color1.l) && (s1 = convertToPercentage(color1.s), l = convertToPercentage(color1.l), rgb = /**
              * Converts an HSL color value to RGB.
              *
              * *Assumes:* h is contained in [0, 1] or [0, 360] and s and l are contained [0, 1] or [0, 100]
@@ -722,15 +722,15 @@
                             g: 255 * g,
                             b: 255 * b
                         };
-                    }(color2.h, s1, l), ok = !0, format = "hsl"), Object.prototype.hasOwnProperty.call(color2, "a") && (a = color2.a)), a = boundAlpha(a), {
+                    }(color1.h, s1, l), ok = !0, format = "hsl"), Object.prototype.hasOwnProperty.call(color1, "a") && (a = color1.a)), a = boundAlpha(a), {
                         ok: ok,
-                        format: color2.format || format,
+                        format: color1.format || format,
                         r: Math.min(255, Math.max(rgb.r, 0)),
                         g: Math.min(255, Math.max(rgb.g, 0)),
                         b: Math.min(255, Math.max(rgb.b, 0)),
                         a: a
                     });
-                    this.originalInput = color, this.r = rgb1.r, this.g = rgb1.g, this.b = rgb1.b, this.a = rgb1.a, this.roundA = Math.round(100 * this.a) / 100, this.format = null !== (_a = opts.format) && void 0 !== _a ? _a : rgb1.format, this.gradientType = opts.gradientType, this.r < 1 && (this.r = Math.round(this.r)), this.g < 1 && (this.g = Math.round(this.g)), this.b < 1 && (this.b = Math.round(this.b)), this.isValid = rgb1.ok;
+                    this.originalInput = color, this.r = rgb1.r, this.g = rgb1.g, this.b = rgb1.b, this.a = rgb1.a, this.roundA = Math.round(100 * this.a) / 100, this.format = null != (_a = opts.format) ? _a : rgb1.format, this.gradientType = opts.gradientType, this.r < 1 && (this.r = Math.round(this.r)), this.g < 1 && (this.g = Math.round(this.g)), this.b < 1 && (this.b = Math.round(this.b)), this.isValid = rgb1.ok;
                 }
                 return TinyColor.prototype.isDark = function() {
                     return 128 > this.getBrightness();
@@ -1546,7 +1546,7 @@
             });
             function chakra_ui_theme_tools_esm_escape(value) {
                 var value1, replaceValue, valueStr = (value1 = value.toString(), void 0 === replaceValue && (replaceValue = "-"), value1.replace(/\s+/g, replaceValue));
-                return valueStr.includes("\\.") ? value : Number.isInteger(parseFloat(value.toString())) ? value : valueStr.replace(".", "\\.");
+                return valueStr.includes("\\.") || Number.isInteger(parseFloat(value.toString())) ? value : valueStr.replace(".", "\\.");
             }
             function cssVar(name, options) {
                 var fallback, prefix, prefix1, fallback1, cssVariable = (void 0 === (prefix = null == options ? void 0 : options.prefix) && (prefix = ""), "--" + (void 0 === (prefix1 = prefix) && (prefix1 = ""), [
@@ -3108,7 +3108,7 @@
                 baseStyle: function(props) {
                     var _rtl, _container;
                     return {
-                        container: ((_container = {})[$diff.variable] = diffValue, _container[$translateX.variable] = $diff.reference, _container._rtl = ((_rtl = {})[$translateX.variable] = calc($diff).negate().toString(), _rtl), _container),
+                        container: ((_container = {})[$diff.variable] = diffValue, _container[$translateX.variable] = $diff.reference, (_rtl = {})[$translateX.variable] = calc($diff).negate().toString(), _container._rtl = _rtl, _container),
                         track: baseStyleTrack(props),
                         thumb: baseStyleThumb
                     };

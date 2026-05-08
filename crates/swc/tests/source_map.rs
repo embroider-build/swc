@@ -12,7 +12,8 @@ use std::{
 use anyhow::{Context, Error};
 use swc::{
     config::{
-        Config, InputSourceMap, IsModule, JscConfig, ModuleConfig, Options, SourceMapsConfig,
+        Config, InputSourceMap, IsModule, JscConfig, JscExperimental, ModuleConfig, Options,
+        SourceMapsConfig,
     },
     Compiler,
 };
@@ -151,7 +152,8 @@ fn validate_map(map_file: PathBuf) {
     if content.is_empty() {
         return;
     }
-    sourcemap::SourceMap::from_slice(content.as_bytes()).expect("failed to deserialize sourcemap");
+    swc_sourcemap::SourceMap::from_slice(content.as_bytes())
+        .expect("failed to deserialize sourcemap");
 }
 
 #[cfg(not(target_os = "windows"))]
@@ -209,7 +211,7 @@ fn stacktrace(input_dir: PathBuf) {
                             .compare_to_file(output_dir.join("stacks.txt"))
                             .expect("wrong stack trace");
                     }
-                    Err(err) => panic!("Error: {:?}", err),
+                    Err(err) => panic!("Error: {err:?}"),
                 }
             }
 
@@ -249,7 +251,7 @@ fn extract_node_stack_trace(output: Output) -> NormalizedOutput {
 
     let stderr = String::from_utf8_lossy(&output.stderr);
 
-    eprintln!("\n\n\nStderr: {}\n\n\n", stderr);
+    eprintln!("\n\n\nStderr: {stderr}\n\n\n");
     //
     let stacks = stderr
         .lines()
@@ -321,16 +323,14 @@ fn issue_4112() {
                     },
                 )
                 .expect("failed to process js file");
-            let source_count = sourcemap::SourceMap::from_slice(output2.map.unwrap().as_bytes())
-                .expect("failed to deserialize sourcemap")
-                .get_source_count();
+            let source_count =
+                swc_sourcemap::SourceMap::from_slice(output2.map.unwrap().as_bytes())
+                    .expect("failed to deserialize sourcemap")
+                    .get_source_count();
             if source_count == 1 {
                 return Ok(());
             }
-            panic!(
-                "Validation failed, should has 1 source, but {}",
-                source_count
-            );
+            panic!("Validation failed, should has 1 source, but {source_count}");
         })
         .unwrap()
 }
@@ -371,7 +371,7 @@ fn should_work_with_emit_source_map_columns() {
                 let map = result.map.unwrap();
 
                 // lookup createElement(...) function call
-                let source_map = sourcemap::SourceMap::from_slice(map.as_bytes())
+                let source_map = swc_sourcemap::SourceMap::from_slice(map.as_bytes())
                     .expect("failed to deserialize sourcemap");
                 let token = source_map
                     .lookup_token(1, 14)
@@ -400,7 +400,7 @@ fn should_work_with_emit_source_map_columns() {
                 assert_eq!(token.get_src_col(), 11);
             }
             Err(err) => {
-                panic!("Error: {:#?}", err);
+                panic!("Error: {err:#?}");
             }
         }
 
@@ -423,7 +423,7 @@ fn should_work_with_emit_source_map_columns() {
             Ok(result) => {
                 assert!(result.map.is_some());
                 let map = result.map.unwrap();
-                let source_map = sourcemap::SourceMap::from_slice(map.as_bytes())
+                let source_map = swc_sourcemap::SourceMap::from_slice(map.as_bytes())
                     .expect("failed to deserialize sourcemap");
                 let token = source_map
                     .lookup_token(1, 14)
@@ -434,9 +434,86 @@ fn should_work_with_emit_source_map_columns() {
                 assert_eq!(token.get_src_col(), 2);
             }
             Err(err) => {
-                panic!("Error: {:#?}", err);
+                panic!("Error: {err:#?}");
             }
         }
+
+        Ok(())
+    });
+}
+
+#[test]
+fn issue_11424_emit_source_map_scopes_opt_in() {
+    Tester::new().print_errors(|cm, handler| {
+        let c = Compiler::new(cm.clone());
+        let path = canonicalize("tests/srcmap/issue-11424-scopes/input.js")
+            .expect("failed to canonicalize fixture");
+        let fm = cm.load_file(&path).expect("failed to load fixture");
+
+        let output = c
+            .process_js_file(
+                fm,
+                &handler,
+                &Options {
+                    swcrc: false,
+                    source_maps: Some(SourceMapsConfig::Bool(true)),
+                    config: Config {
+                        inline_sources_content: true.into(),
+                        jsc: JscConfig {
+                            experimental: JscExperimental {
+                                emit_source_map_scopes: true.into(),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+            )
+            .expect("failed to process fixture");
+
+        let map_text = output.map.expect("source map should be emitted");
+        let map = swc_sourcemap::SourceMap::from_slice(map_text.as_bytes())
+            .expect("failed to deserialize sourcemap");
+        let scopes = map.get_scopes().expect("scopes should be emitted");
+        assert!(!scopes.is_empty());
+        assert!(scopes.contains('B'));
+        assert!(scopes.contains('E'));
+        assert!(scopes.contains('G'));
+
+        Ok(())
+    });
+}
+
+#[test]
+fn issue_11424_emit_source_map_scopes_default_off() {
+    Tester::new().print_errors(|cm, handler| {
+        let c = Compiler::new(cm.clone());
+        let path = canonicalize("tests/srcmap/issue-11424-scopes/input.js")
+            .expect("failed to canonicalize fixture");
+        let fm = cm.load_file(&path).expect("failed to load fixture");
+
+        let output = c
+            .process_js_file(
+                fm,
+                &handler,
+                &Options {
+                    swcrc: false,
+                    source_maps: Some(SourceMapsConfig::Bool(true)),
+                    config: Config {
+                        inline_sources_content: true.into(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+            )
+            .expect("failed to process fixture");
+
+        let map_text = output.map.expect("source map should be emitted");
+        let map = swc_sourcemap::SourceMap::from_slice(map_text.as_bytes())
+            .expect("failed to deserialize sourcemap");
+        assert!(map.get_scopes().is_none());
 
         Ok(())
     });
@@ -510,7 +587,7 @@ export const fixupRiskConfigData = (data: any): types.RiskConfigType => {
                 assert!(result.map.is_some());
                 let map = result.map.unwrap();
 
-                let source_map = sourcemap::SourceMap::from_slice(map.as_bytes())
+                let source_map = swc_sourcemap::SourceMap::from_slice(map.as_bytes())
                     .expect("failed to deserialize sourcemap");
 
                 // "export"
@@ -529,7 +606,7 @@ export const fixupRiskConfigData = (data: any): types.RiskConfigType => {
                 assert_eq!(token.get_src(), (6, 2));
             }
             Err(err) => {
-                panic!("Error: {:#?}", err);
+                panic!("Error: {err:#?}");
             }
         }
 

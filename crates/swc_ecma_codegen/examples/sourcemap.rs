@@ -9,8 +9,7 @@ use std::{
     time::Instant,
 };
 
-use swc_allocator::maybe::vec::Vec;
-use swc_common::input::SourceFileInput;
+use swc_common::{input::SourceFileInput, source_map::DefaultSourceMapGenConfig};
 use swc_ecma_ast::*;
 use swc_ecma_codegen::{text_writer::JsWriter, Emitter};
 use swc_ecma_parser::{lexer::Lexer, Parser, Syntax};
@@ -44,7 +43,7 @@ fn parse_and_gen(entry: &Path) {
             emitter.emit_module(&m).unwrap();
         }
 
-        let srcmap = cm.build_source_map(&srcmap);
+        let srcmap = cm.build_source_map(&srcmap, None, DefaultSourceMapGenConfig);
 
         fs::write("output.js", &code).unwrap();
 
@@ -64,5 +63,5 @@ fn main() {
     let start = Instant::now();
     parse_and_gen(Path::new(&main_file));
     let dur = start.elapsed();
-    println!("Took {:?}", dur);
+    println!("Took {dur:?}");
 }

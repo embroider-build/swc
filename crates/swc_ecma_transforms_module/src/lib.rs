@@ -5,6 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 use swc_common::{Span, SyntaxContext};
+use util::Config;
 
 pub use self::{amd::amd, common_js::common_js, system_js::system_js, umd::umd};
 
@@ -20,12 +21,13 @@ pub mod rewriter;
 pub mod system_js;
 mod top_level_this;
 pub mod umd;
+pub(crate) mod wtf8;
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EsModuleConfig {
-    #[serde(default)]
-    pub resolve_fully: bool,
+    #[serde(flatten, default)]
+    pub config: Config,
 }
 
 type SpanCtx = (Span, SyntaxContext);

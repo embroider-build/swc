@@ -1,17 +1,20 @@
 use anyhow::Context;
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
-use swc_atoms::JsWord;
-use swc_common::{collections::AHashMap, Mark, Span, SyntaxContext, DUMMY_SP};
+use swc_atoms::Atom;
+use swc_common::{Mark, Span, SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_utils::{
     member_expr, private_ident, quote_ident, quote_str, var::VarCollector, ExprFactory,
 };
 use swc_ecma_visit::{fold_pass, standard_only_fold, Fold, FoldWith, VisitWith};
 
+pub use super::util::Config as InnerConfig;
 use crate::{
     path::Resolver,
     top_level_this::top_level_this,
     util::{local_name_for_src, use_strict},
+    wtf8::{normalize_wtf8_atom, wtf8_to_cow_str},
 };
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
@@ -19,8 +22,8 @@ pub struct Config {
     #[serde(default)]
     pub allow_top_level_this: bool,
 
-    #[serde(default)]
-    pub resolve_fully: bool,
+    #[serde(flatten, default)]
+    pub config: InnerConfig,
 }
 
 struct SystemJs {
@@ -29,8 +32,8 @@ struct SystemJs {
     config: Config,
 
     declare_var_idents: Vec<Ident>,
-    export_map: AHashMap<Id, Vec<JsWord>>,
-    export_names: Vec<JsWord>,
+    export_map: FxHashMap<Id, Vec<Atom>>,
+    export_names: Vec<Atom>,
     export_values: Vec<Box<Expr>>,
     tla: bool,
     enter_async_fn: u32,
@@ -61,15 +64,15 @@ pub fn system_js(resolver: Resolver, unresolved_mark: Mark, config: Config) -> i
 }
 
 struct ModuleItemMeta {
-    export_names: Vec<JsWord>,
+    export_names: Vec<Atom>,
     export_values: Vec<Box<Expr>>,
     has_export_all: bool,
-    src: JsWord,
+    src: Atom,
     setter_fn_stmts: Vec<Stmt>,
 }
 
 impl SystemJs {
-    fn export_call(&self, name: JsWord, span: Span, expr: Expr) -> CallExpr {
+    fn export_call(&self, name: Atom, span: Span, expr: Expr) -> CallExpr {
         CallExpr {
             span,
             callee: self.export_ident.clone().as_callee(),
@@ -94,7 +97,7 @@ impl SystemJs {
             AssignTarget::Simple(pat_or_expr) => match pat_or_expr {
                 SimpleAssignTarget::Ident(ident) => {
                     for (k, v) in self.export_map.iter() {
-                        if ident.to_id() == *k {
+                        if ident.ctxt == k.1 && ident.sym == k.0 {
                             let mut expr = assign_expr.into();
                             for value in v.iter() {
                                 expr = self.export_call(value.clone(), DUMMY_SP, expr).into();
@@ -140,6 +143,8 @@ impl SystemJs {
                     _ => assign_expr.into(),
                 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         }
     }
 
@@ -148,7 +153,7 @@ impl SystemJs {
             match &*update_expr.arg {
                 Expr::Ident(ident) => {
                     for (k, v) in self.export_map.iter() {
-                        if ident.to_id() == *k {
+                        if ident.ctxt == k.1 && ident.sym == k.0 {
                             let mut expr = BinExpr {
                                 span: DUMMY_SP,
                                 op: op!(bin, "+"),
@@ -180,7 +185,7 @@ impl SystemJs {
         }
     }
 
-    fn add_export_name(&mut self, key: Id, value: JsWord) {
+    fn add_export_name(&mut self, key: Id, value: Atom) {
         let mut find = false;
         for (k, v) in self.export_map.iter_mut() {
             if key == *k {
@@ -200,7 +205,7 @@ impl SystemJs {
 
     fn build_export_call(
         &mut self,
-        export_names: &mut Vec<JsWord>,
+        export_names: &mut Vec<Atom>,
         export_values: &mut Vec<Box<Expr>>,
     ) -> Vec<Stmt> {
         match export_names.len() {
@@ -636,13 +641,19 @@ impl Fold for SystemJs {
                 ModuleItem::ModuleDecl(decl) => match decl {
                     ModuleDecl::Import(import) => {
                         let src = match &self.resolver {
-                            Resolver::Real { resolver, base } => resolver
-                                .resolve_import(base, &import.src.value)
-                                .with_context(|| {
-                                    format!("failed to resolve import `{}`", import.src.value)
-                                })
-                                .unwrap(),
-                            Resolver::Default => import.src.value,
+                            Resolver::Real { resolver, base } => {
+                                let spec = wtf8_to_cow_str(&import.src.value);
+                                resolver
+                                    .resolve_import(base, &spec)
+                                    .with_context(|| {
+                                        format!(
+                                            "failed to resolve import `{}`",
+                                            import.src.value.to_string_lossy()
+                                        )
+                                    })
+                                    .unwrap()
+                            }
+                            Resolver::Default => normalize_wtf8_atom(&import.src.value),
                         };
 
                         let source_alias = local_name_for_src(&src);
@@ -703,6 +714,8 @@ impl Fold for SystemJs {
                                         .into_stmt(),
                                     );
                                 }
+                                #[cfg(swc_ast_unknown)]
+                                _ => panic!("unable to access unknown nodes"),
                             }
                         }
 
@@ -717,13 +730,19 @@ impl Fold for SystemJs {
                     ModuleDecl::ExportNamed(decl) => match decl.src {
                         Some(s) => {
                             let src = match &self.resolver {
-                                Resolver::Real { resolver, base } => resolver
-                                    .resolve_import(base, &s.value)
-                                    .with_context(|| {
-                                        format!("failed to resolve import `{}`", s.value)
-                                    })
-                                    .unwrap(),
-                                Resolver::Default => s.value,
+                                Resolver::Real { resolver, base } => {
+                                    let spec = wtf8_to_cow_str(&s.value);
+                                    resolver
+                                        .resolve_import(base, &spec)
+                                        .with_context(|| {
+                                            format!(
+                                                "failed to resolve import `{}`",
+                                                s.value.to_string_lossy()
+                                            )
+                                        })
+                                        .unwrap()
+                                }
+                                Resolver::Default => normalize_wtf8_atom(&s.value),
                             };
                             for specifier in decl.specifiers {
                                 let source_alias = local_name_for_src(&src);
@@ -763,6 +782,8 @@ impl Fold for SystemJs {
                                         export_values
                                             .push(quote_ident!(source_alias.clone()).into());
                                     }
+                                    #[cfg(swc_ast_unknown)]
+                                    _ => panic!("unable to access unknown nodes"),
                                 }
 
                                 self.add_module_item_meta(ModuleItemMeta {
@@ -789,7 +810,7 @@ impl Fold for SystemJs {
                                             &specifier.orig,
                                         )));
                                     }
-                                    if self.import_idents.iter().any(|i| id == *i) {
+                                    if self.import_idents.contains(&id) {
                                         execute_stmts.push(
                                             self.export_call(
                                                 id.0.clone(),
@@ -917,7 +938,7 @@ impl Fold for SystemJs {
                             export_names: Vec::new(),
                             export_values: Vec::new(),
                             has_export_all: true,
-                            src: decl.src.value,
+                            src: normalize_wtf8_atom(&decl.src.value),
                             setter_fn_stmts: Vec::new(),
                         });
                     }
@@ -948,6 +969,8 @@ impl Fold for SystemJs {
                     },
                     _ => execute_stmts.push(stmt),
                 },
+                #[cfg(swc_ast_unknown)]
+                _ => panic!("unable to access unknown nodes"),
             }
         }
 
@@ -1126,7 +1149,9 @@ impl Fold for SystemJs {
 fn get_module_export_name(module_export_name: &ModuleExportName) -> Id {
     match &module_export_name {
         ModuleExportName::Ident(ident) => ident.to_id(),
-        ModuleExportName::Str(s) => (s.value.clone(), SyntaxContext::empty()),
+        ModuleExportName::Str(s) => (s.value.to_atom_lossy().into_owned(), SyntaxContext::empty()),
+        #[cfg(swc_ast_unknown)]
+        _ => panic!("unable to access unknown nodes"),
     }
 }
 
@@ -1134,7 +1159,11 @@ fn get_module_export_name(module_export_name: &ModuleExportName) -> Id {
 fn get_module_export_expr(module_export_name: &ModuleExportName) -> Expr {
     match &module_export_name {
         ModuleExportName::Ident(ident) => ident.clone().into(),
-        ModuleExportName::Str(s) => Lit::Str(quote_str!(s.value.clone())).into(),
+        ModuleExportName::Str(s) => {
+            Lit::Str(quote_str!(s.value.to_atom_lossy().into_owned())).into()
+        }
+        #[cfg(swc_ast_unknown)]
+        _ => panic!("unable to access unknown nodes"),
     }
 }
 
@@ -1144,7 +1173,9 @@ fn get_module_export_member_prop(module_export_name: &ModuleExportName) -> Membe
         ModuleExportName::Ident(ident) => MemberProp::Ident(ident.clone().into()),
         ModuleExportName::Str(s) => MemberProp::Computed(ComputedPropName {
             span: s.span,
-            expr: Lit::Str(quote_str!(s.value.clone())).into(),
+            expr: Lit::Str(quote_str!(s.value.to_atom_lossy().into_owned())).into(),
         }),
+        #[cfg(swc_ast_unknown)]
+        _ => panic!("unable to access unknown nodes"),
     }
 }

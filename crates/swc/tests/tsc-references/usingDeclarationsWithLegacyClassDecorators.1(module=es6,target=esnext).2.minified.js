@@ -9,8 +9,8 @@ let env = {
 };
 try {
     _ts_add_disposable_resource(env, null, !1);
-    class C {
-    }
+    var C = class {
+    };
     C = _ts_decorate([
         dec
     ], C);

@@ -1,7 +1,4 @@
-use std::{
-    hash::{Hash, Hasher},
-    mem,
-};
+use std::hash::{Hash, Hasher};
 
 use is_macro::Is;
 #[cfg(feature = "serde-impl")]
@@ -31,8 +28,12 @@ impl Take for TokenAndSpan {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::swc_common::Encode, ::swc_common::Decode)
+)]
 pub struct UrlKeyValue(pub Atom, pub Atom);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Is, EqIgnoreSpan)]
@@ -40,13 +41,18 @@ pub struct UrlKeyValue(pub Atom, pub Atom);
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv", archive_attr(repr(u32)))]
+#[cfg_attr(feature = "rkyv", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv", repr(u32))]
 #[cfg_attr(
     feature = "rkyv",
-    archive(bound(serialize = "__S: rkyv::ser::ScratchSpace + rkyv::ser::Serializer"))
+    rkyv(serialize_bounds(__S: rkyv::ser::Writer + rkyv::ser::Allocator,
+        __S::Error: rkyv::rancor::Source))
 )]
 #[cfg_attr(feature = "serde-impl", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::swc_common::Encode, ::swc_common::Decode)
+)]
 pub enum NumberType {
     #[cfg_attr(feature = "serde-impl", serde(rename = "integer"))]
     Integer,
@@ -59,9 +65,13 @@ pub enum NumberType {
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv", repr(C))]
 #[cfg_attr(feature = "serde-impl", derive(Serialize, Deserialize))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::swc_common::Encode, ::swc_common::Decode)
+)]
 pub struct DimensionToken {
     pub value: f64,
     pub raw_value: Atom,
@@ -78,13 +88,18 @@ pub struct DimensionToken {
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv", archive_attr(repr(u32)))]
+#[cfg_attr(feature = "rkyv", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv", repr(u32))]
 #[cfg_attr(
     feature = "rkyv",
-    archive(bound(serialize = "__S: rkyv::ser::ScratchSpace + rkyv::ser::Serializer"))
+    rkyv(serialize_bounds(__S: rkyv::ser::Writer + rkyv::ser::Allocator,
+        __S::Error: rkyv::rancor::Source))
 )]
 #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::swc_common::Encode, ::swc_common::Decode)
+)]
 pub enum Token {
     Ident {
         value: Atom,
@@ -123,6 +138,10 @@ pub enum Token {
         raw: Atom,
     },
     Delim {
+        #[cfg_attr(
+            feature = "encoding-impl",
+            encoding(with = "::swc_common::serializer::WithChar")
+        )]
         value: char,
     },
     Number {
@@ -135,7 +154,9 @@ pub enum Token {
         value: f64,
         raw: Atom,
     },
-    Dimension(Box<DimensionToken>),
+    Dimension {
+        dimension: Box<DimensionToken>,
+    },
     /// One or more whitespace.
     WhiteSpace {
         value: Atom,
@@ -171,11 +192,11 @@ impl Take for Token {
 }
 
 #[allow(clippy::derived_hash_with_manual_eq)]
-#[allow(clippy::transmute_float_to_int)]
+#[allow(unnecessary_transmutes)]
 impl Hash for Token {
     fn hash<H: Hasher>(&self, state: &mut H) {
         fn integer_decode(val: f64) -> (u64, i16, i8) {
-            let bits: u64 = unsafe { mem::transmute(val) };
+            let bits: u64 = f64::to_bits(val);
             let sign: i8 = if bits >> 63 == 0 { 1 } else { -1 };
             let mut exponent: i16 = ((bits >> 52) & 0x7ff) as i16;
             let mantissa = if exponent == 0 {
@@ -236,7 +257,7 @@ impl Hash for Token {
                 integer_decode(*value).hash(state);
                 raw.hash(state);
             }
-            Token::Dimension(dimension) => {
+            Token::Dimension { dimension } => {
                 integer_decode(dimension.value).hash(state);
                 dimension.unit.hash(state);
                 dimension.type_flag.hash(state);

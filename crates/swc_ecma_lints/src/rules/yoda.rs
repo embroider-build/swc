@@ -8,17 +8,12 @@ use crate::{
     rule::{visitor_rule, Rule},
 };
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum YodaConfigMode {
     Always,
+    #[default]
     Never,
-}
-
-impl Default for YodaConfigMode {
-    fn default() -> Self {
-        Self::Never
-    }
 }
 
 #[derive(Debug, Clone, Default, Copy, Serialize, Deserialize)]
@@ -66,7 +61,7 @@ impl Yoda {
             YodaConfigMode::Never => "right",
         };
 
-        let message = format!("Expected literal to be on the {} side of {}", side, op);
+        let message = format!("Expected literal to be on the {side} side of {op}");
 
         HANDLER.with(|handler| match self.expected_reaction {
             LintRuleReaction::Error => {

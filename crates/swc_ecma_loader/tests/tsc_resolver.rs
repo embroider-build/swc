@@ -3,7 +3,9 @@
 use std::collections::HashMap;
 
 use anyhow::{anyhow, Error};
-use swc_common::{collections::AHashMap, FileName};
+use rustc_hash::FxHashMap;
+use swc_atoms::atom;
+use swc_common::FileName;
 use swc_ecma_loader::{
     resolve::{Resolution, Resolve},
     resolvers::tsc::TsConfigResolver,
@@ -41,7 +43,7 @@ fn exact() {
             resolved,
             Resolution {
                 filename: FileName::Custom("success".into()),
-                slug: Some("jquery".into())
+                slug: Some(atom!("jquery"))
             }
         );
     }
@@ -133,7 +135,7 @@ fn base_url_works_for_resolves_full_filenames_with_dot_suffix() {
             resolved,
             Resolution {
                 filename: FileName::Custom("suffix1".into()),
-                slug: Some("file1.suffix1".into())
+                slug: Some(atom!("file1.suffix1"))
             }
         );
     }
@@ -147,7 +149,7 @@ fn base_url_works_for_resolves_full_filenames_with_dot_suffix() {
             resolved,
             Resolution {
                 filename: FileName::Custom("suffix2".into()),
-                slug: Some("file2-suffix2".into())
+                slug: Some(atom!("file2-suffix2"))
             }
         );
     }
@@ -280,7 +282,7 @@ fn pattern_length_precedence() {
     }
 }
 
-struct TestResolver(AHashMap<String, String>);
+struct TestResolver(FxHashMap<String, String>);
 
 impl Resolve for TestResolver {
     fn resolve(&self, _: &FileName, src: &str) -> Result<Resolution, Error> {
@@ -294,6 +296,6 @@ impl Resolve for TestResolver {
                 filename: v,
                 slug: None,
             })
-            .ok_or_else(|| anyhow!("failed to resolve `{}`", src))
+            .ok_or_else(|| anyhow!("failed to resolve `{src}`"))
     }
 }

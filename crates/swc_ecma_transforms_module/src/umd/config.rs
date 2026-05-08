@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use inflector::Inflector;
 use serde::{Deserialize, Serialize};
-use swc_atoms::JsWord;
+use swc_atoms::Atom;
 use swc_common::{errors::HANDLER, sync::Lrc, FileName, SourceMap};
 use swc_ecma_ast::{Expr, Ident};
 use swc_ecma_parser::{parse_file_as_expr, Syntax};
@@ -30,7 +30,7 @@ impl Config {
                 .map(|(k, v)| {
                     let parse = |s| {
                         let fm = cm.new_source_file(
-                            FileName::Internal(format!("<umd-config-{}.js>", s)).into(),
+                            FileName::Internal(format!("<umd-config-{s}.js>")).into(),
                             s,
                         );
 
@@ -62,12 +62,12 @@ pub(super) struct BuiltConfig {
 }
 
 impl BuiltConfig {
-    pub fn global_name(&self, src: &str) -> JsWord {
+    pub fn global_name(&self, src: &str) -> Atom {
         if !src.contains('/') {
             return src.to_camel_case().into();
         }
 
-        src.split('/').last().unwrap().to_camel_case().into()
+        src.split('/').next_back().unwrap().to_camel_case().into()
     }
 
     pub fn determine_export_name(&self, filename: Lrc<FileName>) -> Ident {

@@ -18,10 +18,7 @@ export const defaultLoadScriptProps = {
 class LoadScript extends React.PureComponent {
     componentDidMount() {
         if (isBrowser) {
-            if (window.google && window.google.maps && !cleaningUp) {
-                console.error("google api is already presented");
-                return;
-            }
+            if (window.google && window.google.maps && !cleaningUp) return void console.error("google api is already presented");
             this.isCleaningUp().then(this.injectScript).catch(function(err) {
                 console.error("Error at injecting script after cleaning up: ", err);
             });
@@ -37,10 +34,14 @@ class LoadScript extends React.PureComponent {
         }, this.cleanupCallback));
     }
     componentWillUnmount() {
-        isBrowser && (this.cleanup(), window.setTimeout(()=>{
-            this.check.current || (// @ts-ignore
-            delete window.google, cleaningUp = !1);
-        }, 1), this.props.onUnmount && this.props.onUnmount());
+        if (isBrowser) {
+            this.cleanup();
+            let timeoutCallback = ()=>{
+                this.check.current || (// @ts-ignore
+                delete window.google, cleaningUp = !1);
+            };
+            window.setTimeout(timeoutCallback, 1), this.props.onUnmount && this.props.onUnmount();
+        }
     }
     render() {
         return /*#__PURE__*/ _jsxs(_Fragment, {
@@ -61,14 +62,14 @@ class LoadScript extends React.PureComponent {
         }, this.isCleaningUp = async ()=>new Promise(function(resolve) {
                 if (cleaningUp) {
                     if (isBrowser) {
-                        const timer = window.setInterval(function() {
+                        let timer = window.setInterval(function() {
                             cleaningUp || (window.clearInterval(timer), resolve());
                         }, 1);
                     }
                 } else resolve();
             }), this.cleanup = ()=>{
             cleaningUp = !0;
-            const script1 = document.getElementById(this.props.id);
+            let script1 = document.getElementById(this.props.id);
             script1 && script1.parentNode && script1.parentNode.removeChild(script1), Array.prototype.slice.call(document.getElementsByTagName("script")).filter(function(script) {
                 return "string" == typeof script.src && script.src.includes("maps.googleapis");
             }).forEach(function(script) {

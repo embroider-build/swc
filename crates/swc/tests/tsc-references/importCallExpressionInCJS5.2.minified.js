@@ -2,18 +2,18 @@
 //// [0.ts]
 Object.defineProperty(exports, "__esModule", {
     value: !0
-}), function(target, all) {
-    for(var name in all)Object.defineProperty(target, name, {
-        enumerable: !0,
-        get: all[name]
-    });
-}(exports, {
-    B: function() {
+});
+var target = exports, all = {
+    get B () {
         return B;
     },
-    foo: function() {
+    get foo () {
         return foo;
     }
+};
+for(var name in all)Object.defineProperty(target, name, {
+    enumerable: !0,
+    get: Object.getOwnPropertyDescriptor(all, name).get
 });
 class B {
     print() {
@@ -44,7 +44,7 @@ Object.defineProperty(exports, "__esModule", {
         return D;
     }
 });
-const _interop_require_wildcard = require("@swc/helpers/_/_interop_require_wildcard");
+let _interop_require_wildcard = require("@swc/helpers/_/_interop_require_wildcard");
 class D {
     method() {
         Promise.resolve().then(()=>/*#__PURE__*/ _interop_require_wildcard._(require("./0"))), this.myModule.then((Zero)=>{

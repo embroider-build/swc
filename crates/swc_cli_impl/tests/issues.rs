@@ -1,17 +1,59 @@
 use std::{
     fs::{self, create_dir_all, hard_link},
     path::Path,
-    process::{Command, Stdio},
+    process::{Child, Command, Stdio},
+    thread::sleep,
+    time::{Duration, Instant},
 };
 
-use anyhow::{Context, Result};
+use anyhow::{bail, Result};
 use assert_cmd::prelude::*;
 use assert_fs::TempDir;
 
 fn cli() -> Result<Command> {
-    let mut cmd = Command::cargo_bin("swc").context("Failed to get swc binary")?;
+    let mut cmd = Command::new(assert_cmd::cargo::cargo_bin!("swc"));
     cmd.stderr(Stdio::inherit());
     Ok(cmd)
+}
+
+struct ChildGuard {
+    child: Child,
+}
+
+impl ChildGuard {
+    fn try_wait(&mut self) -> Result<Option<std::process::ExitStatus>> {
+        Ok(self.child.try_wait()?)
+    }
+}
+
+impl Drop for ChildGuard {
+    fn drop(&mut self) {
+        let _ = self.child.kill();
+        let _ = self.child.wait();
+    }
+}
+
+fn spawn_watch_command(cmd: &mut Command) -> Result<ChildGuard> {
+    let child = cmd.stdout(Stdio::null()).stdin(Stdio::null()).spawn()?;
+
+    Ok(ChildGuard { child })
+}
+
+fn wait_for<F>(message: &str, mut check: F) -> Result<()>
+where
+    F: FnMut() -> Result<bool>,
+{
+    let deadline = Instant::now() + Duration::from_secs(10);
+
+    while Instant::now() < deadline {
+        if check()? {
+            return Ok(());
+        }
+
+        sleep(Duration::from_millis(50));
+    }
+
+    bail!("Timed out while waiting for {message}")
 }
 
 #[test]
@@ -154,6 +196,903 @@ fn issue_9559() -> Result<()> {
     cmd.current_dir(&sandbox).arg("compile").arg(sandbox.path());
 
     cmd.assert().success();
+
+    Ok(())
+}
+
+#[test]
+fn issue_11643_external_helpers_false_respected() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    fs::write(
+        sandbox.path().join(".swcrc"),
+        r#"{
+            "jsc": {
+                "externalHelpers": false
+            },
+            "module": {
+                "type": "commonjs"
+            }
+        }"#,
+    )?;
+    fs::write(
+        sandbox.path().join("index.ts"),
+        r#"export * from "./my-file";"#,
+    )?;
+    fs::write(sandbox.path().join("my-file.ts"), "export const foo = 1;")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--config-file")
+        .arg(".swcrc")
+        .arg("--out-file")
+        .arg("index.js")
+        .arg("index.ts");
+
+    cmd.assert().success();
+
+    let output = fs::read_to_string(sandbox.path().join("index.js"))?;
+    assert!(
+        !output.contains("@swc/helpers"),
+        "Expected no external helper imports/requires when externalHelpers is false. Got: {output}",
+    );
+    assert!(
+        output.contains("function _export_star("),
+        "Expected inline _export_star helper when externalHelpers is false. Got: {output}",
+    );
+    assert!(
+        output.contains("_export_star(require(\"./my-file\"), exports);"),
+        "Expected re-export call to use inline helper. Got: {output}",
+    );
+
+    Ok(())
+}
+
+#[test]
+fn issue_flow_strip_enabled_via_parser_syntax_flow() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    fs::write(
+        sandbox.path().join(".swcrc"),
+        r#"{
+            "jsc": {
+                "parser": {
+                    "syntax": "flow"
+                }
+            }
+        }"#,
+    )?;
+    fs::write(
+        sandbox.path().join("input.js"),
+        r#"// @flow
+function add(a: number): number {
+  return a;
+}
+const value: string = "ok";
+"#,
+    )?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--config-file")
+        .arg(".swcrc")
+        .arg("--out-file")
+        .arg("output.js")
+        .arg("input.js");
+
+    cmd.assert().success();
+
+    let output = fs::read_to_string(sandbox.path().join("output.js"))?;
+    assert!(
+        output.contains("function add(a)"),
+        "Expected Flow type annotations to be stripped. Got: {output}"
+    );
+    assert!(
+        !output.contains(": number"),
+        "Flow function type annotation should be stripped. Got: {output}"
+    );
+    assert!(
+        !output.contains(": string"),
+        "Flow variable type annotation should be stripped. Got: {output}"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_out_dir_preserves_leading_directory() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    create_dir_all(sandbox.path().join("src"))?;
+    fs::write(
+        sandbox.path().join("src/index.ts"),
+        "export const value = 1;\n",
+    )?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--out-dir")
+        .arg("dist")
+        .arg("src");
+
+    cmd.assert().success();
+
+    assert!(
+        sandbox.path().join("dist/src/index.js").exists(),
+        "Expected output at dist/src/index.js"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_strip_leading_paths_flattens_output() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    create_dir_all(sandbox.path().join("src"))?;
+    fs::write(
+        sandbox.path().join("src/index.ts"),
+        "export const value = 1;\n",
+    )?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--out-dir")
+        .arg("dist")
+        .arg("--strip-leading-paths")
+        .arg("src");
+
+    cmd.assert().success();
+
+    assert!(
+        sandbox.path().join("dist/index.js").exists(),
+        "Expected output at dist/index.js"
+    );
+    assert!(
+        !sandbox.path().join("dist/src/index.js").exists(),
+        "Did not expect output at dist/src/index.js"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_absolute_directory_input_is_normalized() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    create_dir_all(sandbox.path().join("src"))?;
+    fs::write(
+        sandbox.path().join("src/index.ts"),
+        "export const value = 1;\n",
+    )?;
+
+    let out_dir = sandbox.path().join("dist");
+    let absolute_input = sandbox.path().join("src").canonicalize()?;
+
+    let mut cmd = cli()?;
+    cmd.arg("compile")
+        .arg("--out-dir")
+        .arg(&out_dir)
+        .arg(&absolute_input);
+
+    cmd.assert().success();
+
+    assert!(
+        out_dir.join("src/index.js").exists(),
+        "Expected absolute directory input to emit dist/src/index.js"
+    );
+    assert!(
+        !out_dir.join("var").exists(),
+        "Absolute input should not recreate host paths under out-dir"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_current_directory_input_is_relative_to_cwd() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    create_dir_all(sandbox.path().join("src"))?;
+    fs::write(
+        sandbox.path().join("src/index.ts"),
+        "export const value = 1;\n",
+    )?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--out-dir")
+        .arg("dist")
+        .arg(".");
+
+    cmd.assert().success();
+
+    assert!(
+        sandbox.path().join("dist/src/index.js").exists(),
+        "Expected current-directory input to emit dist/src/index.js"
+    );
+
+    let cwd_name = sandbox
+        .path()
+        .file_name()
+        .expect("temporary directory should have a name");
+    assert!(
+        !sandbox
+            .path()
+            .join("dist")
+            .join(cwd_name)
+            .join("src/index.js")
+            .exists(),
+        "Current-directory input should not prefix output paths with the cwd name"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_absolute_current_directory_input_is_relative_to_cwd() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    create_dir_all(sandbox.path().join("src"))?;
+    fs::write(
+        sandbox.path().join("src/index.ts"),
+        "export const value = 1;\n",
+    )?;
+
+    let absolute_input = sandbox.path().canonicalize()?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--out-dir")
+        .arg("dist")
+        .arg(&absolute_input);
+
+    cmd.assert().success();
+
+    assert!(
+        sandbox.path().join("dist/src/index.js").exists(),
+        "Expected absolute cwd input to emit dist/src/index.js"
+    );
+
+    let cwd_name = sandbox
+        .path()
+        .file_name()
+        .expect("temporary directory should have a name");
+    assert!(
+        !sandbox
+            .path()
+            .join("dist")
+            .join(cwd_name)
+            .join("src/index.js")
+            .exists(),
+        "Absolute cwd input should not prefix output paths with the cwd name"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_out_dir_inside_input_is_excluded_from_scan() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    create_dir_all(sandbox.path().join("src/dist"))?;
+    fs::write(
+        sandbox.path().join("src/index.ts"),
+        "export const value = 1;\n",
+    )?;
+    fs::write(
+        sandbox.path().join("src/dist/stale.ts"),
+        "export const stale = true;\n",
+    )?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--out-dir")
+        .arg("src/dist")
+        .arg("src");
+
+    cmd.assert().success();
+
+    assert!(
+        sandbox.path().join("src/dist/src/index.js").exists(),
+        "Expected source output under nested out-dir"
+    );
+    assert!(
+        !sandbox.path().join("src/dist/src/dist/stale.js").exists(),
+        "Output directory contents should not be treated as fresh inputs"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_copy_files_copies_non_compilable_assets() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    create_dir_all(sandbox.path().join("src"))?;
+    fs::write(
+        sandbox.path().join("src/index.ts"),
+        "export const value = 1;\n",
+    )?;
+    fs::write(sandbox.path().join("src/data.json"), "{\"ok\":true}\n")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--out-dir")
+        .arg("dist")
+        .arg("--copy-files")
+        .arg("src");
+
+    cmd.assert().success();
+
+    let copied = fs::read_to_string(sandbox.path().join("dist/src/data.json"))?;
+    assert_eq!(copied, "{\"ok\":true}\n");
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_watch_out_dir_updates_and_removes_outputs() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    create_dir_all(sandbox.path().join("src"))?;
+
+    let source_path = sandbox.path().join("src/index.ts");
+    let output_path = sandbox.path().join("dist/src/index.js");
+
+    fs::write(&source_path, "export const value = 1;\n")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--watch")
+        .arg("--out-dir")
+        .arg("dist")
+        .arg("src");
+
+    let mut child = spawn_watch_command(&mut cmd)?;
+
+    wait_for("initial watch output", || Ok(output_path.exists()))?;
+    wait_for("watch process to stay alive", || {
+        Ok(child.try_wait()?.is_none())
+    })?;
+
+    let initial = fs::read_to_string(&output_path)?;
+    assert!(initial.contains('1'));
+
+    fs::write(&source_path, "export const value = 2;\n")?;
+    wait_for("updated watch output", || {
+        Ok(fs::read_to_string(&output_path)
+            .map(|content| content.contains('2'))
+            .unwrap_or(false))
+    })?;
+
+    fs::remove_file(&source_path)?;
+    wait_for("compiled output removal after deleting source", || {
+        Ok(!output_path.exists())
+    })?;
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_watch_out_dir_removes_outputs_after_input_dir_deleted() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    let input_dir = sandbox.path().join("src");
+    create_dir_all(input_dir.join("nested"))?;
+
+    let source_path = input_dir.join("nested/index.ts");
+    let output_path = sandbox.path().join("dist/src/nested/index.js");
+
+    fs::write(&source_path, "export const value = 1;\n")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--watch")
+        .arg("--out-dir")
+        .arg("dist")
+        .arg("src");
+
+    let mut child = spawn_watch_command(&mut cmd)?;
+
+    wait_for("initial nested watch output", || Ok(output_path.exists()))?;
+    wait_for("watch process to stay alive", || {
+        Ok(child.try_wait()?.is_none())
+    })?;
+
+    fs::remove_dir_all(&input_dir)?;
+    wait_for("compiled output removal after deleting input dir", || {
+        Ok(!output_path.exists())
+    })?;
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_watch_out_dir_removes_outputs_after_input_dir_renamed() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    let input_dir = sandbox.path().join("src");
+    let renamed_dir = sandbox.path().join("renamed");
+    create_dir_all(input_dir.join("nested"))?;
+
+    let source_path = input_dir.join("nested/index.ts");
+    let output_path = sandbox.path().join("dist/src/nested/index.js");
+
+    fs::write(&source_path, "export const value = 1;\n")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--watch")
+        .arg("--out-dir")
+        .arg("dist")
+        .arg("src");
+
+    let mut child = spawn_watch_command(&mut cmd)?;
+
+    wait_for("initial nested watch output", || Ok(output_path.exists()))?;
+    wait_for("watch process to stay alive", || {
+        Ok(child.try_wait()?.is_none())
+    })?;
+
+    fs::rename(&input_dir, renamed_dir)?;
+    wait_for("compiled output removal after renaming input dir", || {
+        Ok(!output_path.exists())
+    })?;
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_watch_out_dir_ignores_generated_output_changes() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    create_dir_all(sandbox.path().join("src"))?;
+
+    let source_path = sandbox.path().join("src/index.ts");
+    let output_path = sandbox.path().join("src/dist/src/index.js");
+    let nested_output_path = sandbox.path().join("src/dist/src/dist/src/index.js");
+
+    fs::write(&source_path, "export const value = 1;\n")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--watch")
+        .arg("--out-dir")
+        .arg("src/dist")
+        .arg("src");
+
+    let mut child = spawn_watch_command(&mut cmd)?;
+
+    wait_for("initial nested out-dir watch output", || {
+        Ok(output_path.exists())
+    })?;
+    wait_for("watch process to stay alive", || {
+        Ok(child.try_wait()?.is_none())
+    })?;
+
+    fs::write(&output_path, "const generated = 1;\n")?;
+    sleep(Duration::from_millis(1000));
+
+    assert!(
+        !nested_output_path.exists(),
+        "Generated output changes should not create nested output files"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_copy_files_watch_adds_updates_and_removes_assets() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    create_dir_all(sandbox.path().join("src"))?;
+
+    fs::write(
+        sandbox.path().join("src/index.ts"),
+        "export const value = 1;\n",
+    )?;
+    let asset_path = sandbox.path().join("src/data.json");
+    let copied_path = sandbox.path().join("dist/src/data.json");
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--watch")
+        .arg("--out-dir")
+        .arg("dist")
+        .arg("--copy-files")
+        .arg("src");
+
+    let mut child = spawn_watch_command(&mut cmd)?;
+
+    wait_for("initial watch compilation", || {
+        Ok(sandbox.path().join("dist/src/index.js").exists())
+    })?;
+    wait_for("watch process to stay alive", || {
+        Ok(child.try_wait()?.is_none())
+    })?;
+
+    fs::write(&asset_path, "{\"version\":1}\n")?;
+    wait_for("copied asset creation", || Ok(copied_path.exists()))?;
+
+    let copied = fs::read_to_string(&copied_path)?;
+    assert_eq!(copied, "{\"version\":1}\n");
+
+    fs::write(&asset_path, "{\"version\":2}\n")?;
+    wait_for("copied asset update", || {
+        Ok(fs::read_to_string(&copied_path)
+            .map(|content| content.contains("\"version\":2"))
+            .unwrap_or(false))
+    })?;
+
+    fs::remove_file(&asset_path)?;
+    wait_for("copied asset removal", || Ok(!copied_path.exists()))?;
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_watch_out_file_rebuilds_single_output() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    let source_path = sandbox.path().join("input.ts");
+    let output_path = sandbox.path().join("output.js");
+
+    fs::write(&source_path, "export const value = 1;\n")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--watch")
+        .arg("--out-file")
+        .arg("output.js")
+        .arg("input.ts");
+
+    let mut child = spawn_watch_command(&mut cmd)?;
+
+    wait_for("initial out-file watch output", || Ok(output_path.exists()))?;
+    wait_for("watch process to stay alive", || {
+        Ok(child.try_wait()?.is_none())
+    })?;
+
+    fs::write(&source_path, "export const value = 2;\n")?;
+    wait_for("rebuilt out-file output", || {
+        Ok(fs::read_to_string(&output_path)
+            .map(|content| content.contains('2'))
+            .unwrap_or(false))
+    })?;
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_watch_out_file_drops_deleted_explicit_inputs() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    let keep_path = sandbox.path().join("keep.ts");
+    let removed_path = sandbox.path().join("removed.ts");
+    let output_path = sandbox.path().join("bundle.js");
+
+    fs::write(&keep_path, "export const keep = 1;\n")?;
+    fs::write(&removed_path, "export const removed = 2;\n")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--watch")
+        .arg("--out-file")
+        .arg("bundle.js")
+        .arg("keep.ts")
+        .arg("removed.ts");
+
+    let mut child = spawn_watch_command(&mut cmd)?;
+
+    wait_for("initial bundle with both explicit inputs", || {
+        Ok(fs::read_to_string(&output_path)
+            .map(|content| content.contains("keep") && content.contains("removed"))
+            .unwrap_or(false))
+    })?;
+    wait_for("watch process to stay alive", || {
+        Ok(child.try_wait()?.is_none())
+    })?;
+
+    fs::remove_file(&removed_path)?;
+
+    wait_for("bundle rebuild without deleted explicit input", || {
+        Ok(fs::read_to_string(&output_path)
+            .map(|content| content.contains("keep") && !content.contains("removed"))
+            .unwrap_or(false))
+    })?;
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_watch_out_file_ignores_generated_output_changes() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    create_dir_all(sandbox.path().join("src"))?;
+
+    let source_path = sandbox.path().join("src/input.ts");
+    let output_path = sandbox.path().join("src/bundle.js");
+
+    fs::write(&source_path, "export const value = 1;\n")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--watch")
+        .arg("--out-file")
+        .arg("src/bundle.js")
+        .arg("src");
+
+    let mut child = spawn_watch_command(&mut cmd)?;
+
+    wait_for("initial in-tree out-file watch output", || {
+        Ok(output_path.exists())
+    })?;
+    wait_for("watch process to stay alive", || {
+        Ok(child.try_wait()?.is_none())
+    })?;
+
+    fs::write(&output_path, "const generated = 1;\n")?;
+    sleep(Duration::from_millis(1000));
+
+    let output = fs::read_to_string(&output_path)?;
+    assert_eq!(
+        output, "const generated = 1;\n",
+        "Generated out-file changes should not trigger a rebuild"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_watch_requires_output() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    fs::write(sandbox.path().join("input.ts"), "export const value = 1;\n")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--watch")
+        .arg("input.ts");
+
+    cmd.assert().failure();
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_copy_files_requires_out_dir() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    fs::write(sandbox.path().join("input.json"), "{\"ok\":true}\n")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--copy-files")
+        .arg("input.json");
+
+    cmd.assert().failure();
+
+    Ok(())
+}
+
+#[test]
+fn issue_4017_strip_leading_paths_requires_out_dir() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    fs::write(sandbox.path().join("input.ts"), "export const value = 1;\n")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--strip-leading-paths")
+        .arg("input.ts");
+
+    cmd.assert().failure();
+
+    Ok(())
+}
+
+/// Tests that `--root-mode upward` finds a `.swcrc` in a parent directory.
+#[test]
+fn root_mode_upward_finds_parent_config() -> Result<()> {
+    let tmp = TempDir::new()?;
+
+    let subdir = tmp.path().join("subdir");
+    create_dir_all(&subdir)?;
+
+    // target: es2022 keeps arrow functions (unlike default es5)
+    fs::write(
+        tmp.path().join(".swcrc"),
+        r#"{
+            "jsc": {
+                "parser": { "syntax": "ecmascript" },
+                "target": "es2022"
+            }
+        }"#,
+    )?;
+
+    fs::write(subdir.join("input.js"), "const arrow = () => 'hello';")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&subdir)
+        .arg("compile")
+        .arg("--root-mode")
+        .arg("upward")
+        .arg("--out-file")
+        .arg("output.js")
+        .arg("input.js");
+
+    cmd.assert().success();
+
+    // Verify the config was found: es2022 keeps arrow functions
+    let output = fs::read_to_string(subdir.join("output.js"))?;
+    assert!(
+        output.contains("=>"),
+        "Arrow should be kept with es2022 target from parent .swcrc. Got: {output}"
+    );
+
+    Ok(())
+}
+
+/// Tests that `--root-mode root` does NOT search parent directories for
+/// `.swcrc`.
+#[test]
+fn root_mode_root_ignores_parent_config() -> Result<()> {
+    let tmp = TempDir::new()?;
+
+    let subdir = tmp.path().join("subdir");
+    create_dir_all(&subdir)?;
+
+    // Parent has .swcrc with es2022 (keeps arrows)
+    fs::write(
+        tmp.path().join(".swcrc"),
+        r#"{
+            "jsc": {
+                "parser": { "syntax": "ecmascript" },
+                "target": "es2022"
+            }
+        }"#,
+    )?;
+
+    fs::write(subdir.join("input.js"), "const arrow = () => 'hello';")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&subdir)
+        .arg("compile")
+        .arg("--root-mode")
+        .arg("root")
+        .arg("--out-file")
+        .arg("output.js")
+        .arg("input.js");
+
+    cmd.assert().success();
+
+    // Parent .swcrc should be ignored, so default es5 transforms arrow to function
+    let output = fs::read_to_string(subdir.join("output.js"))?;
+    assert!(
+        output.contains("function"),
+        "Parent .swcrc should be ignored with root mode. Got: {output}"
+    );
+
+    Ok(())
+}
+
+/// Tests that `--root-mode upward` fails when no `.swcrc` is found.
+#[test]
+fn root_mode_upward_fails_without_config() -> Result<()> {
+    let tmp = TempDir::new()?;
+
+    // No .swcrc anywhere
+    fs::write(tmp.path().join("input.js"), "const arrow = () => 'hello';")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&tmp)
+        .arg("compile")
+        .arg("--root-mode")
+        .arg("upward")
+        .arg("--out-file")
+        .arg("output.js")
+        .arg("input.js");
+
+    cmd.assert().failure();
+
+    Ok(())
+}
+
+/// Tests that `--root-mode upward-optional` succeeds even without a `.swcrc`.
+#[test]
+fn root_mode_upward_optional_succeeds_without_config() -> Result<()> {
+    let tmp = TempDir::new()?;
+
+    // No .swcrc anywhere
+    fs::write(tmp.path().join("input.js"), "const arrow = () => 'hello';")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&tmp)
+        .arg("compile")
+        .arg("--root-mode")
+        .arg("upward-optional")
+        .arg("--out-file")
+        .arg("output.js")
+        .arg("input.js");
+
+    cmd.assert().success();
+
+    // Should compile with defaults (es5 transforms arrow to function)
+    let output = fs::read_to_string(tmp.path().join("output.js"))?;
+    assert!(
+        output.contains("function"),
+        "Should use default es5 target without .swcrc. Got: {output}"
+    );
+
+    Ok(())
+}
+
+/// Tests that `--root-mode upward-optional` uses parent `.swcrc` when found.
+#[test]
+fn root_mode_upward_optional_finds_parent_config() -> Result<()> {
+    let tmp = TempDir::new()?;
+
+    let subdir = tmp.path().join("subdir");
+    create_dir_all(&subdir)?;
+
+    // target: es2022 keeps arrow functions
+    fs::write(
+        tmp.path().join(".swcrc"),
+        r#"{
+            "jsc": {
+                "parser": { "syntax": "ecmascript" },
+                "target": "es2022"
+            }
+        }"#,
+    )?;
+
+    fs::write(subdir.join("input.js"), "const arrow = () => 'hello';")?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&subdir)
+        .arg("compile")
+        .arg("--root-mode")
+        .arg("upward-optional")
+        .arg("--out-file")
+        .arg("output.js")
+        .arg("input.js");
+
+    cmd.assert().success();
+
+    // Verify the config was found: es2022 keeps arrow functions
+    let output = fs::read_to_string(subdir.join("output.js"))?;
+    assert!(
+        output.contains("=>"),
+        "Arrow should be kept with es2022 target from parent .swcrc. Got: {output}"
+    );
+
+    Ok(())
+}
+
+/// `--out-file file.min.js` (no directory component) should not fail with
+/// EEXIST when trying to mkdir the current directory.
+#[test]
+fn issue_11717_out_file_same_directory() -> Result<()> {
+    let sandbox = TempDir::new()?;
+    fs::write(
+        sandbox.path().join("file.js"),
+        "const x = 1;\nconsole.log(x);\n",
+    )?;
+
+    let mut cmd = cli()?;
+    cmd.current_dir(&sandbox)
+        .arg("compile")
+        .arg("--out-file")
+        .arg("file.min.js")
+        .arg("file.js");
+
+    cmd.assert().success();
+
+    let output = fs::read_to_string(sandbox.path().join("file.min.js"))?;
+    assert!(
+        output.contains("console.log"),
+        "Output file should contain compiled code. Got: {output}"
+    );
 
     Ok(())
 }

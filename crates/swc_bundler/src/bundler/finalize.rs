@@ -2,7 +2,9 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Error;
 use relative_path::RelativePath;
-use swc_common::{collections::AHashMap, util::move_map::MoveMap, FileName, Mark, DUMMY_SP};
+use rustc_hash::FxHashMap;
+use swc_atoms::atom;
+use swc_common::{util::move_map::MoveMap, FileName, Mark, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_transforms_base::{
     fixer::fixer,
@@ -31,7 +33,7 @@ where
     ) -> Result<Vec<Bundle>, Error> {
         self.run(|| {
             let mut new = Vec::with_capacity(bundles.len());
-            let mut renamed = AHashMap::default();
+            let mut renamed = FxHashMap::default();
 
             for mut bundle in bundles {
                 bundle.module = self.optimize(bundle.module);
@@ -162,6 +164,8 @@ where
                     let decl = match item {
                         ModuleItem::ModuleDecl(v) => v,
                         ModuleItem::Stmt(stmt) => return Some(stmt),
+                        #[cfg(swc_ast_unknown)]
+                        _ => panic!("unable to access unknown nodes"),
                     };
 
                     match decl {
@@ -208,7 +212,7 @@ where
                                         props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(
                                             KeyValueProp {
                                                 key: PropName::Ident(IdentName::new(
-                                                    "default".into(),
+                                                    atom!("default"),
                                                     DUMMY_SP,
                                                 )),
                                                 value: s.exported.into(),
@@ -222,6 +226,8 @@ where
                                                 ModuleExportName::Str(..) => unimplemented!(
                                                     "module string names unimplemented"
                                                 ),
+                                                #[cfg(swc_ast_unknown)]
+                                                _ => panic!("unable to access unknown nodes"),
                                             };
                                             props.push(PropOrSpread::Prop(Box::new(
                                                 Prop::KeyValue(KeyValueProp {
@@ -233,18 +239,24 @@ where
                                         Some(ModuleExportName::Str(..)) => {
                                             unimplemented!("module string names unimplemented")
                                         }
+                                        #[cfg(swc_ast_unknown)]
+                                        Some(_) => panic!("unable to access unknown nodes"),
                                         None => {
                                             let orig = match s.orig {
                                                 ModuleExportName::Ident(ident) => ident,
                                                 ModuleExportName::Str(..) => unimplemented!(
                                                     "module string names unimplemented"
                                                 ),
+                                                #[cfg(swc_ast_unknown)]
+                                                _ => panic!("unable to access unknown nodes"),
                                             };
                                             props.push(PropOrSpread::Prop(Box::new(
                                                 Prop::Shorthand(orig),
                                             )));
                                         }
                                     },
+                                    #[cfg(swc_ast_unknown)]
+                                    _ => panic!("unable to access unknown nodes"),
                                 }
                             }
 
@@ -260,7 +272,7 @@ where
                                 props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(
                                     KeyValueProp {
                                         key: PropName::Ident(IdentName::new(
-                                            "default".into(),
+                                            atom!("default"),
                                             export.span,
                                         )),
                                         value: ident.clone().into(),
@@ -284,7 +296,7 @@ where
                                 props.push(PropOrSpread::Prop(Box::new(Prop::KeyValue(
                                     KeyValueProp {
                                         key: PropName::Ident(IdentName::new(
-                                            "default".into(),
+                                            atom!("default"),
                                             export.span,
                                         )),
                                         value: ident.clone().into(),
@@ -301,6 +313,8 @@ where
                                 )
                             }
                             DefaultDecl::TsInterfaceDecl(_) => None,
+                            #[cfg(swc_ast_unknown)]
+                            _ => panic!("unable to access unknown nodes"),
                         },
                         ModuleDecl::ExportDefaultExpr(export) => {
                             let default_var = private_ident!("default");
@@ -326,6 +340,9 @@ where
                         }
 
                         ModuleDecl::ExportAll(_) => None,
+
+                        #[cfg(swc_ast_unknown)]
+                        _ => panic!("unable to access unknown nodes"),
                     }
                 })
                 .collect(),
@@ -384,7 +401,7 @@ where
 {
     resolver: R,
     base: &'a PathBuf,
-    renamed: &'a AHashMap<PathBuf, String>,
+    renamed: &'a FxHashMap<PathBuf, String>,
 }
 
 impl<R> Fold for Renamer<'_, R>
@@ -394,10 +411,10 @@ where
     noop_fold_type!();
 
     fn fold_import_decl(&mut self, import: ImportDecl) -> ImportDecl {
-        let resolved = match self
-            .resolver
-            .resolve(&FileName::Real(self.base.clone()), &import.src.value)
-        {
+        let resolved = match self.resolver.resolve(
+            &FileName::Real(self.base.clone()),
+            &import.src.value.to_string_lossy(),
+        ) {
             Ok(v) => match v.filename {
                 FileName::Real(v) => v,
                 _ => panic!("rename_bundles called with non-path module"),
@@ -425,7 +442,7 @@ where
                     value: if value.starts_with('.') {
                         value.into()
                     } else {
-                        format!("./{}", value).into()
+                        format!("./{value}").into()
                     },
                     ..*import.src
                 }),

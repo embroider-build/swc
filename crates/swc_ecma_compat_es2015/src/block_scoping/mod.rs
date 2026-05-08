@@ -1,13 +1,10 @@
 use std::{iter::once, mem::take};
 
 use indexmap::IndexMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use smallvec::SmallVec;
-use swc_atoms::JsWord;
-use swc_common::{
-    collections::{AHashMap, AHashSet},
-    util::take::Take,
-    Mark, Spanned, SyntaxContext, DUMMY_SP,
-};
+use swc_atoms::{atom, Atom};
+use swc_common::{util::take::Take, Mark, Spanned, SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_transforms_base::helper;
 use swc_ecma_utils::{
@@ -56,7 +53,7 @@ enum ScopeKind {
         /// Produced by identifier reference and consumed by for-of/in loop.
         used: Vec<Id>,
         /// Map of original identifier to modified syntax context
-        mutated: AHashMap<Id, SyntaxContext>,
+        mutated: FxHashMap<Id, SyntaxContext>,
     },
     Fn,
     Block,
@@ -167,7 +164,7 @@ impl BlockScoping {
                 has_yield: false,
                 has_await: false,
                 label: IndexMap::new(),
-                inner_label: AHashSet::default(),
+                inner_label: FxHashSet::default(),
                 mutated,
                 in_switch_case: false,
                 in_nested_loop: false,
@@ -374,18 +371,16 @@ impl BlockScoping {
                     );
                 }
 
-                *body = Box::new(
-                    BlockStmt {
-                        span: DUMMY_SP,
-                        stmts,
-                        ..Default::default()
-                    }
-                    .into(),
-                );
+                **body = BlockStmt {
+                    span: DUMMY_SP,
+                    stmts,
+                    ..Default::default()
+                }
+                .into();
                 return;
             }
 
-            *body = Box::new(call.take().into_stmt());
+            **body = call.take().into_stmt();
         }
     }
 
@@ -406,14 +401,12 @@ impl BlockScoping {
     /// which fixes https://github.com/swc-project/swc/issues/6573
     fn blockify_for_stmt_body(&self, body: &mut Box<Stmt>) -> bool {
         if !body.is_block() {
-            *body = Box::new(
-                BlockStmt {
-                    span: Default::default(),
-                    stmts: vec![*body.take()],
-                    ..Default::default()
-                }
-                .into(),
-            );
+            **body = BlockStmt {
+                span: Default::default(),
+                stmts: vec![*body.take()],
+                ..Default::default()
+            }
+            .into();
             true
         } else {
             false
@@ -426,7 +419,7 @@ impl BlockScoping {
                 .as_mut_block()
                 .and_then(|block| (block.stmts.len() == 1).then(|| block.stmts[0].take()));
             if let Some(stmt) = stmt {
-                *body = Box::new(stmt)
+                **body = stmt
             }
         }
     }
@@ -649,11 +642,11 @@ struct FlowHelper<'a> {
     has_yield: bool,
     has_await: bool,
 
-    // label cannot be shadowed, so it's pretty safe to use JsWord
-    label: IndexMap<JsWord, Label>,
-    inner_label: AHashSet<JsWord>,
+    // label cannot be shadowed, so it's pretty safe to use Atom
+    label: IndexMap<Atom, Label>,
+    inner_label: FxHashSet<Atom>,
     all: &'a Vec<Id>,
-    mutated: AHashMap<Id, SyntaxContext>,
+    mutated: FxHashMap<Id, SyntaxContext>,
     in_switch_case: bool,
 
     in_nested_loop: bool,
@@ -703,6 +696,8 @@ impl VisitMut for FlowHelper<'_> {
                     self.check(id);
                 }
             }
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         }
 
         n.visit_mut_children_with(self);
@@ -770,12 +765,12 @@ impl VisitMut for FlowHelper<'_> {
                     return;
                 }
                 let value = if let Some(label) = label {
-                    let value: JsWord = format!("continue|{}", label.sym).into();
+                    let value: Atom = format!("continue|{}", label.sym).into();
                     self.label
                         .insert(value.clone(), Label::Continue(label.clone()));
                     value
                 } else {
-                    "continue".into()
+                    atom!("continue")
                 };
 
                 *node = ReturnStmt {
@@ -783,7 +778,7 @@ impl VisitMut for FlowHelper<'_> {
                     arg: Some(
                         Lit::Str(Str {
                             span,
-                            value,
+                            value: value.into(),
                             raw: None,
                         })
                         .into(),
@@ -796,20 +791,20 @@ impl VisitMut for FlowHelper<'_> {
                     return;
                 }
                 let value = if let Some(label) = label {
-                    let value: JsWord = format!("break|{}", label.sym).into();
+                    let value: Atom = format!("break|{}", label.sym).into();
                     self.label
                         .insert(value.clone(), Label::Break(label.clone()));
                     value
                 } else {
                     self.has_break = true;
-                    "break".into()
+                    atom!("break")
                 };
                 *node = ReturnStmt {
                     span,
                     arg: Some(
                         Lit::Str(Str {
                             span,
-                            value,
+                            value: value.into(),
                             raw: None,
                         })
                         .into(),
@@ -828,7 +823,7 @@ impl VisitMut for FlowHelper<'_> {
                             span,
                             props: vec![PropOrSpread::Prop(Box::new(Prop::KeyValue(
                                 KeyValueProp {
-                                    key: PropName::Ident(IdentName::new("v".into(), DUMMY_SP)),
+                                    key: PropName::Ident(IdentName::new(atom!("v"), DUMMY_SP)),
                                     value: s.arg.take().unwrap_or_else(|| {
                                         Box::new(Expr::Unary(UnaryExpr {
                                             span: DUMMY_SP,
@@ -880,7 +875,7 @@ impl VisitMut for FlowHelper<'_> {
 }
 
 struct MutationHandler<'a> {
-    map: &'a mut AHashMap<Id, SyntaxContext>,
+    map: &'a mut FxHashMap<Id, SyntaxContext>,
     in_function: bool,
 }
 

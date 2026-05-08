@@ -17,17 +17,18 @@ use std::{
     sync::atomic::{AtomicUsize, Ordering::SeqCst},
 };
 
+use rustc_hash::FxHashSet;
 #[cfg(feature = "tty-emitter")]
 use termcolor::{Color, ColorSpec};
 
 use self::Level::*;
 pub use self::{
-    diagnostic::{Diagnostic, DiagnosticId, DiagnosticStyledString, SubDiagnostic},
+    diagnostic::{Diagnostic, DiagnosticId, DiagnosticStyledString, Message, SubDiagnostic},
     diagnostic_builder::DiagnosticBuilder,
     emitter::{ColorConfig, Emitter, EmitterWriter},
+    snippet::Style,
 };
 use crate::{
-    collections::AHashSet,
     rustc_data_structures::stable_hasher::StableHasher,
     sync::{Lock, LockCell, Lrc},
     syntax_pos::{BytePos, FileLinesResult, FileName, Loc, MultiSpan, Span},
@@ -36,6 +37,7 @@ use crate::{
 
 mod diagnostic;
 mod diagnostic_builder;
+
 pub mod emitter;
 mod lock;
 mod snippet;
@@ -50,8 +52,12 @@ mod styled_buffer;
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(u32)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(u32))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::ast_node::Encode, ::ast_node::Decode)
+)]
 pub enum Applicability {
     MachineApplicable,
     HasPlaceholders,
@@ -68,8 +74,12 @@ pub enum Applicability {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::ast_node::Encode, ::ast_node::Decode)
+)]
 pub struct CodeSuggestion {
     /// Each substitute can have multiple variants due to multiple
     /// applicable suggestions
@@ -121,8 +131,12 @@ pub struct CodeSuggestion {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::ast_node::Encode, ::ast_node::Decode)
+)]
 pub struct Substitution {
     pub parts: Vec<SubstitutionPart>,
 }
@@ -136,8 +150,12 @@ pub struct Substitution {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(C)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(C))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::ast_node::Encode, ::ast_node::Decode)
+)]
 pub struct SubstitutionPart {
     pub span: Span,
     pub snippet: String,
@@ -154,6 +172,14 @@ pub trait SourceMapper: crate::sync::Send + crate::sync::Sync {
     fn call_span_if_macro(&self, sp: Span) -> Span;
     fn doctest_offset_line(&self, line: usize) -> usize;
     fn span_to_snippet(&self, sp: Span) -> Result<String, Box<SpanSnippetError>>;
+    /// This function is called to change the [BytePos] in AST into an unmapped,
+    /// real value.
+    ///
+    /// By default, it returns the raw value because by default, the AST stores
+    /// original values.
+    fn map_raw_pos(&self, raw_pos: BytePos) -> BytePos {
+        raw_pos
+    }
 }
 
 impl CodeSuggestion {
@@ -340,11 +366,11 @@ impl error::Error for ExplicitBug {
 ///         handler
 ///             .struct_span_err(
 ///                 span,
-///                 &format!("`{}` used as parameter more than once", js_word),
+///                 &format!("`{}` used as parameter more than once", atom),
 ///             )
 ///             .span_note(
 ///                 old_span,
-///                 &format!("previous definition of `{}` here", js_word),
+///                 &format!("previous definition of `{}` here", atom),
 ///             )
 ///             .emit();
 ///     });
@@ -361,15 +387,15 @@ pub struct Handler {
     // This set contains the `DiagnosticId` of all emitted diagnostics to avoid
     // emitting the same diagnostic with extended help (`--teach`) twice, which
     // would be unnecessary repetition.
-    taught_diagnostics: Lock<AHashSet<DiagnosticId>>,
+    taught_diagnostics: Lock<FxHashSet<DiagnosticId>>,
 
     /// Used to suggest rustc --explain <error code>
-    emitted_diagnostic_codes: Lock<AHashSet<DiagnosticId>>,
+    emitted_diagnostic_codes: Lock<FxHashSet<DiagnosticId>>,
 
     // This set contains a hash of every diagnostic that has been emitted by
     // this handler. These hashes is used to avoid emitting the same error
     // twice.
-    emitted_diagnostics: Lock<AHashSet<u128>>,
+    emitted_diagnostics: Lock<FxHashSet<u128>>,
 }
 
 fn default_track_diagnostic(_: &Diagnostic) {}
@@ -692,7 +718,7 @@ impl Handler {
     }
 
     pub fn span_unimpl<S: Into<MultiSpan>>(&self, sp: S, msg: &str) -> ! {
-        self.span_bug(sp, &format!("unimplemented {}", msg));
+        self.span_bug(sp, &format!("unimplemented {msg}"));
     }
 
     pub fn failure(&self, msg: &str) {
@@ -715,6 +741,14 @@ impl Handler {
         db.emit();
     }
 
+    pub fn err_with_code(&self, msg: &str, code: DiagnosticId) {
+        if self.flags.treat_err_as_bug {
+            self.bug(msg);
+        }
+        let mut db = DiagnosticBuilder::new_with_code(self, Error, Some(code), msg);
+        db.emit();
+    }
+
     pub fn warn(&self, msg: &str) {
         let mut db = DiagnosticBuilder::new(self, Warning, msg);
         db.emit();
@@ -732,7 +766,7 @@ impl Handler {
     }
 
     pub fn unimpl(&self, msg: &str) -> ! {
-        self.bug(&format!("unimplemented {}", msg));
+        self.bug(&format!("unimplemented {msg}"));
     }
 
     fn bump_err_count(&self) {
@@ -837,11 +871,11 @@ impl Handler {
     }
 
     pub fn force_print_db(&self, mut db: DiagnosticBuilder<'_>) {
-        self.emitter.borrow_mut().emit(&db);
+        self.emitter.borrow_mut().emit(&mut db);
         db.cancel();
     }
 
-    fn emit_db(&self, db: &DiagnosticBuilder<'_>) {
+    fn emit_db(&self, db: &mut DiagnosticBuilder<'_>) {
         let diagnostic = &**db;
 
         TRACK_DIAGNOSTICS.with(|track_diagnostics| {
@@ -874,9 +908,13 @@ impl Handler {
             }
         }
     }
+
+    pub fn take_diagnostics(&self) -> Vec<String> {
+        self.emitter.borrow_mut().take_diagnostics()
+    }
 }
 
-#[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
+#[derive(Copy, PartialEq, Eq, Clone, Hash, Debug, Default)]
 #[cfg_attr(
     feature = "diagnostic-serde",
     derive(serde::Serialize, serde::Deserialize)
@@ -885,8 +923,12 @@ impl Handler {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(u32)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(u32))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::ast_node::Encode, ::ast_node::Decode)
+)]
 pub enum Level {
     Bug,
     Fatal,
@@ -897,6 +939,7 @@ pub enum Level {
     Warning,
     Note,
     Help,
+    #[default]
     Cancelled,
     FailureNote,
 }

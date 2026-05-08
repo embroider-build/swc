@@ -1,18 +1,16 @@
 use std::{cmp::Reverse, io, ops::AddAssign};
 
 use arrayvec::ArrayVec;
-use rustc_hash::FxHashSet;
-use swc_atoms::JsWord;
+use swc_atoms::Atom;
 use swc_common::{
-    sync::Lrc, BytePos, FileLines, FileName, Loc, SourceMapper, Span, SpanLinesError, SyntaxContext,
+    sync::Lrc, BytePos, FileLines, FileName, Loc, SourceMapper, Span, SpanLinesError,
 };
 use swc_ecma_ast::*;
 use swc_ecma_codegen::{text_writer::WriteJs, Emitter};
-use swc_ecma_visit::{noop_visit_type, visit_obj_and_computed, Visit, VisitWith};
 
 #[derive(Clone, Copy)]
 
-pub(crate) struct CharFreq([i32; 64]);
+pub(crate) struct CharFreq([i32; 256]);
 
 #[derive(Clone, Copy)]
 pub(crate) struct Base54Chars {
@@ -21,7 +19,7 @@ pub(crate) struct Base54Chars {
 
 impl Default for CharFreq {
     fn default() -> Self {
-        CharFreq([0; 64])
+        CharFreq([0; 256])
     }
 }
 
@@ -159,7 +157,12 @@ impl WriteJs for CharFreq {
     }
 
     #[inline(always)]
-    fn write_punct(&mut self, _: Option<Span>, s: &'static str) -> io::Result<()> {
+    fn write_punct(
+        &mut self,
+        _: Option<Span>,
+        s: &'static str,
+        _commit_pending_semi: bool,
+    ) -> io::Result<()> {
         self.write(s)?;
         Ok(())
     }
@@ -191,66 +194,43 @@ impl CharFreq {
             return;
         }
 
-        // #[cfg(feature = "debug")]
-        // {
-        //     let considered = s
-        //         .chars()
-        //         .filter(|&c| Ident::is_valid_continue(c))
-        //         .collect::<String>();
-        //     if !considered.is_empty() {
-        //         tracing::debug!("Scanning: `{}` with delta {}", considered, delta);
-        //     }
-        // }
-
         for &c in s.as_bytes() {
-            match c {
-                b'a'..=b'z' => {
-                    self.0[c as usize - 'a' as usize] += delta;
-                }
-                b'A'..=b'Z' => {
-                    self.0[c as usize - 'A' as usize + 26] += delta;
-                }
-                b'0'..=b'9' => {
-                    self.0[c as usize - '0' as usize + 52] += delta;
-                }
-                b'$' => {
-                    self.0[62] += delta;
-                }
-                b'_' => {
-                    self.0[63] += delta;
-                }
-
-                _ => {}
-            }
+            self.0[c as usize] += delta;
         }
     }
 
-    pub fn compute(p: &Program, preserved: &FxHashSet<Id>, unresolved_ctxt: SyntaxContext) -> Self {
-        let cm = Lrc::new(DummySourceMap);
+    pub fn compute(p: &Program, idents: &Vec<Atom>) -> Self {
+        let mut a = {
+            let cm = Lrc::new(DummySourceMap);
+            let mut freq = Self::default();
 
-        let mut freq = Self::default();
+            {
+                let mut emitter = Emitter {
+                    cfg: swc_ecma_codegen::Config::default()
+                        .with_target(EsVersion::latest())
+                        .with_minify(true),
+                    cm,
+                    comments: None,
+                    wr: &mut freq,
+                };
 
-        {
-            let mut emitter = Emitter {
-                cfg: swc_ecma_codegen::Config::default()
-                    .with_target(EsVersion::latest())
-                    .with_minify(true),
-                cm,
-                comments: None,
-                wr: &mut freq,
-            };
+                emitter.emit_program(p).unwrap();
+            }
 
-            emitter.emit_program(p).unwrap();
+            freq
+        };
+
+        let mut analyzer = CharFreqAnalyzer {
+            freq: Default::default(),
+        };
+
+        for ident in idents {
+            analyzer.freq.scan(ident, -1);
         }
 
-        // Subtract
-        p.visit_with(&mut CharFreqAnalyzer {
-            freq: &mut freq,
-            preserved,
-            unresolved_ctxt,
-        });
+        a += analyzer.freq;
 
-        freq
+        a
     }
 
     pub fn compile(self) -> Base54Chars {
@@ -260,8 +240,7 @@ impl CharFreq {
         let mut arr = BASE54_DEFAULT_CHARS
             .iter()
             .copied()
-            .enumerate()
-            .map(|(idx, c)| (self.0[idx], c))
+            .map(|c| (self.0[c as usize], c))
             .collect::<Vec<_>>();
 
         arr.sort_by_key(|&(freq, _)| Reverse(freq));
@@ -289,47 +268,13 @@ impl CharFreq {
     }
 }
 
-struct CharFreqAnalyzer<'a> {
-    freq: &'a mut CharFreq,
-    preserved: &'a FxHashSet<Id>,
-    unresolved_ctxt: SyntaxContext,
-}
-
-impl Visit for CharFreqAnalyzer<'_> {
-    noop_visit_type!();
-
-    visit_obj_and_computed!();
-
-    fn visit_ident(&mut self, i: &Ident) {
-        if i.sym != "arguments" && i.ctxt == self.unresolved_ctxt {
-            return;
-        }
-
-        // It's not mangled
-        if self.preserved.contains(&i.to_id()) {
-            return;
-        }
-
-        self.freq.scan(&i.sym, -1);
-    }
-
-    fn visit_prop_name(&mut self, n: &PropName) {
-        match n {
-            PropName::Ident(_) => {}
-            PropName::Str(_) => {}
-            PropName::Num(_) => {}
-            PropName::Computed(e) => e.visit_with(self),
-            PropName::BigInt(_) => {}
-        }
-    }
-
-    /// This is preserved anyway
-    fn visit_module_export_name(&mut self, _: &ModuleExportName) {}
+struct CharFreqAnalyzer {
+    freq: CharFreq,
 }
 
 impl AddAssign for CharFreq {
     fn add_assign(&mut self, rhs: Self) {
-        for i in 0..64 {
+        for i in 0..256 {
             self.0[i] += rhs.0[i];
         }
     }
@@ -338,7 +283,7 @@ impl AddAssign for CharFreq {
 impl Base54Chars {
     /// givin a number, return a base54 encoded string
     /// `usize -> [a-zA-Z$_][a-zA-Z$_0-9]*`
-    pub(crate) fn encode(&self, init: &mut usize, skip_reserved: bool) -> JsWord {
+    pub(crate) fn encode(&self, init: &mut usize, skip_reserved: bool) -> Atom {
         let mut n = *init;
 
         *init += 1;
@@ -367,8 +312,8 @@ impl Base54Chars {
 
         let s = unsafe {
             // Safety: We are only using ascii characters
-            // Safety: The stack memory for ret is alive while creating JsWord
-            JsWord::from(std::str::from_utf8_unchecked(&ret))
+            // Safety: The stack memory for ret is alive while creating Atom
+            Atom::from(std::str::from_utf8_unchecked(&ret))
         };
 
         if skip_reserved

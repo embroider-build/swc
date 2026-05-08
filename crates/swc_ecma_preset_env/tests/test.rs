@@ -10,16 +10,16 @@ use std::{
 };
 
 use pretty_assertions::assert_eq;
+use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use serde_json::Value;
 use swc_common::{
-    collections::AHashMap, comments::SingleThreadedComments, errors::HANDLER, input::StringInput,
-    FromVariant, Mark,
+    comments::SingleThreadedComments, errors::HANDLER, input::StringInput, FromVariant, Mark,
 };
 use swc_ecma_ast::*;
 use swc_ecma_codegen::Emitter;
 use swc_ecma_parser::{Parser, Syntax};
-use swc_ecma_preset_env::{preset_env, Config, FeatureOrModule, Mode, Targets, Version};
+use swc_ecma_preset_env::{transform_from_env, Config, FeatureOrModule, Mode, Targets, Version};
 use swc_ecma_transforms::{fixer, helpers};
 use swc_ecma_utils::drop_span;
 use swc_ecma_visit::{visit_mut_pass, VisitMut};
@@ -70,7 +70,7 @@ struct PresetConfig {
 #[serde(untagged)]
 pub enum CoreJs {
     Ver(Version),
-    Val(AHashMap<String, Value>),
+    Val(FxHashMap<String, Value>),
 }
 
 impl Default for CoreJs {
@@ -117,12 +117,12 @@ enum Error {
 }
 
 fn exec(c: PresetConfig, dir: PathBuf) -> Result<(), Error> {
-    println!("Config: {:?}", c);
+    println!("Config: {c:?}");
 
     Tester::new()
         .print_errors(|cm, handler| {
             let pass = (
-                preset_env(
+                transform_from_env(
                     Mark::fresh(Mark::root()),
                     Some(SingleThreadedComments::default()),
                     Config {
@@ -147,10 +147,10 @@ fn exec(c: PresetConfig, dir: PathBuf) -> Result<(), Error> {
                         force_all_transforms: c.force_all_transforms,
                         shipped_proposals: c.shipped_proposals,
                         targets: c.targets,
-                        path: std::env::current_dir().unwrap(),
-                    },
+                        path: std::env::current_dir().ok(),
+                    }
+                    .into(),
                     Default::default(),
-                    &mut Default::default(),
                 ),
                 fixer(None),
             );
@@ -297,7 +297,7 @@ fn fixture(input: PathBuf) {
 
     let cfg: BabelOptions =
         serde_json::from_reader(File::open(entry_dir.join("options.json")).unwrap())
-            .map_err(|err| Error::Msg(format!("failed to parse options.json: {}", err)))
+            .map_err(|err| Error::Msg(format!("failed to parse options.json: {err}")))
             .unwrap();
     assert_eq!(cfg.presets.len(), 1);
     let cfg = cfg.presets.into_iter().map(|v| v.1).next().unwrap();

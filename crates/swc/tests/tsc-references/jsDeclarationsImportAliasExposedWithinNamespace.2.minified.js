@@ -7,24 +7,24 @@ Object.defineProperty(exports, "__esModule", {
         return myTypes;
     }
 });
-const myTypes = {};
+let myTypes = {};
 //// [file2.js]
 Object.defineProperty(exports, "__esModule", {
     value: !0
-}), function(target, all) {
-    for(var name in all)Object.defineProperty(target, name, {
-        enumerable: !0,
-        get: all[name]
-    });
-}(exports, {
-    testFn: function() {
+});
+var target = exports, all = {
+    get testFn () {
         return testFn;
     },
-    testFnTypes: function() {
+    get testFnTypes () {
         return testFnTypes;
     }
+};
+for(var name in all)Object.defineProperty(target, name, {
+    enumerable: !0,
+    get: Object.getOwnPropertyDescriptor(all, name).get
 });
-const testFnTypes = {};
+let testFnTypes = {};
 function testFn(input) {
     return 'number' == typeof input ? 2 * input : null;
 }

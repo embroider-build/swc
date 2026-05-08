@@ -1,14 +1,14 @@
-#[cfg(feature = "concurrent")]
-use rayon::prelude::*;
-use swc_common::{collections::AHashSet, pass::Repeated, util::take::Take, DUMMY_SP};
+use par_iter::prelude::*;
+use rustc_hash::FxHashSet;
+use swc_common::{pass::Repeated, util::take::Take, DUMMY_SP};
 use swc_ecma_ast::*;
-use swc_ecma_usage_analyzer::analyzer::UsageAnalyzer;
 use swc_ecma_utils::{find_pat_ids, StmtLike};
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut, VisitMutWith, VisitWith};
 
 use super::util::drop_invalid_stmts;
 use crate::{
-    program_data::ProgramData,
+    program_data::{ProgramData, VarUsageInfoFlags},
+    usage_analyzer::analyzer::UsageAnalyzer,
     util::{is_hoisted_var_decl_without_init, sort::is_sorted_by, IsModuleItem, ModuleItemExt},
 };
 
@@ -18,7 +18,7 @@ pub(super) struct DeclHoisterConfig {
     pub _top_level: bool,
 }
 
-pub(super) fn decl_hoister(config: DeclHoisterConfig, data: &ProgramData) -> Hoister {
+pub(super) fn decl_hoister(config: DeclHoisterConfig, data: &ProgramData) -> Hoister<'_> {
     Hoister {
         config,
         changed: false,
@@ -61,7 +61,7 @@ impl Hoister<'_> {
                             self.data
                                 .vars
                                 .get(id)
-                                .map(|v| !v.used_above_decl)
+                                .map(|v| !v.flags.contains(VarUsageInfoFlags::USED_ABOVE_DECL))
                                 .unwrap_or(false)
                         }) {
                             2
@@ -76,20 +76,10 @@ impl Hoister<'_> {
             PartialOrd::partial_cmp,
         ) || (self.config.hoist_vars
             && if len >= *crate::LIGHT_TASK_PARALLELS {
-                #[cfg(feature = "concurrent")]
-                {
-                    stmts.par_chunks(2).any(|stmts| {
-                        is_hoisted_var_decl_without_init(&stmts[0])
-                            && is_hoisted_var_decl_without_init(&stmts[1])
-                    })
-                }
-                #[cfg(not(feature = "concurrent"))]
-                {
-                    stmts.chunks(2).any(|stmts| {
-                        is_hoisted_var_decl_without_init(&stmts[0])
-                            && is_hoisted_var_decl_without_init(&stmts[1])
-                    })
-                }
+                stmts.par_chunks(2).any(|stmts| {
+                    is_hoisted_var_decl_without_init(&stmts[0])
+                        && is_hoisted_var_decl_without_init(&stmts[1])
+                })
             } else {
                 stmts.windows(2).any(|stmts| {
                     is_hoisted_var_decl_without_init(&stmts[0])
@@ -105,7 +95,7 @@ impl Hoister<'_> {
         let mut var_decls = Vec::new();
         let mut fn_decls = Vec::with_capacity(stmts.len());
         let mut new_stmts = Vec::with_capacity(stmts.len());
-        let mut done = AHashSet::default();
+        let mut done = FxHashSet::default();
 
         let mut found_non_var_decl = false;
         for stmt in stmts.take() {
@@ -140,7 +130,11 @@ impl Hoister<'_> {
                                                 .data
                                                 .vars
                                                 .get(&id.to_id())
-                                                .map(|v| v.declared_as_fn_param)
+                                                .map(|v| {
+                                                    v.flags.contains(
+                                                        VarUsageInfoFlags::DECLARED_AS_FN_PARAM,
+                                                    )
+                                                })
                                                 .unwrap_or(false)
                                         {
                                             continue;
@@ -222,7 +216,11 @@ impl Hoister<'_> {
                                                 .data
                                                 .vars
                                                 .get(&name.to_id())
-                                                .map(|v| v.declared_as_fn_param)
+                                                .map(|v| {
+                                                    v.flags.contains(
+                                                        VarUsageInfoFlags::DECLARED_AS_FN_PARAM,
+                                                    )
+                                                })
                                                 .unwrap_or(false)
                                         {
                                             return false;
@@ -279,7 +277,7 @@ impl Hoister<'_> {
 }
 
 impl VisitMut for Hoister<'_> {
-    noop_visit_mut_type!();
+    noop_visit_mut_type!(fail);
 
     fn visit_mut_module_items(&mut self, stmts: &mut Vec<ModuleItem>) {
         self.handle_stmt_likes(stmts);

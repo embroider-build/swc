@@ -1,56 +1,53 @@
 !function(global1, factory) {
-    'object' == typeof exports && 'undefined' != typeof module ? factory(exports, require('source-map')) : 'function' == typeof define && define.amd ? define([
+    'object' == typeof exports && "u" > typeof module ? factory(exports, require('@jridgewell/source-map')) : 'function' == typeof define && define.amd ? define([
         'exports',
-        'source-map'
-    ], factory) : factory((global1 = 'undefined' != typeof globalThis ? globalThis : global1 || self).Terser = {}, global1.sourceMap);
-}(this, function(exports1, MOZ_SourceMap) {
+        '@jridgewell/source-map'
+    ], factory) : factory((global1 = "u" > typeof globalThis ? globalThis : global1 || self).Terser = {}, global1.sourceMap);
+}(this, function(exports1, sourceMap) {
     'use strict';
-    let mangle_options;
-    var def_is_string, def_find_defs, MOZ_SourceMap__default = MOZ_SourceMap && 'object' == typeof MOZ_SourceMap && 'default' in MOZ_SourceMap ? MOZ_SourceMap : {
-        default: MOZ_SourceMap
-    };
+    let mangle_options, unary_bool, binary_bool, unary, numeric_ops;
     /***********************************************************************
-
-  A JavaScript tokenizer / parser / beautifier / compressor.
-  https://github.com/mishoo/UglifyJS2
-
-  -------------------------------- (C) ---------------------------------
-
-                           Author: Mihai Bazon
-                         <mihai.bazon@gmail.com>
-                       http://mihai.bazon.net/blog
-
-  Distributed under the BSD license:
-
-    Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-        * Redistributions of source code must retain the above
-          copyright notice, this list of conditions and the following
-          disclaimer.
-
-        * Redistributions in binary form must reproduce the above
-          copyright notice, this list of conditions and the following
-          disclaimer in the documentation and/or other materials
-          provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-    OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-    TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-    THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-    SUCH DAMAGE.
-
- ***********************************************************************/ function characters(str) {
+    
+      A JavaScript tokenizer / parser / beautifier / compressor.
+      https://github.com/mishoo/UglifyJS2
+    
+      -------------------------------- (C) ---------------------------------
+    
+                               Author: Mihai Bazon
+                             <mihai.bazon@gmail.com>
+                           http://mihai.bazon.net/blog
+    
+      Distributed under the BSD license:
+    
+        Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
+    
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions
+        are met:
+    
+            * Redistributions of source code must retain the above
+              copyright notice, this list of conditions and the following
+              disclaimer.
+    
+            * Redistributions in binary form must reproduce the above
+              copyright notice, this list of conditions and the following
+              disclaimer in the documentation and/or other materials
+              provided with the distribution.
+    
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+        EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+        PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+        OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+        PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+        PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+        THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+        TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+        THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+        SUCH DAMAGE.
+    
+     ***********************************************************************/ function characters(str) {
         return str.split("");
     }
     function member(name, array) {
@@ -65,18 +62,15 @@
         !0 === args ? args = {} : null != args && "object" == typeof args && (args = {
             ...args
         });
-        const ret = args || {};
+        let ret = args || {};
         if (croak) {
-            for(const i in ret)if (HOP(ret, i) && !HOP(defs, i)) throw new DefaultsError("`" + i + "` is not a supported option", defs);
+            for(let i in ret)if (HOP(ret, i) && !HOP(defs, i)) throw new DefaultsError("`" + i + "` is not a supported option", defs);
         }
-        for(const i in defs)if (HOP(defs, i)) {
-            if (args && HOP(args, i)) {
-                if ("ecma" === i) {
-                    let ecma = 0 | args[i];
-                    ecma > 5 && ecma < 2015 && (ecma += 2009), ret[i] = ecma;
-                } else ret[i] = args && HOP(args, i) ? args[i] : defs[i];
-            } else ret[i] = defs[i];
-        }
+        for(let i in defs)if (HOP(defs, i)) if (args && HOP(args, i)) if ("ecma" === i) {
+            let ecma = 0 | args[i];
+            ecma > 5 && ecma < 2015 && (ecma += 2009), ret[i] = ecma;
+        } else ret[i] = args && HOP(args, i) ? args[i] : defs[i];
+        else ret[i] = defs[i];
         return ret;
     }
     function noop() {}
@@ -92,39 +86,21 @@
     function return_null() {
         return null;
     }
-    var MAP = function() {
-        function MAP(a, f, backwards) {
-            var i, ret = [], top = [];
-            function doit() {
-                var val = f(a[i], i), is_last = val instanceof Last;
-                return is_last && (val = val.v), val instanceof AtTop ? (val = val.v) instanceof Splice ? top.push.apply(top, backwards ? val.v.slice().reverse() : val.v) : top.push(val) : val !== skip && (val instanceof Splice ? ret.push.apply(ret, backwards ? val.v.slice().reverse() : val.v) : ret.push(val)), is_last;
+    var def_is_boolean, def_is_number, def_is_32_bit_integer, def_is_string, MAP = function() {
+        function MAP(a, tw, allow_splicing = !0) {
+            let new_a = [];
+            for(let i = 0; i < a.length; ++i){
+                let ret = a[i].transform(tw, allow_splicing);
+                ret instanceof AST_Node ? new_a.push(ret) : ret instanceof Splice && new_a.push(...ret.v);
             }
-            if (Array.isArray(a)) {
-                if (backwards) {
-                    for(i = a.length; --i >= 0 && !doit(););
-                    ret.reverse(), top.reverse();
-                } else for(i = 0; i < a.length && !doit(); ++i);
-            } else for(i in a)if (HOP(a, i) && doit()) break;
-            return top.concat(ret);
-        }
-        MAP.at_top = function(val) {
-            return new AtTop(val);
-        }, MAP.splice = function(val) {
-            return new Splice(val);
-        }, MAP.last = function(val) {
-            return new Last(val);
-        };
-        var skip = MAP.skip = {};
-        function AtTop(val) {
-            this.v = val;
+            return new_a;
         }
         function Splice(val) {
             this.v = val;
         }
-        function Last(val) {
-            this.v = val;
-        }
-        return MAP;
+        return MAP.splice = function(val) {
+            return new Splice(val);
+        }, MAP.skip = {}, MAP;
     }();
     function make_node(ctor, orig, props) {
         return props || (props = {}), orig && (props.start || (props.start = orig.start), props.end || (props.end = orig.end)), new ctor(props);
@@ -144,10 +120,9 @@
         return array.length < 2 ? array.slice() : function _ms(a) {
             if (a.length <= 1) return a;
             var m = Math.floor(a.length / 2), left = a.slice(0, m), right = a.slice(m);
-            return function(a, b) {
-                for(var r = [], ai = 0, bi = 0, i = 0; ai < a.length && bi < b.length;)0 >= cmp(a[ai], b[bi]) ? r[i++] = a[ai++] : r[i++] = b[bi++];
-                return ai < a.length && r.push.apply(r, a.slice(ai)), bi < b.length && r.push.apply(r, b.slice(bi)), r;
-            }(left = _ms(left), right = _ms(right));
+            left = _ms(left), right = _ms(right);
+            for(var a1 = left, b = right, r = [], ai = 0, bi = 0, i = 0; ai < a1.length && bi < b.length;)0 >= cmp(a1[ai], b[bi]) ? r[i++] = a1[ai++] : r[i++] = b[bi++];
+            return ai < a1.length && r.push.apply(r, a1.slice(ai)), bi < b.length && r.push.apply(r, b.slice(bi)), r;
         }(array);
     }
     function makePredicate(words) {
@@ -178,55 +153,61 @@
             return ("\\" == source[offset - 1] && ("\\" != source[offset - 2] || /(?:^|[^\\])(?:\\{2})*$/.test(source.slice(0, offset - 1))) ? "" : "\\") + lineTerminatorEscape[match];
         });
     }
+    // Subset of regexps that is not going to cause regexp based DDOS
+    // https://owasp.org/www-community/attacks/Regular_expression_Denial_of_Service_-_ReDoS
+    let re_safe_regexp = /^[\\/|\0\s\w^$.[\]()]*$/;
     function has_annotation(node, annotation) {
         return node._annotations & annotation;
     }
     function set_annotation(node, annotation) {
         node._annotations |= annotation;
     }
+    function clear_annotation(node, annotation) {
+        node._annotations &= ~annotation;
+    }
     /***********************************************************************
-
-  A JavaScript tokenizer / parser / beautifier / compressor.
-  https://github.com/mishoo/UglifyJS2
-
-  -------------------------------- (C) ---------------------------------
-
-                           Author: Mihai Bazon
-                         <mihai.bazon@gmail.com>
-                       http://mihai.bazon.net/blog
-
-  Distributed under the BSD license:
-
-    Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
-    Parser based on parse-js (http://marijn.haverbeke.nl/parse-js/).
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-        * Redistributions of source code must retain the above
-          copyright notice, this list of conditions and the following
-          disclaimer.
-
-        * Redistributions in binary form must reproduce the above
-          copyright notice, this list of conditions and the following
-          disclaimer in the documentation and/or other materials
-          provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-    OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-    TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-    THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-    SUCH DAMAGE.
-
- ***********************************************************************/ var LATEST_RAW = "", LATEST_TEMPLATE_END = !0, KEYWORDS = "break case catch class const continue debugger default delete do else export extends finally for function if in instanceof let new return switch throw try typeof var void while with", KEYWORDS_ATOM = "false null true", RESERVED_WORDS = "enum import super this " + KEYWORDS_ATOM + " " + KEYWORDS, ALL_RESERVED_WORDS = "implements interface package private protected public static " + RESERVED_WORDS, KEYWORDS_BEFORE_EXPRESSION = "return new delete throw else case yield await"; // Only used for numbers and template strings
+    
+      A JavaScript tokenizer / parser / beautifier / compressor.
+      https://github.com/mishoo/UglifyJS2
+    
+      -------------------------------- (C) ---------------------------------
+    
+                               Author: Mihai Bazon
+                             <mihai.bazon@gmail.com>
+                           http://mihai.bazon.net/blog
+    
+      Distributed under the BSD license:
+    
+        Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
+        Parser based on parse-js (http://marijn.haverbeke.nl/parse-js/).
+    
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions
+        are met:
+    
+            * Redistributions of source code must retain the above
+              copyright notice, this list of conditions and the following
+              disclaimer.
+    
+            * Redistributions in binary form must reproduce the above
+              copyright notice, this list of conditions and the following
+              disclaimer in the documentation and/or other materials
+              provided with the distribution.
+    
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+        EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+        PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+        OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+        PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+        PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+        THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+        TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+        THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+        SUCH DAMAGE.
+    
+     ***********************************************************************/ var LATEST_RAW = "", TEMPLATE_RAWS = new Map(), KEYWORDS = "break case catch class const continue debugger default delete do else export extends finally for function if in instanceof let new return switch throw try typeof var void while with", KEYWORDS_ATOM = "false null true", RESERVED_WORDS = "enum import super this " + KEYWORDS_ATOM + " " + KEYWORDS, ALL_RESERVED_WORDS = "implements interface package private protected public static " + RESERVED_WORDS, KEYWORDS_BEFORE_EXPRESSION = "return new delete throw else case yield await"; // Only used for numbers and template strings
     KEYWORDS = makePredicate(KEYWORDS), RESERVED_WORDS = makePredicate(RESERVED_WORDS), KEYWORDS_BEFORE_EXPRESSION = makePredicate(KEYWORDS_BEFORE_EXPRESSION), KEYWORDS_ATOM = makePredicate(KEYWORDS_ATOM), ALL_RESERVED_WORDS = makePredicate(ALL_RESERVED_WORDS);
     var OPERATOR_CHARS = makePredicate(characters("+-*&%=<>!?|~^")), RE_NUM_LITERAL = /[0-9a-f]/i, RE_HEX_NUMBER = /^0x[0-9a-f]+$/i, RE_OCT_NUMBER = /^0[0-7]+$/, RE_ES6_OCT_NUMBER = /^0o[0-7]+$/i, RE_BIN_NUMBER = /^0b[01]+$/i, RE_DEC_NUMBER = /^\d*\.?\d*(?:e[+-]?\d*(?:\d\.?|\.?\d)\d*)?$/i, RE_BIG_INT = /^(0[xob])?[0-9a-f]+n$/i, OPERATORS = makePredicate([
         "in",
@@ -301,7 +282,7 @@
     function is_identifier_char(ch) {
         return UNICODE_ID_Continue.test(ch);
     }
-    const BASIC_IDENT = /^[a-z_$][a-z0-9_$]*$/i;
+    let BASIC_IDENT = /^[a-z_$][a-z0-9_$]*$/i;
     function is_basic_identifier_string(str) {
         return BASIC_IDENT.test(str);
     }
@@ -367,7 +348,7 @@
         "&&=",
         "||="
     ]), PRECEDENCE = function(a, ret) {
-        for(var i = 0; i < a.length; ++i)for(var b = a[i], j = 0; j < b.length; ++j)ret[b[j]] = i + 1;
+        for(var i = 0; i < a.length; ++i)for (let op of a[i])ret[op] = i + 1;
         return ret;
     }([
         [
@@ -432,7 +413,7 @@
         // Example: /* I count */ ( /* I don't */ foo() )
         // Useful because comments_before property of call with parens outside
         // contains both comments inside and outside these parens. Used to find the
-        const outer_comments_before_counts = new WeakMap();
+        let outer_comments_before_counts = new WeakMap();
         options = defaults(options, {
             bare_returns: !1,
             ecma: null,
@@ -489,10 +470,9 @@
                 var prev_was_dot = !1, previous_token = null;
                 function token(type, value, is_comment) {
                     S.regex_allowed = "operator" == type && !UNARY_POSTFIX.has(value) || "keyword" == type && KEYWORDS_BEFORE_EXPRESSION.has(value) || "punc" == type && PUNC_BEFORE_EXPRESSION.has(value) || "arrow" == type, "punc" == type && ("." == value || "?." == value) ? prev_was_dot = !0 : is_comment || (prev_was_dot = !1);
-                    const line = S.tokline, col = S.tokcol, pos = S.tokpos, nlb = S.newline_before;
-                    let comments_before = [], comments_after = [];
+                    let line = S.tokline, col = S.tokcol, pos = S.tokpos, nlb = S.newline_before, comments_before = [], comments_after = [];
                     is_comment || (comments_before = S.comments_before, comments_after = S.comments_before = []), S.newline_before = !1;
-                    const tok = new AST_Token(type, value, line, col, pos, nlb, comments_before, comments_after, filename);
+                    let tok = new AST_Token(type, value, line, col, pos, nlb, comments_before, comments_after, filename);
                     return is_comment || (previous_token = tok), tok;
                 }
                 function parse_error(err) {
@@ -528,7 +508,7 @@
                         return "n" === ch ? (is_big_int = !0, !0) : RE_NUM_LITERAL.test(ch);
                     });
                     if (prefix && (num = prefix + num), LATEST_RAW = num, RE_OCT_NUMBER.test(num) && next_token.has_directive("use strict") && parse_error("Legacy octal literals are not allowed in strict mode"), numeric_separator && (num.endsWith("_") ? parse_error("Numeric separators are not allowed at the end of numeric literals") : num.includes("__") && parse_error("Only one underscore is allowed as numeric separator"), num = num.replace(/_/g, "")), num.endsWith("n")) {
-                        const without_n = num.slice(0, -1), allow_e = RE_HEX_NUMBER.test(without_n), valid = parse_js_number(without_n, allow_e);
+                        let without_n = num.slice(0, -1), allow_e = RE_HEX_NUMBER.test(without_n), valid = parse_js_number(without_n, allow_e);
                         if (!has_dot && RE_BIG_INT.test(num) && !isNaN(valid)) return token("big_int", without_n);
                         parse_error("Invalid or unexpected token");
                     }
@@ -569,7 +549,7 @@
                         case 13:
                             if ("\n" == peek()) return next(!0, in_string), "";
                     }
-                    return is_octal(ch1) ? (template_string && strict_hex && !("0" === ch1 && !is_octal(peek())) && parse_error("Octal escape sequences are not allowed in template strings"), ch = ch1, // Parse
+                    return is_octal(ch1) ? (template_string && strict_hex && ("0" !== ch1 || is_octal(peek())) && parse_error("Octal escape sequences are not allowed in template strings"), ch = ch1, // Parse
                     ((p = peek()) >= "0" && p <= "7" && (ch += next(!0))[0] <= "3" && (p = peek()) >= "0" && p <= "7" && (ch += next(!0)), "0" === ch) ? "\0" : (ch.length > 0 && next_token.has_directive("use strict") && strict_hex && parse_error("Legacy octal escape sequences are not allowed in strict mode"), String.fromCharCode(parseInt(ch, 8)))) : ch1;
                 }
                 function hex_bytes(n, strict_hex) {
@@ -581,7 +561,7 @@
                     return parseInt(num, 16);
                 }
                 var read_string = with_eof_error("Unterminated string constant", function() {
-                    const start_pos = S.pos;
+                    let start_pos = S.pos;
                     for(var quote = next(), ret = [];;){
                         var ch = next(!0, !0);
                         if ("\\" == ch) ch = read_escaped_char(!0, !0);
@@ -596,14 +576,14 @@
                     var ch, tok, content = "", raw = "";
                     for(next(!0, !0); "`" != (ch = next(!0, !0));){
                         if ("\r" == ch) "\n" == peek() && ++S.pos, ch = "\n";
-                        else if ("$" == ch && "{" == peek()) return next(!0, !0), S.brace_counter++, tok = token(begin ? "template_head" : "template_substitution", content), LATEST_RAW = raw, LATEST_TEMPLATE_END = !1, tok;
+                        else if ("$" == ch && "{" == peek()) return next(!0, !0), S.brace_counter++, tok = token(begin ? "template_head" : "template_substitution", content), TEMPLATE_RAWS.set(tok, raw), tok.template_end = !1, tok;
                         if (raw += ch, "\\" == ch) {
                             var tmp = S.pos;
                             ch = read_escaped_char(!0, !(previous_token && ("name" === previous_token.type || "punc" === previous_token.type && (")" === previous_token.value || "]" === previous_token.value))), !0), raw += S.text.substr(tmp, S.pos - tmp);
                         }
                         content += ch;
                     }
-                    return S.template_braces.pop(), tok = token(begin ? "template_head" : "template_substitution", content), LATEST_RAW = raw, LATEST_TEMPLATE_END = !0, tok;
+                    return S.template_braces.pop(), tok = token(begin ? "template_head" : "template_substitution", content), TEMPLATE_RAWS.set(tok, raw), tok.template_end = !0, tok;
                 });
                 function skip_line_comment(type) {
                     var ret, regex_allowed = S.regex_allowed, i = function() {
@@ -641,11 +621,12 @@
                         }
                         name.push(ch);
                     }
-                    const name_str = name.join("");
+                    let name_str = name.join("");
                     return RESERVED_WORDS.has(name_str) && escaped && parse_error("Escaped characters are not allowed in keywords"), name_str;
                 }), read_regexp = with_eof_error("Unterminated regular expression", function(source) {
                     for(var ch, prev_backslash = !1, in_class = !1; ch = next(!0);)if (NEWLINE_CHARS.has(ch)) parse_error("Unexpected line terminator");
-                    else if (prev_backslash) source += "\\" + ch, prev_backslash = !1;
+                    else if (prev_backslash) /^[\u0000-\u007F]$/.test(ch) ? source += "\\" + ch : // Remove the useless slash before the escape, but only for characters that won't be added to regexp syntax
+                    source += ch, prev_backslash = !1;
                     else if ("[" == ch) in_class = !0, source += ch;
                     else if ("]" == ch && in_class) in_class = !1, source += ch;
                     else if ("/" != ch || in_class) "\\" == ch ? prev_backslash = !0 : source += ch;
@@ -672,9 +653,8 @@
                 function next_token(force_regexp) {
                     if (null != force_regexp) return read_regexp(force_regexp);
                     for(shebang && 0 == S.pos && looking_at("#!") && (start_token(), forward(2), skip_line_comment("comment5"));;){
-                        if (!function() {
-                            for(; WHITESPACE_CHARS.has(peek());)next();
-                        }(), start_token(), html5_comments) {
+                        for(; WHITESPACE_CHARS.has(peek());)next();
+                        if (start_token(), html5_comments) {
                             if (looking_at("<!--")) {
                                 forward(4), skip_line_comment("comment3");
                                 continue;
@@ -711,7 +691,7 @@
                                 if (!// Used because parsing ?. involves a lookahead for a digit
                                 function() {
                                     if (46 !== S.text.charCodeAt(S.pos + 1)) return !1;
-                                    const cannot_be_digit = S.text.charCodeAt(S.pos + 2);
+                                    let cannot_be_digit = S.text.charCodeAt(S.pos + 2);
                                     return cannot_be_digit < 48 || cannot_be_digit > 57;
                                 }()) break; // Handled below
                                 return next(), next(), token("punc", "?.");
@@ -809,7 +789,7 @@
         }
         function embed_tokens(parser) {
             return function(...args) {
-                const start = S.token, expr = parser(...args);
+                let start = S.token, expr = parser(...args);
                 return expr.start = start, expr.end = prev(), expr;
             };
         }
@@ -834,29 +814,24 @@
                 case "atom":
                     return simple_statement();
                 case "name":
-                    if ("async" == S.token.value && is_token(peek(), "keyword", "function")) return next(), next(), is_for_body && croak("functions are not allowed as the body of a loop"), function_(AST_Defun, !1, !0, is_export_default);
+                case "privatename":
+                    if (is("privatename") && !S.in_class && croak("Private field must be used in an enclosing class"), "async" == S.token.value && is_token(peek(), "keyword", "function")) return next(), next(), is_for_body && croak("functions are not allowed as the body of a loop"), function_(AST_Defun, !1, !0, is_export_default);
                     if ("import" == S.token.value && !is_token(peek(), "punc", "(") && !is_token(peek(), "punc", ".")) {
+                        let assert_clause;
                         next();
-                        var label, stat1, node = function() {
-                            var imported_name, imported_names, start = prev();
-                            is("name") && (imported_name = as_symbol(AST_SymbolImport)), is("punc", ",") && next(), ((imported_names = map_names(!0)) || imported_name) && expect_token("name", "from");
-                            var mod_str = S.token;
-                            "string" !== mod_str.type && unexpected(), next();
-                            const assert_clause = maybe_import_assertion();
-                            return new AST_Import({
-                                start,
-                                imported_name,
-                                imported_names,
-                                module_name: new AST_String({
-                                    start: mod_str,
-                                    value: mod_str.value,
-                                    quote: mod_str.quote,
-                                    end: mod_str
-                                }),
-                                assert_clause,
-                                end: S.token
-                            });
-                        }();
+                        var label, stat1, imported_name, imported_names, start, mod_str, node = (start = prev(), is("name") && (imported_name = as_symbol(AST_SymbolImport)), is("punc", ",") && next(), ((imported_names = map_names(!0)) || imported_name) && expect_token("name", "from"), "string" !== (mod_str = S.token).type && unexpected(), next(), assert_clause = maybe_import_assertion(), new AST_Import({
+                            start,
+                            imported_name,
+                            imported_names,
+                            module_name: new AST_String({
+                                start: mod_str,
+                                value: mod_str.value,
+                                quote: mod_str.quote,
+                                end: mod_str
+                            }),
+                            assert_clause,
+                            end: S.token
+                        }));
                         return semicolon(), node;
                     }
                     return is_token(peek(), "punc", ":") ? ("await" === (label = as_symbol(AST_Label)).name && S.in_async === S.in_function && token_error(S.prev, "await cannot be used as label inside async function"), S.labels.some((l)=>l.name === label.name) && // ECMA-262, 12.12: An ECMAScript program is considered
@@ -975,8 +950,12 @@
                             });
                         case "try":
                             return next(), function() {
-                                var body = block_(), bcatch = null, bfinally = null;
-                                if (is("keyword", "catch")) {
+                                var body, bcatch = null, bfinally = null;
+                                if (body = new AST_TryBlock({
+                                    start: S.token,
+                                    body: block_(),
+                                    end: prev()
+                                }), is("keyword", "catch")) {
                                     var start = S.token;
                                     if (next(), is("punc", "{")) var name = null;
                                     else {
@@ -1028,32 +1007,30 @@
                                 var node = function() {
                                     var is_default, exported_names, node, exported_value, exported_definition, start = S.token;
                                     if (is("keyword", "default")) is_default = !0, next();
-                                    else if (exported_names = map_names(!1)) {
-                                        if (!is("name", "from")) return new AST_Export({
+                                    else if (exported_names = map_names(!1)) if (!is("name", "from")) return new AST_Export({
+                                        start: start,
+                                        is_default: is_default,
+                                        exported_names: exported_names,
+                                        end: prev()
+                                    });
+                                    else {
+                                        next();
+                                        var mod_str = S.token;
+                                        "string" !== mod_str.type && unexpected(), next();
+                                        let assert_clause = maybe_import_assertion();
+                                        return new AST_Export({
                                             start: start,
                                             is_default: is_default,
                                             exported_names: exported_names,
-                                            end: prev()
+                                            module_name: new AST_String({
+                                                start: mod_str,
+                                                value: mod_str.value,
+                                                quote: mod_str.quote,
+                                                end: mod_str
+                                            }),
+                                            end: prev(),
+                                            assert_clause
                                         });
-                                        {
-                                            next();
-                                            var mod_str = S.token;
-                                            "string" !== mod_str.type && unexpected(), next();
-                                            const assert_clause = maybe_import_assertion();
-                                            return new AST_Export({
-                                                start: start,
-                                                is_default: is_default,
-                                                exported_names: exported_names,
-                                                module_name: new AST_String({
-                                                    start: mod_str,
-                                                    value: mod_str.value,
-                                                    quote: mod_str.quote,
-                                                    end: mod_str
-                                                }),
-                                                end: prev(),
-                                                assert_clause
-                                            });
-                                        }
                                     }
                                     return is("punc", "{") || is_default && (is("keyword", "class") || is("keyword", "function")) && is_token(peek(), "punc") ? (exported_value = expression(!1), semicolon()) : (node = statement(is_default)) instanceof AST_Definitions && is_default ? unexpected(node.start) : node instanceof AST_Definitions || node instanceof AST_Defun || node instanceof AST_DefClass ? exported_definition = node : node instanceof AST_ClassExpression || node instanceof AST_Function ? exported_value = node : node instanceof AST_SimpleStatement ? exported_value = node.body : unexpected(node.start), new AST_Export({
                                         start: start,
@@ -1109,41 +1086,41 @@
                 body: body
             });
         };
-        function track_used_binding_identifiers(is_parameter, strict) {
-            var parameters = new Set(), duplicate = !1, default_assignment = !1, spread = !1, strict_mode = !!strict, tracker = {
-                add_parameter: function(token) {
-                    if (parameters.has(token.value)) !1 === duplicate && (duplicate = token), tracker.check_strict();
-                    else if (parameters.add(token.value), is_parameter) switch(token.value){
-                        case "arguments":
-                        case "eval":
-                        case "yield":
-                            strict_mode && token_error(token, "Unexpected " + token.value + " identifier as parameter inside strict mode");
-                            break;
-                        default:
-                            RESERVED_WORDS.has(token.value) && unexpected();
-                    }
-                },
-                mark_default_assignment: function(token) {
-                    !1 === default_assignment && (default_assignment = token);
-                },
-                mark_spread: function(token) {
-                    !1 === spread && (spread = token);
-                },
-                mark_strict_mode: function() {
-                    strict_mode = !0;
-                },
-                is_strict: function() {
-                    return !1 !== default_assignment || !1 !== spread || strict_mode;
-                },
-                check_strict: function() {
-                    tracker.is_strict() && !1 !== duplicate && token_error(duplicate, "Parameter " + duplicate.value + " was used already");
+        class UsedParametersTracker {
+            constructor(is_parameter, strict, duplicates_ok = !1){
+                this.is_parameter = is_parameter, this.duplicates_ok = duplicates_ok, this.parameters = new Set(), this.duplicate = null, this.default_assignment = !1, this.spread = !1, this.strict_mode = !!strict;
+            }
+            add_parameter(token) {
+                if (this.parameters.has(token.value)) null === this.duplicate && (this.duplicate = token), this.check_strict();
+                else if (this.parameters.add(token.value), this.is_parameter) switch(token.value){
+                    case "arguments":
+                    case "eval":
+                    case "yield":
+                        this.strict_mode && token_error(token, "Unexpected " + token.value + " identifier as parameter inside strict mode");
+                        break;
+                    default:
+                        RESERVED_WORDS.has(token.value) && unexpected();
                 }
-            };
-            return tracker;
+            }
+            mark_default_assignment(token) {
+                !1 === this.default_assignment && (this.default_assignment = token);
+            }
+            mark_spread(token) {
+                !1 === this.spread && (this.spread = token);
+            }
+            mark_strict_mode() {
+                this.strict_mode = !0;
+            }
+            is_strict() {
+                return !1 !== this.default_assignment || !1 !== this.spread || this.strict_mode;
+            }
+            check_strict() {
+                this.is_strict() && null !== this.duplicate && !this.duplicates_ok && token_error(this.duplicate, "Parameter " + this.duplicate.value + " was used already");
+            }
         }
         function parameter(used_parameters, symbol_type) {
             var param, expand = !1;
-            return void 0 === used_parameters && (used_parameters = track_used_binding_identifiers(!0, S.input.has_directive("use strict"))), is("expand", "...") && (expand = S.token, used_parameters.mark_spread(S.token), next()), param = binding_element(used_parameters, symbol_type), is("operator", "=") && !1 === expand && (used_parameters.mark_default_assignment(S.token), next(), param = new AST_DefaultAssign({
+            return void 0 === used_parameters && (used_parameters = new UsedParametersTracker(!0, S.input.has_directive("use strict"))), is("expand", "...") && (expand = S.token, used_parameters.mark_spread(S.token), next()), param = binding_element(used_parameters, symbol_type), is("operator", "=") && !1 === expand && (used_parameters.mark_default_assignment(S.token), next(), param = new AST_DefaultAssign({
                 start: param.start,
                 left: param,
                 operator: "=",
@@ -1157,7 +1134,7 @@
         }
         function binding_element(used_parameters, symbol_type) {
             var expand_token, elements = [], first = !0, is_expand = !1, first_token = S.token;
-            if (void 0 === used_parameters && (used_parameters = track_used_binding_identifiers(!1, S.input.has_directive("use strict"))), symbol_type = void 0 === symbol_type ? AST_SymbolFunarg : symbol_type, is("punc", "[")) {
+            if (void 0 === used_parameters && (used_parameters = new UsedParametersTracker(!1, S.input.has_directive("use strict"), symbol_type === AST_SymbolVar)), symbol_type = void 0 === symbol_type ? AST_SymbolFunarg : symbol_type, is("punc", "[")) {
                 for(next(); !is("punc", "]");){
                     if (first ? first = !1 : expect(","), is("expand", "...") && (is_expand = !0, expand_token = S.token, used_parameters.mark_spread(S.token), next()), is("punc")) switch(S.token.value){
                         case ",":
@@ -1255,7 +1232,7 @@
         function _function_body(block, generator, is_async, name, args) {
             var loop = S.in_loop, labels = S.labels, current_generator = S.in_generator, current_async = S.in_async;
             if (++S.in_function, generator && (S.in_generator = S.in_function), is_async && (S.in_async = S.in_function), args && function(params) {
-                var used_parameters = track_used_binding_identifiers(!0, S.input.has_directive("use strict"));
+                var used_parameters = new UsedParametersTracker(!0, S.input.has_directive("use strict"));
                 for(expect("("); !is("punc", ")");){
                     var param = parameter(used_parameters);
                     if (params.push(param), is("punc", ")") || expect(","), param instanceof AST_Expansion) break;
@@ -1291,8 +1268,12 @@
             }))) : (cur || unexpected(), cur.push(statement()));
             return branch && (branch.end = prev()), next(), a;
         }
-        function vardefs(no_in, kind) {
-            for(var def, a = [];;){
+        /**
+         * var
+         *   vardef1 = 2,
+         *   vardef2 = 3;
+         */ function vardefs(no_in, kind) {
+            for(var def, var_defs = [];;){
                 var sym_type = "var" === kind ? AST_SymbolVar : "const" === kind ? AST_SymbolConst : "let" === kind ? AST_SymbolLet : null;
                 if (is("punc", "{") || is("punc", "[") ? def = new AST_VarDef({
                     start: S.token,
@@ -1304,10 +1285,10 @@
                     name: as_symbol(sym_type),
                     value: is("operator", "=") ? (next(), expression(!1, no_in)) : no_in || "const" !== kind ? null : croak("Missing initializer in const declaration"),
                     end: prev()
-                })).name.name && croak("Unexpected token: import"), a.push(def), !is("punc", ",")) break;
+                })).name.name && croak("Unexpected token: import"), var_defs.push(def), !is("punc", ",")) break;
                 next();
             }
-            return a;
+            return var_defs;
         }
         var var_ = function(no_in) {
             return new AST_Var({
@@ -1365,15 +1346,15 @@
                     });
                     break;
                 case "string":
-                    ret = new AST_String({
+                    annotate(ret = new AST_String({
                         start: tok,
                         end: tok,
                         value: tok.value,
                         quote: tok.quote
-                    });
+                    }));
                     break;
                 case "regexp":
-                    const [_, source, flags] = tok.value.match(/^\/(.*)\/(\w*)$/);
+                    let [_, source, flags] = tok.value.match(/^\/(.*)\/(\w*)$/);
                     ret = new AST_RegExp({
                         start: tok,
                         end: tok,
@@ -1408,12 +1389,12 @@
         }
         var expr_atom = function(allow_calls, allow_arrows) {
             if (is("operator", "new")) return new_(allow_calls);
-            if (is("operator", "import")) {
+            if (is("name", "import") && is_token(peek(), "punc", ".")) {
                 var start;
-                return start = S.token, expect_token("operator", "import"), expect_token("punc", "."), expect_token("name", "meta"), subscripts(new AST_ImportMeta({
+                return start = S.token, expect_token("name", "import"), expect_token("punc", "."), expect_token("name", "meta"), subscripts(new AST_ImportMeta({
                     start: start,
                     end: prev()
-                }), !1);
+                }), allow_calls);
             }
             var peeked, start1 = S.token, async = is("name", "async") && "[" != (peeked = peek()).value && "arrow" != peeked.type && as_atom_node();
             if (is("punc")) {
@@ -1458,11 +1439,9 @@
                         var ex = async ? new AST_Call({
                             expression: async,
                             args: exprs
-                        }) : 1 == exprs.length ? exprs[0] : new AST_Sequence({
-                            expressions: exprs
-                        });
+                        }) : to_expr_or_sequence(start1, exprs);
                         if (ex.start) {
-                            const outer_comments_before = start1.comments_before.length;
+                            let outer_comments_before = start1.comments_before.length;
                             if (outer_comments_before_counts.set(start1, outer_comments_before), ex.start.comments_before.unshift(...start1.comments_before), start1.comments_before = ex.start.comments_before, 0 == outer_comments_before && start1.comments_before.length > 0) {
                                 var comment = start1.comments_before[0];
                                 comment.nlb || (comment.nlb = start1.nlb, start1.nlb = !1);
@@ -1506,12 +1485,12 @@
             var segments = [], start = S.token;
             for(segments.push(new AST_TemplateSegment({
                 start: S.token,
-                raw: LATEST_RAW,
+                raw: TEMPLATE_RAWS.get(S.token),
                 value: S.token.value,
                 end: S.token
-            })); !LATEST_TEMPLATE_END;)next(), handle_regexp(), segments.push(expression(!0)), segments.push(new AST_TemplateSegment({
+            })); !S.token.template_end;)next(), handle_regexp(), segments.push(expression(!0)), segments.push(new AST_TemplateSegment({
                 start: S.token,
-                raw: LATEST_RAW,
+                raw: TEMPLATE_RAWS.get(S.token),
                 value: S.token.value,
                 end: S.token
             }));
@@ -1547,6 +1526,7 @@
                     }));
                     continue;
                 }
+                is("privatename") && croak("private fields are not allowed in an object");
                 var value, name = as_property_name();
                 // Check property and fetch value
                 if (is("punc", ":")) null === name ? unexpected(prev()) : (next(), value = expression(!1));
@@ -1569,14 +1549,16 @@
                     right: expression(!1),
                     logical: !1,
                     end: prev()
-                })), // Create property
-                a.push(new AST_ObjectKeyVal({
+                }));
+                // Create property
+                let kv = new AST_ObjectKeyVal({
                     start: start,
                     quote: start.quote,
                     key: name instanceof AST_Node ? name : "" + name,
                     value: value,
                     end: prev()
-                }));
+                });
+                a.push(annotate(kv));
             }
             return next(), new AST_Object({
                 properties: a
@@ -1584,41 +1566,60 @@
         });
         function class_(KindOfClass, is_export_default) {
             var start, method, class_name, extends_, a = [];
-            for(S.input.push_directives_stack(), S.input.add_directive("use strict"), "name" == S.token.type && "extends" != S.token.value && (class_name = as_symbol(KindOfClass === AST_DefClass ? AST_SymbolDefClass : AST_SymbolClass)), KindOfClass !== AST_DefClass || class_name || (is_export_default ? KindOfClass = AST_ClassExpression : unexpected()), "extends" == S.token.value && (next(), extends_ = expression(!0)), expect("{"); is("punc", ";");)next();
+            S.input.push_directives_stack(), S.input.add_directive("use strict"), "name" == S.token.type && "extends" != S.token.value && (class_name = as_symbol(KindOfClass === AST_DefClass ? AST_SymbolDefClass : AST_SymbolClass)), KindOfClass !== AST_DefClass || class_name || (is_export_default ? KindOfClass = AST_ClassExpression : unexpected()), "extends" == S.token.value && (next(), extends_ = expression(!0)), expect("{");
+            // mark in class feild,
+            let save_in_class = S.in_class;
+            for(S.in_class = !0; is("punc", ";");)next();
              // Leading semicolons are okay in class bodies.
             for(; !is("punc", "}");)for(start = S.token, (method = concise_method_or_getset(as_property_name(), start, !0)) || unexpected(), a.push(method); is("punc", ";");)next();
-            return S.input.pop_directives_stack(), next(), new KindOfClass({
+            return(// mark in class feild,
+            S.in_class = save_in_class, S.input.pop_directives_stack(), next(), new KindOfClass({
                 start: start,
                 name: class_name,
                 extends: extends_,
                 properties: a,
                 end: prev()
-            });
+            }));
         }
         function concise_method_or_getset(name, start, is_class) {
-            const get_symbol_ast = (name, SymbolClass = AST_SymbolMethod)=>"string" == typeof name || "number" == typeof name ? new SymbolClass({
+            let get_symbol_ast = (name, SymbolClass = AST_SymbolMethod)=>"string" == typeof name || "number" == typeof name ? new SymbolClass({
                     start,
                     name: "" + name,
                     end: prev()
                 }) : (null === name && unexpected(), name), is_not_method_start = ()=>!is("punc", "(") && !is("punc", ",") && !is("punc", "}") && !is("punc", ";") && !is("operator", "=");
             var is_async = !1, is_static = !1, is_generator = !1, is_private = !1, accessor_type = null;
-            is_class && "static" === name && is_not_method_start() && (is_static = !0, name = as_property_name()), "async" === name && is_not_method_start() && (is_async = !0, name = as_property_name()), "operator" === prev().type && "*" === prev().value && (is_generator = !0, name = as_property_name()), ("get" === name || "set" === name) && is_not_method_start() && (accessor_type = name, name = as_property_name()), "privatename" === prev().type && (is_private = !0);
-            const property_token = prev();
-            if (null != accessor_type) return is_private ? new ("get" === accessor_type ? AST_PrivateGetter : AST_PrivateSetter)({
-                start,
-                static: is_static,
-                key: get_symbol_ast(name),
-                value: create_accessor(),
-                end: prev()
-            }) : new ("get" === accessor_type ? AST_ObjectGetter : AST_ObjectSetter)({
+            if (is_class && "static" === name && is_not_method_start()) {
+                let static_block = function() {
+                    if (!is("punc", "{")) return null;
+                    let start = S.token, body = [];
+                    for(next(); !is("punc", "}");)body.push(statement());
+                    return next(), new AST_ClassStaticBlock({
+                        start,
+                        body,
+                        end: prev()
+                    });
+                }();
+                if (null != static_block) return static_block;
+                is_static = !0, name = as_property_name();
+            }
+            "async" === name && is_not_method_start() && (is_async = !0, name = as_property_name()), "operator" === prev().type && "*" === prev().value && (is_generator = !0, name = as_property_name()), ("get" === name || "set" === name) && is_not_method_start() && (accessor_type = name, name = as_property_name()), "privatename" === prev().type && (is_private = !0);
+            let property_token = prev();
+            if (null != accessor_type) if (!is_private) return annotate(new ("get" === accessor_type ? AST_ObjectGetter : AST_ObjectSetter)({
                 start,
                 static: is_static,
                 key: name = get_symbol_ast(name),
                 quote: name instanceof AST_SymbolMethod ? property_token.quote : void 0,
                 value: create_accessor(),
                 end: prev()
-            });
-            if (is("punc", "(")) return new (is_private ? AST_PrivateMethod : AST_ConciseMethod)({
+            }));
+            else return annotate(new ("get" === accessor_type ? AST_PrivateGetter : AST_PrivateSetter)({
+                start,
+                static: is_static,
+                key: get_symbol_ast(name),
+                value: create_accessor(),
+                end: prev()
+            }));
+            if (is("punc", "(")) return annotate(new (is_private ? AST_PrivateMethod : AST_ConciseMethod)({
                 start: start,
                 static: is_static,
                 is_generator: is_generator,
@@ -1627,42 +1628,43 @@
                 quote: name instanceof AST_SymbolMethod ? property_token.quote : void 0,
                 value: create_accessor(is_generator, is_async),
                 end: prev()
-            });
+            }));
             if (is_class) {
-                const key = get_symbol_ast(name, AST_SymbolClassProperty), quote = key instanceof AST_SymbolClassProperty ? property_token.quote : void 0, AST_ClassPropertyVariant = is_private ? AST_ClassPrivateProperty : AST_ClassProperty;
-                if (is("operator", "=")) return next(), new AST_ClassPropertyVariant({
+                let key = get_symbol_ast(name, AST_SymbolClassProperty), quote = key instanceof AST_SymbolClassProperty ? property_token.quote : void 0, AST_ClassPropertyVariant = is_private ? AST_ClassPrivateProperty : AST_ClassProperty;
+                if (is("operator", "=")) return next(), annotate(new AST_ClassPropertyVariant({
                     start,
                     static: is_static,
                     quote,
                     key,
                     value: expression(!1),
                     end: prev()
-                });
-                if (is("name") || is("privatename") || is("operator", "*") || is("punc", ";") || is("punc", "}")) return new AST_ClassPropertyVariant({
+                }));
+                if (is("name") || is("privatename") || is("operator", "*") || is("punc", ";") || is("punc", "}")) return annotate(new AST_ClassPropertyVariant({
                     start,
                     static: is_static,
                     quote,
                     key,
                     end: prev()
-                });
+                }));
             }
         }
         function maybe_import_assertion() {
             return is("name", "assert") && !has_newline_before(S.token) ? (next(), object_or_destructuring_()) : null;
         }
         function map_names(is_import) {
-            var names, name, name1, foreign_name, foreign_type, type, start, end;
+            var names, name, import_or_export_foreign_name, name1, foreign_name, foreign_type, type, start, end;
             if (is("punc", "{")) {
                 for(next(), names = []; !is("punc", "}");)names.push(function(is_import) {
-                    function make_symbol(type) {
+                    function make_symbol(type, quote) {
                         return new type({
                             name: as_property_name(),
+                            quote: quote || void 0,
                             start: prev(),
                             end: prev()
                         });
                     }
                     var foreign_name, name, foreign_type = is_import ? AST_SymbolImportForeign : AST_SymbolExportForeign, type = is_import ? AST_SymbolImport : AST_SymbolExport, start = S.token;
-                    return is_import ? foreign_name = make_symbol(foreign_type) : name = make_symbol(type), is("name", "as") ? (next(), is_import ? name = make_symbol(type) : foreign_name = make_symbol(foreign_type)) : is_import ? name = new type(foreign_name) : foreign_name = new foreign_type(name), new AST_NameMapping({
+                    return is_import ? foreign_name = make_symbol(foreign_type, start.quote) : name = make_symbol(type, start.quote), is("name", "as") ? (next(), is_import ? name = make_symbol(type) : foreign_name = make_symbol(foreign_type, S.token.quote)) : is_import ? name = new type(foreign_name) : foreign_name = new foreign_type(name), new AST_NameMapping({
                         start: start,
                         foreign_name: foreign_name,
                         name: name,
@@ -1670,14 +1672,27 @@
                     });
                 }(is_import)), is("punc", ",") && next();
                 next();
-            } else is("operator", "*") && (next(), is_import && is("name", "as") && (next(), name = as_symbol(is_import ? AST_SymbolImport : AST_SymbolExportForeign)), names = [
-                (name1 = name, foreign_type = is_import ? AST_SymbolImportForeign : AST_SymbolExportForeign, type = is_import ? AST_SymbolImport : AST_SymbolExport, start = S.token, end = prev(), name1 = name1 || new type({
-                    name: "*",
+            } else is("operator", "*") && (next(), is("name", "as") && (next(), name = is_import ? as_symbol(AST_SymbolImport) : function(type) {
+                if (!is("name")) {
+                    is("string") || croak("Name or string expected");
+                    var tok = S.token, ret = new type({
+                        start: tok,
+                        end: tok,
+                        name: tok.value,
+                        quote: tok.quote
+                    });
+                    return next(), ret;
+                }
+                var sym = _make_symbol(type);
+                return _verify_symbol(sym), next(), sym;
+            }(AST_SymbolExportForeign)), names = [
+                (import_or_export_foreign_name = name, foreign_type = is_import ? AST_SymbolImportForeign : AST_SymbolExportForeign, type = is_import ? AST_SymbolImport : AST_SymbolExport, start = S.token, end = prev(), is_import ? name1 = import_or_export_foreign_name : foreign_name = import_or_export_foreign_name, name1 = name1 || new type({
                     start: start,
+                    name: "*",
                     end: end
-                }), foreign_name = new foreign_type({
-                    name: "*",
+                }), foreign_name = foreign_name || new foreign_type({
                     start: start,
+                    name: "*",
                     end: end
                 }), new AST_NameMapping({
                     start: start,
@@ -1742,9 +1757,9 @@
             return _verify_symbol(sym), next(), sym;
         }
         // Annotate AST_Call, AST_Lambda or AST_New with the special comments
-        function annotate(node) {
-            var start = node.start, comments = start.comments_before;
-            const comments_outside_parens = outer_comments_before_counts.get(start);
+        function annotate(node, before_token = node.start) {
+            var comments = before_token.comments_before;
+            let comments_outside_parens = outer_comments_before_counts.get(before_token);
             for(var i = null != comments_outside_parens ? comments_outside_parens : comments.length; --i >= 0;){
                 var comment = comments[i];
                 if (/[@#]__/.test(comment.value)) {
@@ -1760,28 +1775,37 @@
                         set_annotation(node, _NOINLINE);
                         break;
                     }
+                    if (/[@#]__KEY__/.test(comment.value)) {
+                        set_annotation(node, _KEY);
+                        break;
+                    }
+                    if (/[@#]__MANGLE_PROP__/.test(comment.value)) {
+                        set_annotation(node, _MANGLEPROP);
+                        break;
+                    }
                 }
             }
+            return node;
         }
         var subscripts = function(expr, allow_calls, is_chain) {
             var start = expr.start;
-            if (is("punc", ".")) return next(), subscripts(new (is("privatename") ? AST_DotHash : AST_Dot)({
+            if (is("punc", ".")) return next(), is("privatename") && !S.in_class && croak("Private field must be used in an enclosing class"), annotate(subscripts(new (is("privatename") ? AST_DotHash : AST_Dot)({
                 start: start,
                 expression: expr,
                 optional: !1,
                 property: as_name(),
                 end: prev()
-            }), allow_calls, is_chain);
+            }), allow_calls, is_chain));
             if (is("punc", "[")) {
                 next();
                 var prop = expression(!0);
-                return expect("]"), subscripts(new AST_Sub({
+                return expect("]"), annotate(subscripts(new AST_Sub({
                     start: start,
                     expression: expr,
                     optional: !1,
                     property: prop,
                     end: prev()
-                }), allow_calls, is_chain);
+                }), allow_calls, is_chain));
             }
             if (allow_calls && is("punc", "(")) {
                 next();
@@ -1798,7 +1822,7 @@
                 let chain_contents;
                 if (next(), allow_calls && is("punc", "(")) {
                     next();
-                    const call = new AST_Call({
+                    let call = new AST_Call({
                         start,
                         optional: !0,
                         expression: expr,
@@ -1806,23 +1830,23 @@
                         end: prev()
                     });
                     annotate(call), chain_contents = subscripts(call, !0, !0);
-                } else if (is("name") || is("privatename")) chain_contents = subscripts(new (is("privatename") ? AST_DotHash : AST_Dot)({
+                } else if (is("name") || is("privatename")) is("privatename") && !S.in_class && croak("Private field must be used in an enclosing class"), chain_contents = annotate(subscripts(new (is("privatename") ? AST_DotHash : AST_Dot)({
                     start,
                     expression: expr,
                     optional: !0,
                     property: as_name(),
                     end: prev()
-                }), allow_calls, !0);
+                }), allow_calls, !0));
                 else if (is("punc", "[")) {
                     next();
-                    const property = expression(!0);
-                    expect("]"), chain_contents = subscripts(new AST_Sub({
+                    let property = expression(!0);
+                    expect("]"), chain_contents = annotate(subscripts(new AST_Sub({
                         start,
                         expression: expr,
                         optional: !0,
                         property,
                         end: prev()
-                    }), allow_calls, !0);
+                    }), allow_calls, !0));
                 }
                 return (chain_contents || unexpected(), chain_contents instanceof AST_Chain) ? chain_contents : new AST_Chain({
                     start,
@@ -1893,7 +1917,26 @@
             }
             return left;
         }, maybe_conditional = function(no_in) {
-            var start = S.token, expr = expr_op(maybe_unary(!0, !0), 0, no_in);
+            var start = S.token, expr = function(no_in) {
+                // maybe_unary won't return us a AST_SymbolPrivateProperty
+                if (!(!no_in && is("privatename"))) return expr_op(maybe_unary(!0, !0), 0, no_in);
+                {
+                    S.in_class || croak("Private field must be used in an enclosing class");
+                    let start = S.token, key = new AST_SymbolPrivateProperty({
+                        start,
+                        name: start.value,
+                        end: start
+                    });
+                    next(), expect_token("operator", "in");
+                    let private_in = new AST_PrivateIn({
+                        start,
+                        key,
+                        value: expr_op(maybe_unary(!0), PRECEDENCE.in, no_in),
+                        end: prev()
+                    });
+                    return expr_op(private_in, 0, no_in);
+                }
+            }(no_in);
             if (is("operator", "?")) {
                 next();
                 var yes = expression(!1);
@@ -1938,15 +1981,13 @@
         var maybe_assign = function(no_in) {
             handle_regexp();
             var start, star, has_expression, start1 = S.token;
-            if ("name" == start1.type && "yield" == start1.value) {
-                if (is_in_generator()) return next(), is_in_generator() || croak("Unexpected yield expression outside generator function", S.prev.line, S.prev.col, S.prev.pos), start = S.token, star = !1, has_expression = !0, can_insert_semicolon() || is("punc") && PUNC_AFTER_EXPRESSION.has(S.token.value) ? has_expression = !1 : is("operator", "*") && (star = !0, next()), new AST_Yield({
-                    start: start,
-                    is_star: star,
-                    expression: has_expression ? expression() : null,
-                    end: prev()
-                });
-                S.input.has_directive("use strict") && token_error(S.token, "Unexpected yield identifier inside strict mode");
-            }
+            if ("name" == start1.type && "yield" == start1.value) if (is_in_generator()) return next(), is_in_generator() || croak("Unexpected yield expression outside generator function", S.prev.line, S.prev.col, S.prev.pos), start = S.token, star = !1, has_expression = !0, can_insert_semicolon() || is("punc") && PUNC_AFTER_EXPRESSION.has(S.token.value) ? has_expression = !1 : is("operator", "*") && (star = !0, next()), new AST_Yield({
+                start: start,
+                is_star: star,
+                expression: has_expression ? expression() : null,
+                end: prev()
+            });
+            else S.input.has_directive("use strict") && token_error(S.token, "Unexpected yield identifier inside strict mode");
             var left = maybe_conditional(no_in), val = S.token.value;
             if (is("operator") && ASSIGNMENT.has(val)) {
                 if (is_assignable(left) || (left = to_destructuring(left)) instanceof AST_Destructuring) return next(), new AST_Assign({
@@ -1960,105 +2001,116 @@
                 croak("Invalid assignment");
             }
             return left;
-        }, expression = function(commas, no_in) {
-            for(var start = S.token, exprs = []; exprs.push(maybe_assign(no_in)), commas && is("punc", ",");)next(), commas = !0;
-            return 1 == exprs.length ? exprs[0] : new AST_Sequence({
-                start: start,
+        }, to_expr_or_sequence = function(start, exprs) {
+            return 1 === exprs.length ? exprs[0] : exprs.length > 1 ? new AST_Sequence({
+                start,
                 expressions: exprs,
                 end: peek()
-            });
+            }) : void croak("Invalid parenthesized expression");
+        }, expression = function(commas, no_in) {
+            for(var start = S.token, exprs = []; exprs.push(maybe_assign(no_in)), commas && is("punc", ",");)next(), commas = !0;
+            return to_expr_or_sequence(start, exprs);
         };
         function in_loop(cont) {
             ++S.in_loop;
             var ret = cont();
             return --S.in_loop, ret;
         }
-        return options.expression ? expression(!0) : function() {
-            var start = S.token, body = [];
-            for(S.input.push_directives_stack(), options.module && S.input.add_directive("use strict"); !is("eof");)body.push(statement());
-            S.input.pop_directives_stack();
-            var end = prev(), toplevel = options.toplevel;
-            return toplevel ? (toplevel.body = toplevel.body.concat(body), toplevel.end = end) : toplevel = new AST_Toplevel({
-                start: start,
-                body: body,
-                end: end
-            }), toplevel;
-        }();
+        if (options.expression) return expression(!0);
+        var start = S.token, body = [];
+        for(S.input.push_directives_stack(), options.module && S.input.add_directive("use strict"); !is("eof");)body.push(statement());
+        S.input.pop_directives_stack();
+        var end = prev(), toplevel = options.toplevel;
+        return toplevel ? (toplevel.body = toplevel.body.concat(body), toplevel.end = end) : toplevel = new AST_Toplevel({
+            start: start,
+            body: body,
+            end: end
+        }), TEMPLATE_RAWS = new Map(), toplevel;
     }
     /***********************************************************************
-
-  A JavaScript tokenizer / parser / beautifier / compressor.
-  https://github.com/mishoo/UglifyJS2
-
-  -------------------------------- (C) ---------------------------------
-
-                           Author: Mihai Bazon
-                         <mihai.bazon@gmail.com>
-                       http://mihai.bazon.net/blog
-
-  Distributed under the BSD license:
-
-    Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-        * Redistributions of source code must retain the above
-          copyright notice, this list of conditions and the following
-          disclaimer.
-
-        * Redistributions in binary form must reproduce the above
-          copyright notice, this list of conditions and the following
-          disclaimer in the documentation and/or other materials
-          provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-    OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-    TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-    THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-    SUCH DAMAGE.
-
- ***********************************************************************/ function DEFNODE(type, props, methods, base = AST_Node) {
+    
+      A JavaScript tokenizer / parser / beautifier / compressor.
+      https://github.com/mishoo/UglifyJS2
+    
+      -------------------------------- (C) ---------------------------------
+    
+                               Author: Mihai Bazon
+                             <mihai.bazon@gmail.com>
+                           http://mihai.bazon.net/blog
+    
+      Distributed under the BSD license:
+    
+        Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
+    
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions
+        are met:
+    
+            * Redistributions of source code must retain the above
+              copyright notice, this list of conditions and the following
+              disclaimer.
+    
+            * Redistributions in binary form must reproduce the above
+              copyright notice, this list of conditions and the following
+              disclaimer in the documentation and/or other materials
+              provided with the distribution.
+    
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+        EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+        PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+        OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+        PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+        PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+        THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+        TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+        THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+        SUCH DAMAGE.
+    
+     ***********************************************************************/ function DEFNODE(type, props, ctor, methods, base = AST_Node) {
         var self_props = props = props ? props.split(/\s+/) : [];
         base && base.PROPS && (props = props.concat(base.PROPS));
-        for(var code = "return function AST_" + type + "(props){ if (props) { ", i = props.length; --i >= 0;)code += "this." + props[i] + " = props." + props[i] + ";";
-        const proto = base && Object.create(base.prototype);
-        (proto && proto.initialize || methods && methods.initialize) && (code += "this.initialize();");
-        var ctor = Function(code += "}this.flags = 0;}")();
-        if (proto && (ctor.prototype = proto, ctor.BASE = base), base && base.SUBCLASSES.push(ctor), ctor.prototype.CTOR = ctor, ctor.prototype.constructor = ctor, ctor.PROPS = props || null, ctor.SELF_PROPS = self_props, ctor.SUBCLASSES = [], type && (ctor.prototype.TYPE = ctor.TYPE = type), methods) for(i in methods)HOP(methods, i) && ("$" === i[0] ? ctor[i.substr(1)] = methods[i] : ctor.prototype[i] = methods[i]);
+        let proto = base && Object.create(base.prototype);
+        if (proto && (ctor.prototype = proto, ctor.BASE = base), base && base.SUBCLASSES.push(ctor), ctor.prototype.CTOR = ctor, ctor.prototype.constructor = ctor, ctor.PROPS = props || null, ctor.SELF_PROPS = self_props, ctor.SUBCLASSES = [], type && (ctor.prototype.TYPE = ctor.TYPE = type), methods) for(let i in methods)HOP(methods, i) && ("$" === i[0] ? ctor[i.substr(1)] = methods[i] : ctor.prototype[i] = methods[i]);
         return ctor.DEFMETHOD = function(name, method) {
             this.prototype[name] = method;
         }, ctor;
     }
-    const has_tok_flag = (tok, flag)=>!!(tok.flags & flag), set_tok_flag = (tok, flag, truth)=>{
+    let set_tok_flag = (tok, flag, truth)=>{
         truth ? tok.flags |= flag : tok.flags &= ~flag;
     };
     class AST_Token {
         constructor(type, value, line, col, pos, nlb, comments_before, comments_after, file){
-            this.flags = nlb ? 1 : 0, this.type = type, this.value = value, this.line = line, this.col = col, this.pos = pos, this.comments_before = comments_before, this.comments_after = comments_after, this.file = file, Object.seal(this);
+            this.flags = +!!nlb, this.type = type, this.value = value, this.line = line, this.col = col, this.pos = pos, this.comments_before = comments_before, this.comments_after = comments_after, this.file = file, Object.seal(this);
+        }
+        // Return a string summary of the token for node.js console.log
+        [Symbol.for("nodejs.util.inspect.custom")](_depth, options) {
+            let quote = "string" == typeof this.value && this.value.includes("`") ? "'" : "`", value = `${quote}${this.value}${quote}`;
+            return `${options.stylize("[AST_Token", "special")} ${value} at ${this.line}:${this.col}${options.stylize("]", "special")}`;
         }
         get nlb() {
-            return has_tok_flag(this, 0b0001);
+            return !!(0b0001 & this.flags);
         }
         set nlb(new_nlb) {
             set_tok_flag(this, 0b0001, new_nlb);
         }
         get quote() {
-            return has_tok_flag(this, 0b0100) ? has_tok_flag(this, 0b0010) ? "'" : '"' : "";
+            return 0b0100 & this.flags ? 0b0010 & this.flags ? "'" : '"' : "";
         }
         set quote(quote_type) {
             set_tok_flag(this, 0b0010, "'" === quote_type), set_tok_flag(this, 0b0100, !!quote_type);
         }
+        get template_end() {
+            return !!(0b1000 & this.flags);
+        }
+        set template_end(new_template_end) {
+            set_tok_flag(this, 0b1000, new_template_end);
+        }
     }
-    var AST_Node = DEFNODE("Node", "start end", {
+    var AST_Node = DEFNODE("Node", "start end", function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         _clone: function(deep) {
             if (deep) {
                 var self1 = this.clone();
@@ -2083,17 +2135,25 @@
             return this._walk(visitor); // not sure the indirection will be any help
         },
         _children_backwards: ()=>{}
-    }, null), AST_Statement = DEFNODE("Statement", null, {
+    }, null), AST_Statement = DEFNODE("Statement", null, function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Base class of all statements"
-    }), AST_Debugger = DEFNODE("Debugger", null, {
+    }), AST_Debugger = DEFNODE("Debugger", null, function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Represents a debugger statement"
-    }, AST_Statement), AST_Directive = DEFNODE("Directive", "value quote", {
+    }, AST_Statement), AST_Directive = DEFNODE("Directive", "value quote", function(props) {
+        props && (this.value = props.value, this.quote = props.quote, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Represents a directive, like \"use strict\";",
         $propdoc: {
             value: "[string] The value of this directive as a plain string (it's not an AST_String!)",
             quote: "[string] the original quote character"
         }
-    }, AST_Statement), AST_SimpleStatement = DEFNODE("SimpleStatement", "body", {
+    }, AST_Statement), AST_SimpleStatement = DEFNODE("SimpleStatement", "body", function(props) {
+        props && (this.body = props.body, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A statement consisting of an expression, i.e. a = 1 + 2",
         $propdoc: {
             body: "[AST_Node] an expression node (should not be instanceof AST_Statement)"
@@ -2108,14 +2168,16 @@
         }
     }, AST_Statement);
     function walk_body(node, visitor) {
-        const body = node.body;
+        let body = node.body;
         for(var i = 0, len = body.length; i < len; i++)body[i]._walk(visitor);
     }
     function clone_block_scope(deep) {
         var clone = this._clone(deep);
         return this.block_scope && (clone.block_scope = this.block_scope.clone()), clone;
     }
-    var AST_Block = DEFNODE("Block", "body block_scope", {
+    var AST_Block = DEFNODE("Block", "body block_scope", function(props) {
+        props && (this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A body of statements (usually braced)",
         $propdoc: {
             body: "[AST_Statement*] an array of statements",
@@ -2131,16 +2193,24 @@
             for(; i--;)push(this.body[i]);
         },
         clone: clone_block_scope
-    }, AST_Statement), AST_BlockStatement = DEFNODE("BlockStatement", null, {
+    }, AST_Statement), AST_BlockStatement = DEFNODE("BlockStatement", null, function(props) {
+        props && (this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A block statement"
-    }, AST_Block), AST_EmptyStatement = DEFNODE("EmptyStatement", null, {
+    }, AST_Block), AST_EmptyStatement = DEFNODE("EmptyStatement", null, function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "The empty statement (empty block or simply a semicolon)"
-    }, AST_Statement), AST_StatementWithBody = DEFNODE("StatementWithBody", "body", {
+    }, AST_Statement), AST_StatementWithBody = DEFNODE("StatementWithBody", "body", function(props) {
+        props && (this.body = props.body, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Base class for all statements that contain one nested body: `For`, `ForIn`, `Do`, `While`, `With`",
         $propdoc: {
             body: "[AST_Statement] the body; this should always be present, even if it's an AST_EmptyStatement"
         }
-    }, AST_Statement), AST_LabeledStatement = DEFNODE("LabeledStatement", "label", {
+    }, AST_Statement), AST_LabeledStatement = DEFNODE("LabeledStatement", "label", function(props) {
+        props && (this.label = props.label, this.body = props.body, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Statement with a label",
         $propdoc: {
             label: "[AST_Label] a label definition"
@@ -2163,18 +2233,24 @@
             }
             return node;
         }
-    }, AST_StatementWithBody), AST_IterationStatement = DEFNODE("IterationStatement", "block_scope", {
+    }, AST_StatementWithBody), AST_IterationStatement = DEFNODE("IterationStatement", "block_scope", function(props) {
+        props && (this.block_scope = props.block_scope, this.body = props.body, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Internal class.  All loops inherit from it.",
         $propdoc: {
             block_scope: "[AST_Scope] the block scope for this iteration statement."
         },
         clone: clone_block_scope
-    }, AST_StatementWithBody), AST_DWLoop = DEFNODE("DWLoop", "condition", {
+    }, AST_StatementWithBody), AST_DWLoop = DEFNODE("DWLoop", "condition", function(props) {
+        props && (this.condition = props.condition, this.block_scope = props.block_scope, this.body = props.body, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Base class for do/while statements",
         $propdoc: {
             condition: "[AST_Node] the loop condition.  Should not be instanceof AST_Statement"
         }
-    }, AST_IterationStatement), AST_Do = DEFNODE("Do", null, {
+    }, AST_IterationStatement), AST_Do = DEFNODE("Do", null, function(props) {
+        props && (this.condition = props.condition, this.block_scope = props.block_scope, this.body = props.body, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `do` statement",
         _walk: function(visitor) {
             return visitor._visit(this, function() {
@@ -2184,7 +2260,9 @@
         _children_backwards (push) {
             push(this.condition), push(this.body);
         }
-    }, AST_DWLoop), AST_While = DEFNODE("While", null, {
+    }, AST_DWLoop), AST_While = DEFNODE("While", null, function(props) {
+        props && (this.condition = props.condition, this.block_scope = props.block_scope, this.body = props.body, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `while` statement",
         _walk: function(visitor) {
             return visitor._visit(this, function() {
@@ -2194,7 +2272,9 @@
         _children_backwards (push) {
             push(this.body), push(this.condition);
         }
-    }, AST_DWLoop), AST_For = DEFNODE("For", "init condition step", {
+    }, AST_DWLoop), AST_For = DEFNODE("For", "init condition step", function(props) {
+        props && (this.init = props.init, this.condition = props.condition, this.step = props.step, this.block_scope = props.block_scope, this.body = props.body, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `for` statement",
         $propdoc: {
             init: "[AST_Node?] the `for` initialization code, or null if empty",
@@ -2209,7 +2289,9 @@
         _children_backwards (push) {
             push(this.body), this.step && push(this.step), this.condition && push(this.condition), this.init && push(this.init);
         }
-    }, AST_IterationStatement), AST_ForIn = DEFNODE("ForIn", "init object", {
+    }, AST_IterationStatement), AST_ForIn = DEFNODE("ForIn", "init object", function(props) {
+        props && (this.init = props.init, this.object = props.object, this.block_scope = props.block_scope, this.body = props.body, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `for ... in` statement",
         $propdoc: {
             init: "[AST_Node] the `for/in` initialization code",
@@ -2223,9 +2305,13 @@
         _children_backwards (push) {
             push(this.body), this.object && push(this.object), this.init && push(this.init);
         }
-    }, AST_IterationStatement), AST_ForOf = DEFNODE("ForOf", "await", {
+    }, AST_IterationStatement), AST_ForOf = DEFNODE("ForOf", "await", function(props) {
+        props && (this.await = props.await, this.init = props.init, this.object = props.object, this.block_scope = props.block_scope, this.body = props.body, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `for ... of` statement"
-    }, AST_ForIn), AST_With = DEFNODE("With", "expression", {
+    }, AST_ForIn), AST_With = DEFNODE("With", "expression", function(props) {
+        props && (this.expression = props.expression, this.body = props.body, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `with` statement",
         $propdoc: {
             expression: "[AST_Node] the `with` expression"
@@ -2238,7 +2324,9 @@
         _children_backwards (push) {
             push(this.body), push(this.expression);
         }
-    }, AST_StatementWithBody), AST_Scope = DEFNODE("Scope", "variables functions uses_with uses_eval parent_scope enclosed cname", {
+    }, AST_StatementWithBody), AST_Scope = DEFNODE("Scope", "variables uses_with uses_eval parent_scope enclosed cname", function(props) {
+        props && (this.variables = props.variables, this.uses_with = props.uses_with, this.uses_eval = props.uses_eval, this.parent_scope = props.parent_scope, this.enclosed = props.enclosed, this.cname = props.cname, this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Base class for all statements introducing a lexical scope",
         $propdoc: {
             variables: "[Map/S] a map of name -> SymbolDef for all variables/functions defined in this scope",
@@ -2262,7 +2350,9 @@
         pinned: function() {
             return this.uses_eval || this.uses_with;
         }
-    }, AST_Block), AST_Toplevel = DEFNODE("Toplevel", "globals", {
+    }, AST_Block), AST_Toplevel = DEFNODE("Toplevel", "globals", function(props) {
+        props && (this.globals = props.globals, this.variables = props.variables, this.uses_with = props.uses_with, this.uses_eval = props.uses_eval, this.parent_scope = props.parent_scope, this.enclosed = props.enclosed, this.cname = props.cname, this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "The toplevel scope",
         $propdoc: {
             globals: "[Map/S] a map of name -> SymbolDef for all undeclared names"
@@ -2288,7 +2378,9 @@
                 if (node instanceof AST_Directive && "$ORIG" == node.value) return MAP.splice(body);
             }));
         }
-    }, AST_Scope), AST_Expansion = DEFNODE("Expansion", "expression", {
+    }, AST_Scope), AST_Expansion = DEFNODE("Expansion", "expression", function(props) {
+        props && (this.expression = props.expression, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "An expandible argument, such as ...rest, a splat, such as [1,2,...all], or an expansion in a variable declaration, such as var [first, ...rest] = list",
         $propdoc: {
             expression: "[AST_Node] the thing to be expanded"
@@ -2301,7 +2393,9 @@
         _children_backwards (push) {
             push(this.expression);
         }
-    }), AST_Lambda = DEFNODE("Lambda", "name argnames uses_arguments is_generator async", {
+    }), AST_Lambda = DEFNODE("Lambda", "name argnames uses_arguments is_generator async", function(props) {
+        props && (this.name = props.name, this.argnames = props.argnames, this.uses_arguments = props.uses_arguments, this.is_generator = props.is_generator, this.async = props.async, this.variables = props.variables, this.uses_with = props.uses_with, this.uses_eval = props.uses_eval, this.parent_scope = props.parent_scope, this.enclosed = props.enclosed, this.cname = props.cname, this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Base class for functions",
         $propdoc: {
             name: "[AST_SymbolDeclaration?] the name of this function",
@@ -2333,18 +2427,28 @@
         // Default args and expansion don't count, so .argnames.length doesn't cut it
         length_property () {
             let length = 0;
-            for (const arg of this.argnames)(arg instanceof AST_SymbolFunarg || arg instanceof AST_Destructuring) && length++;
+            for (let arg of this.argnames)(arg instanceof AST_SymbolFunarg || arg instanceof AST_Destructuring) && length++;
             return length;
         }
-    }, AST_Scope), AST_Accessor = DEFNODE("Accessor", null, {
+    }, AST_Scope), AST_Accessor = DEFNODE("Accessor", null, function(props) {
+        props && (this.name = props.name, this.argnames = props.argnames, this.uses_arguments = props.uses_arguments, this.is_generator = props.is_generator, this.async = props.async, this.variables = props.variables, this.uses_with = props.uses_with, this.uses_eval = props.uses_eval, this.parent_scope = props.parent_scope, this.enclosed = props.enclosed, this.cname = props.cname, this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A setter/getter function.  The `name` property is always null."
-    }, AST_Lambda), AST_Function = DEFNODE("Function", null, {
+    }, AST_Lambda), AST_Function = DEFNODE("Function", null, function(props) {
+        props && (this.name = props.name, this.argnames = props.argnames, this.uses_arguments = props.uses_arguments, this.is_generator = props.is_generator, this.async = props.async, this.variables = props.variables, this.uses_with = props.uses_with, this.uses_eval = props.uses_eval, this.parent_scope = props.parent_scope, this.enclosed = props.enclosed, this.cname = props.cname, this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A function expression"
-    }, AST_Lambda), AST_Arrow = DEFNODE("Arrow", null, {
+    }, AST_Lambda), AST_Arrow = DEFNODE("Arrow", null, function(props) {
+        props && (this.name = props.name, this.argnames = props.argnames, this.uses_arguments = props.uses_arguments, this.is_generator = props.is_generator, this.async = props.async, this.variables = props.variables, this.uses_with = props.uses_with, this.uses_eval = props.uses_eval, this.parent_scope = props.parent_scope, this.enclosed = props.enclosed, this.cname = props.cname, this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "An ES6 Arrow function ((a) => b)"
-    }, AST_Lambda), AST_Defun = DEFNODE("Defun", null, {
+    }, AST_Lambda), AST_Defun = DEFNODE("Defun", null, function(props) {
+        props && (this.name = props.name, this.argnames = props.argnames, this.uses_arguments = props.uses_arguments, this.is_generator = props.is_generator, this.async = props.async, this.variables = props.variables, this.uses_with = props.uses_with, this.uses_eval = props.uses_eval, this.parent_scope = props.parent_scope, this.enclosed = props.enclosed, this.cname = props.cname, this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A function definition"
-    }, AST_Lambda), AST_Destructuring = DEFNODE("Destructuring", "names is_array", {
+    }, AST_Lambda), AST_Destructuring = DEFNODE("Destructuring", "names is_array", function(props) {
+        props && (this.names = props.names, this.is_array = props.is_array, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A destructuring of several names. Used in destructuring assignment and with destructuring function argument names",
         $propdoc: {
             names: "[AST_Node*] Array of properties or elements",
@@ -2363,11 +2467,13 @@
         },
         all_symbols: function() {
             var out = [];
-            return this.walk(new TreeWalker(function(node) {
-                node instanceof AST_Symbol && out.push(node);
-            })), out;
+            return walk(this, (node)=>{
+                if (node instanceof AST_SymbolDeclaration && out.push(node), node instanceof AST_Lambda) return !0;
+            }), out;
         }
-    }), AST_PrefixedTemplateString = DEFNODE("PrefixedTemplateString", "template_string prefix", {
+    }), AST_PrefixedTemplateString = DEFNODE("PrefixedTemplateString", "template_string prefix", function(props) {
+        props && (this.template_string = props.template_string, this.prefix = props.prefix, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A templatestring with a prefix, such as String.raw`foobarbaz`",
         $propdoc: {
             template_string: "[AST_TemplateString] The template string",
@@ -2381,7 +2487,9 @@
         _children_backwards (push) {
             push(this.template_string), push(this.prefix);
         }
-    }), AST_TemplateString = DEFNODE("TemplateString", "segments", {
+    }), AST_TemplateString = DEFNODE("TemplateString", "segments", function(props) {
+        props && (this.segments = props.segments, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A template string literal",
         $propdoc: {
             segments: "[AST_Node*] One or more segments, starting with AST_TemplateSegment. AST_Node may follow AST_TemplateSegment, but each AST_Node must be followed by AST_TemplateSegment."
@@ -2397,15 +2505,21 @@
             let i = this.segments.length;
             for(; i--;)push(this.segments[i]);
         }
-    }), AST_TemplateSegment = DEFNODE("TemplateSegment", "value raw", {
+    }), AST_TemplateSegment = DEFNODE("TemplateSegment", "value raw", function(props) {
+        props && (this.value = props.value, this.raw = props.raw, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A segment of a template string literal",
         $propdoc: {
             value: "Content of the segment",
             raw: "Raw source of the segment"
         }
-    }), AST_Jump = DEFNODE("Jump", null, {
+    }), AST_Jump = DEFNODE("Jump", null, function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Base class for “jumps” (for now that's `return`, `throw`, `break` and `continue`)"
-    }, AST_Statement), AST_Exit = DEFNODE("Exit", "value", {
+    }, AST_Statement), AST_Exit = DEFNODE("Exit", "value", function(props) {
+        props && (this.value = props.value, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Base class for “exits” (`return` and `throw`)",
         $propdoc: {
             value: "[AST_Node?] the value returned or thrown by this statement; could be null for AST_Return"
@@ -2418,11 +2532,17 @@
         _children_backwards (push) {
             this.value && push(this.value);
         }
-    }, AST_Jump), AST_Return = DEFNODE("Return", null, {
+    }, AST_Jump), AST_Return = DEFNODE("Return", null, function(props) {
+        props && (this.value = props.value, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `return` statement"
-    }, AST_Exit), AST_Throw = DEFNODE("Throw", null, {
+    }, AST_Exit), AST_Throw = DEFNODE("Throw", null, function(props) {
+        props && (this.value = props.value, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `throw` statement"
-    }, AST_Exit), AST_LoopControl = DEFNODE("LoopControl", "label", {
+    }, AST_Exit), AST_LoopControl = DEFNODE("LoopControl", "label", function(props) {
+        props && (this.label = props.label, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Base class for loop control statements (`break` and `continue`)",
         $propdoc: {
             label: "[AST_LabelRef?] the label, or null if none"
@@ -2435,11 +2555,17 @@
         _children_backwards (push) {
             this.label && push(this.label);
         }
-    }, AST_Jump), AST_Break = DEFNODE("Break", null, {
+    }, AST_Jump), AST_Break = DEFNODE("Break", null, function(props) {
+        props && (this.label = props.label, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `break` statement"
-    }, AST_LoopControl), AST_Continue = DEFNODE("Continue", null, {
+    }, AST_LoopControl), AST_Continue = DEFNODE("Continue", null, function(props) {
+        props && (this.label = props.label, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `continue` statement"
-    }, AST_LoopControl), AST_Await = DEFNODE("Await", "expression", {
+    }, AST_LoopControl), AST_Await = DEFNODE("Await", "expression", function(props) {
+        props && (this.expression = props.expression, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "An `await` statement",
         $propdoc: {
             expression: "[AST_Node] the mandatory expression being awaited"
@@ -2452,7 +2578,9 @@
         _children_backwards (push) {
             push(this.expression);
         }
-    }), AST_Yield = DEFNODE("Yield", "expression is_star", {
+    }), AST_Yield = DEFNODE("Yield", "expression is_star", function(props) {
+        props && (this.expression = props.expression, this.is_star = props.is_star, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `yield` statement",
         $propdoc: {
             expression: "[AST_Node?] the value returned or thrown by this statement; could be null (representing undefined) but only when is_star is set to false",
@@ -2466,7 +2594,9 @@
         _children_backwards (push) {
             this.expression && push(this.expression);
         }
-    }), AST_If = DEFNODE("If", "condition alternative", {
+    }), AST_If = DEFNODE("If", "condition alternative", function(props) {
+        props && (this.condition = props.condition, this.alternative = props.alternative, this.body = props.body, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `if` statement",
         $propdoc: {
             condition: "[AST_Node] the `if` condition",
@@ -2480,7 +2610,9 @@
         _children_backwards (push) {
             this.alternative && push(this.alternative), push(this.body), push(this.condition);
         }
-    }, AST_StatementWithBody), AST_Switch = DEFNODE("Switch", "expression", {
+    }, AST_StatementWithBody), AST_Switch = DEFNODE("Switch", "expression", function(props) {
+        props && (this.expression = props.expression, this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `switch` statement",
         $propdoc: {
             expression: "[AST_Node] the `switch` “discriminant”"
@@ -2495,11 +2627,17 @@
             for(; i--;)push(this.body[i]);
             push(this.expression);
         }
-    }, AST_Block), AST_SwitchBranch = DEFNODE("SwitchBranch", null, {
+    }, AST_Block), AST_SwitchBranch = DEFNODE("SwitchBranch", null, function(props) {
+        props && (this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Base class for `switch` branches"
-    }, AST_Block), AST_Default = DEFNODE("Default", null, {
+    }, AST_Block), AST_Default = DEFNODE("Default", null, function(props) {
+        props && (this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `default` switch branch"
-    }, AST_SwitchBranch), AST_Case = DEFNODE("Case", "expression", {
+    }, AST_SwitchBranch), AST_Case = DEFNODE("Case", "expression", function(props) {
+        props && (this.expression = props.expression, this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `case` switch branch",
         $propdoc: {
             expression: "[AST_Node] the `case` expression"
@@ -2514,23 +2652,30 @@
             for(; i--;)push(this.body[i]);
             push(this.expression);
         }
-    }, AST_SwitchBranch), AST_Try = DEFNODE("Try", "bcatch bfinally", {
+    }, AST_SwitchBranch), AST_Try = DEFNODE("Try", "body bcatch bfinally", function(props) {
+        props && (this.body = props.body, this.bcatch = props.bcatch, this.bfinally = props.bfinally, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `try` statement",
         $propdoc: {
+            body: "[AST_TryBlock] the try block",
             bcatch: "[AST_Catch?] the catch block, or null if not present",
             bfinally: "[AST_Finally?] the finally block, or null if not present"
         },
         _walk: function(visitor) {
             return visitor._visit(this, function() {
-                walk_body(this, visitor), this.bcatch && this.bcatch._walk(visitor), this.bfinally && this.bfinally._walk(visitor);
+                this.body._walk(visitor), this.bcatch && this.bcatch._walk(visitor), this.bfinally && this.bfinally._walk(visitor);
             });
         },
         _children_backwards (push) {
-            this.bfinally && push(this.bfinally), this.bcatch && push(this.bcatch);
-            let i = this.body.length;
-            for(; i--;)push(this.body[i]);
+            this.bfinally && push(this.bfinally), this.bcatch && push(this.bcatch), push(this.body);
         }
-    }, AST_Block), AST_Catch = DEFNODE("Catch", "argname", {
+    }, AST_Statement), AST_TryBlock = DEFNODE("TryBlock", null, function(props) {
+        props && (this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
+        $documentation: "The `try` block of a try statement"
+    }, AST_Block), AST_Catch = DEFNODE("Catch", "argname", function(props) {
+        props && (this.argname = props.argname, this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `catch` node; only makes sense as part of a `try` statement",
         $propdoc: {
             argname: "[AST_SymbolCatch|AST_Destructuring|AST_Expansion|AST_DefaultAssign] symbol for the exception"
@@ -2545,9 +2690,13 @@
             for(; i--;)push(this.body[i]);
             this.argname && push(this.argname);
         }
-    }, AST_Block), AST_Finally = DEFNODE("Finally", null, {
+    }, AST_Block), AST_Finally = DEFNODE("Finally", null, function(props) {
+        props && (this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `finally` node; only makes sense as part of a `try` statement"
-    }, AST_Block), AST_Definitions = DEFNODE("Definitions", "definitions", {
+    }, AST_Block), AST_Definitions = DEFNODE("Definitions", "definitions", function(props) {
+        props && (this.definitions = props.definitions, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Base class for `var` or `const` nodes (variable declarations/initializations)",
         $propdoc: {
             definitions: "[AST_VarDef*] array of variable definitions"
@@ -2561,13 +2710,21 @@
             let i = this.definitions.length;
             for(; i--;)push(this.definitions[i]);
         }
-    }, AST_Statement), AST_Var = DEFNODE("Var", null, {
+    }, AST_Statement), AST_Var = DEFNODE("Var", null, function(props) {
+        props && (this.definitions = props.definitions, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `var` statement"
-    }, AST_Definitions), AST_Let = DEFNODE("Let", null, {
+    }, AST_Definitions), AST_Let = DEFNODE("Let", null, function(props) {
+        props && (this.definitions = props.definitions, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `let` statement"
-    }, AST_Definitions), AST_Const = DEFNODE("Const", null, {
+    }, AST_Definitions), AST_Const = DEFNODE("Const", null, function(props) {
+        props && (this.definitions = props.definitions, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A `const` statement"
-    }, AST_Definitions), AST_VarDef = DEFNODE("VarDef", "name value", {
+    }, AST_Definitions), AST_VarDef = DEFNODE("VarDef", "name value", function(props) {
+        props && (this.name = props.name, this.value = props.value, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A variable declaration; only appears in a AST_Definitions node",
         $propdoc: {
             name: "[AST_Destructuring|AST_SymbolConst|AST_SymbolLet|AST_SymbolVar] name of the variable",
@@ -2580,8 +2737,15 @@
         },
         _children_backwards (push) {
             this.value && push(this.value), push(this.name);
+        },
+        declarations_as_names () {
+            return this.name instanceof AST_SymbolDeclaration ? [
+                this
+            ] : this.name.all_symbols();
         }
-    }), AST_NameMapping = DEFNODE("NameMapping", "foreign_name name", {
+    }), AST_NameMapping = DEFNODE("NameMapping", "foreign_name name", function(props) {
+        props && (this.foreign_name = props.foreign_name, this.name = props.name, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "The part of the export/import statement that declare names from a module.",
         $propdoc: {
             foreign_name: "[AST_SymbolExportForeign|AST_SymbolImportForeign] The name being exported/imported (as specified in the module)",
@@ -2595,7 +2759,9 @@
         _children_backwards (push) {
             push(this.name), push(this.foreign_name);
         }
-    }), AST_Import = DEFNODE("Import", "imported_name imported_names module_name assert_clause", {
+    }), AST_Import = DEFNODE("Import", "imported_name imported_names module_name assert_clause", function(props) {
+        props && (this.imported_name = props.imported_name, this.imported_names = props.imported_names, this.module_name = props.module_name, this.assert_clause = props.assert_clause, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "An `import` statement",
         $propdoc: {
             imported_name: "[AST_SymbolImport] The name of the variable holding the module's default export.",
@@ -2617,9 +2783,13 @@
             }
             this.imported_name && push(this.imported_name);
         }
-    }), AST_ImportMeta = DEFNODE("ImportMeta", null, {
+    }), AST_ImportMeta = DEFNODE("ImportMeta", null, function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A reference to import.meta"
-    }), AST_Export = DEFNODE("Export", "exported_definition exported_value is_default exported_names module_name assert_clause", {
+    }), AST_Export = DEFNODE("Export", "exported_definition exported_value is_default exported_names module_name assert_clause", function(props) {
+        props && (this.exported_definition = props.exported_definition, this.exported_value = props.exported_value, this.is_default = props.is_default, this.exported_names = props.exported_names, this.module_name = props.module_name, this.assert_clause = props.assert_clause, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "An `export` statement",
         $propdoc: {
             exported_definition: "[AST_Defun|AST_Definitions|AST_DefClass?] An exported definition",
@@ -2643,7 +2813,9 @@
             }
             this.exported_value && push(this.exported_value), this.exported_definition && push(this.exported_definition);
         }
-    }, AST_Statement), AST_Call = DEFNODE("Call", "expression args optional _annotations", {
+    }, AST_Statement), AST_Call = DEFNODE("Call", "expression args optional _annotations", function(props) {
+        props && (this.expression = props.expression, this.args = props.args, this.optional = props.optional, this._annotations = props._annotations, this.start = props.start, this.end = props.end, this.initialize()), this.flags = 0;
+    }, {
         $documentation: "A function call expression",
         $propdoc: {
             expression: "[AST_Node] expression to invoke as function",
@@ -2665,9 +2837,13 @@
             for(; i--;)push(this.args[i]);
             push(this.expression);
         }
-    }), AST_New = DEFNODE("New", null, {
+    }), AST_New = DEFNODE("New", null, function(props) {
+        props && (this.expression = props.expression, this.args = props.args, this.optional = props.optional, this._annotations = props._annotations, this.start = props.start, this.end = props.end, this.initialize()), this.flags = 0;
+    }, {
         $documentation: "An object instantiation.  Derives from a function call since it has exactly the same properties"
-    }, AST_Call), AST_Sequence = DEFNODE("Sequence", "expressions", {
+    }, AST_Call), AST_Sequence = DEFNODE("Sequence", "expressions", function(props) {
+        props && (this.expressions = props.expressions, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A sequence expression (comma-separated expressions)",
         $propdoc: {
             expressions: "[AST_Node*] array of expressions (at least two)"
@@ -2683,14 +2859,18 @@
             let i = this.expressions.length;
             for(; i--;)push(this.expressions[i]);
         }
-    }), AST_PropAccess = DEFNODE("PropAccess", "expression property optional", {
+    }), AST_PropAccess = DEFNODE("PropAccess", "expression property optional", function(props) {
+        props && (this.expression = props.expression, this.property = props.property, this.optional = props.optional, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Base class for property access expressions, i.e. `a.foo` or `a[\"foo\"]`",
         $propdoc: {
             expression: "[AST_Node] the “container” expression",
             property: "[AST_Node|string] the property to access.  For AST_Dot & AST_DotHash this is always a plain string, while for AST_Sub it's an arbitrary AST_Node",
             optional: "[boolean] whether this is an optional property access (IE ?.)"
         }
-    }), AST_Dot = DEFNODE("Dot", "quote", {
+    }), AST_Dot = DEFNODE("Dot", "quote", function(props) {
+        props && (this.quote = props.quote, this.expression = props.expression, this.property = props.property, this.optional = props.optional, this._annotations = props._annotations, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A dotted property access expression",
         $propdoc: {
             quote: "[string] the original quote character when transformed from AST_Sub"
@@ -2703,7 +2883,9 @@
         _children_backwards (push) {
             push(this.expression);
         }
-    }, AST_PropAccess), AST_DotHash = DEFNODE("DotHash", "", {
+    }, AST_PropAccess), AST_DotHash = DEFNODE("DotHash", "", function(props) {
+        props && (this.expression = props.expression, this.property = props.property, this.optional = props.optional, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A dotted property access to a private property",
         _walk: function(visitor) {
             return visitor._visit(this, function() {
@@ -2713,7 +2895,9 @@
         _children_backwards (push) {
             push(this.expression);
         }
-    }, AST_PropAccess), AST_Sub = DEFNODE("Sub", null, {
+    }, AST_PropAccess), AST_Sub = DEFNODE("Sub", null, function(props) {
+        props && (this.expression = props.expression, this.property = props.property, this.optional = props.optional, this._annotations = props._annotations, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Index-style property access, i.e. `a[\"foo\"]`",
         _walk: function(visitor) {
             return visitor._visit(this, function() {
@@ -2723,7 +2907,9 @@
         _children_backwards (push) {
             push(this.property), push(this.expression);
         }
-    }, AST_PropAccess), AST_Chain = DEFNODE("Chain", "expression", {
+    }, AST_PropAccess), AST_Chain = DEFNODE("Chain", "expression", function(props) {
+        props && (this.expression = props.expression, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A chain expression like a?.b?.(c)?.[d]",
         $propdoc: {
             expression: "[AST_Call|AST_Dot|AST_DotHash|AST_Sub] chain element."
@@ -2736,7 +2922,9 @@
         _children_backwards (push) {
             push(this.expression);
         }
-    }), AST_Unary = DEFNODE("Unary", "operator expression", {
+    }), AST_Unary = DEFNODE("Unary", "operator expression", function(props) {
+        props && (this.operator = props.operator, this.expression = props.expression, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Base class for unary expressions",
         $propdoc: {
             operator: "[string] the operator",
@@ -2750,11 +2938,17 @@
         _children_backwards (push) {
             push(this.expression);
         }
-    }), AST_UnaryPrefix = DEFNODE("UnaryPrefix", null, {
+    }), AST_UnaryPrefix = DEFNODE("UnaryPrefix", null, function(props) {
+        props && (this.operator = props.operator, this.expression = props.expression, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Unary prefix expression, i.e. `typeof i` or `++i`"
-    }, AST_Unary), AST_UnaryPostfix = DEFNODE("UnaryPostfix", null, {
+    }, AST_Unary), AST_UnaryPostfix = DEFNODE("UnaryPostfix", null, function(props) {
+        props && (this.operator = props.operator, this.expression = props.expression, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Unary postfix expression, i.e. `i++`"
-    }, AST_Unary), AST_Binary = DEFNODE("Binary", "operator left right", {
+    }, AST_Unary), AST_Binary = DEFNODE("Binary", "operator left right", function(props) {
+        props && (this.operator = props.operator, this.left = props.left, this.right = props.right, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Binary expression, i.e. `a + b`",
         $propdoc: {
             left: "[AST_Node] left-hand side expression",
@@ -2769,7 +2963,9 @@
         _children_backwards (push) {
             push(this.right), push(this.left);
         }
-    }), AST_Conditional = DEFNODE("Conditional", "condition consequent alternative", {
+    }), AST_Conditional = DEFNODE("Conditional", "condition consequent alternative", function(props) {
+        props && (this.condition = props.condition, this.consequent = props.consequent, this.alternative = props.alternative, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Conditional expression using the ternary operator, i.e. `a ? b : c`",
         $propdoc: {
             condition: "[AST_Node]",
@@ -2784,14 +2980,20 @@
         _children_backwards (push) {
             push(this.alternative), push(this.consequent), push(this.condition);
         }
-    }), AST_Assign = DEFNODE("Assign", "logical", {
+    }), AST_Assign = DEFNODE("Assign", "logical", function(props) {
+        props && (this.logical = props.logical, this.operator = props.operator, this.left = props.left, this.right = props.right, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "An assignment expression — `a = b + 5`",
         $propdoc: {
             logical: "Whether it's a logical assignment"
         }
-    }, AST_Binary), AST_DefaultAssign = DEFNODE("DefaultAssign", null, {
+    }, AST_Binary), AST_DefaultAssign = DEFNODE("DefaultAssign", null, function(props) {
+        props && (this.operator = props.operator, this.left = props.left, this.right = props.right, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A default assignment expression like in `(a = 3) => a`"
-    }, AST_Binary), AST_Array = DEFNODE("Array", "elements", {
+    }, AST_Binary), AST_Array = DEFNODE("Array", "elements", function(props) {
+        props && (this.elements = props.elements, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "An array literal",
         $propdoc: {
             elements: "[AST_Node*] array of elements"
@@ -2805,7 +3007,9 @@
             let i = this.elements.length;
             for(; i--;)push(this.elements[i]);
         }
-    }), AST_Object = DEFNODE("Object", "properties", {
+    }), AST_Object = DEFNODE("Object", "properties", function(props) {
+        props && (this.properties = props.properties, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "An object literal",
         $propdoc: {
             properties: "[AST_ObjectProperty*] array of properties"
@@ -2819,7 +3023,9 @@
             let i = this.properties.length;
             for(; i--;)push(this.properties[i]);
         }
-    }), AST_ObjectProperty = DEFNODE("ObjectProperty", "key value", {
+    }), AST_ObjectProperty = DEFNODE("ObjectProperty", "key value", function(props) {
+        props && (this.key = props.key, this.value = props.value, this.start = props.start, this.end = props.end, this._annotations = props._annotations), this.flags = 0;
+    }, {
         $documentation: "Base class for literal object properties",
         $propdoc: {
             key: "[string|AST_Node] property name. For ObjectKeyVal this is a string. For getters, setters and computed property this is an AST_Node.",
@@ -2833,7 +3039,9 @@
         _children_backwards (push) {
             push(this.value), this.key instanceof AST_Node && push(this.key);
         }
-    }), AST_ObjectKeyVal = DEFNODE("ObjectKeyVal", "quote", {
+    }), AST_ObjectKeyVal = DEFNODE("ObjectKeyVal", "quote", function(props) {
+        props && (this.quote = props.quote, this.key = props.key, this.value = props.value, this.start = props.start, this.end = props.end, this._annotations = props._annotations), this.flags = 0;
+    }, {
         $documentation: "A key: value object property",
         $propdoc: {
             quote: "[string] the original quote character"
@@ -2841,19 +3049,25 @@
         computed_key () {
             return this.key instanceof AST_Node;
         }
-    }, AST_ObjectProperty), AST_PrivateSetter = DEFNODE("PrivateSetter", "static", {
+    }, AST_ObjectProperty), AST_PrivateSetter = DEFNODE("PrivateSetter", "static", function(props) {
+        props && (this.static = props.static, this.key = props.key, this.value = props.value, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $propdoc: {
             static: "[boolean] whether this is a static private setter"
         },
         $documentation: "A private setter property",
         computed_key: ()=>!1
-    }, AST_ObjectProperty), AST_PrivateGetter = DEFNODE("PrivateGetter", "static", {
+    }, AST_ObjectProperty), AST_PrivateGetter = DEFNODE("PrivateGetter", "static", function(props) {
+        props && (this.static = props.static, this.key = props.key, this.value = props.value, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $propdoc: {
             static: "[boolean] whether this is a static private getter"
         },
         $documentation: "A private getter property",
         computed_key: ()=>!1
-    }, AST_ObjectProperty), AST_ObjectSetter = DEFNODE("ObjectSetter", "quote static", {
+    }, AST_ObjectProperty), AST_ObjectSetter = DEFNODE("ObjectSetter", "quote static", function(props) {
+        props && (this.quote = props.quote, this.static = props.static, this.key = props.key, this.value = props.value, this.start = props.start, this.end = props.end, this._annotations = props._annotations), this.flags = 0;
+    }, {
         $propdoc: {
             quote: "[string|undefined] the original quote character, if any",
             static: "[boolean] whether this is a static setter (classes only)"
@@ -2862,7 +3076,9 @@
         computed_key () {
             return !(this.key instanceof AST_SymbolMethod);
         }
-    }, AST_ObjectProperty), AST_ObjectGetter = DEFNODE("ObjectGetter", "quote static", {
+    }, AST_ObjectProperty), AST_ObjectGetter = DEFNODE("ObjectGetter", "quote static", function(props) {
+        props && (this.quote = props.quote, this.static = props.static, this.key = props.key, this.value = props.value, this.start = props.start, this.end = props.end, this._annotations = props._annotations), this.flags = 0;
+    }, {
         $propdoc: {
             quote: "[string|undefined] the original quote character, if any",
             static: "[boolean] whether this is a static getter (classes only)"
@@ -2871,7 +3087,9 @@
         computed_key () {
             return !(this.key instanceof AST_SymbolMethod);
         }
-    }, AST_ObjectProperty), AST_ConciseMethod = DEFNODE("ConciseMethod", "quote static is_generator async", {
+    }, AST_ObjectProperty), AST_ConciseMethod = DEFNODE("ConciseMethod", "quote static is_generator async", function(props) {
+        props && (this.quote = props.quote, this.static = props.static, this.is_generator = props.is_generator, this.async = props.async, this.key = props.key, this.value = props.value, this.start = props.start, this.end = props.end, this._annotations = props._annotations), this.flags = 0;
+    }, {
         $propdoc: {
             quote: "[string|undefined] the original quote character, if any",
             static: "[boolean] is this method static (classes only)",
@@ -2882,9 +3100,13 @@
         computed_key () {
             return !(this.key instanceof AST_SymbolMethod);
         }
-    }, AST_ObjectProperty), AST_PrivateMethod = DEFNODE("PrivateMethod", "", {
+    }, AST_ObjectProperty), AST_PrivateMethod = DEFNODE("PrivateMethod", "", function(props) {
+        props && (this.quote = props.quote, this.static = props.static, this.is_generator = props.is_generator, this.async = props.async, this.key = props.key, this.value = props.value, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A private class method inside a class"
-    }, AST_ConciseMethod), AST_Class = DEFNODE("Class", "name extends properties", {
+    }, AST_ConciseMethod), AST_Class = DEFNODE("Class", "name extends properties", function(props) {
+        props && (this.name = props.name, this.extends = props.extends, this.properties = props.properties, this.variables = props.variables, this.uses_with = props.uses_with, this.uses_eval = props.uses_eval, this.parent_scope = props.parent_scope, this.enclosed = props.enclosed, this.cname = props.cname, this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $propdoc: {
             name: "[AST_SymbolClass|AST_SymbolDefClass?] optional class name.",
             extends: "[AST_Node]? optional parent class",
@@ -2900,8 +3122,32 @@
             let i = this.properties.length;
             for(; i--;)push(this.properties[i]);
             this.extends && push(this.extends), this.name && push(this.name);
+        },
+        /** go through the bits that are executed instantly, not when the class is `new`'d. Doesn't walk the name. */ visit_nondeferred_class_parts (visitor) {
+            this.extends && this.extends._walk(visitor), this.properties.forEach((prop)=>{
+                prop instanceof AST_ClassStaticBlock ? prop._walk(visitor) : (prop.computed_key() && (visitor.push(prop), prop.key._walk(visitor), visitor.pop()), (prop instanceof AST_ClassPrivateProperty || prop instanceof AST_ClassProperty) && prop.static && prop.value && (visitor.push(prop), prop.value._walk(visitor), visitor.pop()));
+            });
+        },
+        /** go through the bits that are executed later, when the class is `new`'d or a static method is called */ visit_deferred_class_parts (visitor) {
+            this.properties.forEach((prop)=>{
+                prop instanceof AST_ConciseMethod ? prop.walk(visitor) : prop instanceof AST_ClassProperty && !prop.static && prop.value && (visitor.push(prop), prop.value._walk(visitor), visitor.pop());
+            });
+        },
+        is_self_referential: function() {
+            let this_id = this.name && this.name.definition().id, found = !1, class_this = !0;
+            return this.visit_nondeferred_class_parts(new TreeWalker((node, descend)=>{
+                if (found) return !0;
+                if (node instanceof AST_This) return found = class_this;
+                if (node instanceof AST_SymbolRef) return found = node.definition().id === this_id;
+                if (node instanceof AST_Lambda && !(node instanceof AST_Arrow)) {
+                    let class_this_save = class_this;
+                    return class_this = !1, descend(), class_this = class_this_save, !0;
+                }
+            })), found;
         }
-    }, AST_Scope /* TODO a class might have a scope but it's not a scope */ ), AST_ClassProperty = DEFNODE("ClassProperty", "static quote", {
+    }, AST_Scope /* TODO a class might have a scope but it's not a scope */ ), AST_ClassProperty = DEFNODE("ClassProperty", "static quote", function(props) {
+        props && (this.static = props.static, this.quote = props.quote, this.key = props.key, this.value = props.value, this.start = props.start, this.end = props.end, this._annotations = props._annotations), this.flags = 0;
+    }, {
         $documentation: "A class property",
         $propdoc: {
             static: "[boolean] whether this is a static key",
@@ -2918,52 +3164,124 @@
         computed_key () {
             return !(this.key instanceof AST_SymbolClassProperty);
         }
-    }, AST_ObjectProperty), AST_ClassPrivateProperty = DEFNODE("ClassPrivateProperty", "", {
+    }, AST_ObjectProperty), AST_ClassPrivateProperty = DEFNODE("ClassPrivateProperty", "", function(props) {
+        props && (this.static = props.static, this.quote = props.quote, this.key = props.key, this.value = props.value, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A class property for a private property"
-    }, AST_ClassProperty), AST_DefClass = DEFNODE("DefClass", null, {
+    }, AST_ClassProperty), AST_PrivateIn = DEFNODE("PrivateIn", "key value", function(props) {
+        props && (this.key = props.key, this.value = props.value, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
+        $documentation: "An `in` binop when the key is private, eg #x in this",
+        _walk: function(visitor) {
+            return visitor._visit(this, function() {
+                this.key._walk(visitor), this.value._walk(visitor);
+            });
+        },
+        _children_backwards (push) {
+            push(this.value), push(this.key);
+        }
+    }), AST_DefClass = DEFNODE("DefClass", null, function(props) {
+        props && (this.name = props.name, this.extends = props.extends, this.properties = props.properties, this.variables = props.variables, this.uses_with = props.uses_with, this.uses_eval = props.uses_eval, this.parent_scope = props.parent_scope, this.enclosed = props.enclosed, this.cname = props.cname, this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A class definition"
-    }, AST_Class), AST_ClassExpression = DEFNODE("ClassExpression", null, {
+    }, AST_Class), AST_ClassStaticBlock = DEFNODE("ClassStaticBlock", "body block_scope", function(props) {
+        this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end;
+    }, {
+        $documentation: "A block containing statements to be executed in the context of the class",
+        $propdoc: {
+            body: "[AST_Statement*] an array of statements"
+        },
+        _walk: function(visitor) {
+            return visitor._visit(this, function() {
+                walk_body(this, visitor);
+            });
+        },
+        _children_backwards (push) {
+            let i = this.body.length;
+            for(; i--;)push(this.body[i]);
+        },
+        clone: clone_block_scope,
+        computed_key: ()=>!1
+    }, AST_Scope), AST_ClassExpression = DEFNODE("ClassExpression", null, function(props) {
+        props && (this.name = props.name, this.extends = props.extends, this.properties = props.properties, this.variables = props.variables, this.uses_with = props.uses_with, this.uses_eval = props.uses_eval, this.parent_scope = props.parent_scope, this.enclosed = props.enclosed, this.cname = props.cname, this.body = props.body, this.block_scope = props.block_scope, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A class expression."
-    }, AST_Class), AST_Symbol = DEFNODE("Symbol", "scope name thedef", {
+    }, AST_Class), AST_Symbol = DEFNODE("Symbol", "scope name thedef", function(props) {
+        props && (this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $propdoc: {
             name: "[string] name of this symbol",
             scope: "[AST_Scope/S] the current scope (not necessarily the definition scope)",
             thedef: "[SymbolDef/S] the definition of this symbol"
         },
         $documentation: "Base class for all symbols"
-    }), AST_NewTarget = DEFNODE("NewTarget", null, {
+    }), AST_NewTarget = DEFNODE("NewTarget", null, function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A reference to new.target"
-    }), AST_SymbolDeclaration = DEFNODE("SymbolDeclaration", "init", {
+    }), AST_SymbolDeclaration = DEFNODE("SymbolDeclaration", "init", function(props) {
+        props && (this.init = props.init, this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A declaration symbol (symbol in var/const, function name or argument, symbol in catch)"
-    }, AST_Symbol), AST_SymbolVar = DEFNODE("SymbolVar", null, {
+    }, AST_Symbol), AST_SymbolVar = DEFNODE("SymbolVar", null, function(props) {
+        props && (this.init = props.init, this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Symbol defining a variable"
-    }, AST_SymbolDeclaration), AST_SymbolBlockDeclaration = DEFNODE("SymbolBlockDeclaration", null, {
+    }, AST_SymbolDeclaration), AST_SymbolBlockDeclaration = DEFNODE("SymbolBlockDeclaration", null, function(props) {
+        props && (this.init = props.init, this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Base class for block-scoped declaration symbols"
-    }, AST_SymbolDeclaration), AST_SymbolConst = DEFNODE("SymbolConst", null, {
+    }, AST_SymbolDeclaration), AST_SymbolConst = DEFNODE("SymbolConst", null, function(props) {
+        props && (this.init = props.init, this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A constant declaration"
-    }, AST_SymbolBlockDeclaration), AST_SymbolLet = DEFNODE("SymbolLet", null, {
+    }, AST_SymbolBlockDeclaration), AST_SymbolLet = DEFNODE("SymbolLet", null, function(props) {
+        props && (this.init = props.init, this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A block-scoped `let` declaration"
-    }, AST_SymbolBlockDeclaration), AST_SymbolFunarg = DEFNODE("SymbolFunarg", null, {
+    }, AST_SymbolBlockDeclaration), AST_SymbolFunarg = DEFNODE("SymbolFunarg", null, function(props) {
+        props && (this.init = props.init, this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Symbol naming a function argument"
-    }, AST_SymbolVar), AST_SymbolDefun = DEFNODE("SymbolDefun", null, {
+    }, AST_SymbolVar), AST_SymbolDefun = DEFNODE("SymbolDefun", null, function(props) {
+        props && (this.init = props.init, this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Symbol defining a function"
-    }, AST_SymbolDeclaration), AST_SymbolMethod = DEFNODE("SymbolMethod", null, {
+    }, AST_SymbolDeclaration), AST_SymbolMethod = DEFNODE("SymbolMethod", null, function(props) {
+        props && (this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Symbol in an object defining a method"
-    }, AST_Symbol), AST_SymbolClassProperty = DEFNODE("SymbolClassProperty", null, {
+    }, AST_Symbol), AST_SymbolClassProperty = DEFNODE("SymbolClassProperty", null, function(props) {
+        props && (this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Symbol for a class property"
-    }, AST_Symbol), AST_SymbolLambda = DEFNODE("SymbolLambda", null, {
+    }, AST_Symbol), AST_SymbolLambda = DEFNODE("SymbolLambda", null, function(props) {
+        props && (this.init = props.init, this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Symbol naming a function expression"
-    }, AST_SymbolDeclaration), AST_SymbolDefClass = DEFNODE("SymbolDefClass", null, {
+    }, AST_SymbolDeclaration), AST_SymbolDefClass = DEFNODE("SymbolDefClass", null, function(props) {
+        props && (this.init = props.init, this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Symbol naming a class's name in a class declaration. Lexically scoped to its containing scope, and accessible within the class."
-    }, AST_SymbolBlockDeclaration), AST_SymbolClass = DEFNODE("SymbolClass", null, {
+    }, AST_SymbolBlockDeclaration), AST_SymbolClass = DEFNODE("SymbolClass", null, function(props) {
+        props && (this.init = props.init, this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Symbol naming a class's name. Lexically scoped to the class."
-    }, AST_SymbolDeclaration), AST_SymbolCatch = DEFNODE("SymbolCatch", null, {
+    }, AST_SymbolDeclaration), AST_SymbolCatch = DEFNODE("SymbolCatch", null, function(props) {
+        props && (this.init = props.init, this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Symbol naming the exception in catch"
-    }, AST_SymbolBlockDeclaration), AST_SymbolImport = DEFNODE("SymbolImport", null, {
+    }, AST_SymbolBlockDeclaration), AST_SymbolImport = DEFNODE("SymbolImport", null, function(props) {
+        props && (this.init = props.init, this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Symbol referring to an imported name"
-    }, AST_SymbolBlockDeclaration), AST_SymbolImportForeign = DEFNODE("SymbolImportForeign", null, {
+    }, AST_SymbolBlockDeclaration), AST_SymbolImportForeign = DEFNODE("SymbolImportForeign", null, function(props) {
+        props && (this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.quote = props.quote, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A symbol imported from a module, but it is defined in the other module, and its real name is irrelevant for this module's purposes"
-    }, AST_Symbol), AST_Label = DEFNODE("Label", "references", {
+    }, AST_Symbol), AST_Label = DEFNODE("Label", "references", function(props) {
+        props && (this.references = props.references, this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end, this.initialize()), this.flags = 0;
+    }, {
         $documentation: "Symbol naming a label (declaration)",
         $propdoc: {
             references: "[AST_LoopControl*] a list of nodes referring to this label"
@@ -2971,83 +3289,127 @@
         initialize: function() {
             this.references = [], this.thedef = this;
         }
-    }, AST_Symbol), AST_SymbolRef = DEFNODE("SymbolRef", null, {
+    }, AST_Symbol), AST_SymbolRef = DEFNODE("SymbolRef", null, function(props) {
+        props && (this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Reference to some symbol (not definition/declaration)"
-    }, AST_Symbol), AST_SymbolExport = DEFNODE("SymbolExport", null, {
+    }, AST_Symbol), AST_SymbolExport = DEFNODE("SymbolExport", null, function(props) {
+        props && (this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.quote = props.quote, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Symbol referring to a name to export"
-    }, AST_SymbolRef), AST_SymbolExportForeign = DEFNODE("SymbolExportForeign", null, {
+    }, AST_SymbolRef), AST_SymbolExportForeign = DEFNODE("SymbolExportForeign", null, function(props) {
+        props && (this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.quote = props.quote, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A symbol exported from this module, but it is used in the other module, and its real name is irrelevant for this module's purposes"
-    }, AST_Symbol), AST_LabelRef = DEFNODE("LabelRef", null, {
+    }, AST_Symbol), AST_LabelRef = DEFNODE("LabelRef", null, function(props) {
+        props && (this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Reference to a label symbol"
-    }, AST_Symbol), AST_This = DEFNODE("This", null, {
+    }, AST_Symbol), AST_SymbolPrivateProperty = DEFNODE("SymbolPrivateProperty", null, function(props) {
+        props && (this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
+        $documentation: "A symbol that refers to a private property"
+    }, AST_Symbol), AST_This = DEFNODE("This", null, function(props) {
+        props && (this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "The `this` symbol"
-    }, AST_Symbol), AST_Super = DEFNODE("Super", null, {
+    }, AST_Symbol), AST_Super = DEFNODE("Super", null, function(props) {
+        props && (this.scope = props.scope, this.name = props.name, this.thedef = props.thedef, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "The `super` symbol"
-    }, AST_This), AST_Constant = DEFNODE("Constant", null, {
+    }, AST_This), AST_Constant = DEFNODE("Constant", null, function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Base class for all constants",
         getValue: function() {
             return this.value;
         }
-    }), AST_String = DEFNODE("String", "value quote", {
+    }), AST_String = DEFNODE("String", "value quote", function(props) {
+        props && (this.value = props.value, this.quote = props.quote, this.start = props.start, this.end = props.end, this._annotations = props._annotations), this.flags = 0;
+    }, {
         $documentation: "A string literal",
         $propdoc: {
             value: "[string] the contents of this string",
             quote: "[string] the original quote character"
         }
-    }, AST_Constant), AST_Number = DEFNODE("Number", "value raw", {
+    }, AST_Constant), AST_Number = DEFNODE("Number", "value raw", function(props) {
+        props && (this.value = props.value, this.raw = props.raw, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A number literal",
         $propdoc: {
             value: "[number] the numeric value",
             raw: "[string] numeric value as string"
         }
-    }, AST_Constant), AST_BigInt = DEFNODE("BigInt", "value", {
+    }, AST_Constant), AST_BigInt = DEFNODE("BigInt", "value", function(props) {
+        props && (this.value = props.value, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A big int literal",
         $propdoc: {
             value: "[string] big int value"
         }
-    }, AST_Constant), AST_RegExp = DEFNODE("RegExp", "value", {
+    }, AST_Constant), AST_RegExp = DEFNODE("RegExp", "value", function(props) {
+        props && (this.value = props.value, this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A regexp literal",
         $propdoc: {
             value: "[RegExp] the actual regexp"
         }
-    }, AST_Constant), AST_Atom = DEFNODE("Atom", null, {
+    }, AST_Constant), AST_Atom = DEFNODE("Atom", null, function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Base class for atoms"
-    }, AST_Constant), AST_Null = DEFNODE("Null", null, {
+    }, AST_Constant), AST_Null = DEFNODE("Null", null, function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "The `null` atom",
         value: null
-    }, AST_Atom), AST_NaN = DEFNODE("NaN", null, {
+    }, AST_Atom), AST_NaN = DEFNODE("NaN", null, function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "The impossible value",
         value: 0 / 0
-    }, AST_Atom), AST_Undefined = DEFNODE("Undefined", null, {
+    }, AST_Atom), AST_Undefined = DEFNODE("Undefined", null, function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "The `undefined` value",
         value: void 0
-    }, AST_Atom), AST_Hole = DEFNODE("Hole", null, {
+    }, AST_Atom), AST_Hole = DEFNODE("Hole", null, function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "A hole in an array",
         value: void 0
-    }, AST_Atom), AST_Infinity = DEFNODE("Infinity", null, {
+    }, AST_Atom), AST_Infinity = DEFNODE("Infinity", null, function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "The `Infinity` value",
         value: 1 / 0
-    }, AST_Atom), AST_Boolean = DEFNODE("Boolean", null, {
+    }, AST_Atom), AST_Boolean = DEFNODE("Boolean", null, function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "Base class for booleans"
-    }, AST_Atom), AST_False = DEFNODE("False", null, {
+    }, AST_Atom), AST_False = DEFNODE("False", null, function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "The `false` atom",
         value: !1
-    }, AST_Boolean), AST_True = DEFNODE("True", null, {
+    }, AST_Boolean), AST_True = DEFNODE("True", null, function(props) {
+        props && (this.start = props.start, this.end = props.end), this.flags = 0;
+    }, {
         $documentation: "The `true` atom",
         value: !0
     }, AST_Boolean);
     /* -----[ Walk function ]---- */ /**
- * Walk nodes in depth-first search fashion.
- * Callback can return `walk_abort` symbol to stop iteration.
- * It can also return `true` to stop iteration just for child nodes.
- * Iteration can be stopped and continued by passing the `to_visit` argument,
- * which is given to the callback in the second argument.
- **/ function walk(node, cb, to_visit = [
+     * Walk nodes in depth-first search fashion.
+     * Callback can return `walk_abort` symbol to stop iteration.
+     * It can also return `true` to stop iteration just for child nodes.
+     * Iteration can be stopped and continued by passing the `to_visit` argument,
+     * which is given to the callback in the second argument.
+     **/ function walk(node, cb, to_visit = [
         node
     ]) {
-        const push = to_visit.push.bind(to_visit);
+        let push = to_visit.push.bind(to_visit);
         for(; to_visit.length;){
-            const node = to_visit.pop(), ret = cb(node, to_visit);
+            let node = to_visit.pop(), ret = cb(node, to_visit);
             if (ret) {
                 if (ret === walk_abort) return !0;
                 continue;
@@ -3056,26 +3418,39 @@
         }
         return !1;
     }
-    function walk_parent(node, cb, initial_stack) {
-        let current;
-        const to_visit = [
+    /**
+     * Walks an AST node and its children.
+     *
+     * {cb} can return `walk_abort` to interrupt the walk.
+     *
+     * @param node
+     * @param cb {(node, info: { parent: (nth) => any }) => (boolean | undefined)}
+     *
+     * @returns {boolean} whether the walk was aborted
+     *
+     * @example
+     * const found_some_cond = walk_parent(my_ast_node, (node, { parent }) => {
+     *   if (some_cond(node, parent())) return walk_abort
+     * });
+     */ function walk_parent(node, cb, initial_stack) {
+        let current, to_visit = [
             node
         ], push = to_visit.push.bind(to_visit), stack = initial_stack ? initial_stack.slice() : [], parent_pop_indices = [], info = {
             parent: (n = 0)=>-1 === n ? current : initial_stack && n >= stack.length ? (n -= stack.length, initial_stack[initial_stack.length - (n + 1)]) : stack[stack.length - (1 + n)]
         };
         for(; to_visit.length;){
             for(current = to_visit.pop(); parent_pop_indices.length && to_visit.length == parent_pop_indices[parent_pop_indices.length - 1];)stack.pop(), parent_pop_indices.pop();
-            const ret = cb(current, info);
+            let ret = cb(current, info);
             if (ret) {
                 if (ret === walk_abort) return !0;
                 continue;
             }
-            const visit_length = to_visit.length;
+            let visit_length = to_visit.length;
             current._children_backwards(push), to_visit.length > visit_length && (stack.push(current), parent_pop_indices.push(visit_length - 1));
         }
         return !1;
     }
-    const walk_abort = Symbol("abort walk");
+    let walk_abort = Symbol("abort walk");
     /* -----[ TreeWalker ]----- */ class TreeWalker {
         constructor(callback){
             this.visit = callback, this.stack = [], this.directives = Object.create(null);
@@ -3106,6 +3481,13 @@
                 if (x instanceof type) return x;
             }
         }
+        find_scope() {
+            for(var stack = this.stack, i = stack.length; --i >= 0;){
+                let p = stack[i];
+                if (p instanceof AST_Toplevel || p instanceof AST_Lambda) return p;
+                if (p.block_scope) return p.block_scope;
+            }
+        }
         has_directive(type) {
             var dir = this.directives[type];
             if (dir) return dir;
@@ -3134,198 +3516,56 @@
             super(), this.before = before, this.after = after;
         }
     }
-    const _PURE = 0b00000001, _INLINE = 0b00000010, _NOINLINE = 0b00000100;
-    var ast = /*#__PURE__*/ Object.freeze({
-        __proto__: null,
-        AST_Accessor: AST_Accessor,
-        AST_Array: AST_Array,
-        AST_Arrow: AST_Arrow,
-        AST_Assign: AST_Assign,
-        AST_Atom: AST_Atom,
-        AST_Await: AST_Await,
-        AST_BigInt: AST_BigInt,
-        AST_Binary: AST_Binary,
-        AST_Block: AST_Block,
-        AST_BlockStatement: AST_BlockStatement,
-        AST_Boolean: AST_Boolean,
-        AST_Break: AST_Break,
-        AST_Call: AST_Call,
-        AST_Case: AST_Case,
-        AST_Catch: AST_Catch,
-        AST_Chain: AST_Chain,
-        AST_Class: AST_Class,
-        AST_ClassExpression: AST_ClassExpression,
-        AST_ClassPrivateProperty: AST_ClassPrivateProperty,
-        AST_ClassProperty: AST_ClassProperty,
-        AST_ConciseMethod: AST_ConciseMethod,
-        AST_Conditional: AST_Conditional,
-        AST_Const: AST_Const,
-        AST_Constant: AST_Constant,
-        AST_Continue: AST_Continue,
-        AST_Debugger: AST_Debugger,
-        AST_Default: AST_Default,
-        AST_DefaultAssign: AST_DefaultAssign,
-        AST_DefClass: AST_DefClass,
-        AST_Definitions: AST_Definitions,
-        AST_Defun: AST_Defun,
-        AST_Destructuring: AST_Destructuring,
-        AST_Directive: AST_Directive,
-        AST_Do: AST_Do,
-        AST_Dot: AST_Dot,
-        AST_DotHash: AST_DotHash,
-        AST_DWLoop: AST_DWLoop,
-        AST_EmptyStatement: AST_EmptyStatement,
-        AST_Exit: AST_Exit,
-        AST_Expansion: AST_Expansion,
-        AST_Export: AST_Export,
-        AST_False: AST_False,
-        AST_Finally: AST_Finally,
-        AST_For: AST_For,
-        AST_ForIn: AST_ForIn,
-        AST_ForOf: AST_ForOf,
-        AST_Function: AST_Function,
-        AST_Hole: AST_Hole,
-        AST_If: AST_If,
-        AST_Import: AST_Import,
-        AST_ImportMeta: AST_ImportMeta,
-        AST_Infinity: AST_Infinity,
-        AST_IterationStatement: AST_IterationStatement,
-        AST_Jump: AST_Jump,
-        AST_Label: AST_Label,
-        AST_LabeledStatement: AST_LabeledStatement,
-        AST_LabelRef: AST_LabelRef,
-        AST_Lambda: AST_Lambda,
-        AST_Let: AST_Let,
-        AST_LoopControl: AST_LoopControl,
-        AST_NameMapping: AST_NameMapping,
-        AST_NaN: AST_NaN,
-        AST_New: AST_New,
-        AST_NewTarget: AST_NewTarget,
-        AST_Node: AST_Node,
-        AST_Null: AST_Null,
-        AST_Number: AST_Number,
-        AST_Object: AST_Object,
-        AST_ObjectGetter: AST_ObjectGetter,
-        AST_ObjectKeyVal: AST_ObjectKeyVal,
-        AST_ObjectProperty: AST_ObjectProperty,
-        AST_ObjectSetter: AST_ObjectSetter,
-        AST_PrefixedTemplateString: AST_PrefixedTemplateString,
-        AST_PrivateGetter: AST_PrivateGetter,
-        AST_PrivateMethod: AST_PrivateMethod,
-        AST_PrivateSetter: AST_PrivateSetter,
-        AST_PropAccess: AST_PropAccess,
-        AST_RegExp: AST_RegExp,
-        AST_Return: AST_Return,
-        AST_Scope: AST_Scope,
-        AST_Sequence: AST_Sequence,
-        AST_SimpleStatement: AST_SimpleStatement,
-        AST_Statement: AST_Statement,
-        AST_StatementWithBody: AST_StatementWithBody,
-        AST_String: AST_String,
-        AST_Sub: AST_Sub,
-        AST_Super: AST_Super,
-        AST_Switch: AST_Switch,
-        AST_SwitchBranch: AST_SwitchBranch,
-        AST_Symbol: AST_Symbol,
-        AST_SymbolBlockDeclaration: AST_SymbolBlockDeclaration,
-        AST_SymbolCatch: AST_SymbolCatch,
-        AST_SymbolClass: AST_SymbolClass,
-        AST_SymbolClassProperty: AST_SymbolClassProperty,
-        AST_SymbolConst: AST_SymbolConst,
-        AST_SymbolDeclaration: AST_SymbolDeclaration,
-        AST_SymbolDefClass: AST_SymbolDefClass,
-        AST_SymbolDefun: AST_SymbolDefun,
-        AST_SymbolExport: AST_SymbolExport,
-        AST_SymbolExportForeign: AST_SymbolExportForeign,
-        AST_SymbolFunarg: AST_SymbolFunarg,
-        AST_SymbolImport: AST_SymbolImport,
-        AST_SymbolImportForeign: AST_SymbolImportForeign,
-        AST_SymbolLambda: AST_SymbolLambda,
-        AST_SymbolLet: AST_SymbolLet,
-        AST_SymbolMethod: AST_SymbolMethod,
-        AST_SymbolRef: AST_SymbolRef,
-        AST_SymbolVar: AST_SymbolVar,
-        AST_TemplateSegment: AST_TemplateSegment,
-        AST_TemplateString: AST_TemplateString,
-        AST_This: AST_This,
-        AST_Throw: AST_Throw,
-        AST_Token: AST_Token,
-        AST_Toplevel: AST_Toplevel,
-        AST_True: AST_True,
-        AST_Try: AST_Try,
-        AST_Unary: AST_Unary,
-        AST_UnaryPostfix: AST_UnaryPostfix,
-        AST_UnaryPrefix: AST_UnaryPrefix,
-        AST_Undefined: AST_Undefined,
-        AST_Var: AST_Var,
-        AST_VarDef: AST_VarDef,
-        AST_While: AST_While,
-        AST_With: AST_With,
-        AST_Yield: AST_Yield,
-        TreeTransformer: TreeTransformer,
-        TreeWalker: TreeWalker,
-        walk: walk,
-        walk_abort: walk_abort,
-        walk_body: walk_body,
-        walk_parent: walk_parent,
-        _INLINE: 0b00000010,
-        _NOINLINE: 0b00000100,
-        _PURE: 0b00000001
-    });
+    let _PURE = 0b00000001, _INLINE = 0b00000010, _NOINLINE = 0b00000100, _KEY = 0b00001000, _MANGLEPROP = 0b00010000;
     /***********************************************************************
-
-  A JavaScript tokenizer / parser / beautifier / compressor.
-  https://github.com/mishoo/UglifyJS2
-
-  -------------------------------- (C) ---------------------------------
-
-                           Author: Mihai Bazon
-                         <mihai.bazon@gmail.com>
-                       http://mihai.bazon.net/blog
-
-  Distributed under the BSD license:
-
-    Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-        * Redistributions of source code must retain the above
-          copyright notice, this list of conditions and the following
-          disclaimer.
-
-        * Redistributions in binary form must reproduce the above
-          copyright notice, this list of conditions and the following
-          disclaimer in the documentation and/or other materials
-          provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-    OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-    TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-    THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-    SUCH DAMAGE.
-
- ***********************************************************************/ function def_transform(node, descend) {
+    
+      A JavaScript tokenizer / parser / beautifier / compressor.
+      https://github.com/mishoo/UglifyJS2
+    
+      -------------------------------- (C) ---------------------------------
+    
+                               Author: Mihai Bazon
+                             <mihai.bazon@gmail.com>
+                           http://mihai.bazon.net/blog
+    
+      Distributed under the BSD license:
+    
+        Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
+    
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions
+        are met:
+    
+            * Redistributions of source code must retain the above
+              copyright notice, this list of conditions and the following
+              disclaimer.
+    
+            * Redistributions in binary form must reproduce the above
+              copyright notice, this list of conditions and the following
+              disclaimer in the documentation and/or other materials
+              provided with the distribution.
+    
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+        EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+        PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+        OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+        PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+        PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+        THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+        TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+        THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+        SUCH DAMAGE.
+    
+     ***********************************************************************/ function def_transform(node, descend) {
         node.DEFMETHOD("transform", function(tw, in_list) {
             let transformed;
             if (tw.push(this), tw.before && (transformed = tw.before(this, descend, in_list)), void 0 === transformed && (transformed = this, descend(transformed, tw), tw.after)) {
-                const after_ret = tw.after(transformed, in_list);
+                let after_ret = tw.after(transformed, in_list);
                 void 0 !== after_ret && (transformed = after_ret);
             }
             return tw.pop(), transformed;
-        });
-    }
-    function do_list(list, tw) {
-        return MAP(list, function(node) {
-            return node.transform(tw, !0);
         });
     }
     // return true if the node at the top of the stack (that means the
@@ -3335,7 +3575,7 @@
         let node = stack.parent(-1);
         for(let i = 0, p; p = stack.parent(i); i++){
             if (p instanceof AST_Statement && p.body === node) return !0;
-            if ((!(p instanceof AST_Sequence) || p.expressions[0] !== node) && ("Call" !== p.TYPE || p.expression !== node) && (!(p instanceof AST_PrefixedTemplateString) || p.prefix !== node) && (!(p instanceof AST_Dot) || p.expression !== node) && (!(p instanceof AST_Sub) || p.expression !== node) && (!(p instanceof AST_Conditional) || p.condition !== node) && (!(p instanceof AST_Binary) || p.left !== node) && (!(p instanceof AST_UnaryPostfix) || p.expression !== node)) return !1;
+            if ((!(p instanceof AST_Sequence) || p.expressions[0] !== node) && ("Call" !== p.TYPE || p.expression !== node) && (!(p instanceof AST_PrefixedTemplateString) || p.prefix !== node) && (!(p instanceof AST_Dot) || p.expression !== node) && (!(p instanceof AST_Sub) || p.expression !== node) && (!(p instanceof AST_Chain) || p.expression !== node) && (!(p instanceof AST_Conditional) || p.condition !== node) && (!(p instanceof AST_Binary) || p.left !== node) && (!(p instanceof AST_UnaryPostfix) || p.expression !== node)) return !1;
             node = p;
         }
     }
@@ -3344,7 +3584,7 @@
     }), def_transform(AST_SimpleStatement, function(self1, tw) {
         self1.body = self1.body.transform(tw);
     }), def_transform(AST_Block, function(self1, tw) {
-        self1.body = do_list(self1.body, tw);
+        self1.body = MAP(self1.body, tw);
     }), def_transform(AST_Do, function(self1, tw) {
         self1.body = self1.body.transform(tw), self1.condition = self1.condition.transform(tw);
     }), def_transform(AST_While, function(self1, tw) {
@@ -3362,25 +3602,25 @@
     }), def_transform(AST_If, function(self1, tw) {
         self1.condition = self1.condition.transform(tw), self1.body = self1.body.transform(tw), self1.alternative && (self1.alternative = self1.alternative.transform(tw));
     }), def_transform(AST_Switch, function(self1, tw) {
-        self1.expression = self1.expression.transform(tw), self1.body = do_list(self1.body, tw);
+        self1.expression = self1.expression.transform(tw), self1.body = MAP(self1.body, tw);
     }), def_transform(AST_Case, function(self1, tw) {
-        self1.expression = self1.expression.transform(tw), self1.body = do_list(self1.body, tw);
+        self1.expression = self1.expression.transform(tw), self1.body = MAP(self1.body, tw);
     }), def_transform(AST_Try, function(self1, tw) {
-        self1.body = do_list(self1.body, tw), self1.bcatch && (self1.bcatch = self1.bcatch.transform(tw)), self1.bfinally && (self1.bfinally = self1.bfinally.transform(tw));
+        self1.body = self1.body.transform(tw), self1.bcatch && (self1.bcatch = self1.bcatch.transform(tw)), self1.bfinally && (self1.bfinally = self1.bfinally.transform(tw));
     }), def_transform(AST_Catch, function(self1, tw) {
-        self1.argname && (self1.argname = self1.argname.transform(tw)), self1.body = do_list(self1.body, tw);
+        self1.argname && (self1.argname = self1.argname.transform(tw)), self1.body = MAP(self1.body, tw);
     }), def_transform(AST_Definitions, function(self1, tw) {
-        self1.definitions = do_list(self1.definitions, tw);
+        self1.definitions = MAP(self1.definitions, tw);
     }), def_transform(AST_VarDef, function(self1, tw) {
         self1.name = self1.name.transform(tw), self1.value && (self1.value = self1.value.transform(tw));
     }), def_transform(AST_Destructuring, function(self1, tw) {
-        self1.names = do_list(self1.names, tw);
+        self1.names = MAP(self1.names, tw);
     }), def_transform(AST_Lambda, function(self1, tw) {
-        self1.name && (self1.name = self1.name.transform(tw)), self1.argnames = do_list(self1.argnames, tw), self1.body instanceof AST_Node ? self1.body = self1.body.transform(tw) : self1.body = do_list(self1.body, tw);
+        self1.name && (self1.name = self1.name.transform(tw)), self1.argnames = MAP(self1.argnames, tw, /* allow_splicing */ !1), self1.body instanceof AST_Node ? self1.body = self1.body.transform(tw) : self1.body = MAP(self1.body, tw);
     }), def_transform(AST_Call, function(self1, tw) {
-        self1.expression = self1.expression.transform(tw), self1.args = do_list(self1.args, tw);
+        self1.expression = self1.expression.transform(tw), self1.args = MAP(self1.args, tw, /* allow_splicing */ !1);
     }), def_transform(AST_Sequence, function(self1, tw) {
-        const result = do_list(self1.expressions, tw);
+        let result = MAP(self1.expressions, tw);
         self1.expressions = result.length ? result : [
             new AST_Number({
                 value: 0
@@ -3400,79 +3640,84 @@
         self1.expression = self1.expression.transform(tw);
     }), def_transform(AST_Binary, function(self1, tw) {
         self1.left = self1.left.transform(tw), self1.right = self1.right.transform(tw);
+    }), def_transform(AST_PrivateIn, function(self1, tw) {
+        self1.key = self1.key.transform(tw), self1.value = self1.value.transform(tw);
     }), def_transform(AST_Conditional, function(self1, tw) {
         self1.condition = self1.condition.transform(tw), self1.consequent = self1.consequent.transform(tw), self1.alternative = self1.alternative.transform(tw);
     }), def_transform(AST_Array, function(self1, tw) {
-        self1.elements = do_list(self1.elements, tw);
+        self1.elements = MAP(self1.elements, tw);
     }), def_transform(AST_Object, function(self1, tw) {
-        self1.properties = do_list(self1.properties, tw);
+        self1.properties = MAP(self1.properties, tw);
     }), def_transform(AST_ObjectProperty, function(self1, tw) {
         self1.key instanceof AST_Node && (self1.key = self1.key.transform(tw)), self1.value && (self1.value = self1.value.transform(tw));
     }), def_transform(AST_Class, function(self1, tw) {
-        self1.name && (self1.name = self1.name.transform(tw)), self1.extends && (self1.extends = self1.extends.transform(tw)), self1.properties = do_list(self1.properties, tw);
+        self1.name && (self1.name = self1.name.transform(tw)), self1.extends && (self1.extends = self1.extends.transform(tw)), self1.properties = MAP(self1.properties, tw);
+    }), def_transform(AST_ClassStaticBlock, function(self1, tw) {
+        self1.body = MAP(self1.body, tw);
     }), def_transform(AST_Expansion, function(self1, tw) {
         self1.expression = self1.expression.transform(tw);
     }), def_transform(AST_NameMapping, function(self1, tw) {
         self1.foreign_name = self1.foreign_name.transform(tw), self1.name = self1.name.transform(tw);
     }), def_transform(AST_Import, function(self1, tw) {
-        self1.imported_name && (self1.imported_name = self1.imported_name.transform(tw)), self1.imported_names && do_list(self1.imported_names, tw), self1.module_name = self1.module_name.transform(tw);
+        self1.imported_name && (self1.imported_name = self1.imported_name.transform(tw)), self1.imported_names && MAP(self1.imported_names, tw), self1.module_name = self1.module_name.transform(tw);
     }), def_transform(AST_Export, function(self1, tw) {
-        self1.exported_definition && (self1.exported_definition = self1.exported_definition.transform(tw)), self1.exported_value && (self1.exported_value = self1.exported_value.transform(tw)), self1.exported_names && do_list(self1.exported_names, tw), self1.module_name && (self1.module_name = self1.module_name.transform(tw));
+        self1.exported_definition && (self1.exported_definition = self1.exported_definition.transform(tw)), self1.exported_value && (self1.exported_value = self1.exported_value.transform(tw)), self1.exported_names && MAP(self1.exported_names, tw), self1.module_name && (self1.module_name = self1.module_name.transform(tw));
     }), def_transform(AST_TemplateString, function(self1, tw) {
-        self1.segments = do_list(self1.segments, tw);
+        self1.segments = MAP(self1.segments, tw);
     }), def_transform(AST_PrefixedTemplateString, function(self1, tw) {
         self1.prefix = self1.prefix.transform(tw), self1.template_string = self1.template_string.transform(tw);
     }), /***********************************************************************
-
-  A JavaScript tokenizer / parser / beautifier / compressor.
-  https://github.com/mishoo/UglifyJS2
-
-  -------------------------------- (C) ---------------------------------
-
-                           Author: Mihai Bazon
-                         <mihai.bazon@gmail.com>
-                       http://mihai.bazon.net/blog
-
-  Distributed under the BSD license:
-
-    Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-        * Redistributions of source code must retain the above
-          copyright notice, this list of conditions and the following
-          disclaimer.
-
-        * Redistributions in binary form must reproduce the above
-          copyright notice, this list of conditions and the following
-          disclaimer in the documentation and/or other materials
-          provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-    OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-    TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-    THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-    SUCH DAMAGE.
-
- ***********************************************************************/ function() {
+    
+      A JavaScript tokenizer / parser / beautifier / compressor.
+      https://github.com/mishoo/UglifyJS2
+    
+      -------------------------------- (C) ---------------------------------
+    
+                               Author: Mihai Bazon
+                             <mihai.bazon@gmail.com>
+                           http://mihai.bazon.net/blog
+    
+      Distributed under the BSD license:
+    
+        Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
+    
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions
+        are met:
+    
+            * Redistributions of source code must retain the above
+              copyright notice, this list of conditions and the following
+              disclaimer.
+    
+            * Redistributions in binary form must reproduce the above
+              copyright notice, this list of conditions and the following
+              disclaimer in the documentation and/or other materials
+              provided with the distribution.
+    
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+        EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+        PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+        OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+        PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+        PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+        THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+        TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+        THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+        SUCH DAMAGE.
+    
+     ***********************************************************************/ function() {
         var normalize_directives = function(body) {
-            for(var in_directive = !0, i = 0; i < body.length; i++)in_directive && body[i] instanceof AST_Statement && body[i].body instanceof AST_String ? body[i] = new AST_Directive({
+            for(var i = 0; i < body.length; i++)if (body[i] instanceof AST_Statement && body[i].body instanceof AST_String) body[i] = new AST_Directive({
                 start: body[i].start,
                 end: body[i].end,
                 value: body[i].body.value
-            }) : in_directive && !(body[i] instanceof AST_Statement && body[i].body instanceof AST_String) && (in_directive = !1);
+            });
+            else break;
             return body;
         };
-        const assert_clause_from_moz = (assertions)=>assertions && assertions.length > 0 ? new AST_Object({
+        let assert_clause_from_moz = (assertions)=>assertions && assertions.length > 0 ? new AST_Object({
                 start: my_start_token(assertions),
                 end: my_end_token(assertions),
                 properties: assertions.map((assertion_kv)=>new AST_ObjectKeyVal({
@@ -3578,7 +3823,7 @@
                 });
             },
             ArrowFunctionExpression: function(M) {
-                const body = "BlockStatement" === M.body.type ? from_moz(M.body).body : [
+                let body = "BlockStatement" === M.body.type ? from_moz(M.body).body : [
                     make_node(AST_Return, {}, {
                         value: from_moz(M.body)
                     })
@@ -3606,7 +3851,7 @@
                 return new AST_Try({
                     start: my_start_token(M),
                     end: my_end_token(M),
-                    body: from_moz(M.block).body,
+                    body: new AST_TryBlock(from_moz(M.block)),
                     bcatch: from_moz(handlers[0]),
                     bfinally: M.finalizer ? new AST_Finally(from_moz(M.finalizer)) : null
                 });
@@ -3625,16 +3870,17 @@
                 })), args.value = new AST_Accessor(args.value), "get" == M.kind) ? new AST_ObjectGetter(args) : "set" == M.kind ? new AST_ObjectSetter(args) : "method" == M.kind ? (args.async = M.value.async, args.is_generator = M.value.generator, args.quote = M.computed ? "\"" : null, new AST_ConciseMethod(args)) : void 0;
             },
             MethodDefinition: function(M) {
+                let is_private = "PrivateIdentifier" === M.key.type, key = M.computed ? from_moz(M.key) : new AST_SymbolMethod({
+                    name: M.key.name || M.key.value
+                });
                 var args = {
                     start: my_start_token(M),
                     end: my_end_token(M),
-                    key: M.computed ? from_moz(M.key) : new AST_SymbolMethod({
-                        name: M.key.name || M.key.value
-                    }),
+                    key,
                     value: from_moz(M.value),
                     static: M.static
                 };
-                return "get" == M.kind ? new AST_ObjectGetter(args) : "set" == M.kind ? new AST_ObjectSetter(args) : (args.is_generator = M.value.generator, args.async = M.value.async, new AST_ConciseMethod(args));
+                return "get" == M.kind ? new (is_private ? AST_PrivateGetter : AST_ObjectGetter)(args) : "set" == M.kind ? new (is_private ? AST_PrivateSetter : AST_ObjectSetter)(args) : (args.is_generator = M.value.generator, args.async = M.value.async, new (is_private ? AST_PrivateMethod : AST_ConciseMethod)(args));
             },
             FieldDefinition: function(M) {
                 let key;
@@ -3655,6 +3901,13 @@
                 let key;
                 if (M.computed) key = from_moz(M.key);
                 else {
+                    if ("PrivateIdentifier" === M.key.type) return new AST_ClassPrivateProperty({
+                        start: my_start_token(M),
+                        end: my_end_token(M),
+                        key: from_moz(M.key),
+                        value: from_moz(M.value),
+                        static: M.static
+                    });
                     if ("Identifier" !== M.key.type) throw Error("Non-Identifier key in PropertyDefinition");
                     key = from_moz(M.key);
                 }
@@ -3664,6 +3917,20 @@
                     key,
                     value: from_moz(M.value),
                     static: M.static
+                });
+            },
+            PrivateIdentifier: function(M) {
+                return new AST_SymbolPrivateProperty({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    name: M.name
+                });
+            },
+            StaticBlock: function(M) {
+                return new AST_ClassStaticBlock({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    body: M.body.map(from_moz)
                 });
             },
             ArrayExpression: function(M) {
@@ -3692,7 +3959,13 @@
                 });
             },
             MemberExpression: function(M) {
-                return new (M.computed ? AST_Sub : AST_Dot)({
+                return "PrivateIdentifier" === M.property.type ? new AST_DotHash({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    property: M.property.name,
+                    expression: from_moz(M.object),
+                    optional: M.optional || !1
+                }) : new (M.computed ? AST_Sub : AST_Dot)({
                     start: my_start_token(M),
                     end: my_end_token(M),
                     property: M.computed ? from_moz(M.property) : M.property.name,
@@ -3725,19 +3998,7 @@
             ImportDeclaration: function(M) {
                 var imported_name = null, imported_names = null;
                 return M.specifiers.forEach(function(specifier) {
-                    "ImportSpecifier" === specifier.type ? (imported_names || (imported_names = []), imported_names.push(new AST_NameMapping({
-                        start: my_start_token(specifier),
-                        end: my_end_token(specifier),
-                        foreign_name: from_moz(specifier.imported),
-                        name: from_moz(specifier.local)
-                    }))) : "ImportDefaultSpecifier" === specifier.type ? imported_name = from_moz(specifier.local) : "ImportNamespaceSpecifier" === specifier.type && (imported_names || (imported_names = []), imported_names.push(new AST_NameMapping({
-                        start: my_start_token(specifier),
-                        end: my_end_token(specifier),
-                        foreign_name: new AST_SymbolImportForeign({
-                            name: "*"
-                        }),
-                        name: from_moz(specifier.local)
-                    })));
+                    "ImportSpecifier" === specifier.type || "ImportNamespaceSpecifier" === specifier.type ? (imported_names || (imported_names = []), imported_names.push(from_moz(specifier))) : "ImportDefaultSpecifier" === specifier.type && (imported_name = from_moz(specifier));
                 }), new AST_Import({
                     start: my_start_token(M),
                     end: my_end_token(M),
@@ -3747,7 +4008,31 @@
                     assert_clause: assert_clause_from_moz(M.assertions)
                 });
             },
+            ImportSpecifier: function(M) {
+                return new AST_NameMapping({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    foreign_name: from_moz(M.imported),
+                    name: from_moz(M.local)
+                });
+            },
+            ImportDefaultSpecifier: function(M) {
+                return from_moz(M.local);
+            },
+            ImportNamespaceSpecifier: function(M) {
+                return new AST_NameMapping({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    foreign_name: new AST_SymbolImportForeign({
+                        name: "*"
+                    }),
+                    name: from_moz(M.local)
+                });
+            },
             ExportAllDeclaration: function(M) {
+                var foreign_name = null == M.exported ? new AST_SymbolExportForeign({
+                    name: "*"
+                }) : from_moz(M.exported);
                 return new AST_Export({
                     start: my_start_token(M),
                     end: my_end_token(M),
@@ -3756,9 +4041,7 @@
                             name: new AST_SymbolExportForeign({
                                 name: "*"
                             }),
-                            foreign_name: new AST_SymbolExportForeign({
-                                name: "*"
-                            })
+                            foreign_name: foreign_name
                         })
                     ],
                     module_name: from_moz(M.source),
@@ -3770,12 +4053,7 @@
                     start: my_start_token(M),
                     end: my_end_token(M),
                     exported_definition: from_moz(M.declaration),
-                    exported_names: M.specifiers && M.specifiers.length ? M.specifiers.map(function(specifier) {
-                        return new AST_NameMapping({
-                            foreign_name: from_moz(specifier.exported),
-                            name: from_moz(specifier.local)
-                        });
-                    }) : null,
+                    exported_names: M.specifiers && M.specifiers.length ? M.specifiers.map(from_moz) : null,
                     module_name: from_moz(M.source),
                     assert_clause: assert_clause_from_moz(M.assertions)
                 });
@@ -3786,6 +4064,12 @@
                     end: my_end_token(M),
                     exported_value: from_moz(M.declaration),
                     is_default: !0
+                });
+            },
+            ExportSpecifier: function(M) {
+                return new AST_NameMapping({
+                    foreign_name: from_moz(M.exported),
+                    name: from_moz(M.local)
                 });
             },
             Literal: function(M) {
@@ -3800,9 +4084,9 @@
                 }, new AST_RegExp(args));
                 if (rx) {
                     // support legacy RegExp
-                    const rx_source = M.raw || val, match = rx_source.match(/^\/(.*)\/(\w*)$/);
+                    let rx_source = M.raw || val, match = rx_source.match(/^\/(.*)\/(\w*)$/);
                     if (!match) throw Error("Invalid regex source " + rx_source);
-                    const [_, source, flags] = match;
+                    let [_, source, flags] = match;
                     return args.value = {
                         source,
                         flags
@@ -3811,6 +4095,14 @@
                 if (null === val) return new AST_Null(args);
                 switch(typeof val){
                     case "string":
+                        args.quote = "\"";
+                        var p = FROM_MOZ_STACK[FROM_MOZ_STACK.length - 2];
+                        if ("ImportSpecifier" == p.type) return args.name = val, new AST_SymbolImportForeign(args);
+                        if ("ExportSpecifier" == p.type) {
+                            if (args.name = val, M == p.exported) return new AST_SymbolExportForeign(args);
+                            return new AST_SymbolExport(args);
+                        }
+                        if ("ExportAllDeclaration" == p.type && M == p.exported) return args.name = val, new AST_SymbolExportForeign(args);
                         return args.value = val, new AST_String(args);
                     case "number":
                         return args.value = val, args.raw = M.raw || val.toString(), new AST_Number(args);
@@ -3839,7 +4131,237 @@
                     start: my_start_token(M),
                     end: my_end_token(M),
                     value: M.value
-                })
+                }),
+            EmptyStatement: function(M) {
+                return new AST_EmptyStatement({
+                    start: my_start_token(M),
+                    end: my_end_token(M)
+                });
+            },
+            BlockStatement: function(M) {
+                return new AST_BlockStatement({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    body: M.body.map(from_moz)
+                });
+            },
+            IfStatement: function(M) {
+                return new AST_If({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    condition: from_moz(M.test),
+                    body: from_moz(M.consequent),
+                    alternative: from_moz(M.alternate)
+                });
+            },
+            LabeledStatement: function(M) {
+                return new AST_LabeledStatement({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    label: from_moz(M.label),
+                    body: from_moz(M.body)
+                });
+            },
+            BreakStatement: function(M) {
+                return new AST_Break({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    label: from_moz(M.label)
+                });
+            },
+            ContinueStatement: function(M) {
+                return new AST_Continue({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    label: from_moz(M.label)
+                });
+            },
+            WithStatement: function(M) {
+                return new AST_With({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    expression: from_moz(M.object),
+                    body: from_moz(M.body)
+                });
+            },
+            SwitchStatement: function(M) {
+                return new AST_Switch({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    expression: from_moz(M.discriminant),
+                    body: M.cases.map(from_moz)
+                });
+            },
+            ReturnStatement: function(M) {
+                return new AST_Return({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    value: from_moz(M.argument)
+                });
+            },
+            ThrowStatement: function(M) {
+                return new AST_Throw({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    value: from_moz(M.argument)
+                });
+            },
+            WhileStatement: function(M) {
+                return new AST_While({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    condition: from_moz(M.test),
+                    body: from_moz(M.body)
+                });
+            },
+            DoWhileStatement: function(M) {
+                return new AST_Do({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    condition: from_moz(M.test),
+                    body: from_moz(M.body)
+                });
+            },
+            ForStatement: function(M) {
+                return new AST_For({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    init: from_moz(M.init),
+                    condition: from_moz(M.test),
+                    step: from_moz(M.update),
+                    body: from_moz(M.body)
+                });
+            },
+            ForInStatement: function(M) {
+                return new AST_ForIn({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    init: from_moz(M.left),
+                    object: from_moz(M.right),
+                    body: from_moz(M.body)
+                });
+            },
+            ForOfStatement: function(M) {
+                return new AST_ForOf({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    init: from_moz(M.left),
+                    object: from_moz(M.right),
+                    body: from_moz(M.body),
+                    await: M.await
+                });
+            },
+            AwaitExpression: function(M) {
+                return new AST_Await({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    expression: from_moz(M.argument)
+                });
+            },
+            YieldExpression: function(M) {
+                return new AST_Yield({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    expression: from_moz(M.argument),
+                    is_star: M.delegate
+                });
+            },
+            DebuggerStatement: function(M) {
+                return new AST_Debugger({
+                    start: my_start_token(M),
+                    end: my_end_token(M)
+                });
+            },
+            VariableDeclarator: function(M) {
+                return new AST_VarDef({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    name: from_moz(M.id),
+                    value: from_moz(M.init)
+                });
+            },
+            CatchClause: function(M) {
+                return new AST_Catch({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    argname: from_moz(M.param),
+                    body: from_moz(M.body).body
+                });
+            },
+            ThisExpression: function(M) {
+                return new AST_This({
+                    start: my_start_token(M),
+                    end: my_end_token(M)
+                });
+            },
+            Super: function(M) {
+                return new AST_Super({
+                    start: my_start_token(M),
+                    end: my_end_token(M)
+                });
+            },
+            BinaryExpression: function(M) {
+                return "PrivateIdentifier" === M.left.type ? new AST_PrivateIn({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    key: new AST_SymbolPrivateProperty({
+                        start: my_start_token(M.left),
+                        end: my_end_token(M.left),
+                        name: M.left.name
+                    }),
+                    value: from_moz(M.right)
+                }) : new AST_Binary({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    operator: M.operator,
+                    left: from_moz(M.left),
+                    right: from_moz(M.right)
+                });
+            },
+            LogicalExpression: function(M) {
+                return new AST_Binary({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    operator: M.operator,
+                    left: from_moz(M.left),
+                    right: from_moz(M.right)
+                });
+            },
+            AssignmentExpression: function(M) {
+                return new AST_Assign({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    operator: M.operator,
+                    left: from_moz(M.left),
+                    right: from_moz(M.right)
+                });
+            },
+            ConditionalExpression: function(M) {
+                return new AST_Conditional({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    condition: from_moz(M.test),
+                    consequent: from_moz(M.consequent),
+                    alternative: from_moz(M.alternate)
+                });
+            },
+            NewExpression: function(M) {
+                return new AST_New({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    expression: from_moz(M.callee),
+                    args: M.arguments.map(from_moz)
+                });
+            },
+            CallExpression: function(M) {
+                return new AST_Call({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    expression: from_moz(M.callee),
+                    optional: M.optional,
+                    args: M.arguments.map(from_moz)
+                });
+            }
         };
         MOZ_TO_ME.UpdateExpression = MOZ_TO_ME.UnaryExpression = function(M) {
             return new (("prefix" in M ? M.prefix : "UnaryExpression" == M.type) ? AST_UnaryPrefix : AST_UnaryPostfix)({
@@ -3856,7 +4378,172 @@
                 extends: from_moz(M.superClass),
                 properties: M.body.body.map(from_moz)
             });
-        }, map("EmptyStatement", AST_EmptyStatement), map("BlockStatement", AST_BlockStatement, "body@body"), map("IfStatement", AST_If, "test>condition, consequent>body, alternate>alternative"), map("LabeledStatement", AST_LabeledStatement, "label>label, body>body"), map("BreakStatement", AST_Break, "label>label"), map("ContinueStatement", AST_Continue, "label>label"), map("WithStatement", AST_With, "object>expression, body>body"), map("SwitchStatement", AST_Switch, "discriminant>expression, cases@body"), map("ReturnStatement", AST_Return, "argument>value"), map("ThrowStatement", AST_Throw, "argument>value"), map("WhileStatement", AST_While, "test>condition, body>body"), map("DoWhileStatement", AST_Do, "test>condition, body>body"), map("ForStatement", AST_For, "init>init, test>condition, update>step, body>body"), map("ForInStatement", AST_ForIn, "left>init, right>object, body>body"), map("ForOfStatement", AST_ForOf, "left>init, right>object, body>body, await=await"), map("AwaitExpression", AST_Await, "argument>expression"), map("YieldExpression", AST_Yield, "argument>expression, delegate=is_star"), map("DebuggerStatement", AST_Debugger), map("VariableDeclarator", AST_VarDef, "id>name, init>value"), map("CatchClause", AST_Catch, "param>argname, body%body"), map("ThisExpression", AST_This), map("Super", AST_Super), map("BinaryExpression", AST_Binary, "operator=operator, left>left, right>right"), map("LogicalExpression", AST_Binary, "operator=operator, left>left, right>right"), map("AssignmentExpression", AST_Assign, "operator=operator, left>left, right>right"), map("ConditionalExpression", AST_Conditional, "test>condition, consequent>consequent, alternate>alternative"), map("NewExpression", AST_New, "callee>expression, arguments@args"), map("CallExpression", AST_Call, "callee>expression, optional=optional, arguments@args"), def_to_moz(AST_Toplevel, function(M) {
+        }, def_to_moz(AST_EmptyStatement, function() {
+            return {
+                type: "EmptyStatement"
+            };
+        }), def_to_moz(AST_BlockStatement, function(M) {
+            return {
+                type: "BlockStatement",
+                body: M.body.map(to_moz)
+            };
+        }), def_to_moz(AST_If, function(M) {
+            return {
+                type: "IfStatement",
+                test: to_moz(M.condition),
+                consequent: to_moz(M.body),
+                alternate: to_moz(M.alternative)
+            };
+        }), def_to_moz(AST_LabeledStatement, function(M) {
+            return {
+                type: "LabeledStatement",
+                label: to_moz(M.label),
+                body: to_moz(M.body)
+            };
+        }), def_to_moz(AST_Break, function(M) {
+            return {
+                type: "BreakStatement",
+                label: to_moz(M.label)
+            };
+        }), def_to_moz(AST_Continue, function(M) {
+            return {
+                type: "ContinueStatement",
+                label: to_moz(M.label)
+            };
+        }), def_to_moz(AST_With, function(M) {
+            return {
+                type: "WithStatement",
+                object: to_moz(M.expression),
+                body: to_moz(M.body)
+            };
+        }), def_to_moz(AST_Switch, function(M) {
+            return {
+                type: "SwitchStatement",
+                discriminant: to_moz(M.expression),
+                cases: M.body.map(to_moz)
+            };
+        }), def_to_moz(AST_Return, function(M) {
+            return {
+                type: "ReturnStatement",
+                argument: to_moz(M.value)
+            };
+        }), def_to_moz(AST_Throw, function(M) {
+            return {
+                type: "ThrowStatement",
+                argument: to_moz(M.value)
+            };
+        }), def_to_moz(AST_While, function(M) {
+            return {
+                type: "WhileStatement",
+                test: to_moz(M.condition),
+                body: to_moz(M.body)
+            };
+        }), def_to_moz(AST_Do, function(M) {
+            return {
+                type: "DoWhileStatement",
+                test: to_moz(M.condition),
+                body: to_moz(M.body)
+            };
+        }), def_to_moz(AST_For, function(M) {
+            return {
+                type: "ForStatement",
+                init: to_moz(M.init),
+                test: to_moz(M.condition),
+                update: to_moz(M.step),
+                body: to_moz(M.body)
+            };
+        }), def_to_moz(AST_ForIn, function(M) {
+            return {
+                type: "ForInStatement",
+                left: to_moz(M.init),
+                right: to_moz(M.object),
+                body: to_moz(M.body)
+            };
+        }), def_to_moz(AST_ForOf, function(M) {
+            return {
+                type: "ForOfStatement",
+                left: to_moz(M.init),
+                right: to_moz(M.object),
+                body: to_moz(M.body),
+                await: M.await
+            };
+        }), def_to_moz(AST_Await, function(M) {
+            return {
+                type: "AwaitExpression",
+                argument: to_moz(M.expression)
+            };
+        }), def_to_moz(AST_Yield, function(M) {
+            return {
+                type: "YieldExpression",
+                argument: to_moz(M.expression),
+                delegate: M.is_star
+            };
+        }), def_to_moz(AST_Debugger, function() {
+            return {
+                type: "DebuggerStatement"
+            };
+        }), def_to_moz(AST_VarDef, function(M) {
+            return {
+                type: "VariableDeclarator",
+                id: to_moz(M.name),
+                init: to_moz(M.value)
+            };
+        }), def_to_moz(AST_Catch, function(M) {
+            return {
+                type: "CatchClause",
+                param: to_moz(M.argname),
+                body: to_moz_block(M)
+            };
+        }), def_to_moz(AST_This, function() {
+            return {
+                type: "ThisExpression"
+            };
+        }), def_to_moz(AST_Super, function() {
+            return {
+                type: "Super"
+            };
+        }), def_to_moz(AST_Binary, function(M) {
+            return {
+                type: "BinaryExpression",
+                operator: M.operator,
+                left: to_moz(M.left),
+                right: to_moz(M.right)
+            };
+        }), def_to_moz(AST_Binary, function(M) {
+            return {
+                type: "LogicalExpression",
+                operator: M.operator,
+                left: to_moz(M.left),
+                right: to_moz(M.right)
+            };
+        }), def_to_moz(AST_Assign, function(M) {
+            return {
+                type: "AssignmentExpression",
+                operator: M.operator,
+                left: to_moz(M.left),
+                right: to_moz(M.right)
+            };
+        }), def_to_moz(AST_Conditional, function(M) {
+            return {
+                type: "ConditionalExpression",
+                test: to_moz(M.condition),
+                consequent: to_moz(M.consequent),
+                alternate: to_moz(M.alternative)
+            };
+        }), def_to_moz(AST_New, function(M) {
+            return {
+                type: "NewExpression",
+                callee: to_moz(M.expression),
+                arguments: M.args.map(to_moz)
+            };
+        }), def_to_moz(AST_Call, function(M) {
+            return {
+                type: "CallExpression",
+                callee: to_moz(M.expression),
+                optional: M.optional,
+                arguments: M.args.map(to_moz)
+            };
+        }), def_to_moz(AST_Toplevel, function(M) {
             return to_moz_scope("Program", M);
         }), def_to_moz(AST_Expansion, function(M) {
             return {
@@ -3945,7 +4632,7 @@
         }), def_to_moz(AST_Try, function(M) {
             return {
                 type: "TryStatement",
-                block: to_moz_block(M),
+                block: to_moz_block(M.body),
                 handler: to_moz(M.bcatch),
                 guardedHandlers: [],
                 finalizer: to_moz(M.bfinally)
@@ -3964,10 +4651,10 @@
                 declarations: M.definitions.map(to_moz)
             };
         });
-        const assert_clause_to_moz = (assert_clause)=>{
-            const assertions = [];
-            if (assert_clause) for (const { key, value } of assert_clause.properties){
-                const key_moz = is_basic_identifier_string(key) ? {
+        let assert_clause_to_moz = (assert_clause)=>{
+            let assertions = [];
+            if (assert_clause) for (let { key, value } of assert_clause.properties){
+                let key_moz = is_basic_identifier_string(key) ? {
                     type: "Identifier",
                     name: key
                 } : {
@@ -3991,68 +4678,55 @@
             var loc = moznode.loc, end = loc && loc.end, range = moznode.range;
             return new AST_Token("", "", end && end.line || 0, end && end.column || 0, range ? range[0] : moznode.end, !1, [], [], loc && loc.source);
         }
-        function map(moztype, mytype, propmap) {
-            var moz_to_me = "function From_Moz_" + moztype + "(M){\n";
-            moz_to_me += "return new U2." + mytype.name + "({\nstart: my_start_token(M),\nend: my_end_token(M)";
-            var me_to_moz = "function To_Moz_" + moztype + "(M){\n";
-            me_to_moz += "return {\ntype: " + JSON.stringify(moztype), propmap && propmap.split(/\s*,\s*/).forEach(function(prop) {
-                var m = /([a-z0-9$_]+)([=@>%])([a-z0-9$_]+)/i.exec(prop);
-                if (!m) throw Error("Can't understand property map: " + prop);
-                var moz = m[1], how = m[2], my = m[3];
-                switch(moz_to_me += ",\n" + my + ": ", me_to_moz += ",\n" + moz + ": ", how){
-                    case "@":
-                        moz_to_me += "M." + moz + ".map(from_moz)", me_to_moz += "M." + my + ".map(to_moz)";
-                        break;
-                    case ">":
-                        moz_to_me += "from_moz(M." + moz + ")", me_to_moz += "to_moz(M." + my + ")";
-                        break;
-                    case "=":
-                        moz_to_me += "M." + moz, me_to_moz += "M." + my;
-                        break;
-                    case "%":
-                        moz_to_me += "from_moz(M." + moz + ").body", me_to_moz += "to_moz_block(M)";
-                        break;
-                    default:
-                        throw Error("Can't understand operator in propmap: " + prop);
-                }
-            }), moz_to_me += "\n})\n}", me_to_moz += "\n}\n}", moz_to_me = Function("U2", "my_start_token", "my_end_token", "from_moz", "return(" + moz_to_me + ")")(ast, my_start_token, my_end_token, from_moz), me_to_moz = Function("to_moz", "to_moz_block", "to_moz_scope", "return(" + me_to_moz + ")")(to_moz, to_moz_block, to_moz_scope), MOZ_TO_ME[moztype] = moz_to_me, def_to_moz(mytype, me_to_moz);
-        }
         def_to_moz(AST_Export, function(M) {
-            return M.exported_names ? "*" === M.exported_names[0].name.name ? {
-                type: "ExportAllDeclaration",
-                source: to_moz(M.module_name),
-                assertions: assert_clause_to_moz(M.assert_clause)
-            } : {
-                type: "ExportNamedDeclaration",
-                specifiers: M.exported_names.map(function(name_mapping) {
+            if (M.exported_names) {
+                var first_exported = M.exported_names[0], first_exported_name = first_exported.name;
+                if ("*" === first_exported_name.name && !first_exported_name.quote) {
+                    var foreign_name = first_exported.foreign_name, exported = "*" !== foreign_name.name || foreign_name.quote ? to_moz(foreign_name) : null;
                     return {
-                        type: "ExportSpecifier",
-                        exported: to_moz(name_mapping.foreign_name),
-                        local: to_moz(name_mapping.name)
+                        type: "ExportAllDeclaration",
+                        source: to_moz(M.module_name),
+                        exported: exported,
+                        assertions: assert_clause_to_moz(M.assert_clause)
                     };
-                }),
-                declaration: to_moz(M.exported_definition),
-                source: to_moz(M.module_name),
-                assertions: assert_clause_to_moz(M.assert_clause)
-            } : {
+                }
+                return {
+                    type: "ExportNamedDeclaration",
+                    specifiers: M.exported_names.map(function(name_mapping) {
+                        return {
+                            type: "ExportSpecifier",
+                            exported: to_moz(name_mapping.foreign_name),
+                            local: to_moz(name_mapping.name)
+                        };
+                    }),
+                    declaration: to_moz(M.exported_definition),
+                    source: to_moz(M.module_name),
+                    assertions: assert_clause_to_moz(M.assert_clause)
+                };
+            }
+            return {
                 type: M.is_default ? "ExportDefaultDeclaration" : "ExportNamedDeclaration",
                 declaration: to_moz(M.exported_value || M.exported_definition)
             };
         }), def_to_moz(AST_Import, function(M) {
             var specifiers = [];
-            return M.imported_name && specifiers.push({
+            if (M.imported_name && specifiers.push({
                 type: "ImportDefaultSpecifier",
                 local: to_moz(M.imported_name)
-            }), M.imported_names && "*" === M.imported_names[0].foreign_name.name ? specifiers.push({
-                type: "ImportNamespaceSpecifier",
-                local: to_moz(M.imported_names[0].name)
-            }) : M.imported_names && M.imported_names.forEach(function(name_mapping) {
-                specifiers.push({
-                    type: "ImportSpecifier",
-                    local: to_moz(name_mapping.name),
-                    imported: to_moz(name_mapping.foreign_name)
+            }), M.imported_names) {
+                var first_imported_foreign_name = M.imported_names[0].foreign_name;
+                "*" !== first_imported_foreign_name.name || first_imported_foreign_name.quote ? M.imported_names.forEach(function(name_mapping) {
+                    specifiers.push({
+                        type: "ImportSpecifier",
+                        local: to_moz(name_mapping.name),
+                        imported: to_moz(name_mapping.foreign_name)
+                    });
+                }) : specifiers.push({
+                    type: "ImportNamespaceSpecifier",
+                    local: to_moz(M.imported_names[0].name)
                 });
-            }), {
+            }
+            return {
                 type: "ImportDeclaration",
                 specifiers: specifiers,
                 source: to_moz(M.module_name),
@@ -4120,6 +4794,16 @@
                 left: to_moz(M.left),
                 operator: M.operator,
                 right: to_moz(M.right)
+            };
+        }), def_to_moz(AST_PrivateIn, function(M) {
+            return {
+                type: "BinaryExpression",
+                left: {
+                    type: "PrivateIdentifier",
+                    name: M.key.name
+                },
+                operator: "in",
+                right: to_moz(M.value)
             };
         }), def_to_moz(AST_Array, function(M) {
             return {
@@ -4193,7 +4877,7 @@
                 key: to_moz(M.key),
                 value: to_moz(M.value)
             };
-            const key = M instanceof AST_PrivateMethod ? {
+            let key = M instanceof AST_PrivateMethod ? {
                 type: "PrivateIdentifier",
                 name: M.key.name
             } : to_moz(M.key);
@@ -4215,6 +4899,11 @@
                     body: M.properties.map(to_moz)
                 }
             };
+        }), def_to_moz(AST_ClassStaticBlock, function(M) {
+            return {
+                type: "StaticBlock",
+                body: M.body.map(to_moz)
+            };
         }), def_to_moz(AST_NewTarget, function() {
             return {
                 type: "MetaProperty",
@@ -4228,7 +4917,7 @@
                 }
             };
         }), def_to_moz(AST_Symbol, function(M, parent) {
-            if (M instanceof AST_SymbolMethod && parent.quote) return {
+            if (M instanceof AST_SymbolMethod && parent.quote || (M instanceof AST_SymbolImportForeign || M instanceof AST_SymbolExportForeign || M instanceof AST_SymbolExport) && M.quote) return {
                 type: "Literal",
                 value: M.name
             };
@@ -4238,7 +4927,7 @@
                 name: def ? def.mangled_name || def.name : M.name
             };
         }), def_to_moz(AST_RegExp, function(M) {
-            const pattern = M.value.source, flags = M.value.flags;
+            let pattern = M.value.source, flags = M.value.flags;
             return {
                 type: "Literal",
                 value: null,
@@ -4319,48 +5008,7 @@
             };
         }
     }();
-    /***********************************************************************
-
-  A JavaScript tokenizer / parser / beautifier / compressor.
-  https://github.com/mishoo/UglifyJS2
-
-  -------------------------------- (C) ---------------------------------
-
-                           Author: Mihai Bazon
-                         <mihai.bazon@gmail.com>
-                       http://mihai.bazon.net/blog
-
-  Distributed under the BSD license:
-
-    Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-        * Redistributions of source code must retain the above
-          copyright notice, this list of conditions and the following
-          disclaimer.
-
-        * Redistributions in binary form must reproduce the above
-          copyright notice, this list of conditions and the following
-          disclaimer in the documentation and/or other materials
-          provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-    OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-    TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-    THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-    SUCH DAMAGE.
-
- ***********************************************************************/ const EXPECT_DIRECTIVE = /^$|[;{][\s\n]*$/, r_annotation = /[@#]__(PURE|INLINE|NOINLINE)__/g;
+    let r_annotation = /[@#]__(PURE|INLINE|NOINLINE)__/;
     function is_some_comments(comment) {
         // multiline comment
         return ("comment2" === comment.type || "comment1" === comment.type) && /@preserve|@copyright|@lic|@cc_on|^\**!/i.test(comment.value);
@@ -4370,21 +5018,40 @@
             this.committed = "", this.current = "";
         }
         append(str) {
-            this.current += str;
+            /** When `this.current` is too long, commit it. */ this.current.length > 8000 ? (this.committed += this.current + str, this.current = "") : this.current += str;
         }
         insertAt(char, index) {
-            const { committed, current } = this;
+            let { committed, current } = this;
             index < committed.length ? this.committed = committed.slice(0, index) + char + committed.slice(index) : index === committed.length ? this.committed += char : (index -= committed.length, this.committed += current.slice(0, index) + char, this.current = current.slice(index));
         }
         charAt(index) {
-            const { committed } = this;
+            let { committed } = this;
             return index < committed.length ? committed[index] : this.current[index - committed.length];
         }
-        curLength() {
-            return this.current.length;
+        charCodeAt(index) {
+            let { committed } = this;
+            return index < committed.length ? committed.charCodeAt(index) : this.current.charCodeAt(index - committed.length);
         }
         length() {
             return this.committed.length + this.current.length;
+        }
+        expectDirective() {
+            // /^$|[;{][\s\n]*$/
+            let ch, n = this.length();
+            if (n <= 0) return !0;
+            // Skip N whitespace from the end
+            for(; (ch = this.charCodeAt(--n)) && (32 == ch || 10 == ch););
+            // either ";", or "{", or the string ended
+            return !ch || 59 === ch || 123 === ch;
+        }
+        hasNLB() {
+            let n = this.length() - 1;
+            for(; n >= 0;){
+                let code = this.charCodeAt(n--);
+                if (10 === code) break;
+                if (32 !== code) return !1;
+            }
+            return !0;
         }
         toString() {
             return this.committed + this.current;
@@ -4417,9 +5084,10 @@
             webkit: !1,
             width: 80,
             wrap_iife: !1,
-            wrap_func_args: !0
+            wrap_func_args: !0,
+            _destroy_ast: !1
         }, !0)).shorthand && (options.shorthand = options.ecma > 5);
-        // Convert comment option to RegExp if neccessary and set up comments filter
+        // Convert comment option to RegExp if necessary and set up comments filter
         var comment_filter = return_false; // Default case, throw all comments away
         if (options.comments) {
             let comments = options.comments;
@@ -4433,11 +5101,18 @@
                 return "comment5" != comment.type && comments(this, comment);
             } : "some" === comments ? is_some_comments : return_true;
         }
+        if (options.preserve_annotations) {
+            let prev_comment_filter = comment_filter;
+            comment_filter = function(comment) {
+                return r_annotation.test(comment.value) || prev_comment_filter.apply(this, arguments);
+            };
+        }
         var indentation = 0, current_col = 0, current_line = 1, current_pos = 0, OUTPUT = new Rope();
         let printed_comments = new Set();
         var to_utf8 = options.ascii_only ? function(str, identifier = !1, regexp = !1) {
             return !(options.ecma >= 2015) || options.safari10 || regexp || (str = str.replace(/[\ud800-\udbff][\udc00-\udfff]/g, function(ch) {
-                return "\\u{" + (is_surrogate_pair_head(ch.charCodeAt(0)) ? 0x10000 + (ch.charCodeAt(0) - 0xd800 << 10) + ch.charCodeAt(1) - 0xdc00 : ch.charCodeAt(0)).toString(16) + "}";
+                return "\\u{" + // https://en.wikipedia.org/wiki/Universal_Character_Set_characters#Surrogates
+                (is_surrogate_pair_head(ch.charCodeAt(0)) ? 0x10000 + (ch.charCodeAt(0) - 0xd800 << 10) + ch.charCodeAt(1) - 0xdc00 : ch.charCodeAt(0)).toString(16) + "}";
             })), str.replace(/[\u0000-\u001f\u007f-\uffff]/g, function(ch) {
                 var code = ch.charCodeAt(0).toString(16);
                 if (code.length <= 2 && !identifier) {
@@ -4509,7 +5184,7 @@
             mappings.forEach(function(mapping) {
                 try {
                     let { name, token } = mapping;
-                    "name" == token.type || "privatename" === token.type ? name = token.value : name instanceof AST_Symbol && (name = "string" === token.type ? token.value : name.name), options.source_map.add(mapping.token.file, mapping.line, mapping.col, mapping.token.line, mapping.token.col, is_basic_identifier_string(name) ? name : void 0);
+                    !1 !== name && ("name" == token.type || "privatename" === token.type ? name = token.value : name instanceof AST_Symbol && (name = "string" === token.type ? token.value : name.name)), options.source_map.add(mapping.token.file, mapping.line, mapping.col, mapping.token.line, mapping.token.col, is_basic_identifier_string(name) ? name : void 0);
                 } catch (ex) {
                 // Ignore bad mapping
                 }
@@ -4517,14 +5192,14 @@
         } : noop, ensure_line_len = options.max_line_len ? function() {
             if (current_col > options.max_line_len && might_add_newline) {
                 OUTPUT.insertAt("\n", might_add_newline);
-                const curLength = OUTPUT.curLength();
+                let len_after_newline = OUTPUT.length() - might_add_newline - 1;
                 if (mappings) {
-                    var delta = curLength - current_col;
+                    var delta = len_after_newline - current_col;
                     mappings.forEach(function(mapping) {
                         mapping.line++, mapping.col += delta;
                     });
                 }
-                current_line++, current_pos++, current_col = curLength;
+                current_line++, current_pos++, current_col = len_after_newline;
             }
             might_add_newline && (might_add_newline = 0, do_add_mapping());
         } : noop, requireSemicolonChars = makePredicate("( [ + * / - , . `");
@@ -4532,7 +5207,7 @@
             var ch = get_full_char(str = String(str), 0);
             need_newline_indented && ch && (need_newline_indented = !1, "\n" !== ch && (print("\n"), indent())), need_space && ch && (need_space = !1, /[\s;})]/.test(ch) || space()), newline_insert = -1;
             var prev = last.charAt(last.length - 1);
-            !might_need_semicolon || (might_need_semicolon = !1, (":" !== prev || "}" !== ch) && (ch && ";}".includes(ch) || ";" === prev) || (options.semicolons || requireSemicolonChars.has(ch) ? (OUTPUT.append(";"), current_col++, current_pos++) : (ensure_line_len(), current_col > 0 && (OUTPUT.append("\n"), current_pos++, current_line++, current_col = 0), /^\s+$/.test(str) && // reset the semicolon flag, since we didn't print one
+            might_need_semicolon && (might_need_semicolon = !1, (":" !== prev || "}" !== ch) && (ch && ";}".includes(ch) || ";" === prev) || (options.semicolons || requireSemicolonChars.has(ch) ? (OUTPUT.append(";"), current_col++, current_pos++) : (ensure_line_len(), current_col > 0 && (OUTPUT.append("\n"), current_pos++, current_line++, current_col = 0), /^\s+$/.test(str) && // reset the semicolon flag, since we didn't print one
             // now and might still have to later
             (might_need_semicolon = !0)), options.beautify || (might_need_space = !1))), might_need_space && ((is_identifier_char(prev) && (is_identifier_char(ch) || "\\" == ch) || "/" == ch && ch == prev || ("+" == ch || "-" == ch) && ch == last) && (OUTPUT.append(" "), current_col++, current_pos++), might_need_space = !1), mapping_token && (mappings.push({
                 token: mapping_token,
@@ -4548,10 +5223,8 @@
         } : function() {
             might_need_space = !0;
         }, indent = options.beautify ? function(half) {
-            if (options.beautify) {
-                var back;
-                print((back = half ? 0.5 : 0, " ".repeat(options.indent_start + indentation - back * options.indent_level)));
-            }
+            var back;
+            options.beautify && print((back = 0.5 * !!half, " ".repeat(options.indent_start + indentation - back * options.indent_level)));
         } : noop, with_indent = options.beautify ? function(col, cont) {
             !0 === col && (col = next_indent());
             var save_indentation = indentation;
@@ -4576,23 +5249,21 @@
         function next_indent() {
             return indentation + options.indent_level;
         }
+        var add_mapping = mappings ? function(token, name) {
+            mapping_token = token, mapping_name = name;
+        } : noop;
         function get() {
             return might_add_newline && ensure_line_len(), OUTPUT.toString();
-        }
-        function has_nlb() {
-            const output = OUTPUT.toString();
-            let n = output.length - 1;
-            for(; n >= 0;){
-                const code = output.charCodeAt(n);
-                if (10 === code) break;
-                if (32 !== code) return !1;
-                n--;
-            }
-            return !0;
         }
         function filter_comment(comment) {
             return (options.preserve_annotations || (comment = comment.replace(r_annotation, " ")), /^\s*$/.test(comment)) ? "" : comment.replace(/(<\s*\/\s*)(script)/i, "<\\/$2");
         }
+        /**
+         * When output.option("_destroy_ast") is enabled, destroy the function.
+         * Call this after printing it.
+         */ let gc_scope = options._destroy_ast ? function(scope) {
+            scope.body.length = 0, scope.argnames.length = 0;
+        } : noop;
         var stack = [];
         return {
             get: get,
@@ -4636,7 +5307,7 @@
             },
             print_string: function(str, quote, escape_directive) {
                 var encoded = encode_string(str, quote);
-                !0 !== escape_directive || encoded.includes("\\") || (EXPECT_DIRECTIVE.test(OUTPUT.toString()) || force_semicolon(), force_semicolon()), print(encoded);
+                !0 !== escape_directive || encoded.includes("\\") || (OUTPUT.expectDirective() || force_semicolon(), force_semicolon()), print(encoded);
             },
             print_template_string_chars: function(str) {
                 var encoded = encode_string(str, "`").replace(/\${/g, "\\${");
@@ -4664,34 +5335,31 @@
                 var ret = cont();
                 return print("]"), ret;
             },
-            add_mapping: mappings ? function(token, name) {
-                mapping_token = token, mapping_name = name;
-            } : noop,
+            add_mapping: add_mapping,
             option: function(opt) {
                 return options[opt];
             },
+            gc_scope,
             printed_comments: printed_comments,
             prepend_comments: readonly ? noop : function(node) {
                 var start = node.start;
                 if (!start) return;
                 var printed_comments = this.printed_comments;
-                // There cannot be a newline between return and its value.
-                const return_with_value = node instanceof AST_Exit && node.value;
-                if (start.comments_before && printed_comments.has(start.comments_before)) {
-                    if (!return_with_value) return;
-                    start.comments_before = [];
-                }
+                // There cannot be a newline between return/yield and its value.
+                let keyword_with_value = node instanceof AST_Exit && node.value || (node instanceof AST_Await || node instanceof AST_Yield) && node.expression;
+                if (start.comments_before && printed_comments.has(start.comments_before)) if (!keyword_with_value) return;
+                else start.comments_before = [];
                 var comments = start.comments_before;
-                if (comments || (comments = start.comments_before = []), printed_comments.add(comments), return_with_value) {
+                if (comments || (comments = start.comments_before = []), printed_comments.add(comments), keyword_with_value) {
                     var tw = new TreeWalker(function(node) {
                         var parent = tw.parent();
-                        if (!(parent instanceof AST_Exit) && (!(parent instanceof AST_Binary) || parent.left !== node) && ("Call" != parent.TYPE || parent.expression !== node) && (!(parent instanceof AST_Conditional) || parent.condition !== node) && (!(parent instanceof AST_Dot) || parent.expression !== node) && (!(parent instanceof AST_Sequence) || parent.expressions[0] !== node) && (!(parent instanceof AST_Sub) || parent.expression !== node) && !(parent instanceof AST_UnaryPostfix)) return !0;
+                        if (!(parent instanceof AST_Exit) && !(parent instanceof AST_Await) && !(parent instanceof AST_Yield) && (!(parent instanceof AST_Binary) || parent.left !== node) && ("Call" != parent.TYPE || parent.expression !== node) && (!(parent instanceof AST_Conditional) || parent.condition !== node) && (!(parent instanceof AST_Dot) || parent.expression !== node) && (!(parent instanceof AST_Sequence) || parent.expressions[0] !== node) && (!(parent instanceof AST_Sub) || parent.expression !== node) && !(parent instanceof AST_UnaryPostfix)) return !0;
                         if (node.start) {
                             var text = node.start.comments_before;
                             text && !printed_comments.has(text) && (printed_comments.add(text), comments = comments.concat(text));
                         }
                     });
-                    tw.push(node), node.value.walk(tw);
+                    tw.push(node), keyword_with_value.walk(tw);
                 }
                 if (0 == current_pos) {
                     comments.length > 0 && options.shebang && "comment5" === comments[0].type && !printed_comments.has(comments[0]) && (print("#!" + comments.shift().value + "\n"), indent());
@@ -4699,7 +5367,7 @@
                     preamble && print(preamble.replace(/\r\n?|[\n\u2028\u2029]|\s*$/g, "\n"));
                 }
                 if (0 != (comments = comments.filter(comment_filter, node).filter((c)=>!printed_comments.has(c))).length) {
-                    var last_nlb = has_nlb();
+                    var last_nlb = OUTPUT.hasNLB();
                     comments.forEach(function(c, i) {
                         if (printed_comments.add(c), !last_nlb && (c.nlb ? (print("\n"), indent(), last_nlb = !0) : i > 0 && space()), /comment[134]/.test(c.type)) {
                             var value = filter_comment(c.value);
@@ -4720,11 +5388,11 @@
                         var insert = OUTPUT.length();
                         comments.filter(comment_filter, node).forEach(function(c, i) {
                             if (!printed_comments.has(c)) {
-                                if (printed_comments.add(c), need_space = !1, need_newline_indented ? (print("\n"), indent(), need_newline_indented = !1) : c.nlb && (i > 0 || !has_nlb()) ? (print("\n"), indent()) : (i > 0 || !tail) && space(), /comment[134]/.test(c.type)) {
-                                    const value = filter_comment(c.value);
+                                if (printed_comments.add(c), need_space = !1, need_newline_indented ? (print("\n"), indent(), need_newline_indented = !1) : c.nlb && (i > 0 || !OUTPUT.hasNLB()) ? (print("\n"), indent()) : (i > 0 || !tail) && space(), /comment[134]/.test(c.type)) {
+                                    let value = filter_comment(c.value);
                                     value && print("//" + value), need_newline_indented = !0;
                                 } else if ("comment2" == c.type) {
-                                    const value = filter_comment(c.value);
+                                    let value = filter_comment(c.value);
                                     value && print("/*" + value + "*/"), need_space = !0;
                                 }
                             }
@@ -4770,21 +5438,21 @@
         function print_braced_empty(self1, output) {
             output.print("{"), output.with_indent(output.next_indent(), function() {
                 output.append_comments(self1, !0);
-            }), output.print("}");
+            }), output.add_mapping(self1.end), output.print("}");
         }
         function print_braced(self1, output, allow_directives) {
             self1.body.length > 0 ? output.with_block(function() {
-                display_body(self1.body, !1, output, allow_directives);
+                display_body(self1.body, !1, output, allow_directives), output.add_mapping(self1.end);
             }) : print_braced_empty(self1, output);
         }
         function parenthesize_for_noin(node, output, noin) {
             var parens = !1;
             noin && (parens = walk(node, (node)=>// Don't go into scopes -- except arrow functions:
                 // https://github.com/terser/terser/issues/1019#issuecomment-877642607
-                node instanceof AST_Scope && !(node instanceof AST_Arrow) || (node instanceof AST_Binary && "in" == node.operator ? walk_abort : void 0))), node.print(output, parens);
+                node instanceof AST_Scope && !(node instanceof AST_Arrow) || (node instanceof AST_Binary && "in" == node.operator || node instanceof AST_PrivateIn ? walk_abort : void 0))), node.print(output, parens);
         }
-        function print_property_name(key, quote, output) {
-            return output.option("quote_keys") ? output.print_string(key) : "" + +key == key && key >= 0 ? output.option("keep_numbers") ? output.print(key) : output.print(make_num(key)) : (ALL_RESERVED_WORDS.has(key) ? output.option("ie8") : 2015 > output.option("ecma") || output.option("safari10") ? !is_basic_identifier_string(key) : !is_identifier_string(key, !0)) || quote && output.option("keep_quoted_props") ? output.print_string(key, quote) : output.print_name(key);
+        /** Prints a prop name. Returns whether it can be used as a shorthand. */ function print_property_name(key, quote, output) {
+            return output.option("quote_keys") ? (output.print_string(key), !1) : "" + +key == key && key >= 0 ? (output.option("keep_numbers") ? output.print(key) : output.print(make_num(key)), !1) : (ALL_RESERVED_WORDS.has(key) ? output.option("ie8") : 2015 > output.option("ecma") || output.option("safari10") ? !is_basic_identifier_string(key) : !is_identifier_string(key, !0)) || quote && output.option("keep_quoted_props") ? (output.print_string(key, quote), !1) : (output.print_name(key), !0);
         }
         AST_Node.DEFMETHOD("print", function(output, force_parens) {
             var self1 = this, generator = self1._codegen;
@@ -4814,7 +5482,7 @@
             return !1;
         }), PARENS(AST_Arrow, function(output) {
             var p = output.parent();
-            return !!(output.option("wrap_func_args") && p instanceof AST_Call && p.args.includes(this)) || p instanceof AST_PropAccess && p.expression === this;
+            return !!(output.option("wrap_func_args") && p instanceof AST_Call && p.args.includes(this)) || p instanceof AST_PropAccess && p.expression === this || p instanceof AST_Conditional && p.condition === this;
         }), // same goes for an object literal (as in AST_Function), because
         // otherwise {...} would be interpreted as a block of code.
         PARENS(AST_Object, function(output) {
@@ -4835,7 +5503,7 @@
              || p instanceof AST_Array // [ 1, (2, 3), 4 ] ==> [ 1, 3, 4 ]
              || p instanceof AST_ObjectProperty // { foo: (1, 2) }.foo ==> 2
              || p instanceof AST_Conditional /* (false, true) ? (a = 10, b = 20) : (c = 30)
-                                                               * ==> 20 (side effect, set a := 10 and b := 20) */  || p instanceof AST_Arrow // x => (x, x)
+                                                                   * ==> 20 (side effect, set a := 10 and b := 20) */  || p instanceof AST_Arrow // x => (x, x)
              || p instanceof AST_DefaultAssign // x => (x = (0, function(){}))
              || p instanceof AST_Expansion // [...(a, b)]
              || p instanceof AST_ForOf && this === p.object // for (e of (foo, bar)) {}
@@ -4848,16 +5516,35 @@
             if (p instanceof AST_Call && p.expression === this || p instanceof AST_Unary || p instanceof AST_PropAccess && p.expression === this) return !0;
             // this deals with precedence: 3 * (2 + 1)
             if (p instanceof AST_Binary) {
-                const po = p.operator, so = this.operator;
-                if ("??" === so && ("||" === po || "&&" === po) || "??" === po && ("||" === so || "&&" === so)) return !0;
-                const pp = PRECEDENCE[po], sp = PRECEDENCE[so];
-                if (pp > sp || pp == sp && (this === p.right || "**" == po)) return !0;
+                let parent_op = p.operator, op = this.operator;
+                // It is forbidden for ?? to be used with || or && without parens.
+                if ("??" === op && ("||" === parent_op || "&&" === parent_op) || "??" === parent_op && ("||" === op || "&&" === op)) return !0;
+                let pp = PRECEDENCE[parent_op], sp = PRECEDENCE[op];
+                if (pp > sp || pp == sp && (this === p.right || "**" == parent_op)) return !0;
             }
+            if (p instanceof AST_PrivateIn) {
+                let op = this.operator, pp = PRECEDENCE.in, sp = PRECEDENCE[op];
+                if (pp > sp || pp == sp && this === p.value) return !0;
+            }
+        }), PARENS(AST_PrivateIn, function(output) {
+            var p = output.parent();
+            // (#x in this)()
+            if (p instanceof AST_Call && p.expression === this || p instanceof AST_Unary || p instanceof AST_PropAccess && p.expression === this) return !0;
+            // same precedence as regular in operator
+            if (p instanceof AST_Binary) {
+                let parent_op = p.operator, pp = PRECEDENCE[parent_op], sp = PRECEDENCE.in;
+                if (pp > sp || pp == sp && (this === p.right || "**" == parent_op)) return !0;
+            }
+            // rules are the same as binary in, but the class differs
+            if (p instanceof AST_PrivateIn && this === p.value) return !0;
         }), PARENS(AST_Yield, function(output) {
             var p = output.parent();
             // (yield 1) + (yield 2)
             // a = yield 3
             if (p instanceof AST_Binary && "=" !== p.operator || p instanceof AST_Call && p.expression === this || p instanceof AST_Conditional && p.condition === this || p instanceof AST_Unary || p instanceof AST_PropAccess && p.expression === this) return !0;
+        }), PARENS(AST_Chain, function(output) {
+            var p = output.parent();
+            return !!(p instanceof AST_Call || p instanceof AST_PropAccess) && p.expression === this;
         }), PARENS(AST_PropAccess, function(output) {
             var p = output.parent();
             if (p instanceof AST_New && p.expression === this) // i.e. new (foo.bar().baz)
@@ -4873,7 +5560,7 @@
         }), PARENS(AST_New, function(output) {
             var p = output.parent();
             if (0 === this.args.length && (p instanceof AST_PropAccess // (new Date).getTime(), (new Date)["getTime"]()
-             || p instanceof AST_Call && p.expression === this)) return !0;
+             || p instanceof AST_Call && p.expression === this || p instanceof AST_PrefixedTemplateString && p.prefix === this)) return !0;
         }), PARENS(AST_Number, function(output) {
             var p = output.parent();
             if (p instanceof AST_PropAccess && p.expression === this) {
@@ -4903,7 +5590,7 @@
         }), DEFPRINT(AST_Debugger, function(self1, output) {
             output.print("debugger"), output.semicolon();
         }), AST_StatementWithBody.DEFMETHOD("_do_print_body", function(output) {
-            force_statement(this.body, output);
+            print_maybe_braced_body(this.body, output);
         }), DEFPRINT(AST_Statement, function(self1, output) {
             self1.body.print(output), output.semicolon();
         }), DEFPRINT(AST_Toplevel, function(self1, output) {
@@ -4946,7 +5633,7 @@
                 });
             }), output.space(), print_braced(self1, output, !0);
         }), DEFPRINT(AST_Lambda, function(self1, output) {
-            self1._do_print(output);
+            self1._do_print(output), output.gc_scope(self1);
         }), DEFPRINT(AST_PrefixedTemplateString, function(self1, output) {
             var tag = self1.prefix, parenthesize_tag = tag instanceof AST_Lambda || tag instanceof AST_Binary || tag instanceof AST_Conditional || tag instanceof AST_Sequence || tag instanceof AST_Unary || tag instanceof AST_Dot && tag.expression instanceof AST_Object;
             parenthesize_tag && output.print("("), self1.prefix.print(output), parenthesize_tag && output.print(")"), self1.template_string.print(output);
@@ -4964,19 +5651,19 @@
                     i && output.comma(), arg.print(output);
                 });
             }), output.space(), output.print("=>"), output.space();
-            const first_statement = self1.body[0];
+            let first_statement = self1.body[0];
             if (1 === self1.body.length && first_statement instanceof AST_Return) {
-                const returned = first_statement.value;
+                let returned = first_statement.value;
                 returned ? // Returns whether the leftmost item in the expression is an object
                 function left_is_object(node) {
-                    return node instanceof AST_Object || (node instanceof AST_Sequence ? left_is_object(node.expressions[0]) : "Call" === node.TYPE ? left_is_object(node.expression) : node instanceof AST_PrefixedTemplateString ? left_is_object(node.prefix) : node instanceof AST_Dot || node instanceof AST_Sub ? left_is_object(node.expression) : node instanceof AST_Conditional ? left_is_object(node.condition) : node instanceof AST_Binary ? left_is_object(node.left) : node instanceof AST_UnaryPostfix && left_is_object(node.expression));
+                    return node instanceof AST_Object || (node instanceof AST_Sequence ? left_is_object(node.expressions[0]) : "Call" === node.TYPE ? left_is_object(node.expression) : node instanceof AST_PrefixedTemplateString ? left_is_object(node.prefix) : node instanceof AST_Dot || node instanceof AST_Sub || node instanceof AST_Chain ? left_is_object(node.expression) : node instanceof AST_Conditional ? left_is_object(node.condition) : node instanceof AST_Binary ? left_is_object(node.left) : node instanceof AST_UnaryPostfix && left_is_object(node.expression));
                 }(returned) ? (output.print("("), returned.print(output), output.print(")")) : returned.print(output) : output.print("{}");
             } else print_braced(self1, output);
-            needs_parens && output.print(")");
+            needs_parens && output.print(")"), output.gc_scope(self1);
         }), /* -----[ exits ]----- */ AST_Exit.DEFMETHOD("_do_print", function(output, kind) {
             if (output.print(kind), this.value) {
                 output.space();
-                const comments = this.value.start.comments_before;
+                let comments = this.value.start.comments_before;
                 comments && comments.length && !output.printed_comments.has(comments) ? (output.print("("), this.value.print(output), output.print(")")) : this.value.print(output);
             }
             output.semicolon();
@@ -5000,7 +5687,7 @@
         }), DEFPRINT(AST_If, function(self1, output) {
             output.print("if"), output.space(), output.with_parens(function() {
                 self1.condition.print(output);
-            }), output.space(), self1.alternative ? (/* -----[ if ]----- */ function(self1, output) {
+            }), output.space(), self1.alternative ? (!/* -----[ if ]----- */ function(self1, output) {
                 var b = self1.body;
                 if (output.option("braces") || output.option("ie8") && b instanceof AST_Do) return make_block(b, output);
                 // The squeezer replaces "block"-s that contain only a single
@@ -5012,15 +5699,12 @@
                 // adds the block braces if needed.
                 if (!b) return output.force_semicolon();
                 for(;;)if (b instanceof AST_If) {
-                    if (!b.alternative) {
-                        make_block(self1.body, output);
-                        return;
-                    }
+                    if (!b.alternative) return void make_block(self1.body, output);
                     b = b.alternative;
                 } else if (b instanceof AST_StatementWithBody) b = b.body;
                 else break;
-                force_statement(self1.body, output);
-            }(self1, output), output.space(), output.print("else"), output.space(), self1.alternative instanceof AST_If ? self1.alternative.print(output) : force_statement(self1.alternative, output)) : self1._do_print_body(output);
+                print_maybe_braced_body(self1.body, output);
+            }(self1, output), output.space(), output.print("else"), output.space(), self1.alternative instanceof AST_If ? self1.alternative.print(output) : print_maybe_braced_body(self1.alternative, output)) : self1._do_print_body(output);
         }), /* -----[ switch ]----- */ DEFPRINT(AST_Switch, function(self1, output) {
             output.print("switch"), output.space(), output.with_parens(function() {
                 self1.expression.print(output);
@@ -5040,7 +5724,9 @@
         }), DEFPRINT(AST_Case, function(self1, output) {
             output.print("case"), output.space(), self1.expression.print(output), output.print(":"), self1._do_print_body(output);
         }), /* -----[ exceptions ]----- */ DEFPRINT(AST_Try, function(self1, output) {
-            output.print("try"), output.space(), print_braced(self1, output), self1.bcatch && (output.space(), self1.bcatch.print(output)), self1.bfinally && (output.space(), self1.bfinally.print(output));
+            output.print("try"), output.space(), self1.body.print(output), self1.bcatch && (output.space(), self1.bcatch.print(output)), self1.bfinally && (output.space(), self1.bfinally.print(output));
+        }), DEFPRINT(AST_TryBlock, function(self1, output) {
+            print_braced(self1, output);
         }), DEFPRINT(AST_Catch, function(self1, output) {
             output.print("catch"), self1.argname && (output.space(), output.with_parens(function() {
                 self1.argname.print(output);
@@ -5060,18 +5746,21 @@
         }), DEFPRINT(AST_Const, function(self1, output) {
             self1._do_print(output, "const");
         }), DEFPRINT(AST_Import, function(self1, output) {
-            output.print("import"), output.space(), self1.imported_name && self1.imported_name.print(output), self1.imported_name && self1.imported_names && (output.print(","), output.space()), self1.imported_names && (1 === self1.imported_names.length && "*" === self1.imported_names[0].foreign_name.name ? self1.imported_names[0].print(output) : (output.print("{"), self1.imported_names.forEach(function(name_import, i) {
+            output.print("import"), output.space(), self1.imported_name && self1.imported_name.print(output), self1.imported_name && self1.imported_names && (output.print(","), output.space()), self1.imported_names && (1 !== self1.imported_names.length || "*" !== self1.imported_names[0].foreign_name.name || self1.imported_names[0].foreign_name.quote ? (output.print("{"), self1.imported_names.forEach(function(name_import, i) {
                 output.space(), name_import.print(output), i < self1.imported_names.length - 1 && output.print(",");
-            }), output.space(), output.print("}"))), (self1.imported_name || self1.imported_names) && (output.space(), output.print("from"), output.space()), self1.module_name.print(output), self1.assert_clause && (output.print("assert"), self1.assert_clause.print(output)), output.semicolon();
+            }), output.space(), output.print("}")) : self1.imported_names[0].print(output)), (self1.imported_name || self1.imported_names) && (output.space(), output.print("from"), output.space()), self1.module_name.print(output), self1.assert_clause && (output.print("assert"), self1.assert_clause.print(output)), output.semicolon();
         }), DEFPRINT(AST_ImportMeta, function(self1, output) {
             output.print("import.meta");
         }), DEFPRINT(AST_NameMapping, function(self1, output) {
-            var is_import = output.parent() instanceof AST_Import, definition = self1.name.definition();
-            (definition && definition.mangled_name || self1.name.name) !== self1.foreign_name.name ? (is_import ? output.print(self1.foreign_name.name) : self1.name.print(output), output.space(), output.print("as"), output.space(), is_import ? self1.name.print(output) : output.print(self1.foreign_name.name)) : self1.name.print(output);
+            var is_import = output.parent() instanceof AST_Import, definition = self1.name.definition(), foreign_name = self1.foreign_name, names_are_different = (definition && definition.mangled_name || self1.name.name) !== foreign_name.name;
+            names_are_different || "*" !== foreign_name.name || foreign_name.quote == self1.name.quote || // export * as "*"
+            (names_are_different = !0);
+            var foreign_name_is_name = null == foreign_name.quote;
+            names_are_different ? (is_import ? foreign_name_is_name ? output.print(foreign_name.name) : output.print_string(foreign_name.name, foreign_name.quote) : null == self1.name.quote ? self1.name.print(output) : output.print_string(self1.name.name, self1.name.quote), output.space(), output.print("as"), output.space(), is_import ? self1.name.print(output) : foreign_name_is_name ? output.print(foreign_name.name) : output.print_string(foreign_name.name, foreign_name.quote)) : null == self1.name.quote ? self1.name.print(output) : output.print_string(self1.name.name, self1.name.quote);
         }), DEFPRINT(AST_Export, function(self1, output) {
-            if (output.print("export"), output.space(), self1.is_default && (output.print("default"), output.space()), self1.exported_names) 1 === self1.exported_names.length && "*" === self1.exported_names[0].name.name ? self1.exported_names[0].print(output) : (output.print("{"), self1.exported_names.forEach(function(name_export, i) {
+            if (output.print("export"), output.space(), self1.is_default && (output.print("default"), output.space()), self1.exported_names) 1 !== self1.exported_names.length || "*" !== self1.exported_names[0].name.name || self1.exported_names[0].name.quote ? (output.print("{"), self1.exported_names.forEach(function(name_export, i) {
                 output.space(), name_export.print(output), i < self1.exported_names.length - 1 && output.print(",");
-            }), output.space(), output.print("}"));
+            }), output.space(), output.print("}")) : self1.exported_names[0].print(output);
             else if (self1.exported_value) self1.exported_value.print(output);
             else if (self1.exported_definition && (self1.exported_definition.print(output), self1.exported_definition instanceof AST_Definitions)) return;
             self1.module_name && (output.space(), output.print("from"), output.space(), self1.module_name.print(output)), self1.assert_clause && (output.print("assert"), self1.assert_clause.print(output)), (self1.exported_value && !(self1.exported_value instanceof AST_Defun || self1.exported_value instanceof AST_Function || self1.exported_value instanceof AST_Class) || self1.module_name || self1.exported_names) && output.semicolon();
@@ -5106,7 +5795,7 @@
         }), DEFPRINT(AST_Dot, function(self1, output) {
             var expr = self1.expression;
             expr.print(output);
-            var prop = self1.property, print_computed = ALL_RESERVED_WORDS.has(prop) ? output.option("ie8") : !is_identifier_string(prop, output.option("ecma") >= 2015 || output.option("safari10"));
+            var prop = self1.property, print_computed = ALL_RESERVED_WORDS.has(prop) ? output.option("ie8") : !is_identifier_string(prop, output.option("ecma") >= 2015 && !output.option("safari10"));
             self1.optional && output.print("?."), print_computed ? (output.print("["), output.add_mapping(self1.end), output.print_string(prop), output.print("]")) : (expr instanceof AST_Number && expr.getValue() >= 0 && !/[xa-f.)]/i.test(output.last()) && output.print("."), self1.optional || output.print("."), // the name after dot would be mapped about here.
             output.add_mapping(self1.end), output.print_name(prop));
         }), DEFPRINT(AST_DotHash, function(self1, output) {
@@ -5119,16 +5808,15 @@
             self1.expression.print(output);
         }), DEFPRINT(AST_UnaryPrefix, function(self1, output) {
             var op = self1.operator;
-            output.print(op), (/^[a-z]/i.test(op) || /[+-]$/.test(op) && self1.expression instanceof AST_UnaryPrefix && /^[+-]/.test(self1.expression.operator)) && output.space(), self1.expression.print(output);
+            "--" === op && output.last().endsWith("!") && // avoid printing "<!--"
+            output.print(" "), output.print(op), (/^[a-z]/i.test(op) || /[+-]$/.test(op) && self1.expression instanceof AST_UnaryPrefix && /^[+-]/.test(self1.expression.operator)) && output.space(), self1.expression.print(output);
         }), DEFPRINT(AST_UnaryPostfix, function(self1, output) {
             self1.expression.print(output), output.print(self1.operator);
         }), DEFPRINT(AST_Binary, function(self1, output) {
             var op = self1.operator;
-            self1.left.print(output), ">" /* ">>" ">>>" ">" ">=" */  == op[0] && self1.left instanceof AST_UnaryPostfix && "--" == self1.left.operator ? // space is mandatory to avoid outputting -->
+            self1.left.print(output), ">" /* ">>" ">>>" ">" ">=" */  == op[0] && output.last().endsWith("--") ? // space is mandatory to avoid outputting -->
             output.print(" ") : // the space is optional depending on "beautify"
-            output.space(), output.print(op), ("<" == op || "<<" == op) && self1.right instanceof AST_UnaryPrefix && "!" == self1.right.operator && self1.right.expression instanceof AST_UnaryPrefix && "--" == self1.right.expression.operator ? // space is mandatory to avoid outputting <!--
-            output.print(" ") : // the space is optional depending on "beautify"
-            output.space(), self1.right.print(output);
+            output.space(), output.print(op), output.space(), self1.right.print(output);
         }), DEFPRINT(AST_Conditional, function(self1, output) {
             self1.condition.print(output), output.space(), output.print("?"), output.space(), self1.consequent.print(output), output.space(), output.colon(), self1.alternative.print(output);
         }), /* -----[ literals ]----- */ DEFPRINT(AST_Array, function(self1, output) {
@@ -5161,8 +5849,8 @@
                 var def = self1.definition();
                 return def ? def.mangled_name || def.name : self1.name;
             }
-            var allowShortHand = output.option("shorthand");
-            allowShortHand && self1.value instanceof AST_Symbol && is_identifier_string(self1.key, output.option("ecma") >= 2015 || output.option("safari10")) && get_name(self1.value) === self1.key && !ALL_RESERVED_WORDS.has(self1.key) ? print_property_name(self1.key, self1.quote, output) : allowShortHand && self1.value instanceof AST_DefaultAssign && self1.value.left instanceof AST_Symbol && is_identifier_string(self1.key, output.option("ecma") >= 2015 || output.option("safari10")) && get_name(self1.value.left) === self1.key ? (print_property_name(self1.key, self1.quote, output), output.space(), output.print("="), output.space(), self1.value.right.print(output)) : (self1.key instanceof AST_Node ? output.with_square(function() {
+            let try_shorthand = output.option("shorthand") && !(self1.key instanceof AST_Node);
+            try_shorthand && self1.value instanceof AST_Symbol && get_name(self1.value) === self1.key && !ALL_RESERVED_WORDS.has(self1.key) ? print_property_name(self1.key, self1.quote, output) || (output.colon(), self1.value.print(output)) : try_shorthand && self1.value instanceof AST_DefaultAssign && self1.value.left instanceof AST_Symbol && get_name(self1.value.left) === self1.key ? (print_property_name(self1.key, self1.quote, output) || (output.colon(), self1.value.left.print(output)), output.space(), output.print("="), output.space(), self1.value.right.print(output)) : (self1.key instanceof AST_Node ? output.with_square(function() {
                 self1.key.print(output);
             }) : print_property_name(self1.key, self1.quote, output), output.colon(), self1.value.print(output));
         }), DEFPRINT(AST_ClassPrivateProperty, (self1, output)=>{
@@ -5171,7 +5859,7 @@
             self1.static && (output.print("static"), output.space()), self1.key instanceof AST_SymbolClassProperty ? print_property_name(self1.key.name, self1.quote, output) : (output.print("["), self1.key.print(output), output.print("]")), self1.value && (output.print("="), self1.value.print(output)), output.semicolon();
         }), AST_ObjectProperty.DEFMETHOD("_print_getter_setter", function(type, is_private, output) {
             var self1 = this;
-            self1.static && (output.print("static"), output.space()), type && (output.print(type), output.space()), self1.key instanceof AST_SymbolMethod ? (is_private && output.print("#"), print_property_name(self1.key.name, self1.quote, output)) : output.with_square(function() {
+            self1.static && (output.print("static"), output.space()), type && (output.print(type), output.space()), self1.key instanceof AST_SymbolMethod ? (is_private && output.print("#"), print_property_name(self1.key.name, self1.quote, output), self1.key.add_source_map(output)) : output.with_square(function() {
                 self1.key.print(output);
             }), self1.value._do_print(output, !0);
         }), DEFPRINT(AST_ObjectSetter, function(self1, output) {
@@ -5185,9 +5873,15 @@
         }), DEFPRINT(AST_PrivateMethod, function(self1, output) {
             var type;
             self1.is_generator && self1.async ? type = "async*" : self1.is_generator ? type = "*" : self1.async && (type = "async"), self1._print_getter_setter(type, !0, output);
+        }), DEFPRINT(AST_PrivateIn, function(self1, output) {
+            self1.key.print(output), output.space(), output.print("in"), output.space(), self1.value.print(output);
+        }), DEFPRINT(AST_SymbolPrivateProperty, function(self1, output) {
+            output.print("#" + self1.name);
         }), DEFPRINT(AST_ConciseMethod, function(self1, output) {
             var type;
             self1.is_generator && self1.async ? type = "async*" : self1.is_generator ? type = "*" : self1.async && (type = "async"), self1._print_getter_setter(type, !1, output);
+        }), DEFPRINT(AST_ClassStaticBlock, function(self1, output) {
+            output.print("static"), output.space(), print_braced(self1, output);
         }), AST_Symbol.DEFMETHOD("_do_print", function(output) {
             var def = this.definition();
             output.print_name(def ? def.mangled_name || def.name : this.name);
@@ -5206,18 +5900,17 @@
         }), DEFPRINT(AST_BigInt, function(self1, output) {
             output.print(self1.getValue() + "n");
         });
-        const r_slash_script = /(<\s*\/\s*script)/i, slash_script_replace = (_, $1)=>$1.replace("/", "\\/");
-        function force_statement(stat, output) {
-            output.option("braces") ? make_block(stat, output) : !stat || stat instanceof AST_EmptyStatement ? output.force_semicolon() : stat.print(output);
+        let r_slash_script = /(<\s*\/\s*script)/i, r_starts_with_script = /^\s*script/i, slash_script_replace = (_, $1)=>$1.replace("/", "\\/");
+        /** if, for, while, may or may not have braces surrounding its body */ function print_maybe_braced_body(stat, output) {
+            output.option("braces") ? make_block(stat, output) : !stat || stat instanceof AST_EmptyStatement ? output.force_semicolon() : stat instanceof AST_Let || stat instanceof AST_Const || stat instanceof AST_Class ? make_block(stat, output) : stat.print(output);
         }
         function make_num(num) {
             var match, len, digits, str = num.toString(10).replace(/^0\./, ".").replace("e+", "e"), candidates = [
                 str
             ];
-            return Math.floor(num) === num && (num < 0 ? candidates.push("-0x" + (-num).toString(16).toLowerCase()) : candidates.push("0x" + num.toString(16).toLowerCase())), (match = /^\.0+/.exec(str)) ? (len = match[0].length, digits = str.slice(len), candidates.push(digits + "e-" + (digits.length + len - 1))) : (match = /0+$/.exec(str)) ? (len = match[0].length, candidates.push(str.slice(0, -len) + "e" + len)) : (match = /^(\d)\.(\d+)e(-?\d+)$/.exec(str)) && candidates.push(match[1] + match[2] + "e" + (match[3] - match[2].length)), function(a) {
-                for(var best = a[0], len = best.length, i = 1; i < a.length; ++i)a[i].length < len && (len = (best = a[i]).length);
-                return best;
-            }(candidates);
+            Math.floor(num) === num && (num < 0 ? candidates.push("-0x" + (-num).toString(16).toLowerCase()) : candidates.push("0x" + num.toString(16).toLowerCase())), (match = /^\.0+/.exec(str)) ? (len = match[0].length, candidates.push((digits = str.slice(len)) + "e-" + (digits.length + len - 1))) : (match = /0+$/.exec(str)) ? (len = match[0].length, candidates.push(str.slice(0, -len) + "e" + len)) : (match = /^(\d)\.(\d+)e(-?\d+)$/.exec(str)) && candidates.push(match[1] + match[2] + "e" + (match[3] - match[2].length));
+            for(var best = candidates[0], len1 = best.length, i = 1; i < candidates.length; ++i)candidates[i].length < len1 && (len1 = (best = candidates[i]).length);
+            return best;
         }
         function make_block(stmt, output) {
             !stmt || stmt instanceof AST_EmptyStatement ? output.print("{}") : stmt instanceof AST_BlockStatement ? stmt.print(output) : output.with_block(function() {
@@ -5232,15 +5925,15 @@
         DEFPRINT(AST_RegExp, function(self1, output) {
             let { source, flags } = self1.getValue();
             source = regexp_source_fix(source), flags = flags ? function(flags) {
-                const existing_flags = new Set(flags.split(""));
-                let out = "";
-                for (const flag of "gimuy")existing_flags.has(flag) && (out += flag, existing_flags.delete(flag));
+                let existing_flags = new Set(flags.split("")), out = "";
+                for (let flag of "dgimsuyv")existing_flags.has(flag) && (out += flag, existing_flags.delete(flag));
                 return existing_flags.size && // Flags Terser doesn't know about
                 existing_flags.forEach((flag)=>{
                     out += flag;
                 }), out;
-            }(flags) : "", source = source.replace(r_slash_script, slash_script_replace), output.print(output.to_utf8(`/${source}/${flags}`, !1, !0));
-            const parent = output.parent();
+            }(flags) : "", // Avoid outputting end of script tag
+            source = source.replace(r_slash_script, slash_script_replace), r_starts_with_script.test(source) && output.last().endsWith("<") && output.print(" "), output.print(output.to_utf8(`/${source}/${flags}`, !1, !0));
+            let parent = output.parent();
             parent instanceof AST_Binary && /^\w/.test(parent.operator) && parent.left === self1 && output.print(" ");
         }), DEFMAP([
             // We could easily add info for ALL nodes, but it seems to me that
@@ -5278,104 +5971,84 @@
             AST_ObjectGetter,
             AST_ObjectSetter,
             AST_PrivateGetter,
-            AST_PrivateSetter
+            AST_PrivateSetter,
+            AST_ConciseMethod,
+            AST_PrivateMethod
         ], function(output) {
-            output.add_mapping(this.key.end, this.key.name);
+            output.add_mapping(this.start, !1);
+        }), DEFMAP([
+            AST_SymbolMethod,
+            AST_SymbolPrivateProperty
+        ], function(output) {
+            let tok_type = this.end && this.end.type;
+            "name" === tok_type || "privatename" === tok_type ? output.add_mapping(this.end, this.name) : output.add_mapping(this.end);
         }), DEFMAP([
             AST_ObjectProperty
         ], function(output) {
             output.add_mapping(this.start, this.key);
         });
     }();
-    const shallow_cmp = (node1, node2)=>null === node1 && null === node2 || node1.TYPE === node2.TYPE && node1.shallow_cmp(node2), equivalent_to = (tree1, tree2)=>{
-        if (!shallow_cmp(tree1, tree2)) return !1;
-        const walk_1_state = [
-            tree1
-        ], walk_2_state = [
-            tree2
-        ], walk_1_push = walk_1_state.push.bind(walk_1_state), walk_2_push = walk_2_state.push.bind(walk_2_state);
-        for(; walk_1_state.length && walk_2_state.length;){
-            const node_1 = walk_1_state.pop(), node_2 = walk_2_state.pop();
-            if (!shallow_cmp(node_1, node_2) || (node_1._children_backwards(walk_1_push), node_2._children_backwards(walk_2_push), walk_1_state.length !== walk_2_state.length)) return !1;
-        }
-        return 0 == walk_1_state.length && 0 == walk_2_state.length;
-    }, mkshallow = (props)=>Function("other", "return " + Object.keys(props).map((key)=>{
-            if ("eq" === props[key]) return `this.${key} === other.${key}`;
-            if ("exist" === props[key]) return `(this.${key} == null ? other.${key} == null : this.${key} === other.${key})`;
-            throw Error(`mkshallow: Unexpected instruction: ${props[key]}`);
-        }).join(" && ")), pass_through = ()=>!0;
+    let shallow_cmp = (node1, node2)=>null === node1 && null === node2 || node1.TYPE === node2.TYPE && node1.shallow_cmp(node2), pass_through = ()=>!0;
     AST_Node.prototype.shallow_cmp = function() {
         throw Error("did not find a shallow_cmp function for " + this.constructor.name);
-    }, AST_Debugger.prototype.shallow_cmp = pass_through, AST_Directive.prototype.shallow_cmp = mkshallow({
-        value: "eq"
-    }), AST_SimpleStatement.prototype.shallow_cmp = pass_through, AST_Block.prototype.shallow_cmp = pass_through, AST_EmptyStatement.prototype.shallow_cmp = pass_through, AST_LabeledStatement.prototype.shallow_cmp = mkshallow({
-        "label.name": "eq"
-    }), AST_Do.prototype.shallow_cmp = pass_through, AST_While.prototype.shallow_cmp = pass_through, AST_For.prototype.shallow_cmp = mkshallow({
-        init: "exist",
-        condition: "exist",
-        step: "exist"
-    }), AST_ForIn.prototype.shallow_cmp = pass_through, AST_ForOf.prototype.shallow_cmp = pass_through, AST_With.prototype.shallow_cmp = pass_through, AST_Toplevel.prototype.shallow_cmp = pass_through, AST_Expansion.prototype.shallow_cmp = pass_through, AST_Lambda.prototype.shallow_cmp = mkshallow({
-        is_generator: "eq",
-        async: "eq"
-    }), AST_Destructuring.prototype.shallow_cmp = mkshallow({
-        is_array: "eq"
-    }), AST_PrefixedTemplateString.prototype.shallow_cmp = pass_through, AST_TemplateString.prototype.shallow_cmp = pass_through, AST_TemplateSegment.prototype.shallow_cmp = mkshallow({
-        value: "eq"
-    }), AST_Jump.prototype.shallow_cmp = pass_through, AST_LoopControl.prototype.shallow_cmp = pass_through, AST_Await.prototype.shallow_cmp = pass_through, AST_Yield.prototype.shallow_cmp = mkshallow({
-        is_star: "eq"
-    }), AST_If.prototype.shallow_cmp = mkshallow({
-        alternative: "exist"
-    }), AST_Switch.prototype.shallow_cmp = pass_through, AST_SwitchBranch.prototype.shallow_cmp = pass_through, AST_Try.prototype.shallow_cmp = mkshallow({
-        bcatch: "exist",
-        bfinally: "exist"
-    }), AST_Catch.prototype.shallow_cmp = mkshallow({
-        argname: "exist"
-    }), AST_Finally.prototype.shallow_cmp = pass_through, AST_Definitions.prototype.shallow_cmp = pass_through, AST_VarDef.prototype.shallow_cmp = mkshallow({
-        value: "exist"
-    }), AST_NameMapping.prototype.shallow_cmp = pass_through, AST_Import.prototype.shallow_cmp = mkshallow({
-        imported_name: "exist",
-        imported_names: "exist"
-    }), AST_ImportMeta.prototype.shallow_cmp = pass_through, AST_Export.prototype.shallow_cmp = mkshallow({
-        exported_definition: "exist",
-        exported_value: "exist",
-        exported_names: "exist",
-        module_name: "eq",
-        is_default: "eq"
-    }), AST_Call.prototype.shallow_cmp = pass_through, AST_Sequence.prototype.shallow_cmp = pass_through, AST_PropAccess.prototype.shallow_cmp = pass_through, AST_Chain.prototype.shallow_cmp = pass_through, AST_Dot.prototype.shallow_cmp = mkshallow({
-        property: "eq"
-    }), AST_DotHash.prototype.shallow_cmp = mkshallow({
-        property: "eq"
-    }), AST_Unary.prototype.shallow_cmp = mkshallow({
-        operator: "eq"
-    }), AST_Binary.prototype.shallow_cmp = mkshallow({
-        operator: "eq"
-    }), AST_Conditional.prototype.shallow_cmp = pass_through, AST_Array.prototype.shallow_cmp = pass_through, AST_Object.prototype.shallow_cmp = pass_through, AST_ObjectProperty.prototype.shallow_cmp = pass_through, AST_ObjectKeyVal.prototype.shallow_cmp = mkshallow({
-        key: "eq"
-    }), AST_ObjectSetter.prototype.shallow_cmp = mkshallow({
-        static: "eq"
-    }), AST_ObjectGetter.prototype.shallow_cmp = mkshallow({
-        static: "eq"
-    }), AST_ConciseMethod.prototype.shallow_cmp = mkshallow({
-        static: "eq",
-        is_generator: "eq",
-        async: "eq"
-    }), AST_Class.prototype.shallow_cmp = mkshallow({
-        name: "exist",
-        extends: "exist"
-    }), AST_ClassProperty.prototype.shallow_cmp = mkshallow({
-        static: "eq"
-    }), AST_Symbol.prototype.shallow_cmp = mkshallow({
-        name: "eq"
-    }), AST_NewTarget.prototype.shallow_cmp = pass_through, AST_This.prototype.shallow_cmp = pass_through, AST_Super.prototype.shallow_cmp = pass_through, AST_String.prototype.shallow_cmp = mkshallow({
-        value: "eq"
-    }), AST_Number.prototype.shallow_cmp = mkshallow({
-        value: "eq"
-    }), AST_BigInt.prototype.shallow_cmp = mkshallow({
-        value: "eq"
-    }), AST_RegExp.prototype.shallow_cmp = function(other) {
+    }, AST_Debugger.prototype.shallow_cmp = pass_through, AST_Directive.prototype.shallow_cmp = function(other) {
+        return this.value === other.value;
+    }, AST_SimpleStatement.prototype.shallow_cmp = pass_through, AST_Block.prototype.shallow_cmp = pass_through, AST_EmptyStatement.prototype.shallow_cmp = pass_through, AST_LabeledStatement.prototype.shallow_cmp = function(other) {
+        return this.label.name === other.label.name;
+    }, AST_Do.prototype.shallow_cmp = pass_through, AST_While.prototype.shallow_cmp = pass_through, AST_For.prototype.shallow_cmp = function(other) {
+        return (null == this.init ? null == other.init : this.init === other.init) && (null == this.condition ? null == other.condition : this.condition === other.condition) && (null == this.step ? null == other.step : this.step === other.step);
+    }, AST_ForIn.prototype.shallow_cmp = pass_through, AST_ForOf.prototype.shallow_cmp = pass_through, AST_With.prototype.shallow_cmp = pass_through, AST_Toplevel.prototype.shallow_cmp = pass_through, AST_Expansion.prototype.shallow_cmp = pass_through, AST_Lambda.prototype.shallow_cmp = function(other) {
+        return this.is_generator === other.is_generator && this.async === other.async;
+    }, AST_Destructuring.prototype.shallow_cmp = function(other) {
+        return this.is_array === other.is_array;
+    }, AST_PrefixedTemplateString.prototype.shallow_cmp = pass_through, AST_TemplateString.prototype.shallow_cmp = pass_through, AST_TemplateSegment.prototype.shallow_cmp = function(other) {
+        return this.value === other.value;
+    }, AST_Jump.prototype.shallow_cmp = pass_through, AST_LoopControl.prototype.shallow_cmp = pass_through, AST_Await.prototype.shallow_cmp = pass_through, AST_Yield.prototype.shallow_cmp = function(other) {
+        return this.is_star === other.is_star;
+    }, AST_If.prototype.shallow_cmp = function(other) {
+        return null == this.alternative ? null == other.alternative : this.alternative === other.alternative;
+    }, AST_Switch.prototype.shallow_cmp = pass_through, AST_SwitchBranch.prototype.shallow_cmp = pass_through, AST_Try.prototype.shallow_cmp = function(other) {
+        return this.body === other.body && (null == this.bcatch ? null == other.bcatch : this.bcatch === other.bcatch) && (null == this.bfinally ? null == other.bfinally : this.bfinally === other.bfinally);
+    }, AST_Catch.prototype.shallow_cmp = function(other) {
+        return null == this.argname ? null == other.argname : this.argname === other.argname;
+    }, AST_Finally.prototype.shallow_cmp = pass_through, AST_Definitions.prototype.shallow_cmp = pass_through, AST_VarDef.prototype.shallow_cmp = function(other) {
+        return null == this.value ? null == other.value : this.value === other.value;
+    }, AST_NameMapping.prototype.shallow_cmp = pass_through, AST_Import.prototype.shallow_cmp = function(other) {
+        return (null == this.imported_name ? null == other.imported_name : this.imported_name === other.imported_name) && (null == this.imported_names ? null == other.imported_names : this.imported_names === other.imported_names);
+    }, AST_ImportMeta.prototype.shallow_cmp = pass_through, AST_Export.prototype.shallow_cmp = function(other) {
+        return (null == this.exported_definition ? null == other.exported_definition : this.exported_definition === other.exported_definition) && (null == this.exported_value ? null == other.exported_value : this.exported_value === other.exported_value) && (null == this.exported_names ? null == other.exported_names : this.exported_names === other.exported_names) && this.module_name === other.module_name && this.is_default === other.is_default;
+    }, AST_Call.prototype.shallow_cmp = pass_through, AST_Sequence.prototype.shallow_cmp = pass_through, AST_PropAccess.prototype.shallow_cmp = pass_through, AST_Chain.prototype.shallow_cmp = pass_through, AST_Dot.prototype.shallow_cmp = function(other) {
+        return this.property === other.property;
+    }, AST_DotHash.prototype.shallow_cmp = function(other) {
+        return this.property === other.property;
+    }, AST_Unary.prototype.shallow_cmp = function(other) {
+        return this.operator === other.operator;
+    }, AST_Binary.prototype.shallow_cmp = function(other) {
+        return this.operator === other.operator;
+    }, AST_Conditional.prototype.shallow_cmp = pass_through, AST_Array.prototype.shallow_cmp = pass_through, AST_Object.prototype.shallow_cmp = pass_through, AST_ObjectProperty.prototype.shallow_cmp = pass_through, AST_ObjectKeyVal.prototype.shallow_cmp = function(other) {
+        return this.key === other.key;
+    }, AST_ObjectSetter.prototype.shallow_cmp = function(other) {
+        return this.static === other.static;
+    }, AST_ObjectGetter.prototype.shallow_cmp = function(other) {
+        return this.static === other.static;
+    }, AST_ConciseMethod.prototype.shallow_cmp = function(other) {
+        return this.static === other.static && this.is_generator === other.is_generator && this.async === other.async;
+    }, AST_Class.prototype.shallow_cmp = function(other) {
+        return (null == this.name ? null == other.name : this.name === other.name) && (null == this.extends ? null == other.extends : this.extends === other.extends);
+    }, AST_ClassProperty.prototype.shallow_cmp = function(other) {
+        return this.static === other.static;
+    }, AST_Symbol.prototype.shallow_cmp = function(other) {
+        return this.name === other.name;
+    }, AST_NewTarget.prototype.shallow_cmp = pass_through, AST_This.prototype.shallow_cmp = pass_through, AST_Super.prototype.shallow_cmp = pass_through, AST_String.prototype.shallow_cmp = function(other) {
+        return this.value === other.value;
+    }, AST_Number.prototype.shallow_cmp = function(other) {
+        return this.value === other.value;
+    }, AST_BigInt.prototype.shallow_cmp = function(other) {
+        return this.value === other.value;
+    }, AST_RegExp.prototype.shallow_cmp = function(other) {
         return this.value.flags === other.value.flags && this.value.source === other.value.source;
     }, AST_Atom.prototype.shallow_cmp = pass_through;
-    let function_defs = null, unmangleable_names = null;
+    let function_defs = null, unmangleable_names = null, scopes_with_block_defuns = null;
     class SymbolDef {
         constructor(scope, orig, init){
             this.name = orig.name, this.orig = [
@@ -5389,12 +6062,12 @@
             return options || (options = {}), !!(function_defs && function_defs.has(this.id) && keep_name(options.keep_fnames, this.orig[0].name)) || this.global && !options.toplevel || 1 & this.export || this.undeclared || !options.eval && this.scope.pinned() || (this.orig[0] instanceof AST_SymbolLambda || this.orig[0] instanceof AST_SymbolDefun) && keep_name(options.keep_fnames, this.orig[0].name) || this.orig[0] instanceof AST_SymbolMethod || (this.orig[0] instanceof AST_SymbolClass || this.orig[0] instanceof AST_SymbolDefClass) && keep_name(options.keep_classnames, this.orig[0].name);
         }
         mangle(options) {
-            const cache = options.cache && options.cache.props;
+            let cache = options.cache && options.cache.props;
             if (this.global && cache && cache.has(this.name)) this.mangled_name = cache.get(this.name);
             else if (!this.mangled_name && !this.unmangleable(options)) {
                 var s = this.scope, sym = this.orig[0];
                 options.ie8 && sym instanceof AST_SymbolLambda && (s = s.parent_scope);
-                const redefinition = redefined_catch_def(this);
+                let redefinition = redefined_catch_def(this);
                 this.mangled_name = redefinition ? redefinition.mangled_name || redefinition.name : s.next_mangled(options, this), this.global && cache && cache.set(this.name, this.mangled_name);
             }
         }
@@ -5403,6 +6076,8 @@
         if (def.orig[0] instanceof AST_SymbolCatch && def.scope.is_block_scope()) return def.scope.get_defun_scope().variables.get(def.name);
     }
     function next_mangled(scope, options) {
+        let defun_scope;
+        scopes_with_block_defuns && (defun_scope = scope.get_defun_scope()) && scopes_with_block_defuns.has(defun_scope) && (scope = defun_scope);
         var ext = scope.enclosed, nth_identifier = options.nth_identifier;
         out: for(;;){
             var m = nth_identifier.get(++scope.cname);
@@ -5411,41 +6086,53 @@
                 // from some parent scope that is referenced in this or in
                 // inner scopes.
                 for(let i = ext.length; --i >= 0;){
-                    const def = ext[i];
+                    let def = ext[i];
                     if (m == (def.mangled_name || def.unmangleable(options) && def.name)) continue out;
                 }
                 return m;
             } // skip over "do"
         }
     }
+    /**
+     * Format the mangler options (if any) into their appropriate types
+     */ function format_mangler_options(options) {
+        return (options = defaults(options, {
+            eval: !1,
+            nth_identifier: base54,
+            ie8: !1,
+            keep_classnames: !1,
+            keep_fnames: !1,
+            module: !1,
+            reserved: [],
+            toplevel: !1
+        })).module && (options.toplevel = !0), Array.isArray(options.reserved) || options.reserved instanceof Set || (options.reserved = []), options.reserved = new Set(options.reserved), // Never mangle arguments
+        options.reserved.add("arguments"), options;
+    }
     SymbolDef.next_id = 1, AST_Scope.DEFMETHOD("figure_out_scope", function(options, { parent_scope = null, toplevel = this } = {}) {
         if (options = defaults(options, {
             cache: null,
             ie8: !1,
-            safari10: !1
+            safari10: !1,
+            module: !1
         }), !(toplevel instanceof AST_Toplevel)) throw Error("Invalid toplevel scope");
         // pass 1: setup scope chaining and handle definitions
         var scope = this.parent_scope = parent_scope, labels = new Map(), defun = null, in_destructuring = null, for_scopes = [], tw = new TreeWalker((node, descend)=>{
             if (node.is_block_scope()) {
-                const save_scope = scope;
-                node.block_scope = scope = new AST_Scope(node), scope._block_scope = !0;
-                // AST_Try in the AST sadly *is* (not has) a body itself,
-                // and its catch and finally branches are children of the AST_Try itself
-                const parent_scope = node instanceof AST_Catch ? save_scope.parent_scope : save_scope;
-                if (scope.init_scope_vars(parent_scope), scope.uses_with = save_scope.uses_with, scope.uses_eval = save_scope.uses_eval, options.safari10 && (node instanceof AST_For || node instanceof AST_ForIn) && for_scopes.push(scope), node instanceof AST_Switch) {
+                let save_scope = scope;
+                if (node.block_scope = scope = new AST_Scope(node), scope._block_scope = !0, scope.init_scope_vars(save_scope), scope.uses_with = save_scope.uses_with, scope.uses_eval = save_scope.uses_eval, options.safari10 && (node instanceof AST_For || node instanceof AST_ForIn || node instanceof AST_ForOf) && for_scopes.push(scope), node instanceof AST_Switch) {
                     // XXX: HACK! Ensure the switch expression gets the correct scope (the parent scope) and the body gets the contained scope
                     // AST_Switch has a scope within the body, but it itself "is a block scope"
                     // This means the switched expression has to belong to the outer scope
                     // while the body inside belongs to the switch itself.
-                    // This is pretty nasty and warrants an AST change similar to AST_Try (read above)
-                    const the_block_scope = scope;
+                    // This is pretty nasty and warrants an AST change
+                    let the_block_scope = scope;
                     scope = save_scope, node.expression.walk(tw), scope = the_block_scope;
                     for(let i = 0; i < node.body.length; i++)node.body[i].walk(tw);
                 } else descend();
                 return scope = save_scope, !0;
             }
             if (node instanceof AST_Destructuring) {
-                const save_destructuring = in_destructuring;
+                let save_destructuring = in_destructuring;
                 return in_destructuring = node, descend(), in_destructuring = save_destructuring, !0;
             }
             if (node instanceof AST_Scope) {
@@ -5469,7 +6156,7 @@
                 // scope when we encounter the AST_Defun node (which is
                 // instanceof AST_Scope) but we get to the symbol a bit
                 // later.
-                const closest_scope = defun.parent_scope;
+                let closest_scope = defun.parent_scope;
                 // In strict mode, function definitions are block-scoped
                 node.scope = tw.directives["use strict"] ? closest_scope : closest_scope.get_defun_scope(), mark_export(node.scope.def_function(node, defun), 1);
             } else if (node instanceof AST_SymbolClass) mark_export(defun.def_variable(node, defun), 1);
@@ -5501,18 +6188,18 @@
                 while (tw.parent(i++) !== in_destructuring)
             }
             var node = tw.parent(level);
-            if (def.export = node instanceof AST_Export ? 1 : 0) {
+            if (def.export = +(node instanceof AST_Export)) {
                 var exported = node.exported_definition;
                 (exported instanceof AST_Defun || exported instanceof AST_DefClass) && node.is_default && (def.export = 2);
             }
         }
-        this.walk(tw), this instanceof AST_Toplevel && (this.globals = new Map());
+        options.module && (tw.directives["use strict"] = !0), this.walk(tw), this instanceof AST_Toplevel && (this.globals = new Map());
         var tw = new TreeWalker((node)=>{
             if (node instanceof AST_LoopControl && node.label) return node.label.thedef.references.push(node), !0;
             if (node instanceof AST_SymbolRef) {
                 var def, sym, name = node.name;
                 if ("eval" == name && tw.parent() instanceof AST_Call) for(var s = node.scope; s && !s.uses_eval; s = s.parent_scope)s.uses_eval = !0;
-                return tw.parent() instanceof AST_NameMapping && tw.parent(1).module_name || !(sym = node.scope.find_variable(name)) ? (sym = toplevel.def_global(node), node instanceof AST_SymbolExport && (sym.export = 1)) : sym.scope instanceof AST_Lambda && "arguments" == name && (sym.scope.uses_arguments = !0), node.thedef = sym, node.reference(), !node.scope.is_block_scope() || sym.orig[0] instanceof AST_SymbolBlockDeclaration || (node.scope = node.scope.get_defun_scope()), !0;
+                return tw.parent() instanceof AST_NameMapping && tw.parent(1).module_name || !(sym = node.scope.find_variable(name)) ? (sym = toplevel.def_global(node), node instanceof AST_SymbolExport && (sym.export = 1)) : sym.scope instanceof AST_Lambda && "arguments" == name && (sym.scope.get_defun_scope().uses_arguments = !0), node.thedef = sym, node.reference(), !node.scope.is_block_scope() || sym.orig[0] instanceof AST_SymbolBlockDeclaration || (node.scope = node.scope.get_defun_scope()), !0;
             }
             if (node instanceof AST_SymbolCatch && (def = redefined_catch_def(node.definition()))) for(var s = node.scope; s && (push_uniq(s.enclosed, def), s !== def.scope);)s = s.parent_scope;
         });
@@ -5527,7 +6214,7 @@
                     ref.thedef = def, ref.reference();
                 }), node.thedef = def, node.reference(), !0;
             }
-        }), options.safari10) for (const scope of for_scopes)scope.parent_scope.variables.forEach(function(def) {
+        }), options.safari10) for (let scope of for_scopes)scope.parent_scope.variables.forEach(function(def) {
             push_uniq(scope.enclosed, def);
         });
     }), AST_Toplevel.DEFMETHOD("def_global", function(node) {
@@ -5545,24 +6232,22 @@
         // `scope` is going to be moved into `this` right now.
         // Update the required scopes' information
         if (scope.parent_scope === this) return;
-        scope.parent_scope = this;
-        // TODO uses_with, uses_eval, etc
-        const scope_ancestry = (()=>{
-            const ancestry = [];
-            let cur = this;
+        scope.parent_scope = this, scope instanceof AST_Arrow && !this.uses_arguments && (this.uses_arguments = walk(scope, (node)=>node instanceof AST_SymbolRef && node.scope instanceof AST_Lambda && "arguments" === node.name ? walk_abort : node instanceof AST_Lambda && !(node instanceof AST_Arrow) || void 0)), this.uses_with = this.uses_with || scope.uses_with, this.uses_eval = this.uses_eval || scope.uses_eval;
+        let scope_ancestry = (()=>{
+            let ancestry = [], cur = this;
             do ancestry.push(cur);
             while (cur = cur.parent_scope)
             return ancestry.reverse(), ancestry;
         })(), new_scope_enclosed_set = new Set(scope.enclosed), to_enclose = [];
-        for (const scope_topdown of scope_ancestry)for (const def of (to_enclose.forEach((e)=>push_uniq(scope_topdown.enclosed, e)), scope_topdown.variables.values()))new_scope_enclosed_set.has(def) && (push_uniq(to_enclose, def), push_uniq(scope_topdown.enclosed, def));
+        for (let scope_topdown of scope_ancestry)for (let def of (to_enclose.forEach((e)=>push_uniq(scope_topdown.enclosed, e)), scope_topdown.variables.values()))new_scope_enclosed_set.has(def) && (push_uniq(to_enclose, def), push_uniq(scope_topdown.enclosed, def));
     }), // Creates a symbol during compression
     AST_Scope.DEFMETHOD("create_symbol", function(SymClass, { source, tentative_name, scope, conflict_scopes = [
         scope
     ], init = null } = {}) {
         let symbol_name;
         if (conflict_scopes = function(scopes) {
-            const found_scopes = new Set();
-            for (const scope of new Set(scopes))!function bubble_up(scope) {
+            let found_scopes = new Set();
+            for (let scope of new Set(scopes))!function bubble_up(scope) {
                 null == scope || found_scopes.has(scope) || (found_scopes.add(scope), bubble_up(scope.parent_scope));
             }(scope);
             return [
@@ -5575,7 +6260,7 @@
             for(; conflict_scopes.find((s)=>s.conflicting_def_shallow(symbol_name));)symbol_name = tentative_name + "$" + i++;
         }
         if (!symbol_name) throw Error("No symbol name could be generated in create_symbol()");
-        const symbol = make_node(SymClass, source, {
+        let symbol = make_node(SymClass, source, {
             name: symbol_name,
             scope
         });
@@ -5605,8 +6290,7 @@
     }), AST_Scope.DEFMETHOD("next_mangled", function(options) {
         return next_mangled(this, options);
     }), AST_Toplevel.DEFMETHOD("next_mangled", function(options) {
-        let name;
-        const mangled_names = this.mangled_names;
+        let name, mangled_names = this.mangled_names;
         do name = next_mangled(this, options);
         while (mangled_names.has(name))
         return name;
@@ -5628,22 +6312,10 @@
         return this.thedef;
     }), AST_Symbol.DEFMETHOD("global", function() {
         return this.thedef.global;
-    }), AST_Toplevel.DEFMETHOD("_default_mangler_options", function(options) {
-        return (options = defaults(options, {
-            eval: !1,
-            nth_identifier: base54,
-            ie8: !1,
-            keep_classnames: !1,
-            keep_fnames: !1,
-            module: !1,
-            reserved: [],
-            toplevel: !1
-        })).module && (options.toplevel = !0), Array.isArray(options.reserved) || options.reserved instanceof Set || (options.reserved = []), options.reserved = new Set(options.reserved), // Never mangle arguments
-        options.reserved.add("arguments"), options;
     }), AST_Toplevel.DEFMETHOD("mangle_names", function(options) {
-        var nth_identifier = (options = this._default_mangler_options(options)).nth_identifier, lname = -1, to_mangle = [];
+        var nth_identifier = (options = format_mangler_options(options)).nth_identifier, lname = -1, to_mangle = [];
         options.keep_fnames && (function_defs = new Set());
-        const mangled_names = this.mangled_names = new Set();
+        let mangled_names = this.mangled_names = new Set();
         unmangleable_names = new Set(), options.cache && (this.globals.forEach(collect), options.cache.props && options.cache.props.forEach(function(mangled_name) {
             mangled_names.add(mangled_name);
         }));
@@ -5653,28 +6325,16 @@
                 var save_nesting = lname;
                 return descend(), lname = save_nesting, !0; // don't descend again in TreeWalker
             }
-            if (node instanceof AST_Scope) {
-                node.variables.forEach(collect);
-                return;
-            }
-            if (node.is_block_scope()) {
-                node.block_scope.variables.forEach(collect);
-                return;
-            }
-            if (function_defs && node instanceof AST_VarDef && node.value instanceof AST_Lambda && !node.value.name && keep_name(options.keep_fnames, node.name.name)) {
-                function_defs.add(node.name.definition().id);
-                return;
-            }
+            if (node instanceof AST_Defun && !(tw.parent() instanceof AST_Scope) && (scopes_with_block_defuns = scopes_with_block_defuns || new Set()).add(node.parent_scope.get_defun_scope()), node instanceof AST_Scope) return void node.variables.forEach(collect);
+            if (node.is_block_scope()) return void node.block_scope.variables.forEach(collect);
+            if (function_defs && node instanceof AST_VarDef && node.value instanceof AST_Lambda && !node.value.name && keep_name(options.keep_fnames, node.name.name)) return void function_defs.add(node.name.definition().id);
             if (node instanceof AST_Label) {
                 let name;
                 do name = nth_identifier.get(++lname);
                 while (ALL_RESERVED_WORDS.has(name))
                 return node.mangled_name = name, !0;
             }
-            if (!(options.ie8 || options.safari10) && node instanceof AST_SymbolCatch) {
-                to_mangle.push(node.definition());
-                return;
-            }
+            if (!(options.ie8 || options.safari10) && node instanceof AST_SymbolCatch) return void to_mangle.push(node.definition());
         });
         function collect(symbol) {
             1 & symbol.export ? unmangleable_names.add(symbol.name) : options.reserved.has(symbol.name) || to_mangle.push(symbol);
@@ -5685,9 +6345,9 @@
             def.name.length < 6 && def.unmangleable(options) && unmangleable_names.add(def.name);
         }), to_mangle.forEach((def)=>{
             def.mangle(options);
-        }), function_defs = null, unmangleable_names = null;
+        }), function_defs = null, unmangleable_names = null, scopes_with_block_defuns = null;
     }), AST_Toplevel.DEFMETHOD("find_colliding_names", function(options) {
-        const cache = options.cache && options.cache.props, avoid = new Set();
+        let cache = options.cache && options.cache.props, avoid = new Set();
         return options.reserved.forEach(to_avoid), this.globals.forEach(add_def), this.walk(new TreeWalker(function(node) {
             node instanceof AST_Scope && node.variables.forEach(add_def), node instanceof AST_SymbolCatch && add_def(node.definition());
         })), avoid;
@@ -5701,12 +6361,12 @@
             to_avoid(name);
         }
     }), AST_Toplevel.DEFMETHOD("expand_names", function(options) {
-        var nth_identifier = (options = this._default_mangler_options(options)).nth_identifier;
+        var nth_identifier = (options = format_mangler_options(options)).nth_identifier;
         nth_identifier.reset && nth_identifier.sort && (nth_identifier.reset(), nth_identifier.sort());
         var avoid = this.find_colliding_names(options), cname = 0;
         function rename(def) {
             if (def.global && options.cache || def.unmangleable(options) || options.reserved.has(def.name)) return;
-            const redefinition = redefined_catch_def(def), name = def.name = redefinition ? redefinition.name : function() {
+            let redefinition = redefined_catch_def(def), name = def.name = redefinition ? redefinition.name : function() {
                 var name;
                 do name = nth_identifier.get(cname++);
                 while (avoid.has(name) || ALL_RESERVED_WORDS.has(name))
@@ -5724,7 +6384,7 @@
     }), AST_Node.DEFMETHOD("tail_node", return_this), AST_Sequence.DEFMETHOD("tail_node", function() {
         return this.expressions[this.expressions.length - 1];
     }), AST_Toplevel.DEFMETHOD("compute_char_frequency", function(options) {
-        var nth_identifier = (options = this._default_mangler_options(options)).nth_identifier;
+        var nth_identifier = (options = format_mangler_options(options)).nth_identifier;
         if (nth_identifier.reset && nth_identifier.consider && nth_identifier.sort) {
             nth_identifier.reset();
             try {
@@ -5739,9 +6399,8 @@
             nth_identifier.sort();
         }
     });
-    const base54 = (()=>{
-        let chars, frequency;
-        const leading = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ$_".split(""), digits = "0123456789".split("");
+    let base54 = (()=>{
+        let chars, frequency, leading = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ$_".split(""), digits = "0123456789".split("");
         function reset() {
             frequency = new Map(), leading.forEach(function(ch) {
                 frequency.set(ch, 0);
@@ -5772,7 +6431,7 @@
         });
     })();
     AST_Node.prototype.size = function(compressor, stack) {
-        mangle_options = compressor && compressor.mangle_options;
+        mangle_options = compressor && compressor._mangle_options;
         let size = 0;
         return walk_parent(this, (node, info)=>{
             // Braceless arrow functions have fake "return" statements
@@ -5783,14 +6442,14 @@
         // TODO string encoding stuff
         return 2 + this.value.length;
     };
-    const list_overhead = (array)=>array.length && array.length - 1;
+    /** Count commas/semicolons necessary to show a list of expressions/statements */ let list_overhead = (array)=>array.length && array.length - 1;
     AST_Block.prototype._size = function() {
         return 2 + list_overhead(this.body);
     }, AST_Toplevel.prototype._size = function() {
         return list_overhead(this.body);
     }, AST_EmptyStatement.prototype._size = ()=>1, AST_LabeledStatement.prototype._size = ()=>2, AST_Do.prototype._size = ()=>9, AST_While.prototype._size = ()=>7, AST_For.prototype._size = ()=>8, AST_ForIn.prototype._size = ()=>8, // AST_ForOf inherits ^
     AST_With.prototype._size = ()=>6, AST_Expansion.prototype._size = ()=>3;
-    const lambda_modifiers = (func)=>(func.is_generator ? 1 : 0) + (func.async ? 6 : 0);
+    let lambda_modifiers = (func)=>+!!func.is_generator + 6 * !!func.async;
     AST_Accessor.prototype._size = function() {
         return lambda_modifiers(this) + 4 + list_overhead(this.argnames) + list_overhead(this.body);
     }, AST_Function.prototype._size = function(info) {
@@ -5800,7 +6459,7 @@
     }, AST_Arrow.prototype._size = function() {
         let args_and_arrow = 2 + list_overhead(this.argnames);
         1 === this.argnames.length && this.argnames[0] instanceof AST_Symbol || (args_and_arrow += 2);
-        const body_overhead = this.is_braceless() ? 0 : list_overhead(this.body) + 2;
+        let body_overhead = this.is_braceless() ? 0 : list_overhead(this.body) + 2;
         return lambda_modifiers(this) + args_and_arrow + body_overhead;
     }, AST_Destructuring.prototype._size = ()=>2, AST_TemplateString.prototype._size = function() {
         return 2 + 3 * Math.floor(this.segments.length / 2); /* "${}" */ 
@@ -5818,32 +6477,28 @@
         return 5 + list_overhead(this.body);
     }, AST_Default.prototype._size = function() {
         return 8 + list_overhead(this.body);
-    }, AST_Try.prototype._size = function() {
-        return 3 + list_overhead(this.body);
-    }, AST_Catch.prototype._size = function() {
+    }, AST_Try.prototype._size = ()=>3, AST_Catch.prototype._size = function() {
         let size = 7 + list_overhead(this.body);
         return this.argname && (size += 2), size;
     }, AST_Finally.prototype._size = function() {
         return 7 + list_overhead(this.body);
-    };
-    /*#__INLINE__*/ const def_size = (size, def)=>size + list_overhead(def.definitions);
-    AST_Var.prototype._size = function() {
-        return def_size(4, this);
+    }, AST_Var.prototype._size = function() {
+        return 4 + list_overhead(this.definitions);
     }, AST_Let.prototype._size = function() {
-        return def_size(4, this);
+        return 4 + list_overhead(this.definitions);
     }, AST_Const.prototype._size = function() {
-        return def_size(6, this);
+        return 6 + list_overhead(this.definitions);
     }, AST_VarDef.prototype._size = function() {
-        return this.value ? 1 : 0;
+        return +!!this.value;
     }, AST_NameMapping.prototype._size = function() {
         // foreign name isn't mangled
-        return this.name ? 4 : 0;
+        return 4 * !!this.name;
     }, AST_Import.prototype._size = function() {
         // import
         let size = 6;
         return this.imported_name && (size += 1), (this.imported_name || this.imported_names) && (size += 5), this.imported_names && (size += 2 + list_overhead(this.imported_names)), size;
     }, AST_ImportMeta.prototype._size = ()=>11, AST_Export.prototype._size = function() {
-        let size = 7 + (this.is_default ? 8 : 0);
+        let size = 7 + 8 * !!this.is_default;
         return this.exported_value && (size += this.exported_value._size()), this.exported_names && // Braces and commas
         (size += 2 + list_overhead(this.exported_names)), this.module_name && // "from "
         (size += 5), size;
@@ -5872,53 +6527,98 @@
         let base = 2;
         return first_in_statement(info) && (base += 2), base + list_overhead(this.properties);
     };
-    /*#__INLINE__*/ const key_size = (key)=>"string" == typeof key ? key.length : 0;
+    /*#__INLINE__*/ let key_size = (key)=>"string" == typeof key ? key.length : 0;
     AST_ObjectKeyVal.prototype._size = function() {
         return key_size(this.key) + 1;
+    }, AST_ObjectGetter.prototype._size = function() {
+        return 5 + 7 * !!this.static + key_size(this.key);
+    }, AST_ObjectSetter.prototype._size = function() {
+        return 5 + 7 * !!this.static + key_size(this.key);
+    }, AST_ConciseMethod.prototype._size = function() {
+        return 7 * !!this.static + key_size(this.key) + lambda_modifiers(this);
+    }, AST_PrivateMethod.prototype._size = function() {
+        return AST_ConciseMethod.prototype._size.call(this) + 1;
+    }, AST_PrivateGetter.prototype._size = AST_PrivateSetter.prototype._size = function() {
+        return AST_ConciseMethod.prototype._size.call(this) + 4;
+    }, AST_PrivateIn.prototype._size = function() {
+        return 5; // "#", and " in "
+    }, AST_Class.prototype._size = function() {
+        return (this.name ? 8 : 7) + 8 * !!this.extends;
+    }, AST_ClassStaticBlock.prototype._size = function() {
+        // "static{}" + semicolons
+        return 8 + list_overhead(this.body);
+    }, AST_ClassProperty.prototype._size = function() {
+        return 7 * !!this.static + ("string" == typeof this.key ? this.key.length + 2 : 0) + +!!this.value;
+    }, AST_ClassPrivateProperty.prototype._size = function() {
+        return AST_ClassProperty.prototype._size.call(this) + 1;
+    }, AST_Symbol.prototype._size = function() {
+        return mangle_options && this.thedef && !this.thedef.unmangleable(mangle_options) ? 1 : this.name.length;
+    }, // TODO take propmangle into account
+    AST_SymbolClassProperty.prototype._size = function() {
+        return this.name.length;
+    }, AST_SymbolRef.prototype._size = AST_SymbolDeclaration.prototype._size = function() {
+        return "arguments" === this.name ? 9 : AST_Symbol.prototype._size.call(this);
+    }, AST_NewTarget.prototype._size = ()=>10, AST_SymbolImportForeign.prototype._size = function() {
+        return this.name.length;
+    }, AST_SymbolExportForeign.prototype._size = function() {
+        return this.name.length;
+    }, AST_This.prototype._size = ()=>4, AST_Super.prototype._size = ()=>5, AST_String.prototype._size = function() {
+        return this.value.length + 2;
+    }, AST_Number.prototype._size = function() {
+        let { value } = this;
+        return 0 === value ? 1 : value > 0 && Math.floor(value) === value ? Math.floor(Math.log10(value) + 1) : value.toString().length;
+    }, AST_BigInt.prototype._size = function() {
+        return this.value.length;
+    }, AST_RegExp.prototype._size = function() {
+        return this.value.toString().length;
+    }, AST_Null.prototype._size = ()=>4, AST_NaN.prototype._size = ()=>3, AST_Undefined.prototype._size = ()=>6, AST_Hole.prototype._size = ()=>0, AST_Infinity.prototype._size = ()=>8, AST_True.prototype._size = ()=>4, AST_False.prototype._size = ()=>5, AST_Await.prototype._size = ()=>6, AST_Yield.prototype._size = ()=>6;
+    let has_flag = (node, flag)=>node.flags & flag, set_flag = (node, flag)=>{
+        node.flags |= flag;
+    }, clear_flag = (node, flag)=>{
+        node.flags &= ~flag;
     };
-    /*#__INLINE__*/ const static_size = (is_static)=>is_static ? 7 : 0;
     /***********************************************************************
-
-  A JavaScript tokenizer / parser / beautifier / compressor.
-  https://github.com/mishoo/UglifyJS2
-
-  -------------------------------- (C) ---------------------------------
-
-                           Author: Mihai Bazon
-                         <mihai.bazon@gmail.com>
-                       http://mihai.bazon.net/blog
-
-  Distributed under the BSD license:
-
-    Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-        * Redistributions of source code must retain the above
-          copyright notice, this list of conditions and the following
-          disclaimer.
-
-        * Redistributions in binary form must reproduce the above
-          copyright notice, this list of conditions and the following
-          disclaimer in the documentation and/or other materials
-          provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-    OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-    TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-    THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-    SUCH DAMAGE.
-
- ***********************************************************************/ function merge_sequence(array, node) {
+    
+      A JavaScript tokenizer / parser / beautifier / compressor.
+      https://github.com/mishoo/UglifyJS2
+    
+      -------------------------------- (C) ---------------------------------
+    
+                               Author: Mihai Bazon
+                             <mihai.bazon@gmail.com>
+                           http://mihai.bazon.net/blog
+    
+      Distributed under the BSD license:
+    
+        Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
+    
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions
+        are met:
+    
+            * Redistributions of source code must retain the above
+              copyright notice, this list of conditions and the following
+              disclaimer.
+    
+            * Redistributions in binary form must reproduce the above
+              copyright notice, this list of conditions and the following
+              disclaimer in the documentation and/or other materials
+              provided with the distribution.
+    
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+        EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+        PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+        OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+        PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+        PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+        THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+        TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+        THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+        SUCH DAMAGE.
+    
+     ***********************************************************************/ function merge_sequence(array, node) {
         return node instanceof AST_Sequence ? array.push(...node.expressions) : array.push(node), array;
     }
     function make_sequence(orig, expressions) {
@@ -5948,6 +6648,10 @@
                     operator: "-",
                     expression: make_node(AST_Infinity, orig)
                 }) : make_node(AST_Infinity, orig);
+            case "bigint":
+                return make_node(AST_BigInt, orig, {
+                    value: val.toString()
+                });
             case "boolean":
                 return make_node(val ? AST_True : AST_False, orig);
             case "undefined":
@@ -6006,9 +6710,9 @@
     // func(something) because that changes the meaning of
     // the func (becomes lexical instead of global).
     function maintain_this_binding(parent, orig, val) {
-        if ((!(parent instanceof AST_UnaryPrefix) || "delete" != parent.operator) && (!(parent instanceof AST_Call) || parent.expression !== orig || !(val instanceof AST_PropAccess) && (!(val instanceof AST_SymbolRef) || "eval" != val.name))) return val;
+        if ((!(parent instanceof AST_UnaryPrefix) || "delete" != parent.operator) && (!(parent instanceof AST_Call) || parent.expression !== orig || !(val instanceof AST_Chain) && !(val instanceof AST_PropAccess) && (!(val instanceof AST_SymbolRef) || "eval" != val.name))) return val;
         {
-            const zero = make_node(AST_Number, orig, {
+            let zero = make_node(AST_Number, orig, {
                 value: 0
             });
             return make_sequence(orig, [
@@ -6020,50 +6724,15 @@
     function is_func_expr(node) {
         return node instanceof AST_Arrow || node instanceof AST_Function;
     }
-    function is_iife_call(node) {
-        return(// Used to determine whether the node can benefit from negation.
-        // Not the case with arrow functions (you need an extra set of parens).
-        "Call" == node.TYPE && (node.expression instanceof AST_Function || is_iife_call(node.expression)));
+    /**
+     * Used to determine whether the node can benefit from negation.
+     * Not the case with arrow functions (you need an extra set of parens). */ function is_iife_call(node) {
+        return "Call" == node.TYPE && (node.expression instanceof AST_Function || is_iife_call(node.expression));
     }
-    AST_ObjectGetter.prototype._size = function() {
-        return 5 + static_size(this.static) + key_size(this.key);
-    }, AST_ObjectSetter.prototype._size = function() {
-        return 5 + static_size(this.static) + key_size(this.key);
-    }, AST_ConciseMethod.prototype._size = function() {
-        return static_size(this.static) + key_size(this.key) + lambda_modifiers(this);
-    }, AST_PrivateMethod.prototype._size = function() {
-        return AST_ConciseMethod.prototype._size.call(this) + 1;
-    }, AST_PrivateGetter.prototype._size = AST_PrivateSetter.prototype._size = function() {
-        return AST_ConciseMethod.prototype._size.call(this) + 4;
-    }, AST_Class.prototype._size = function() {
-        return (this.name ? 8 : 7) + (this.extends ? 8 : 0);
-    }, AST_ClassProperty.prototype._size = function() {
-        return static_size(this.static) + ("string" == typeof this.key ? this.key.length + 2 : 0) + (this.value ? 1 : 0);
-    }, AST_ClassPrivateProperty.prototype._size = function() {
-        return AST_ClassProperty.prototype._size.call(this) + 1;
-    }, AST_Symbol.prototype._size = function() {
-        return !mangle_options || this.definition().unmangleable(mangle_options) ? this.name.length : 1;
-    }, // TODO take propmangle into account
-    AST_SymbolClassProperty.prototype._size = function() {
-        return this.name.length;
-    }, AST_SymbolRef.prototype._size = AST_SymbolDeclaration.prototype._size = function() {
-        const { name, thedef } = this;
-        return thedef && thedef.global ? name.length : "arguments" === name ? 9 : AST_Symbol.prototype._size.call(this);
-    }, AST_NewTarget.prototype._size = ()=>10, AST_SymbolImportForeign.prototype._size = function() {
-        return this.name.length;
-    }, AST_SymbolExportForeign.prototype._size = function() {
-        return this.name.length;
-    }, AST_This.prototype._size = ()=>4, AST_Super.prototype._size = ()=>5, AST_String.prototype._size = function() {
-        return this.value.length + 2;
-    }, AST_Number.prototype._size = function() {
-        const { value } = this;
-        return 0 === value ? 1 : value > 0 && Math.floor(value) === value ? Math.floor(Math.log10(value) + 1) : value.toString().length;
-    }, AST_BigInt.prototype._size = function() {
-        return this.value.length;
-    }, AST_RegExp.prototype._size = function() {
-        return this.value.toString().length;
-    }, AST_Null.prototype._size = ()=>4, AST_NaN.prototype._size = ()=>3, AST_Undefined.prototype._size = ()=>6, AST_Hole.prototype._size = ()=>0, AST_Infinity.prototype._size = ()=>8, AST_True.prototype._size = ()=>4, AST_False.prototype._size = ()=>5, AST_Await.prototype._size = ()=>6, AST_Yield.prototype._size = ()=>6;
-    const identifier_atom = makePredicate("Infinity NaN undefined");
+    function is_empty(thing) {
+        return null === thing || thing instanceof AST_EmptyStatement || thing instanceof AST_BlockStatement && 0 == thing.body.length;
+    }
+    let identifier_atom = makePredicate("Infinity NaN undefined");
     function is_identifier_atom(node) {
         return node instanceof AST_Infinity || node instanceof AST_NaN || node instanceof AST_Undefined;
     }
@@ -6071,9 +6740,9 @@
         if (!(ref instanceof AST_SymbolRef)) return !1;
         for(var orig = ref.definition().orig, i = orig.length; --i >= 0;)if (orig[i] instanceof type) return !0;
     }
-    // Can we turn { block contents... } into just the block contents ?
-    // Not if one of these is inside.
-    function can_be_evicted_from_block(node) {
+    /**Can we turn { block contents... } into just the block contents ?
+     * Not if one of these is inside.
+     **/ function can_be_evicted_from_block(node) {
         return !(node instanceof AST_DefClass || node instanceof AST_Defun || node instanceof AST_Let || node instanceof AST_Const || node instanceof AST_Export || node instanceof AST_Import);
     }
     function as_statement_array(thing) {
@@ -6085,6 +6754,17 @@
         ];
         throw Error("Can't convert thing to statement array");
     }
+    function is_reachable(scope_node, defs) {
+        let find_ref = (node)=>{
+            if (node instanceof AST_SymbolRef && defs.includes(node.definition())) return walk_abort;
+        };
+        return walk_parent(scope_node, (node, info)=>{
+            if (node instanceof AST_Scope && node !== scope_node) {
+                var parent = info.parent();
+                if (!(parent instanceof AST_Call) || parent.expression !== node || node.async || node.is_generator) return !walk(node, find_ref) || walk_abort;
+            }
+        });
+    }
     /** Check if a ref refers to the name of a function/class it's defined within */ function is_recursive_ref(compressor, def) {
         for(var node, i = 0; node = compressor.parent(i); i++)if (node instanceof AST_Lambda || node instanceof AST_Class) {
             var name = node.name;
@@ -6092,66 +6772,65 @@
         }
         return !1;
     }
-    const has_flag = (node, flag)=>node.flags & flag, set_flag = (node, flag)=>{
-        node.flags |= flag;
-    }, clear_flag = (node, flag)=>{
-        node.flags &= ~flag;
-    };
+    // TODO this only works with AST_Defun, shouldn't it work for other ways of defining functions?
+    function retain_top_func(fn, compressor) {
+        return compressor.top_retain && fn instanceof AST_Defun && has_flag(fn, 0b0000010000000000) && fn.name && compressor.top_retain(fn.name.definition());
+    }
     /***********************************************************************
-
-  A JavaScript tokenizer / parser / beautifier / compressor.
-  https://github.com/mishoo/UglifyJS2
-
-  -------------------------------- (C) ---------------------------------
-
-                           Author: Mihai Bazon
-                         <mihai.bazon@gmail.com>
-                       http://mihai.bazon.net/blog
-
-  Distributed under the BSD license:
-
-    Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-        * Redistributions of source code must retain the above
-          copyright notice, this list of conditions and the following
-          disclaimer.
-
-        * Redistributions in binary form must reproduce the above
-          copyright notice, this list of conditions and the following
-          disclaimer in the documentation and/or other materials
-          provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-    OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-    TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-    THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-    SUCH DAMAGE.
-
- ***********************************************************************/ // Lists of native methods, useful for `unsafe` option which assumes they exist.
+    
+      A JavaScript tokenizer / parser / beautifier / compressor.
+      https://github.com/mishoo/UglifyJS2
+    
+      -------------------------------- (C) ---------------------------------
+    
+                               Author: Mihai Bazon
+                             <mihai.bazon@gmail.com>
+                           http://mihai.bazon.net/blog
+    
+      Distributed under the BSD license:
+    
+        Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
+    
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions
+        are met:
+    
+            * Redistributions of source code must retain the above
+              copyright notice, this list of conditions and the following
+              disclaimer.
+    
+            * Redistributions in binary form must reproduce the above
+              copyright notice, this list of conditions and the following
+              disclaimer in the documentation and/or other materials
+              provided with the distribution.
+    
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+        EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+        PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+        OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+        PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+        PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+        THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+        TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+        THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+        SUCH DAMAGE.
+    
+     ***********************************************************************/ // Lists of native methods, useful for `unsafe` option which assumes they exist.
     // Note: Lots of methods and functions are missing here, in case they aren't pure
     // or not available in all JS environments.
     function make_nested_lookup(obj) {
-        const out = new Map();
+        let out = new Map();
         for (var key of Object.keys(obj))out.set(key, makePredicate(obj[key]));
         return (global_name, fname)=>{
-            const inner_map = out.get(global_name);
+            let inner_map = out.get(global_name);
             return null != inner_map && inner_map.has(fname);
         };
     }
     // Objects which are safe to access without throwing or causing a side effect.
     // Usually we'd check the `unsafe` option first but these are way too common for that
-    const pure_prop_access_globals = new Set([
+    let pure_prop_access_globals = new Set([
         "Number",
         "String",
         "Array",
@@ -6164,6 +6843,9 @@
         "valueOf"
     ], is_pure_native_method = make_nested_lookup({
         Array: [
+            "at",
+            "flat",
+            "includes",
             "indexOf",
             "join",
             "lastIndexOf",
@@ -6184,22 +6866,41 @@
             ...object_methods
         ],
         String: [
+            "at",
             "charAt",
             "charCodeAt",
+            "charPointAt",
             "concat",
+            "endsWith",
+            "fromCharCode",
+            "fromCodePoint",
+            "includes",
             "indexOf",
             "italics",
             "lastIndexOf",
+            "localeCompare",
             "match",
+            "matchAll",
+            "normalize",
+            "padStart",
+            "padEnd",
+            "repeat",
             "replace",
+            "replaceAll",
             "search",
             "slice",
             "split",
+            "startsWith",
             "substr",
             "substring",
+            "repeat",
+            "toLocaleLowerCase",
+            "toLocaleUpperCase",
             "toLowerCase",
             "toUpperCase",
             "trim",
+            "trimEnd",
+            "trimStart",
             ...object_methods
         ]
     }), is_pure_native_fn = make_nested_lookup({
@@ -6261,7 +6962,7 @@
             "NEGATIVE_INFINITY",
             "POSITIVE_INFINITY"
         ]
-    }), is_undeclared_ref = (node)=>node instanceof AST_SymbolRef && node.definition().undeclared, lazy_op = makePredicate("&& || ??"), unary_side_effects = makePredicate("delete ++ --");
+    }), is_undeclared_ref = (node)=>node instanceof AST_SymbolRef && node.definition().undeclared, bitwise_binop = makePredicate("<<< >> << & | ^ ~"), lazy_op = makePredicate("&& || ??"), unary_side_effects = makePredicate("delete ++ --");
     function is_undefined(node, compressor) {
         return has_flag(node, 0b00001000) || node instanceof AST_Undefined || node instanceof AST_UnaryPrefix && "void" == node.operator && !node.expression.has_side_effects(compressor);
     }
@@ -6280,44 +6981,38 @@
     function is_nullish(node, compressor) {
         return !!is_null_or_undefined(node, compressor) || is_nullish_shortcircuited(node, compressor);
     }
-    function is_lhs(node, parent) {
-        return parent instanceof AST_Unary && unary_side_effects.has(parent.operator) ? parent.expression : parent instanceof AST_Assign && parent.left === node ? node : void 0;
-    }
-    !// methods to determine whether an expression has a boolean result type
-    function(def_is_boolean) {
-        const unary_bool = makePredicate("! delete"), binary_bool = makePredicate("in instanceof == != === !== < <= >= >");
-        def_is_boolean(AST_Node, return_false), def_is_boolean(AST_UnaryPrefix, function() {
-            return unary_bool.has(this.operator);
-        }), def_is_boolean(AST_Binary, function() {
-            return binary_bool.has(this.operator) || lazy_op.has(this.operator) && this.left.is_boolean() && this.right.is_boolean();
-        }), def_is_boolean(AST_Conditional, function() {
-            return this.consequent.is_boolean() && this.alternative.is_boolean();
-        }), def_is_boolean(AST_Assign, function() {
-            return "=" == this.operator && this.right.is_boolean();
-        }), def_is_boolean(AST_Sequence, function() {
-            return this.tail_node().is_boolean();
-        }), def_is_boolean(AST_True, return_true), def_is_boolean(AST_False, return_true);
-    }(function(node, func) {
+    def_is_boolean = function(node, func) {
         node.DEFMETHOD("is_boolean", func);
-    }), // methods to determine if an expression has a numeric result type
-    function(def_is_number) {
-        def_is_number(AST_Node, return_false), def_is_number(AST_Number, return_true);
-        const unary = makePredicate("+ - ~ ++ --");
-        def_is_number(AST_Unary, function() {
-            return unary.has(this.operator);
-        });
-        const numeric_ops = makePredicate("- * / % & | ^ << >> >>>");
-        def_is_number(AST_Binary, function(compressor) {
-            return numeric_ops.has(this.operator) || "+" == this.operator && this.left.is_number(compressor) && this.right.is_number(compressor);
-        }), def_is_number(AST_Assign, function(compressor) {
-            return numeric_ops.has(this.operator.slice(0, -1)) || "=" == this.operator && this.right.is_number(compressor);
-        }), def_is_number(AST_Sequence, function(compressor) {
-            return this.tail_node().is_number(compressor);
-        }), def_is_number(AST_Conditional, function(compressor) {
-            return this.consequent.is_number(compressor) && this.alternative.is_number(compressor);
-        });
-    }(function(node, func) {
+    }, unary_bool = makePredicate("! delete"), binary_bool = makePredicate("in instanceof == != === !== < <= >= >"), def_is_boolean(AST_Node, return_false), def_is_boolean(AST_UnaryPrefix, function() {
+        return unary_bool.has(this.operator);
+    }), def_is_boolean(AST_Binary, function() {
+        return binary_bool.has(this.operator) || lazy_op.has(this.operator) && this.left.is_boolean() && this.right.is_boolean();
+    }), def_is_boolean(AST_Conditional, function() {
+        return this.consequent.is_boolean() && this.alternative.is_boolean();
+    }), def_is_boolean(AST_Assign, function() {
+        return "=" == this.operator && this.right.is_boolean();
+    }), def_is_boolean(AST_Sequence, function() {
+        return this.tail_node().is_boolean();
+    }), def_is_boolean(AST_True, return_true), def_is_boolean(AST_False, return_true), (def_is_number = function(node, func) {
         node.DEFMETHOD("is_number", func);
+    })(AST_Node, return_false), def_is_number(AST_Number, return_true), unary = makePredicate("+ - ~ ++ --"), def_is_number(AST_Unary, function() {
+        return unary.has(this.operator) && !(this.expression instanceof AST_BigInt);
+    }), numeric_ops = makePredicate("- * / % & | ^ << >> >>>"), def_is_number(AST_Binary, function(compressor) {
+        return numeric_ops.has(this.operator) || "+" == this.operator && this.left.is_number(compressor) && this.right.is_number(compressor);
+    }), def_is_number(AST_Assign, function(compressor) {
+        return numeric_ops.has(this.operator.slice(0, -1)) || "=" == this.operator && this.right.is_number(compressor);
+    }), def_is_number(AST_Sequence, function(compressor) {
+        return this.tail_node().is_number(compressor);
+    }), def_is_number(AST_Conditional, function(compressor) {
+        return this.consequent.is_number(compressor) && this.alternative.is_number(compressor);
+    }), (def_is_32_bit_integer = function(node, func) {
+        node.DEFMETHOD("is_32_bit_integer", func);
+    })(AST_Node, return_false), def_is_32_bit_integer(AST_Number, function() {
+        return this.value === (0 | this.value);
+    }), def_is_32_bit_integer(AST_UnaryPrefix, function() {
+        return "~" == this.operator ? this.expression.is_number() : "+" === this.operator && this.expression.is_32_bit_integer();
+    }), def_is_32_bit_integer(AST_Binary, function() {
+        return bitwise_binop.has(this.operator);
     }), (def_is_string = function(node, func) {
         node.DEFMETHOD("is_string", func);
     })(AST_Node, return_false), def_is_string(AST_String, return_true), def_is_string(AST_TemplateString, return_true), def_is_string(AST_UnaryPrefix, function() {
@@ -6330,325 +7025,304 @@
         return this.tail_node().is_string(compressor);
     }), def_is_string(AST_Conditional, function(compressor) {
         return this.consequent.is_string(compressor) && this.alternative.is_string(compressor);
-    }), // Determine if expression might cause side effects
-    // If there's a possibility that a node may change something when it's executed, this returns true
-    function(def_has_side_effects) {
-        function any(list, compressor) {
-            for(var i = list.length; --i >= 0;)if (list[i].has_side_effects(compressor)) return !0;
-            return !1;
-        }
-        def_has_side_effects(AST_Node, return_true), def_has_side_effects(AST_EmptyStatement, return_false), def_has_side_effects(AST_Constant, return_false), def_has_side_effects(AST_This, return_false), def_has_side_effects(AST_Block, function(compressor) {
-            return any(this.body, compressor);
-        }), def_has_side_effects(AST_Call, function(compressor) {
-            return !!(!this.is_callee_pure(compressor) && (!this.expression.is_call_pure(compressor) || this.expression.has_side_effects(compressor))) || any(this.args, compressor);
-        }), def_has_side_effects(AST_Switch, function(compressor) {
-            return this.expression.has_side_effects(compressor) || any(this.body, compressor);
-        }), def_has_side_effects(AST_Case, function(compressor) {
-            return this.expression.has_side_effects(compressor) || any(this.body, compressor);
-        }), def_has_side_effects(AST_Try, function(compressor) {
-            return any(this.body, compressor) || this.bcatch && this.bcatch.has_side_effects(compressor) || this.bfinally && this.bfinally.has_side_effects(compressor);
-        }), def_has_side_effects(AST_If, function(compressor) {
-            return this.condition.has_side_effects(compressor) || this.body && this.body.has_side_effects(compressor) || this.alternative && this.alternative.has_side_effects(compressor);
-        }), def_has_side_effects(AST_LabeledStatement, function(compressor) {
-            return this.body.has_side_effects(compressor);
-        }), def_has_side_effects(AST_SimpleStatement, function(compressor) {
-            return this.body.has_side_effects(compressor);
-        }), def_has_side_effects(AST_Lambda, return_false), def_has_side_effects(AST_Class, function(compressor) {
-            return !!(this.extends && this.extends.has_side_effects(compressor)) || any(this.properties, compressor);
-        }), def_has_side_effects(AST_Binary, function(compressor) {
-            return this.left.has_side_effects(compressor) || this.right.has_side_effects(compressor);
-        }), def_has_side_effects(AST_Assign, return_true), def_has_side_effects(AST_Conditional, function(compressor) {
-            return this.condition.has_side_effects(compressor) || this.consequent.has_side_effects(compressor) || this.alternative.has_side_effects(compressor);
-        }), def_has_side_effects(AST_Unary, function(compressor) {
-            return unary_side_effects.has(this.operator) || this.expression.has_side_effects(compressor);
-        }), def_has_side_effects(AST_SymbolRef, function(compressor) {
-            return !this.is_declared(compressor) && !pure_prop_access_globals.has(this.name);
-        }), def_has_side_effects(AST_SymbolClassProperty, return_false), def_has_side_effects(AST_SymbolDeclaration, return_false), def_has_side_effects(AST_Object, function(compressor) {
-            return any(this.properties, compressor);
-        }), def_has_side_effects(AST_ObjectProperty, function(compressor) {
-            return this.computed_key() && this.key.has_side_effects(compressor) || this.value && this.value.has_side_effects(compressor);
-        }), def_has_side_effects(AST_ClassProperty, function(compressor) {
-            return this.computed_key() && this.key.has_side_effects(compressor) || this.static && this.value && this.value.has_side_effects(compressor);
-        }), def_has_side_effects(AST_ConciseMethod, function(compressor) {
-            return this.computed_key() && this.key.has_side_effects(compressor);
-        }), def_has_side_effects(AST_ObjectGetter, function(compressor) {
-            return this.computed_key() && this.key.has_side_effects(compressor);
-        }), def_has_side_effects(AST_ObjectSetter, function(compressor) {
-            return this.computed_key() && this.key.has_side_effects(compressor);
-        }), def_has_side_effects(AST_Array, function(compressor) {
-            return any(this.elements, compressor);
-        }), def_has_side_effects(AST_Dot, function(compressor) {
-            return !is_nullish(this, compressor) && (!this.optional && this.expression.may_throw_on_access(compressor) || this.expression.has_side_effects(compressor));
-        }), def_has_side_effects(AST_Sub, function(compressor) {
-            return !is_nullish(this, compressor) && (!this.optional && this.expression.may_throw_on_access(compressor) || this.expression.has_side_effects(compressor) || this.property.has_side_effects(compressor));
-        }), def_has_side_effects(AST_Chain, function(compressor) {
-            return this.expression.has_side_effects(compressor);
-        }), def_has_side_effects(AST_Sequence, function(compressor) {
-            return any(this.expressions, compressor);
-        }), def_has_side_effects(AST_Definitions, function(compressor) {
-            return any(this.definitions, compressor);
-        }), def_has_side_effects(AST_VarDef, function() {
-            return this.value;
-        }), def_has_side_effects(AST_TemplateSegment, return_false), def_has_side_effects(AST_TemplateString, function(compressor) {
-            return any(this.segments, compressor);
-        });
-    }(function(node, func) {
+    });
+    var def_has_side_effects = function(node, func) {
         node.DEFMETHOD("has_side_effects", func);
-    }), // determine if expression may throw
-    function(def_may_throw) {
-        function any(list, compressor) {
-            for(var i = list.length; --i >= 0;)if (list[i].may_throw(compressor)) return !0;
-            return !1;
-        }
-        def_may_throw(AST_Node, return_true), def_may_throw(AST_Constant, return_false), def_may_throw(AST_EmptyStatement, return_false), def_may_throw(AST_Lambda, return_false), def_may_throw(AST_SymbolDeclaration, return_false), def_may_throw(AST_This, return_false), def_may_throw(AST_Class, function(compressor) {
-            return !!(this.extends && this.extends.may_throw(compressor)) || any(this.properties, compressor);
-        }), def_may_throw(AST_Array, function(compressor) {
-            return any(this.elements, compressor);
-        }), def_may_throw(AST_Assign, function(compressor) {
-            return !!this.right.may_throw(compressor) || (!!compressor.has_directive("use strict") || "=" != this.operator || !(this.left instanceof AST_SymbolRef)) && this.left.may_throw(compressor);
-        }), def_may_throw(AST_Binary, function(compressor) {
-            return this.left.may_throw(compressor) || this.right.may_throw(compressor);
-        }), def_may_throw(AST_Block, function(compressor) {
-            return any(this.body, compressor);
-        }), def_may_throw(AST_Call, function(compressor) {
-            return !is_nullish(this, compressor) && (!!any(this.args, compressor) || !this.is_callee_pure(compressor) && (!!this.expression.may_throw(compressor) || !(this.expression instanceof AST_Lambda) || any(this.expression.body, compressor)));
-        }), def_may_throw(AST_Case, function(compressor) {
-            return this.expression.may_throw(compressor) || any(this.body, compressor);
-        }), def_may_throw(AST_Conditional, function(compressor) {
-            return this.condition.may_throw(compressor) || this.consequent.may_throw(compressor) || this.alternative.may_throw(compressor);
-        }), def_may_throw(AST_Definitions, function(compressor) {
-            return any(this.definitions, compressor);
-        }), def_may_throw(AST_If, function(compressor) {
-            return this.condition.may_throw(compressor) || this.body && this.body.may_throw(compressor) || this.alternative && this.alternative.may_throw(compressor);
-        }), def_may_throw(AST_LabeledStatement, function(compressor) {
-            return this.body.may_throw(compressor);
-        }), def_may_throw(AST_Object, function(compressor) {
-            return any(this.properties, compressor);
-        }), def_may_throw(AST_ObjectProperty, function(compressor) {
-            // TODO key may throw too
-            return !!this.value && this.value.may_throw(compressor);
-        }), def_may_throw(AST_ClassProperty, function(compressor) {
-            return this.computed_key() && this.key.may_throw(compressor) || this.static && this.value && this.value.may_throw(compressor);
-        }), def_may_throw(AST_ConciseMethod, function(compressor) {
-            return this.computed_key() && this.key.may_throw(compressor);
-        }), def_may_throw(AST_ObjectGetter, function(compressor) {
-            return this.computed_key() && this.key.may_throw(compressor);
-        }), def_may_throw(AST_ObjectSetter, function(compressor) {
-            return this.computed_key() && this.key.may_throw(compressor);
-        }), def_may_throw(AST_Return, function(compressor) {
-            return this.value && this.value.may_throw(compressor);
-        }), def_may_throw(AST_Sequence, function(compressor) {
-            return any(this.expressions, compressor);
-        }), def_may_throw(AST_SimpleStatement, function(compressor) {
-            return this.body.may_throw(compressor);
-        }), def_may_throw(AST_Dot, function(compressor) {
-            return !is_nullish(this, compressor) && (!this.optional && this.expression.may_throw_on_access(compressor) || this.expression.may_throw(compressor));
-        }), def_may_throw(AST_Sub, function(compressor) {
-            return !is_nullish(this, compressor) && (!this.optional && this.expression.may_throw_on_access(compressor) || this.expression.may_throw(compressor) || this.property.may_throw(compressor));
-        }), def_may_throw(AST_Chain, function(compressor) {
-            return this.expression.may_throw(compressor);
-        }), def_may_throw(AST_Switch, function(compressor) {
-            return this.expression.may_throw(compressor) || any(this.body, compressor);
-        }), def_may_throw(AST_SymbolRef, function(compressor) {
-            return !this.is_declared(compressor) && !pure_prop_access_globals.has(this.name);
-        }), def_may_throw(AST_SymbolClassProperty, return_false), def_may_throw(AST_Try, function(compressor) {
-            return this.bcatch ? this.bcatch.may_throw(compressor) : any(this.body, compressor) || this.bfinally && this.bfinally.may_throw(compressor);
-        }), def_may_throw(AST_Unary, function(compressor) {
-            return ("typeof" != this.operator || !(this.expression instanceof AST_SymbolRef)) && this.expression.may_throw(compressor);
-        }), def_may_throw(AST_VarDef, function(compressor) {
-            return !!this.value && this.value.may_throw(compressor);
-        });
-    }(function(node, func) {
+    };
+    function any(list, compressor) {
+        for(var i = list.length; --i >= 0;)if (list[i].has_side_effects(compressor)) return !0;
+        return !1;
+    }
+    def_has_side_effects(AST_Node, return_true), def_has_side_effects(AST_EmptyStatement, return_false), def_has_side_effects(AST_Constant, return_false), def_has_side_effects(AST_This, return_false), def_has_side_effects(AST_Block, function(compressor) {
+        return any(this.body, compressor);
+    }), def_has_side_effects(AST_Call, function(compressor) {
+        return !!(!this.is_callee_pure(compressor) && (!this.expression.is_call_pure(compressor) || this.expression.has_side_effects(compressor))) || any(this.args, compressor);
+    }), def_has_side_effects(AST_Switch, function(compressor) {
+        return this.expression.has_side_effects(compressor) || any(this.body, compressor);
+    }), def_has_side_effects(AST_Case, function(compressor) {
+        return this.expression.has_side_effects(compressor) || any(this.body, compressor);
+    }), def_has_side_effects(AST_Try, function(compressor) {
+        return this.body.has_side_effects(compressor) || this.bcatch && this.bcatch.has_side_effects(compressor) || this.bfinally && this.bfinally.has_side_effects(compressor);
+    }), def_has_side_effects(AST_If, function(compressor) {
+        return this.condition.has_side_effects(compressor) || this.body && this.body.has_side_effects(compressor) || this.alternative && this.alternative.has_side_effects(compressor);
+    }), def_has_side_effects(AST_ImportMeta, return_false), def_has_side_effects(AST_LabeledStatement, function(compressor) {
+        return this.body.has_side_effects(compressor);
+    }), def_has_side_effects(AST_SimpleStatement, function(compressor) {
+        return this.body.has_side_effects(compressor);
+    }), def_has_side_effects(AST_Lambda, return_false), def_has_side_effects(AST_Class, function(compressor) {
+        return !!(this.extends && this.extends.has_side_effects(compressor)) || any(this.properties, compressor);
+    }), def_has_side_effects(AST_ClassStaticBlock, function(compressor) {
+        return any(this.body, compressor);
+    }), def_has_side_effects(AST_Binary, function(compressor) {
+        return this.left.has_side_effects(compressor) || this.right.has_side_effects(compressor);
+    }), def_has_side_effects(AST_Assign, return_true), def_has_side_effects(AST_Conditional, function(compressor) {
+        return this.condition.has_side_effects(compressor) || this.consequent.has_side_effects(compressor) || this.alternative.has_side_effects(compressor);
+    }), def_has_side_effects(AST_Unary, function(compressor) {
+        return unary_side_effects.has(this.operator) || this.expression.has_side_effects(compressor);
+    }), def_has_side_effects(AST_SymbolRef, function(compressor) {
+        return !this.is_declared(compressor) && !pure_prop_access_globals.has(this.name);
+    }), def_has_side_effects(AST_SymbolClassProperty, return_false), def_has_side_effects(AST_SymbolDeclaration, return_false), def_has_side_effects(AST_Object, function(compressor) {
+        return any(this.properties, compressor);
+    }), def_has_side_effects(AST_ObjectProperty, function(compressor) {
+        return this.computed_key() && this.key.has_side_effects(compressor) || this.value && this.value.has_side_effects(compressor);
+    }), def_has_side_effects(AST_ClassProperty, function(compressor) {
+        return this.computed_key() && this.key.has_side_effects(compressor) || this.static && this.value && this.value.has_side_effects(compressor);
+    }), def_has_side_effects(AST_ConciseMethod, function(compressor) {
+        return this.computed_key() && this.key.has_side_effects(compressor);
+    }), def_has_side_effects(AST_ObjectGetter, function(compressor) {
+        return this.computed_key() && this.key.has_side_effects(compressor);
+    }), def_has_side_effects(AST_ObjectSetter, function(compressor) {
+        return this.computed_key() && this.key.has_side_effects(compressor);
+    }), def_has_side_effects(AST_Array, function(compressor) {
+        return any(this.elements, compressor);
+    }), def_has_side_effects(AST_Dot, function(compressor) {
+        return is_nullish(this, compressor) ? this.expression.has_side_effects(compressor) : !!(!this.optional && this.expression.may_throw_on_access(compressor)) || this.expression.has_side_effects(compressor);
+    }), def_has_side_effects(AST_Sub, function(compressor) {
+        if (is_nullish(this, compressor)) return this.expression.has_side_effects(compressor);
+        if (!this.optional && this.expression.may_throw_on_access(compressor)) return !0;
+        var property = this.property.has_side_effects(compressor);
+        return !!property && !!this.optional || property || this.expression.has_side_effects(compressor) // "?." is a condition
+        ;
+    }), def_has_side_effects(AST_Chain, function(compressor) {
+        return this.expression.has_side_effects(compressor);
+    }), def_has_side_effects(AST_Sequence, function(compressor) {
+        return any(this.expressions, compressor);
+    }), def_has_side_effects(AST_Definitions, function(compressor) {
+        return any(this.definitions, compressor);
+    }), def_has_side_effects(AST_VarDef, function() {
+        return this.value;
+    }), def_has_side_effects(AST_TemplateSegment, return_false), def_has_side_effects(AST_TemplateString, function(compressor) {
+        return any(this.segments, compressor);
+    });
+    var def_may_throw = function(node, func) {
         node.DEFMETHOD("may_throw", func);
-    }), // determine if expression is constant
-    function(def_is_constant_expression) {
-        function all_refs_local(scope) {
-            let result = !0;
-            return walk(this, (node)=>{
-                if (node instanceof AST_SymbolRef) {
-                    if (has_flag(this, 0b00010000)) return result = !1, walk_abort;
-                    var def = node.definition();
-                    if (member(def, this.enclosed) && !this.variables.has(def.name)) {
-                        if (scope) {
-                            var scope_def = scope.find_variable(node);
-                            if (def.undeclared ? !scope_def : scope_def === def) return result = "f", !0;
-                        }
-                        return result = !1, walk_abort;
-                    }
-                    return !0;
-                }
-                if (node instanceof AST_This && this instanceof AST_Arrow) return(// TODO check arguments too!
-                result = !1, walk_abort);
-            }), result;
-        }
-        def_is_constant_expression(AST_Node, return_false), def_is_constant_expression(AST_Constant, return_true), def_is_constant_expression(AST_Class, function(scope) {
-            if (this.extends && !this.extends.is_constant_expression(scope)) return !1;
-            for (const prop of this.properties)if (prop.computed_key() && !prop.key.is_constant_expression(scope) || prop.static && prop.value && !prop.value.is_constant_expression(scope)) return !1;
-            return all_refs_local.call(this, scope);
-        }), def_is_constant_expression(AST_Lambda, all_refs_local), def_is_constant_expression(AST_Unary, function() {
-            return this.expression.is_constant_expression();
-        }), def_is_constant_expression(AST_Binary, function() {
-            return this.left.is_constant_expression() && this.right.is_constant_expression();
-        }), def_is_constant_expression(AST_Array, function() {
-            return this.elements.every((l)=>l.is_constant_expression());
-        }), def_is_constant_expression(AST_Object, function() {
-            return this.properties.every((l)=>l.is_constant_expression());
-        }), def_is_constant_expression(AST_ObjectProperty, function() {
-            return !!(!(this.key instanceof AST_Node) && this.value && this.value.is_constant_expression());
-        });
-    }(function(node, func) {
+    };
+    function any1(list, compressor) {
+        for(var i = list.length; --i >= 0;)if (list[i].may_throw(compressor)) return !0;
+        return !1;
+    }
+    def_may_throw(AST_Node, return_true), def_may_throw(AST_Constant, return_false), def_may_throw(AST_EmptyStatement, return_false), def_may_throw(AST_Lambda, return_false), def_may_throw(AST_SymbolDeclaration, return_false), def_may_throw(AST_This, return_false), def_may_throw(AST_ImportMeta, return_false), def_may_throw(AST_Class, function(compressor) {
+        return !!(this.extends && this.extends.may_throw(compressor)) || any1(this.properties, compressor);
+    }), def_may_throw(AST_ClassStaticBlock, function(compressor) {
+        return any1(this.body, compressor);
+    }), def_may_throw(AST_Array, function(compressor) {
+        return any1(this.elements, compressor);
+    }), def_may_throw(AST_Assign, function(compressor) {
+        return !!this.right.may_throw(compressor) || (!!compressor.has_directive("use strict") || "=" != this.operator || !(this.left instanceof AST_SymbolRef)) && this.left.may_throw(compressor);
+    }), def_may_throw(AST_Binary, function(compressor) {
+        return this.left.may_throw(compressor) || this.right.may_throw(compressor);
+    }), def_may_throw(AST_Block, function(compressor) {
+        return any1(this.body, compressor);
+    }), def_may_throw(AST_Call, function(compressor) {
+        return !is_nullish(this, compressor) && (!!any1(this.args, compressor) || !this.is_callee_pure(compressor) && (!!this.expression.may_throw(compressor) || !(this.expression instanceof AST_Lambda) || any1(this.expression.body, compressor)));
+    }), def_may_throw(AST_Case, function(compressor) {
+        return this.expression.may_throw(compressor) || any1(this.body, compressor);
+    }), def_may_throw(AST_Conditional, function(compressor) {
+        return this.condition.may_throw(compressor) || this.consequent.may_throw(compressor) || this.alternative.may_throw(compressor);
+    }), def_may_throw(AST_Definitions, function(compressor) {
+        return any1(this.definitions, compressor);
+    }), def_may_throw(AST_If, function(compressor) {
+        return this.condition.may_throw(compressor) || this.body && this.body.may_throw(compressor) || this.alternative && this.alternative.may_throw(compressor);
+    }), def_may_throw(AST_LabeledStatement, function(compressor) {
+        return this.body.may_throw(compressor);
+    }), def_may_throw(AST_Object, function(compressor) {
+        return any1(this.properties, compressor);
+    }), def_may_throw(AST_ObjectProperty, function(compressor) {
+        // TODO key may throw too
+        return !!this.value && this.value.may_throw(compressor);
+    }), def_may_throw(AST_ClassProperty, function(compressor) {
+        return this.computed_key() && this.key.may_throw(compressor) || this.static && this.value && this.value.may_throw(compressor);
+    }), def_may_throw(AST_ConciseMethod, function(compressor) {
+        return this.computed_key() && this.key.may_throw(compressor);
+    }), def_may_throw(AST_ObjectGetter, function(compressor) {
+        return this.computed_key() && this.key.may_throw(compressor);
+    }), def_may_throw(AST_ObjectSetter, function(compressor) {
+        return this.computed_key() && this.key.may_throw(compressor);
+    }), def_may_throw(AST_Return, function(compressor) {
+        return this.value && this.value.may_throw(compressor);
+    }), def_may_throw(AST_Sequence, function(compressor) {
+        return any1(this.expressions, compressor);
+    }), def_may_throw(AST_SimpleStatement, function(compressor) {
+        return this.body.may_throw(compressor);
+    }), def_may_throw(AST_Dot, function(compressor) {
+        return !is_nullish(this, compressor) && (!this.optional && this.expression.may_throw_on_access(compressor) || this.expression.may_throw(compressor));
+    }), def_may_throw(AST_Sub, function(compressor) {
+        return !is_nullish(this, compressor) && (!this.optional && this.expression.may_throw_on_access(compressor) || this.expression.may_throw(compressor) || this.property.may_throw(compressor));
+    }), def_may_throw(AST_Chain, function(compressor) {
+        return this.expression.may_throw(compressor);
+    }), def_may_throw(AST_Switch, function(compressor) {
+        return this.expression.may_throw(compressor) || any1(this.body, compressor);
+    }), def_may_throw(AST_SymbolRef, function(compressor) {
+        return !this.is_declared(compressor) && !pure_prop_access_globals.has(this.name);
+    }), def_may_throw(AST_SymbolClassProperty, return_false), def_may_throw(AST_Try, function(compressor) {
+        return this.bcatch ? this.bcatch.may_throw(compressor) : this.body.may_throw(compressor) || this.bfinally && this.bfinally.may_throw(compressor);
+    }), def_may_throw(AST_Unary, function(compressor) {
+        return ("typeof" != this.operator || !(this.expression instanceof AST_SymbolRef)) && this.expression.may_throw(compressor);
+    }), def_may_throw(AST_VarDef, function(compressor) {
+        return !!this.value && this.value.may_throw(compressor);
+    });
+    var def_is_constant_expression = function(node, func) {
         node.DEFMETHOD("is_constant_expression", func);
-    }), // may_throw_on_access()
-    // returns true if this node may be null, undefined or contain `AST_Accessor`
-    function(def_may_throw_on_access) {
-        function is_strict(compressor) {
-            return /strict/.test(compressor.option("pure_getters"));
-        }
-        AST_Node.DEFMETHOD("may_throw_on_access", function(compressor) {
-            return !compressor.option("pure_getters") || this._dot_throw(compressor);
-        }), def_may_throw_on_access(AST_Node, is_strict), def_may_throw_on_access(AST_Null, return_true), def_may_throw_on_access(AST_Undefined, return_true), def_may_throw_on_access(AST_Constant, return_false), def_may_throw_on_access(AST_Array, return_false), def_may_throw_on_access(AST_Object, function(compressor) {
-            if (!is_strict(compressor)) return !1;
-            for(var i = this.properties.length; --i >= 0;)if (this.properties[i]._dot_throw(compressor)) return !0;
-            return !1;
-        }), // Do not be as strict with classes as we are with objects.
-        // Hopefully the community is not going to abuse static getters and setters.
-        // https://github.com/terser/terser/issues/724#issuecomment-643655656
-        def_may_throw_on_access(AST_Class, return_false), def_may_throw_on_access(AST_ObjectProperty, return_false), def_may_throw_on_access(AST_ObjectGetter, return_true), def_may_throw_on_access(AST_Expansion, function(compressor) {
-            return this.expression._dot_throw(compressor);
-        }), def_may_throw_on_access(AST_Function, return_false), def_may_throw_on_access(AST_Arrow, return_false), def_may_throw_on_access(AST_UnaryPostfix, return_false), def_may_throw_on_access(AST_UnaryPrefix, function() {
-            return "void" == this.operator;
-        }), def_may_throw_on_access(AST_Binary, function(compressor) {
-            return ("&&" == this.operator || "||" == this.operator || "??" == this.operator) && (this.left._dot_throw(compressor) || this.right._dot_throw(compressor));
-        }), def_may_throw_on_access(AST_Assign, function(compressor) {
-            return !!this.logical || "=" == this.operator && this.right._dot_throw(compressor);
-        }), def_may_throw_on_access(AST_Conditional, function(compressor) {
-            return this.consequent._dot_throw(compressor) || this.alternative._dot_throw(compressor);
-        }), def_may_throw_on_access(AST_Dot, function(compressor) {
-            return !!is_strict(compressor) && ("prototype" != this.property || !(this.expression instanceof AST_Function || this.expression instanceof AST_Class));
-        }), def_may_throw_on_access(AST_Chain, function(compressor) {
-            return this.expression._dot_throw(compressor);
-        }), def_may_throw_on_access(AST_Sequence, function(compressor) {
-            return this.tail_node()._dot_throw(compressor);
-        }), def_may_throw_on_access(AST_SymbolRef, function(compressor) {
-            if ("arguments" === this.name) return !1;
-            if (has_flag(this, 0b00001000)) return !0;
-            if (!is_strict(compressor) || is_undeclared_ref(this) && this.is_declared(compressor) || this.is_immutable()) return !1;
-            var fixed = this.fixed_value();
-            return !fixed || fixed._dot_throw(compressor);
-        });
-    }(function(node, func) {
-        node.DEFMETHOD("_dot_throw", func);
-    }), def_find_defs = function(node, func) {
-        node.DEFMETHOD("_find_defs", func);
-    }, AST_Toplevel.DEFMETHOD("resolve_defines", function(compressor) {
-        return compressor.option("global_defs") ? (this.figure_out_scope({
-            ie8: compressor.option("ie8")
-        }), this.transform(new TreeTransformer(function(node) {
-            var def = node._find_defs(compressor, "");
-            if (def) {
-                for(var parent, level = 0, child = node; (parent = this.parent(level++)) && parent instanceof AST_PropAccess && parent.expression === child;)child = parent;
-                if (is_lhs(child, parent)) return;
-                return def;
-            }
-        }))) : this;
-    }), def_find_defs(AST_Node, noop), def_find_defs(AST_Chain, function(compressor, suffix) {
-        return this.expression._find_defs(compressor, suffix);
-    }), def_find_defs(AST_Dot, function(compressor, suffix) {
-        return this.expression._find_defs(compressor, "." + this.property + suffix);
-    }), def_find_defs(AST_SymbolDeclaration, function() {
-        if (!this.global()) return;
-    }), def_find_defs(AST_SymbolRef, function(compressor, suffix) {
-        if (this.global()) {
-            var defines = compressor.option("global_defs"), name = this.name + suffix;
-            if (HOP(defines, name)) return function to_node(value, orig) {
-                if (value instanceof AST_Node) return value instanceof AST_Constant || // Value may be a function, an array including functions and even a complex assign / block expression,
-                // so it should never be shared in different places.
-                // Otherwise wrong information may be used in the compression phase
-                (value = value.clone(!0)), make_node(value.CTOR, orig, value);
-                if (Array.isArray(value)) return make_node(AST_Array, orig, {
-                    elements: value.map(function(value) {
-                        return to_node(value, orig);
-                    })
-                });
-                if (value && "object" == typeof value) {
-                    var props = [];
-                    for(var key in value)HOP(value, key) && props.push(make_node(AST_ObjectKeyVal, orig, {
-                        key: key,
-                        value: to_node(value[key], orig)
-                    }));
-                    return make_node(AST_Object, orig, {
-                        properties: props
-                    });
+    };
+    function all_refs_local(scope) {
+        let result = !0;
+        return walk(this, (node)=>{
+            if (node instanceof AST_SymbolRef) {
+                if (has_flag(this, 0b00010000)) return result = !1, walk_abort;
+                var def = node.definition();
+                if (member(def, this.enclosed) && !this.variables.has(def.name)) {
+                    if (scope) {
+                        var scope_def = scope.find_variable(node);
+                        if (def.undeclared ? !scope_def : scope_def === def) return result = "f", !0;
+                    }
+                    return result = !1, walk_abort;
                 }
-                return make_node_from_constant(value, orig);
-            }(defines[name], this);
-        }
-    }), // method to negate an expression
-    function(def_negate) {
-        function basic_negation(exp) {
-            return make_node(AST_UnaryPrefix, exp, {
-                operator: "!",
-                expression: exp
-            });
-        }
-        function best(orig, alt, first_in_statement) {
-            var negated = basic_negation(orig);
-            if (first_in_statement) {
-                var stat = make_node(AST_SimpleStatement, alt, {
-                    body: alt
-                });
-                return best_of_expression(negated, stat) === stat ? alt : negated;
+                return !0;
             }
-            return best_of_expression(negated, alt);
-        }
-        def_negate(AST_Node, function() {
-            return basic_negation(this);
-        }), def_negate(AST_Statement, function() {
-            throw Error("Cannot negate a statement");
-        }), def_negate(AST_Function, function() {
-            return basic_negation(this);
-        }), def_negate(AST_Arrow, function() {
-            return basic_negation(this);
-        }), def_negate(AST_UnaryPrefix, function() {
-            return "!" == this.operator ? this.expression : basic_negation(this);
-        }), def_negate(AST_Sequence, function(compressor) {
-            var expressions = this.expressions.slice();
-            return expressions.push(expressions.pop().negate(compressor)), make_sequence(this, expressions);
-        }), def_negate(AST_Conditional, function(compressor, first_in_statement) {
-            var self1 = this.clone();
-            return self1.consequent = self1.consequent.negate(compressor), self1.alternative = self1.alternative.negate(compressor), best(this, self1, first_in_statement);
-        }), def_negate(AST_Binary, function(compressor, first_in_statement) {
-            var self1 = this.clone(), op = this.operator;
-            if (compressor.option("unsafe_comps")) switch(op){
-                case "<=":
-                    return self1.operator = ">", self1;
-                case "<":
-                    return self1.operator = ">=", self1;
-                case ">=":
-                    return self1.operator = "<", self1;
-                case ">":
-                    return self1.operator = "<=", self1;
-            }
-            switch(op){
-                case "==":
-                    return self1.operator = "!=", self1;
-                case "!=":
-                    return self1.operator = "==", self1;
-                case "===":
-                    return self1.operator = "!==", self1;
-                case "!==":
-                    return self1.operator = "===", self1;
-                case "&&":
-                    return self1.operator = "||", self1.left = self1.left.negate(compressor, first_in_statement), self1.right = self1.right.negate(compressor), best(this, self1, first_in_statement);
-                case "||":
-                    return self1.operator = "&&", self1.left = self1.left.negate(compressor, first_in_statement), self1.right = self1.right.negate(compressor), best(this, self1, first_in_statement);
-            }
-            return basic_negation(this);
-        });
-    }(function(node, func) {
+            if (node instanceof AST_This && this instanceof AST_Arrow) return result = !1, walk_abort;
+        }), result;
+    }
+    def_is_constant_expression(AST_Node, return_false), def_is_constant_expression(AST_Constant, return_true), def_is_constant_expression(AST_Class, function(scope) {
+        if (this.extends && !this.extends.is_constant_expression(scope)) return !1;
+        for (let prop of this.properties)if (prop.computed_key() && !prop.key.is_constant_expression(scope) || prop.static && prop.value && !prop.value.is_constant_expression(scope) || prop instanceof AST_ClassStaticBlock) return !1;
+        return all_refs_local.call(this, scope);
+    }), def_is_constant_expression(AST_Lambda, all_refs_local), def_is_constant_expression(AST_Unary, function() {
+        return this.expression.is_constant_expression();
+    }), def_is_constant_expression(AST_Binary, function() {
+        return this.left.is_constant_expression() && this.right.is_constant_expression();
+    }), def_is_constant_expression(AST_Array, function() {
+        return this.elements.every((l)=>l.is_constant_expression());
+    }), def_is_constant_expression(AST_Object, function() {
+        return this.properties.every((l)=>l.is_constant_expression());
+    }), def_is_constant_expression(AST_ObjectProperty, function() {
+        return !!(!(this.key instanceof AST_Node) && this.value && this.value.is_constant_expression());
+    });
+    var def_may_throw_on_access = function(node, func) {
+        node.DEFMETHOD("_dot_throw", func);
+    };
+    function is_strict(compressor) {
+        return /strict/.test(compressor.option("pure_getters"));
+    }
+    function is_lhs(node, parent) {
+        return parent instanceof AST_Unary && unary_side_effects.has(parent.operator) ? parent.expression : parent instanceof AST_Assign && parent.left === node || parent instanceof AST_ForIn && parent.init === node ? node : void 0;
+    }
+    AST_Node.DEFMETHOD("may_throw_on_access", function(compressor) {
+        return !compressor.option("pure_getters") || this._dot_throw(compressor);
+    }), def_may_throw_on_access(AST_Node, is_strict), def_may_throw_on_access(AST_Null, return_true), def_may_throw_on_access(AST_Undefined, return_true), def_may_throw_on_access(AST_Constant, return_false), def_may_throw_on_access(AST_Array, return_false), def_may_throw_on_access(AST_Object, function(compressor) {
+        if (!is_strict(compressor)) return !1;
+        for(var i = this.properties.length; --i >= 0;)if (this.properties[i]._dot_throw(compressor)) return !0;
+        return !1;
+    }), // Do not be as strict with classes as we are with objects.
+    // Hopefully the community is not going to abuse static getters and setters.
+    // https://github.com/terser/terser/issues/724#issuecomment-643655656
+    def_may_throw_on_access(AST_Class, return_false), def_may_throw_on_access(AST_ObjectProperty, return_false), def_may_throw_on_access(AST_ObjectGetter, return_true), def_may_throw_on_access(AST_Expansion, function(compressor) {
+        return this.expression._dot_throw(compressor);
+    }), def_may_throw_on_access(AST_Function, return_false), def_may_throw_on_access(AST_Arrow, return_false), def_may_throw_on_access(AST_UnaryPostfix, return_false), def_may_throw_on_access(AST_UnaryPrefix, function() {
+        return "void" == this.operator;
+    }), def_may_throw_on_access(AST_Binary, function(compressor) {
+        return ("&&" == this.operator || "||" == this.operator || "??" == this.operator) && (this.left._dot_throw(compressor) || this.right._dot_throw(compressor));
+    }), def_may_throw_on_access(AST_Assign, function(compressor) {
+        return !!this.logical || "=" == this.operator && this.right._dot_throw(compressor);
+    }), def_may_throw_on_access(AST_Conditional, function(compressor) {
+        return this.consequent._dot_throw(compressor) || this.alternative._dot_throw(compressor);
+    }), def_may_throw_on_access(AST_Dot, function(compressor) {
+        return !!is_strict(compressor) && ("prototype" != this.property || !(this.expression instanceof AST_Function || this.expression instanceof AST_Class));
+    }), def_may_throw_on_access(AST_Chain, function(compressor) {
+        return this.expression._dot_throw(compressor);
+    }), def_may_throw_on_access(AST_Sequence, function(compressor) {
+        return this.tail_node()._dot_throw(compressor);
+    }), def_may_throw_on_access(AST_SymbolRef, function(compressor) {
+        if ("arguments" === this.name && this.scope instanceof AST_Lambda) return !1;
+        if (has_flag(this, 0b00001000)) return !0;
+        if (!is_strict(compressor) || is_undeclared_ref(this) && this.is_declared(compressor) || this.is_immutable()) return !1;
+        var fixed = this.fixed_value();
+        return !fixed || fixed._dot_throw(compressor);
+    });
+    var def_negate = function(node, func) {
         node.DEFMETHOD("negate", function(compressor, first_in_statement) {
             return func.call(this, compressor, first_in_statement);
         });
+    };
+    function basic_negation(exp) {
+        return make_node(AST_UnaryPrefix, exp, {
+            operator: "!",
+            expression: exp
+        });
+    }
+    function best(orig, alt, first_in_statement) {
+        var negated = basic_negation(orig);
+        if (first_in_statement) {
+            var stat = make_node(AST_SimpleStatement, alt, {
+                body: alt
+            });
+            return best_of_expression(negated, stat) === stat ? alt : negated;
+        }
+        return best_of_expression(negated, alt);
+    }
+    def_negate(AST_Node, function() {
+        return basic_negation(this);
+    }), def_negate(AST_Statement, function() {
+        throw Error("Cannot negate a statement");
+    }), def_negate(AST_Function, function() {
+        return basic_negation(this);
+    }), def_negate(AST_Class, function() {
+        return basic_negation(this);
+    }), def_negate(AST_Arrow, function() {
+        return basic_negation(this);
+    }), def_negate(AST_UnaryPrefix, function() {
+        return "!" == this.operator ? this.expression : basic_negation(this);
+    }), def_negate(AST_Sequence, function(compressor) {
+        var expressions = this.expressions.slice();
+        return expressions.push(expressions.pop().negate(compressor)), make_sequence(this, expressions);
+    }), def_negate(AST_Conditional, function(compressor, first_in_statement) {
+        var self1 = this.clone();
+        return self1.consequent = self1.consequent.negate(compressor), self1.alternative = self1.alternative.negate(compressor), best(this, self1, first_in_statement);
+    }), def_negate(AST_Binary, function(compressor, first_in_statement) {
+        var self1 = this.clone(), op = this.operator;
+        if (compressor.option("unsafe_comps")) switch(op){
+            case "<=":
+                return self1.operator = ">", self1;
+            case "<":
+                return self1.operator = ">=", self1;
+            case ">=":
+                return self1.operator = "<", self1;
+            case ">":
+                return self1.operator = "<=", self1;
+        }
+        switch(op){
+            case "==":
+                return self1.operator = "!=", self1;
+            case "!=":
+                return self1.operator = "==", self1;
+            case "===":
+                return self1.operator = "!==", self1;
+            case "!==":
+                return self1.operator = "===", self1;
+            case "&&":
+                return self1.operator = "||", self1.left = self1.left.negate(compressor, first_in_statement), self1.right = self1.right.negate(compressor), best(this, self1, first_in_statement);
+            case "||":
+                return self1.operator = "&&", self1.left = self1.left.negate(compressor, first_in_statement), self1.right = self1.right.negate(compressor), best(this, self1, first_in_statement);
+        }
+        return basic_negation(this);
+    });
+    var def_bitwise_negate = function(node, func) {
+        node.DEFMETHOD("bitwise_negate", func);
+    };
+    function basic_negation1(exp) {
+        return make_node(AST_UnaryPrefix, exp, {
+            operator: "~",
+            expression: exp
+        });
+    }
+    def_bitwise_negate(AST_Node, function() {
+        return basic_negation1(this);
+    }), def_bitwise_negate(AST_Number, function() {
+        let neg = ~this.value;
+        return neg.toString().length > this.value.toString().length ? basic_negation1(this) : make_node(AST_Number, this, {
+            value: neg
+        });
+    }), def_bitwise_negate(AST_UnaryPrefix, function(in_32_bit_context) {
+        return "~" == this.operator && (in_32_bit_context || this.expression.is_32_bit_integer()) ? this.expression : basic_negation1(this);
     });
     // Is the callee of this function pure?
     var global_pure_fns = makePredicate("Boolean decodeURI decodeURIComponent Date encodeURI encodeURIComponent Error escape EvalError isFinite isNaN Number Object parseFloat parseInt RangeError ReferenceError String SyntaxError TypeError unescape URIError");
@@ -6658,16 +7332,23 @@
             if (expr.expression && "hasOwnProperty" === expr.expression.name && (null == first_arg || first_arg.thedef && first_arg.thedef.undeclared)) return !1;
             if (is_undeclared_ref(expr) && global_pure_fns.has(expr.name) || expr instanceof AST_Dot && is_undeclared_ref(expr.expression) && is_pure_native_fn(expr.expression.name, expr.property)) return !0;
         }
-        return !!has_annotation(this, _PURE) || !compressor.pure_funcs(this);
+        return !!(this instanceof AST_New && compressor.option("pure_new") || compressor.option("side_effects") && has_annotation(this, _PURE)) || !compressor.pure_funcs(this);
     }), // If I call this, is it a pure function?
     AST_Node.DEFMETHOD("is_call_pure", return_false), AST_Dot.DEFMETHOD("is_call_pure", function(compressor) {
         let native_obj;
         if (!compressor.option("unsafe")) return;
-        const expr = this.expression;
+        let expr = this.expression;
         return expr instanceof AST_Array ? native_obj = "Array" : expr.is_boolean() ? native_obj = "Boolean" : expr.is_number(compressor) ? native_obj = "Number" : expr instanceof AST_RegExp ? native_obj = "RegExp" : expr.is_string(compressor) ? native_obj = "String" : this.may_throw_on_access(compressor) || (native_obj = "Object"), null != native_obj && is_pure_native_method(native_obj, this.property);
     });
     // tell me if a statement aborts
-    const aborts = (thing)=>thing && thing.aborts();
+    let aborts = (thing)=>thing && thing.aborts();
+    var def_aborts = function(node, func) {
+        node.DEFMETHOD("aborts", func);
+    };
+    function block_aborts() {
+        for(var i = 0; i < this.body.length; i++)if (aborts(this.body[i])) return this.body[i];
+        return null;
+    }
     function is_modified(compressor, tw, node, value, level, immutable) {
         var parent = tw.parent(level), lhs = is_lhs(node, parent);
         if (lhs) return lhs;
@@ -6683,65 +7364,60 @@
         }
     }
     /***********************************************************************
-
-  A JavaScript tokenizer / parser / beautifier / compressor.
-  https://github.com/mishoo/UglifyJS2
-
-  -------------------------------- (C) ---------------------------------
-
-                           Author: Mihai Bazon
-                         <mihai.bazon@gmail.com>
-                       http://mihai.bazon.net/blog
-
-  Distributed under the BSD license:
-
-    Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-        * Redistributions of source code must retain the above
-          copyright notice, this list of conditions and the following
-          disclaimer.
-
-        * Redistributions in binary form must reproduce the above
-          copyright notice, this list of conditions and the following
-          disclaimer in the documentation and/or other materials
-          provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-    OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-    TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-    THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-    SUCH DAMAGE.
-
- ***********************************************************************/ // methods to evaluate a constant expression
+    
+      A JavaScript tokenizer / parser / beautifier / compressor.
+      https://github.com/mishoo/UglifyJS2
+    
+      -------------------------------- (C) ---------------------------------
+    
+                               Author: Mihai Bazon
+                             <mihai.bazon@gmail.com>
+                           http://mihai.bazon.net/blog
+    
+      Distributed under the BSD license:
+    
+        Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
+    
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions
+        are met:
+    
+            * Redistributions of source code must retain the above
+              copyright notice, this list of conditions and the following
+              disclaimer.
+    
+            * Redistributions in binary form must reproduce the above
+              copyright notice, this list of conditions and the following
+              disclaimer in the documentation and/or other materials
+              provided with the distribution.
+    
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+        EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+        PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+        OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+        PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+        PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+        THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+        TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+        THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+        SUCH DAMAGE.
+    
+     ***********************************************************************/ // methods to evaluate a constant expression
     function def_eval(node, func) {
         node.DEFMETHOD("_eval", func);
     }
-    !function(def_aborts) {
-        function block_aborts() {
-            for(var i = 0; i < this.body.length; i++)if (aborts(this.body[i])) return this.body[i];
-            return null;
-        }
-        def_aborts(AST_Statement, return_null), def_aborts(AST_Jump, return_this), def_aborts(AST_Import, function() {
-            return null;
-        }), def_aborts(AST_BlockStatement, block_aborts), def_aborts(AST_SwitchBranch, block_aborts), def_aborts(AST_If, function() {
-            return this.alternative && aborts(this.body) && aborts(this.alternative) && this;
-        });
-    }(function(node, func) {
-        node.DEFMETHOD("aborts", func);
+    def_aborts(AST_Statement, return_null), def_aborts(AST_Jump, return_this), def_aborts(AST_Import, return_null), def_aborts(AST_BlockStatement, block_aborts), def_aborts(AST_SwitchBranch, block_aborts), def_aborts(AST_DefClass, function() {
+        for (let prop of this.properties)if (prop instanceof AST_ClassStaticBlock && prop.aborts()) return prop;
+        return null;
+    }), def_aborts(AST_ClassStaticBlock, block_aborts), def_aborts(AST_If, function() {
+        return this.alternative && aborts(this.body) && aborts(this.alternative) && this;
+    }), AST_Node.DEFMETHOD("contains_this", function() {
+        return walk(this, (node)=>node instanceof AST_This ? walk_abort : node !== this && node instanceof AST_Scope && !(node instanceof AST_Arrow) || void 0);
     });
     // Used to propagate a nullish short-circuit signal upwards through the chain.
-    const nullish = Symbol("This AST_Chain is nullish");
+    let nullish = Symbol("This AST_Chain is nullish");
     // If the node has been successfully reduced to a constant,
     // then its value is returned; otherwise the element itself
     // is returned.
@@ -6750,7 +7426,14 @@
     AST_Node.DEFMETHOD("evaluate", function(compressor) {
         if (!compressor.option("evaluate")) return this;
         var val = this._eval(compressor, 1);
-        return !val || val instanceof RegExp ? val : "function" == typeof val || "object" == typeof val || val == nullish ? this : val;
+        if (!val || val instanceof RegExp) return val;
+        if ("function" == typeof val || "object" == typeof val || val == nullish) return this;
+        // Evaluated strings can be larger than the original expression
+        if ("string" == typeof val) {
+            let unevaluated_size = this.size(compressor);
+            if (val.length + 2 > unevaluated_size) return this;
+        }
+        return val;
     });
     var unaryPrefix = makePredicate("! ~ - + void");
     AST_Node.DEFMETHOD("is_constant", function() {
@@ -6761,15 +7444,20 @@
         throw Error(string_template("Cannot evaluate a statement [{file}:{line},{col}]", this.start));
     }), def_eval(AST_Lambda, return_this), def_eval(AST_Class, return_this), def_eval(AST_Node, return_this), def_eval(AST_Constant, function() {
         return this.getValue();
-    }), def_eval(AST_BigInt, return_this), def_eval(AST_RegExp, function(compressor) {
-        let evaluated = compressor.evaluated_regexps.get(this);
-        if (void 0 === evaluated) {
+    });
+    let supports_bigint = "function" == typeof BigInt;
+    def_eval(AST_BigInt, function() {
+        return supports_bigint ? BigInt(this.value) : this;
+    }), def_eval(AST_RegExp, function(compressor) {
+        let source, evaluated = compressor.evaluated_regexps.get(this.value);
+        if (void 0 === evaluated && (source = this.value.source, re_safe_regexp.test(source))) {
             try {
-                evaluated = (0, eval)(this.print_to_string());
+                let { source, flags } = this.value;
+                evaluated = new RegExp(source, flags);
             } catch (e) {
                 evaluated = null;
             }
-            compressor.evaluated_regexps.set(this, evaluated);
+            compressor.evaluated_regexps.set(this.value, evaluated);
         }
         return evaluated || this;
     }), def_eval(AST_TemplateString, function() {
@@ -6831,13 +7519,13 @@
         return this;
     });
     var non_converting_binary = makePredicate("&& || ?? === !==");
-    const identity_comparison = makePredicate("== != === !=="), has_identity = (value)=>"object" == typeof value || "function" == typeof value || "symbol" == typeof value;
+    let identity_comparison = makePredicate("== != === !=="), has_identity = (value)=>"object" == typeof value || "function" == typeof value || "symbol" == typeof value;
     def_eval(AST_Binary, function(compressor, depth) {
         !non_converting_binary.has(this.operator) && depth++;
         var result, left = this.left._eval(compressor, depth);
         if (left === this.left) return this;
         var right = this.right._eval(compressor, depth);
-        if (right === this.right || null != left && null != right && identity_comparison.has(this.operator) && has_identity(left) && has_identity(right) && typeof left == typeof right) return this;
+        if (right === this.right || null != left && null != right && identity_comparison.has(this.operator) && has_identity(left) && has_identity(right) && typeof left == typeof right || "bigint" == typeof left != ("bigint" == typeof right) || "bigint" == typeof left && (">>>" === this.operator || "/" === this.operator && 0 === Number(right))) return this;
         switch(this.operator){
             case "&&":
                 result = left && right;
@@ -6864,7 +7552,7 @@
                 result = left * right;
                 break;
             case "**":
-                result = Math.pow(left, right);
+                result = left ** right;
                 break;
             case "/":
                 result = left / right;
@@ -6911,7 +7599,7 @@
             default:
                 return this;
         }
-        return isNaN(result) && compressor.find_parent(AST_With) ? this : result;
+        return "number" == typeof result && isNaN(result) && compressor.find_parent(AST_With) ? this : result;
     }), def_eval(AST_Conditional, function(compressor, depth) {
         var condition = this.condition._eval(compressor, depth);
         if (condition === this.condition) return this;
@@ -6920,13 +7608,13 @@
     });
     // Set of AST_SymbolRef which are currently being evaluated.
     // Avoids infinite recursion of ._eval()
-    const reentrant_ref_eval = new Set();
+    let reentrant_ref_eval = new Set();
     def_eval(AST_SymbolRef, function(compressor, depth) {
         if (reentrant_ref_eval.has(this)) return this;
         var fixed = this.fixed_value();
         if (!fixed) return this;
         reentrant_ref_eval.add(this);
-        const value = fixed._eval(compressor, depth);
+        let value = fixed._eval(compressor, depth);
         if (reentrant_ref_eval.delete(this), value === fixed) return this;
         if (value && "object" == typeof value) {
             var escaped = this.definition().escaped;
@@ -6934,7 +7622,7 @@
         }
         return value;
     });
-    const global_objs = {
+    let global_objs = {
         Array,
         Math,
         Number,
@@ -6949,47 +7637,47 @@
         "unicode"
     ]);
     /***********************************************************************
-
-  A JavaScript tokenizer / parser / beautifier / compressor.
-  https://github.com/mishoo/UglifyJS2
-
-  -------------------------------- (C) ---------------------------------
-
-                           Author: Mihai Bazon
-                         <mihai.bazon@gmail.com>
-                       http://mihai.bazon.net/blog
-
-  Distributed under the BSD license:
-
-    Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-        * Redistributions of source code must retain the above
-          copyright notice, this list of conditions and the following
-          disclaimer.
-
-        * Redistributions in binary form must reproduce the above
-          copyright notice, this list of conditions and the following
-          disclaimer in the documentation and/or other materials
-          provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-    OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-    TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-    THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-    SUCH DAMAGE.
-
- ***********************************************************************/ // AST_Node#drop_side_effect_free() gets called when we don't care about the value,
+    
+      A JavaScript tokenizer / parser / beautifier / compressor.
+      https://github.com/mishoo/UglifyJS2
+    
+      -------------------------------- (C) ---------------------------------
+    
+                               Author: Mihai Bazon
+                             <mihai.bazon@gmail.com>
+                           http://mihai.bazon.net/blog
+    
+      Distributed under the BSD license:
+    
+        Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
+    
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions
+        are met:
+    
+            * Redistributions of source code must retain the above
+              copyright notice, this list of conditions and the following
+              disclaimer.
+    
+            * Redistributions in binary form must reproduce the above
+              copyright notice, this list of conditions and the following
+              disclaimer in the documentation and/or other materials
+              provided with the distribution.
+    
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+        EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+        PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+        OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+        PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+        PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+        THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+        TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+        THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+        SUCH DAMAGE.
+    
+     ***********************************************************************/ // AST_Node#drop_side_effect_free() gets called when we don't care about the value,
     // only about side effects. We'll be defining this method for each node type in this module
     //
     // Examples:
@@ -7013,150 +7701,47 @@
         }
         return changed ? ret.length ? ret : null : nodes;
     }
-    /***********************************************************************
-
-  A JavaScript tokenizer / parser / beautifier / compressor.
-  https://github.com/mishoo/UglifyJS2
-
-  -------------------------------- (C) ---------------------------------
-
-                           Author: Mihai Bazon
-                         <mihai.bazon@gmail.com>
-                       http://mihai.bazon.net/blog
-
-  Distributed under the BSD license:
-
-    Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-        * Redistributions of source code must retain the above
-          copyright notice, this list of conditions and the following
-          disclaimer.
-
-        * Redistributions in binary form must reproduce the above
-          copyright notice, this list of conditions and the following
-          disclaimer in the documentation and/or other materials
-          provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-    OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-    TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-    THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-    SUCH DAMAGE.
-
- ***********************************************************************/ // Define the method AST_Node#reduce_vars, which goes through the AST in
-    // execution order to perform basic flow analysis
-    function def_reduce_vars(node, func) {
-        node.DEFMETHOD("reduce_vars", func);
-    }
-    function reset_def(compressor, def) {
-        def.assignments = 0, def.chained = !1, def.direct_access = !1, def.escaped = 0, def.recursive_refs = 0, def.references = [], def.single_use = void 0, def.scope.pinned() ? def.fixed = !1 : def.orig[0] instanceof AST_SymbolConst || !compressor.exposed(def) ? def.fixed = def.init : def.fixed = !1;
-    }
-    function reset_variables(tw, compressor, node) {
-        node.variables.forEach(function(def) {
-            reset_def(compressor, def), null === def.fixed ? (tw.defs_to_safe_ids.set(def.id, tw.safe_ids), mark(tw, def, !0)) : def.fixed && (tw.loop_ids.set(def.id, tw.in_loop), mark(tw, def, !0));
-        });
-    }
-    function reset_block_variables(compressor, node) {
-        node.block_scope && node.block_scope.variables.forEach((def)=>{
-            reset_def(compressor, def);
-        });
-    }
-    function push(tw) {
-        tw.safe_ids = Object.create(tw.safe_ids);
-    }
-    function pop(tw) {
-        tw.safe_ids = Object.getPrototypeOf(tw.safe_ids);
-    }
-    function mark(tw, def, safe) {
-        tw.safe_ids[def.id] = safe;
-    }
-    function safe_to_read(tw, def) {
-        if ("m" == def.single_use) return !1;
-        if (tw.safe_ids[def.id]) {
-            if (null == def.fixed) {
-                var orig = def.orig[0];
-                if (orig instanceof AST_SymbolFunarg || "arguments" == orig.name) return !1;
-                def.fixed = make_node(AST_Undefined, orig);
-            }
-            return !0;
-        }
-        return def.fixed instanceof AST_Defun;
-    }
-    function safe_to_assign(tw, def, scope, value) {
-        let def_safe_ids;
-        return void 0 === def.fixed || (null === def.fixed && (def_safe_ids = tw.defs_to_safe_ids.get(def.id)) ? (def_safe_ids[def.id] = !1, tw.defs_to_safe_ids.delete(def.id), !0) : !!(HOP(tw.safe_ids, def.id) && safe_to_read(tw, def)) && !1 !== def.fixed && (null == def.fixed || !!value && !(def.references.length > def.assignments)) && (def.fixed instanceof AST_Defun ? value instanceof AST_Node && def.fixed.parent_scope === scope : def.orig.every((sym)=>!(sym instanceof AST_SymbolConst || sym instanceof AST_SymbolDefun || sym instanceof AST_SymbolLambda))));
-    }
-    // A definition "escapes" when its value can leave the point of use.
-    // Example: `a = b || c`
-    // In this example, "b" and "c" are escaping, because they're going into "a"
-    //
-    // def.escaped is != 0 when it escapes.
-    //
-    // When greater than 1, it means that N chained properties will be read off
-    // of that def before an escape occurs. This is useful for evaluating
-    // property accesses, where you need to know when to stop.
-    function mark_escaped(tw, d, scope, node, value, level = 0, depth = 1) {
-        var parent = tw.parent(level);
-        if (!(value && (value.is_constant() || value instanceof AST_ClassExpression))) {
-            if (parent instanceof AST_Assign && ("=" === parent.operator || parent.logical) && node === parent.right || parent instanceof AST_Call && (node !== parent.expression || parent instanceof AST_New) || parent instanceof AST_Exit && node === parent.value && node.scope !== d.scope || parent instanceof AST_VarDef && node === parent.value || parent instanceof AST_Yield && node === parent.value && node.scope !== d.scope) {
-                depth > 1 && !(value && value.is_constant_expression(scope)) && (depth = 1), (!d.escaped || d.escaped > depth) && (d.escaped = depth);
-                return;
-            }
-            if (parent instanceof AST_Array || parent instanceof AST_Await || parent instanceof AST_Binary && lazy_op.has(parent.operator) || parent instanceof AST_Conditional && node !== parent.condition || parent instanceof AST_Expansion || parent instanceof AST_Sequence && node === parent.tail_node()) mark_escaped(tw, d, scope, parent, parent, level + 1, depth);
-            else if (parent instanceof AST_ObjectKeyVal && node === parent.value) {
-                var obj = tw.parent(level + 1);
-                mark_escaped(tw, d, scope, obj, obj, level + 2, depth);
-            } else if (parent instanceof AST_PropAccess && node === parent.expression && (value = read_property(value, parent.property), mark_escaped(tw, d, scope, parent, value, level + 1, depth + 1), value)) return;
-            level > 0 || parent instanceof AST_Sequence && node !== parent.tail_node() || parent instanceof AST_SimpleStatement || (d.direct_access = !0);
-        }
-    }
     def_eval(AST_PropAccess, function(compressor, depth) {
-        const obj = this.expression._eval(compressor, depth);
+        let obj = this.expression._eval(compressor, depth + 1);
         if (obj === nullish || this.optional && null == obj) return nullish;
+        // `.length` of strings and arrays is always safe
+        if ("length" === this.property) {
+            if ("string" == typeof obj) return obj.length;
+            if (obj instanceof AST_Array && obj.elements.every((el)=>!(el instanceof AST_Expansion)) && obj.elements.every((el)=>!el.has_side_effects(compressor))) return obj.elements.length;
+        }
         if (compressor.option("unsafe")) {
             var key = this.property;
             if (key instanceof AST_Node && (key = key._eval(compressor, depth)) === this.property) return this;
             var exp = this.expression;
             if (is_undeclared_ref(exp)) {
-                var val, aa, first_arg = "hasOwnProperty" === exp.name && "call" === key && (aa = compressor.parent() && compressor.parent().args) && aa && aa[0] && aa[0].evaluate(compressor);
+                var aa, first_arg = "hasOwnProperty" === exp.name && "call" === key && (aa = compressor.parent() && compressor.parent().args) && aa && aa[0] && aa[0].evaluate(compressor);
                 if (null == (first_arg = first_arg instanceof AST_Dot ? first_arg.expression : first_arg) || first_arg.thedef && first_arg.thedef.undeclared) return this.clone();
                 if (!is_pure_native_value(exp.name, key)) return this;
-                val = global_objs[exp.name];
+                obj = global_objs[exp.name];
             } else {
-                if ((val = exp._eval(compressor, depth + 1)) instanceof RegExp) {
-                    if ("source" == key) return regexp_source_fix(val.source);
-                    if ("flags" == key || regexp_flags.has(key)) return val[key];
+                if (obj instanceof RegExp) {
+                    if ("source" == key) return regexp_source_fix(obj.source);
+                    else if ("flags" == key || regexp_flags.has(key)) return obj[key];
                 }
-                if (!val || val === exp || !HOP(val, key)) return this;
-                if ("function" == typeof val) switch(key){
+                if (!obj || obj === exp || !HOP(obj, key)) return this;
+                if ("function" == typeof obj) switch(key){
                     case "name":
-                        return val.node.name ? val.node.name.name : "";
+                        return obj.node.name ? obj.node.name.name : "";
                     case "length":
-                        return val.node.length_property();
+                        return obj.node.length_property();
                     default:
                         return this;
                 }
             }
-            return val[key];
+            return obj[key];
         }
         return this;
     }), def_eval(AST_Chain, function(compressor, depth) {
-        const evaluated = this.expression._eval(compressor, depth);
+        let evaluated = this.expression._eval(compressor, depth);
         return evaluated === nullish ? void 0 : evaluated === this.expression ? this : evaluated;
     }), def_eval(AST_Call, function(compressor, depth) {
         var exp = this.expression;
-        const callee = exp._eval(compressor, depth);
+        let callee = exp._eval(compressor, depth);
         if (callee === nullish || this.optional && null == callee) return nullish;
         if (compressor.option("unsafe") && exp instanceof AST_PropAccess) {
             var val, key = exp.property;
@@ -7197,12 +7782,26 @@
         var args = trim(this.args, compressor, first_in_statement);
         return args && make_sequence(this, args);
     }), def_drop_side_effect_free(AST_Accessor, return_null), def_drop_side_effect_free(AST_Function, return_null), def_drop_side_effect_free(AST_Arrow, return_null), def_drop_side_effect_free(AST_Class, function(compressor) {
-        const with_effects = [], trimmed_extends = this.extends && this.extends.drop_side_effect_free(compressor);
-        for (const prop of (trimmed_extends && with_effects.push(trimmed_extends), this.properties)){
-            const trimmed_prop = prop.drop_side_effect_free(compressor);
+        let with_effects = [];
+        if (this.is_self_referential() && this.has_side_effects(compressor)) return this;
+        let trimmed_extends = this.extends && this.extends.drop_side_effect_free(compressor);
+        for (let prop of (trimmed_extends && with_effects.push(trimmed_extends), this.properties))if (prop instanceof AST_ClassStaticBlock) {
+            if (prop.has_side_effects(compressor)) return this; // Be cautious about these
+        } else {
+            let trimmed_prop = prop.drop_side_effect_free(compressor);
             trimmed_prop && with_effects.push(trimmed_prop);
         }
-        return with_effects.length ? make_sequence(this, with_effects) : null;
+        if (!with_effects.length) return null;
+        let exprs = make_sequence(this, with_effects);
+        return this instanceof AST_DefClass ? make_node(AST_SimpleStatement, this, {
+            body: exprs
+        }) : exprs;
+    }), def_drop_side_effect_free(AST_ClassProperty, function(compressor) {
+        let key = this.computed_key() && this.key.drop_side_effect_free(compressor), value = this.static && this.value && this.value.drop_side_effect_free(compressor);
+        return key && value ? make_sequence(this, [
+            key,
+            value
+        ]) : key || value || null;
     }), def_drop_side_effect_free(AST_Binary, function(compressor, first_in_statement) {
         var right = this.right.drop_side_effect_free(compressor);
         if (!right) return this.left.drop_side_effect_free(compressor, first_in_statement);
@@ -7248,17 +7847,11 @@
         var values = trim(this.properties, compressor, first_in_statement);
         return values && make_sequence(this, values);
     }), def_drop_side_effect_free(AST_ObjectProperty, function(compressor, first_in_statement) {
-        const key = this instanceof AST_ObjectKeyVal && this.key instanceof AST_Node && this.key.drop_side_effect_free(compressor, first_in_statement), value = this.value && this.value.drop_side_effect_free(compressor, first_in_statement);
+        let key = this instanceof AST_ObjectKeyVal && this.key instanceof AST_Node && this.key.drop_side_effect_free(compressor, first_in_statement), value = this.value && this.value.drop_side_effect_free(compressor, first_in_statement);
         return key && value ? make_sequence(this, [
             key,
             value
         ]) : key || value;
-    }), def_drop_side_effect_free(AST_ClassProperty, function(compressor) {
-        const key = this.computed_key() && this.key.drop_side_effect_free(compressor), value = this.static && this.value && this.value.drop_side_effect_free(compressor);
-        return key && value ? make_sequence(this, [
-            key,
-            value
-        ]) : key || value || null;
     }), def_drop_side_effect_free(AST_ConciseMethod, function() {
         return this.computed_key() ? this.key : null;
     }), def_drop_side_effect_free(AST_ObjectGetter, function() {
@@ -7269,17 +7862,17 @@
         var values = trim(this.elements, compressor, first_in_statement);
         return values && make_sequence(this, values);
     }), def_drop_side_effect_free(AST_Dot, function(compressor, first_in_statement) {
-        return is_nullish_shortcircuited(this, compressor) ? this.expression.drop_side_effect_free(compressor, first_in_statement) : this.expression.may_throw_on_access(compressor) ? this : this.expression.drop_side_effect_free(compressor, first_in_statement);
+        return is_nullish_shortcircuited(this, compressor) ? this.expression.drop_side_effect_free(compressor, first_in_statement) : !this.optional && this.expression.may_throw_on_access(compressor) ? this : this.expression.drop_side_effect_free(compressor, first_in_statement);
     }), def_drop_side_effect_free(AST_Sub, function(compressor, first_in_statement) {
         if (is_nullish_shortcircuited(this, compressor)) return this.expression.drop_side_effect_free(compressor, first_in_statement);
-        if (this.expression.may_throw_on_access(compressor)) return this;
-        var expression = this.expression.drop_side_effect_free(compressor, first_in_statement);
-        if (!expression) return this.property.drop_side_effect_free(compressor, first_in_statement);
+        if (!this.optional && this.expression.may_throw_on_access(compressor)) return this;
         var property = this.property.drop_side_effect_free(compressor);
-        return property ? make_sequence(this, [
+        if (property && this.optional) return this;
+        var expression = this.expression.drop_side_effect_free(compressor, first_in_statement);
+        return expression && property ? make_sequence(this, [
             expression,
             property
-        ]) : expression;
+        ]) : expression || property;
     }), def_drop_side_effect_free(AST_Chain, function(compressor, first_in_statement) {
         return this.expression.drop_side_effect_free(compressor, first_in_statement);
     }), def_drop_side_effect_free(AST_Sequence, function(compressor) {
@@ -7294,82 +7887,491 @@
     }), def_drop_side_effect_free(AST_TemplateSegment, return_null), def_drop_side_effect_free(AST_TemplateString, function(compressor) {
         var values = trim(this.segments, compressor, first_in_statement);
         return values && make_sequence(this, values);
+    });
+    /***********************************************************************
+    
+      A JavaScript tokenizer / parser / beautifier / compressor.
+      https://github.com/mishoo/UglifyJS2
+    
+      -------------------------------- (C) ---------------------------------
+    
+                               Author: Mihai Bazon
+                             <mihai.bazon@gmail.com>
+                           http://mihai.bazon.net/blog
+    
+      Distributed under the BSD license:
+    
+        Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
+    
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions
+        are met:
+    
+            * Redistributions of source code must retain the above
+              copyright notice, this list of conditions and the following
+              disclaimer.
+    
+            * Redistributions in binary form must reproduce the above
+              copyright notice, this list of conditions and the following
+              disclaimer in the documentation and/or other materials
+              provided with the distribution.
+    
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+        EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+        PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+        OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+        PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+        PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+        THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+        TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+        THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+        SUCH DAMAGE.
+    
+     ***********************************************************************/ let r_keep_assign = /keep_assign/;
+    /***********************************************************************
+    
+      A JavaScript tokenizer / parser / beautifier / compressor.
+      https://github.com/mishoo/UglifyJS2
+    
+      -------------------------------- (C) ---------------------------------
+    
+                               Author: Mihai Bazon
+                             <mihai.bazon@gmail.com>
+                           http://mihai.bazon.net/blog
+    
+      Distributed under the BSD license:
+    
+        Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
+    
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions
+        are met:
+    
+            * Redistributions of source code must retain the above
+              copyright notice, this list of conditions and the following
+              disclaimer.
+    
+            * Redistributions in binary form must reproduce the above
+              copyright notice, this list of conditions and the following
+              disclaimer in the documentation and/or other materials
+              provided with the distribution.
+    
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+        EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+        PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+        OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+        PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+        PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+        THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+        TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+        THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+        SUCH DAMAGE.
+    
+     ***********************************************************************/ /**
+     * Define the method AST_Node#reduce_vars, which goes through the AST in
+     * execution order to perform basic flow analysis
+     */ function def_reduce_vars(node, func) {
+        node.DEFMETHOD("reduce_vars", func);
+    }
+    /** Clear definition properties */ function reset_def(compressor, def) {
+        def.assignments = 0, def.chained = !1, def.direct_access = !1, def.escaped = 0, def.recursive_refs = 0, def.references = [], def.single_use = void 0, def.scope.pinned() || def.orig[0] instanceof AST_SymbolFunarg && def.scope.uses_arguments ? def.fixed = !1 : def.orig[0] instanceof AST_SymbolConst || !compressor.exposed(def) ? def.fixed = def.init : def.fixed = !1;
+    }
+    function reset_variables(tw, compressor, node) {
+        node.variables.forEach(function(def) {
+            reset_def(compressor, def), null === def.fixed ? (tw.defs_to_safe_ids.set(def.id, tw.safe_ids), mark(tw, def, !0)) : def.fixed && (tw.loop_ids.set(def.id, tw.in_loop), mark(tw, def, !0));
+        });
+    }
+    function reset_block_variables(compressor, node) {
+        node.block_scope && node.block_scope.variables.forEach((def)=>{
+            reset_def(compressor, def);
+        });
+    }
+    function push(tw) {
+        tw.safe_ids = Object.create(tw.safe_ids);
+    }
+    function pop(tw) {
+        tw.safe_ids = Object.getPrototypeOf(tw.safe_ids);
+    }
+    function mark(tw, def, safe) {
+        tw.safe_ids[def.id] = safe;
+    }
+    function safe_to_read(tw, def) {
+        if ("m" == def.single_use) return !1;
+        if (tw.safe_ids[def.id]) {
+            if (null == def.fixed) {
+                var orig = def.orig[0];
+                if (orig instanceof AST_SymbolFunarg || "arguments" == orig.name) return !1;
+                def.fixed = make_node(AST_Undefined, orig);
+            }
+            return !0;
+        }
+        return def.fixed instanceof AST_Defun;
+    }
+    function safe_to_assign(tw, def, scope, value) {
+        let def_safe_ids;
+        return void 0 === def.fixed || (null === def.fixed && (def_safe_ids = tw.defs_to_safe_ids.get(def.id)) ? (def_safe_ids[def.id] = !1, tw.defs_to_safe_ids.delete(def.id), !0) : !!HOP(tw.safe_ids, def.id) && !!safe_to_read(tw, def) && !1 !== def.fixed && (null == def.fixed || !!value && !(def.references.length > def.assignments)) && (def.fixed instanceof AST_Defun ? value instanceof AST_Node && def.fixed.parent_scope === scope : def.orig.every((sym)=>!(sym instanceof AST_SymbolConst || sym instanceof AST_SymbolDefun || sym instanceof AST_SymbolLambda))));
+    }
+    // A definition "escapes" when its value can leave the point of use.
+    // Example: `a = b || c`
+    // In this example, "b" and "c" are escaping, because they're going into "a"
+    //
+    // def.escaped is != 0 when it escapes.
+    //
+    // When greater than 1, it means that N chained properties will be read off
+    // of that def before an escape occurs. This is useful for evaluating
+    // property accesses, where you need to know when to stop.
+    function mark_escaped(tw, d, scope, node, value, level = 0, depth = 1) {
+        var parent = tw.parent(level);
+        if (!(value && (value.is_constant() || value instanceof AST_ClassExpression))) {
+            if (parent instanceof AST_Assign && ("=" === parent.operator || parent.logical) && node === parent.right || parent instanceof AST_Call && (node !== parent.expression || parent instanceof AST_New) || parent instanceof AST_Exit && node === parent.value && node.scope !== d.scope || parent instanceof AST_VarDef && node === parent.value || parent instanceof AST_Yield && node === parent.value && node.scope !== d.scope) {
+                depth > 1 && !(value && value.is_constant_expression(scope)) && (depth = 1), (!d.escaped || d.escaped > depth) && (d.escaped = depth);
+                return;
+            }
+            if (parent instanceof AST_Array || parent instanceof AST_Await || parent instanceof AST_Binary && lazy_op.has(parent.operator) || parent instanceof AST_Conditional && node !== parent.condition || parent instanceof AST_Expansion || parent instanceof AST_Sequence && node === parent.tail_node()) mark_escaped(tw, d, scope, parent, parent, level + 1, depth);
+            else if (parent instanceof AST_ObjectKeyVal && node === parent.value) {
+                var obj = tw.parent(level + 1);
+                mark_escaped(tw, d, scope, obj, obj, level + 2, depth);
+            } else if (parent instanceof AST_PropAccess && node === parent.expression && (value = read_property(value, parent.property), mark_escaped(tw, d, scope, parent, value, level + 1, depth + 1), value)) return;
+            level > 0 || parent instanceof AST_Sequence && node !== parent.tail_node() || parent instanceof AST_SimpleStatement || (d.direct_access = !0);
+        }
+    }
+    /** Drop unused variables from this scope */ AST_Scope.DEFMETHOD("drop_unused", function(compressor) {
+        if (!compressor.option("unused") || compressor.has_directive("use asm") || !this.variables) return;
+        var self1 = this;
+        if (self1.pinned()) return;
+        var drop_funcs = !(self1 instanceof AST_Toplevel) || compressor.toplevel.funcs, drop_vars = !(self1 instanceof AST_Toplevel) || compressor.toplevel.vars;
+        let assign_as_unused = r_keep_assign.test(compressor.option("unused")) ? return_false : function(node) {
+            return node instanceof AST_Assign && !node.logical && (has_flag(node, 0b00100000) || "=" == node.operator) ? node.left : node instanceof AST_Unary && has_flag(node, 0b00100000) ? node.expression : void 0;
+        };
+        var in_use_ids = new Map(), fixed_ids = new Map();
+        self1 instanceof AST_Toplevel && compressor.top_retain && self1.variables.forEach(function(def) {
+            compressor.top_retain(def) && in_use_ids.set(def.id, def);
+        });
+        var var_defs_by_id = new Map(), initializations = new Map(), self_referential_classes = new Set(), scope = this, tw = new TreeWalker(function(node, descend) {
+            if (node instanceof AST_Lambda && node.uses_arguments && !tw.has_directive("use strict") && node.argnames.forEach(function(argname) {
+                if (argname instanceof AST_SymbolDeclaration) {
+                    var def = argname.definition();
+                    in_use_ids.set(def.id, def);
+                }
+            }), node === self1) return;
+            if (node instanceof AST_Class && node.has_side_effects(compressor) && (node.is_self_referential() && self_referential_classes.add(node), node.visit_nondeferred_class_parts(tw)), node instanceof AST_Defun || node instanceof AST_DefClass) {
+                var node_def = node.name.definition();
+                return (tw.parent() instanceof AST_Export || !drop_funcs && scope === self1) && node_def.global && in_use_ids.set(node_def.id, node_def), map_add(initializations, node_def.id, node), !0; // don't go in nested scopes
+            }
+            // In the root scope, we drop things. In inner scopes, we just check for uses.
+            let in_root_scope = scope === self1;
+            if (node instanceof AST_SymbolFunarg && in_root_scope && map_add(var_defs_by_id, node.definition().id, node), node instanceof AST_Definitions && in_root_scope) {
+                let in_export = tw.parent() instanceof AST_Export;
+                return node.definitions.forEach(function(def) {
+                    if (def.name instanceof AST_SymbolVar && map_add(var_defs_by_id, def.name.definition().id, def), (in_export || !drop_vars) && walk(def.name, (node)=>{
+                        if (node instanceof AST_SymbolDeclaration) {
+                            let def = node.definition();
+                            def.global && in_use_ids.set(def.id, def);
+                        }
+                    }), def.name instanceof AST_Destructuring && def.walk(tw), def.name instanceof AST_SymbolDeclaration && def.value) {
+                        var node_def = def.name.definition();
+                        map_add(initializations, node_def.id, def.value), node_def.chained || def.name.fixed_value() !== def.value || fixed_ids.set(node_def.id, def), def.value.has_side_effects(compressor) && def.value.walk(tw);
+                    }
+                }), !0;
+            }
+            return scan_ref_scoped(node, descend);
+        });
+        self1.walk(tw), // pass 2: for every used symbol we need to walk its
+        // initialization code to figure out if it uses other
+        // symbols (that may not be in_use).
+        tw = new TreeWalker(scan_ref_scoped), in_use_ids.forEach(function(def) {
+            var init = initializations.get(def.id);
+            init && init.forEach(function(init) {
+                init.walk(tw);
+            });
+        }), self_referential_classes.forEach(function(cls) {
+            cls.walk(tw);
+        });
+        // pass 3: we should drop declarations not in_use
+        var tt = new TreeTransformer(function(node, descend, in_list) {
+            var def, block, parent = tt.parent();
+            if (drop_vars) {
+                let sym = assign_as_unused(node);
+                if (sym instanceof AST_SymbolRef) {
+                    var def = sym.definition(), in_use = in_use_ids.has(def.id);
+                    if (node instanceof AST_Assign) {
+                        if (!in_use || fixed_ids.has(def.id) && fixed_ids.get(def.id) !== node) return maintain_this_binding(parent, node, node.right.transform(tt));
+                    } else if (!in_use) return in_list ? MAP.skip : make_node(AST_Number, node, {
+                        value: 0
+                    });
+                }
+            }
+            if (scope === self1) {
+                if (node.name && (node instanceof AST_ClassExpression && !keep_name(compressor.option("keep_classnames"), (def = node.name.definition()).name) || node instanceof AST_Function && !keep_name(compressor.option("keep_fnames"), (def = node.name.definition()).name)) && (!in_use_ids.has(def.id) || def.orig.length > 1) && (node.name = null), node instanceof AST_Lambda && !(node instanceof AST_Accessor)) for(var trim = !compressor.option("keep_fargs"), a = node.argnames, i = a.length; --i >= 0;){
+                    var sym = a[i];
+                    sym instanceof AST_Expansion && (sym = sym.expression), sym instanceof AST_DefaultAssign && (sym = sym.left), sym instanceof AST_Destructuring || in_use_ids.has(sym.definition().id) ? trim = !1 : (set_flag(sym, 0b00000001), trim && a.pop());
+                }
+                if (node instanceof AST_DefClass && node !== self1) {
+                    let def = node.name.definition();
+                    if (descend(node, this), !(def.global && !drop_funcs || in_use_ids.has(def.id))) {
+                        let kept = node.drop_side_effect_free(compressor);
+                        return null == kept ? (def.eliminated++, in_list ? MAP.skip : make_node(AST_EmptyStatement, node)) : kept;
+                    }
+                    return node;
+                }
+                if (node instanceof AST_Defun && node !== self1) {
+                    let def = node.name.definition();
+                    if (!(def.global && !drop_funcs || in_use_ids.has(def.id))) return def.eliminated++, in_list ? MAP.skip : make_node(AST_EmptyStatement, node);
+                }
+                if (node instanceof AST_Definitions && !(parent instanceof AST_ForIn && parent.init === node)) {
+                    var drop_block = !(parent instanceof AST_Toplevel) && !(node instanceof AST_Var), body = [], head = [], tail = [], side_effects = [];
+                    switch(node.definitions.forEach(function(def) {
+                        def.value && (def.value = def.value.transform(tt));
+                        var is_destructure = def.name instanceof AST_Destructuring, sym = is_destructure ? new SymbolDef(null, {
+                            name: "<destructure>"
+                        }) : def.name.definition();
+                        if (drop_block && sym.global) return tail.push(def);
+                        if (!(drop_vars || drop_block) || is_destructure && (def.name.names.length || def.name.is_array || !0 != compressor.option("pure_getters")) || in_use_ids.has(sym.id)) {
+                            if (def.value && fixed_ids.has(sym.id) && fixed_ids.get(sym.id) !== def && (def.value = def.value.drop_side_effect_free(compressor)), def.name instanceof AST_SymbolVar) {
+                                var var_defs = var_defs_by_id.get(sym.id);
+                                if (var_defs.length > 1 && (!def.value || sym.orig.indexOf(def.name) > sym.eliminated)) {
+                                    if (def.value) {
+                                        var ref = make_node(AST_SymbolRef, def.name, def.name);
+                                        sym.references.push(ref);
+                                        var assign = make_node(AST_Assign, def, {
+                                            operator: "=",
+                                            logical: !1,
+                                            left: ref,
+                                            right: def.value
+                                        });
+                                        fixed_ids.get(sym.id) === def && fixed_ids.set(sym.id, assign), side_effects.push(assign.transform(tt));
+                                    }
+                                    remove(var_defs, def), sym.eliminated++;
+                                    return;
+                                }
+                            }
+                            def.value ? (side_effects.length > 0 && (tail.length > 0 ? (side_effects.push(def.value), def.value = make_sequence(def.value, side_effects)) : body.push(make_node(AST_SimpleStatement, node, {
+                                body: make_sequence(node, side_effects)
+                            })), side_effects = []), tail.push(def)) : head.push(def);
+                        } else if (sym.orig[0] instanceof AST_SymbolCatch) {
+                            var value = def.value && def.value.drop_side_effect_free(compressor);
+                            value && side_effects.push(value), def.value = null, head.push(def);
+                        } else {
+                            var value = def.value && def.value.drop_side_effect_free(compressor);
+                            value && side_effects.push(value), sym.eliminated++;
+                        }
+                    }), (head.length > 0 || tail.length > 0) && (node.definitions = head.concat(tail), body.push(node)), side_effects.length > 0 && body.push(make_node(AST_SimpleStatement, node, {
+                        body: make_sequence(node, side_effects)
+                    })), body.length){
+                        case 0:
+                            return in_list ? MAP.skip : make_node(AST_EmptyStatement, node);
+                        case 1:
+                            return body[0];
+                        default:
+                            return in_list ? MAP.splice(body) : make_node(AST_BlockStatement, node, {
+                                body
+                            });
+                    }
+                }
+                // certain combination of unused name + side effect leads to:
+                //    https://github.com/mishoo/UglifyJS2/issues/44
+                //    https://github.com/mishoo/UglifyJS2/issues/1830
+                //    https://github.com/mishoo/UglifyJS2/issues/1838
+                // that's an invalid AST.
+                // We fix it at this stage by moving the `var` outside the `for`.
+                if (node instanceof AST_For) return descend(node, this), node.init instanceof AST_BlockStatement && (block = node.init, node.init = block.body.pop(), block.body.push(node)), node.init instanceof AST_SimpleStatement ? node.init = node.init.body : is_empty(node.init) && (node.init = null), block ? in_list ? MAP.splice(block.body) : block : node;
+                if (node instanceof AST_LabeledStatement && node.body instanceof AST_For) {
+                    if (descend(node, this), node.body instanceof AST_BlockStatement) {
+                        var block = node.body;
+                        return node.body = block.body.pop(), block.body.push(node), in_list ? MAP.splice(block.body) : block;
+                    }
+                    return node;
+                }
+                if (node instanceof AST_BlockStatement) return (descend(node, this), in_list && node.body.every(can_be_evicted_from_block)) ? MAP.splice(node.body) : node;
+                if (node instanceof AST_Scope && !(node instanceof AST_ClassStaticBlock)) {
+                    let save_scope = scope;
+                    return scope = node, descend(node, this), scope = save_scope, node;
+                }
+            }
+        });
+        function scan_ref_scoped(node, descend) {
+            var node_def;
+            let sym = assign_as_unused(node);
+            if (sym instanceof AST_SymbolRef && !is_ref_of(node.left, AST_SymbolBlockDeclaration) && self1.variables.get(sym.name) === (node_def = sym.definition())) return node instanceof AST_Assign && (node.right.walk(tw), node_def.chained || node.left.fixed_value() !== node.right || fixed_ids.set(node_def.id, node)), !0;
+            if (node instanceof AST_SymbolRef) {
+                if (node_def = node.definition(), !in_use_ids.has(node_def.id) && (in_use_ids.set(node_def.id, node_def), node_def.orig[0] instanceof AST_SymbolCatch)) {
+                    let redef = node_def.scope.is_block_scope() && node_def.scope.get_defun_scope().variables.get(node_def.name);
+                    redef && in_use_ids.set(redef.id, redef);
+                }
+                return !0;
+            }
+            if (node instanceof AST_Class) return descend(), !0;
+            if (node instanceof AST_Scope && !(node instanceof AST_ClassStaticBlock)) {
+                var save_scope = scope;
+                return scope = node, descend(), scope = save_scope, !0;
+            }
+        }
+        self1.transform(tt);
     }), def_reduce_vars(AST_Node, noop);
-    const suppress = (node)=>walk(node, (node)=>{
+    let suppress = (node)=>walk(node, (node)=>{
             if (node instanceof AST_Symbol) {
                 var d = node.definition();
                 d && (node instanceof AST_SymbolRef && d.references.push(node), d.fixed = !1);
             }
         });
+    /**
+     * It's possible for a hoisted function to use something that's not defined yet. Example:
+     *
+     * hoisted();
+     * var defined_after = true;
+     * function hoisted() {
+     *   // use defined_after
+     * }
+     *
+     * This function is called on the parent to handle this issue.
+     */ function handle_defined_after_hoist(parent) {
+        let defuns = [];
+        walk(parent, (node)=>{
+            if (node !== parent && (node instanceof AST_Defun && defuns.push(node), node instanceof AST_Scope || node instanceof AST_SimpleStatement)) return !0;
+        });
+        let symbols_of_interest = new Set(), defuns_of_interest = new Set(), potential_conflicts = [];
+        for (let defun of defuns){
+            let fname_def = defun.name.definition(), found_self_ref_in_other_defuns = defuns.some((d)=>d !== defun && -1 !== d.enclosed.indexOf(fname_def));
+            for (let def of defun.enclosed)if (!1 !== def.fixed && def !== fname_def && def.scope.get_defun_scope() === parent && (0 !== def.assignments || 1 !== def.orig.length || !(def.orig[0] instanceof AST_SymbolDefun))) {
+                if (found_self_ref_in_other_defuns) {
+                    def.fixed = !1;
+                    continue;
+                }
+                // for the slower checks below this loop
+                potential_conflicts.push({
+                    defun,
+                    def,
+                    fname_def
+                }), symbols_of_interest.add(def.id), symbols_of_interest.add(fname_def.id), defuns_of_interest.add(defun);
+            }
+        }
+        // linearize all symbols, and locate defs that are read after the defun
+        if (potential_conflicts.length) {
+            // All "symbols of interest", that is, defuns or defs, that we found.
+            // These are placed in order so we can check which is after which.
+            let tw, found_symbols = [], found_symbol_writes = new Set(), defun_ranges = new Map();
+            for (let { def, defun, fname_def } of (parent.walk(tw = new TreeWalker((node, descend)=>{
+                if (node instanceof AST_Defun && defuns_of_interest.has(node)) {
+                    let start = found_symbols.length;
+                    descend();
+                    let end = found_symbols.length;
+                    return defun_ranges.set(node, {
+                        start,
+                        end
+                    }), !0;
+                }
+                // if we found a defun on the list, mark IN_DEFUN=id and descend
+                if (node instanceof AST_Symbol && node.thedef) {
+                    let id = node.definition().id;
+                    symbols_of_interest.has(id) && ((node instanceof AST_SymbolDeclaration || is_lhs(node, tw)) && found_symbol_writes.add(found_symbols.length), found_symbols.push(id));
+                }
+            })), potential_conflicts)){
+                let defun_range = defun_ranges.get(defun), find = (sym_id, starting_at = 0, must_be_write = !1)=>{
+                    let index = starting_at;
+                    for(; -1 !== (index = found_symbols.indexOf(sym_id, index));){
+                        if (index >= defun_range.start && index < defun_range.end) {
+                            index = defun_range.end;
+                            continue;
+                        }
+                        if (must_be_write && !found_symbol_writes.has(index)) {
+                            index++;
+                            continue;
+                        }
+                        break;
+                    }
+                    return index;
+                }, read_defun_at = find(fname_def.id), wrote_def_at = find(def.id, read_defun_at + 1, !0);
+                -1 != read_defun_at && -1 != wrote_def_at && wrote_def_at > read_defun_at && (def.fixed = !1);
+            }
+        }
+    }
     /***********************************************************************
-
-  A JavaScript tokenizer / parser / beautifier / compressor.
-  https://github.com/mishoo/UglifyJS2
-
-  -------------------------------- (C) ---------------------------------
-
-                           Author: Mihai Bazon
-                         <mihai.bazon@gmail.com>
-                       http://mihai.bazon.net/blog
-
-  Distributed under the BSD license:
-
-    Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-        * Redistributions of source code must retain the above
-          copyright notice, this list of conditions and the following
-          disclaimer.
-
-        * Redistributions in binary form must reproduce the above
-          copyright notice, this list of conditions and the following
-          disclaimer in the documentation and/or other materials
-          provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-    OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-    TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-    THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-    SUCH DAMAGE.
-
- ***********************************************************************/ function loop_body(x) {
+    
+      A JavaScript tokenizer / parser / beautifier / compressor.
+      https://github.com/mishoo/UglifyJS2
+    
+      -------------------------------- (C) ---------------------------------
+    
+                               Author: Mihai Bazon
+                             <mihai.bazon@gmail.com>
+                           http://mihai.bazon.net/blog
+    
+      Distributed under the BSD license:
+    
+        Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
+    
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions
+        are met:
+    
+            * Redistributions of source code must retain the above
+              copyright notice, this list of conditions and the following
+              disclaimer.
+    
+            * Redistributions in binary form must reproduce the above
+              copyright notice, this list of conditions and the following
+              disclaimer in the documentation and/or other materials
+              provided with the distribution.
+    
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+        EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+        PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+        OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+        PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+        PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+        THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+        TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+        THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+        SUCH DAMAGE.
+    
+     ***********************************************************************/ function loop_body(x) {
         return x instanceof AST_IterationStatement && x.body instanceof AST_BlockStatement ? x.body : x;
     }
-    // Remove code which we know is unreachable.
-    function trim_unreachable_code(compressor, stat, target) {
-        walk(stat, (node)=>node instanceof AST_Var ? (node.remove_initializers(), target.push(node), !0) : node instanceof AST_Defun && (node === stat || !compressor.has_directive("use strict")) ? (target.push(node === stat ? node : make_node(AST_Var, node, {
+    /** Called on code which we know is unreachable, to keep elements that affect outside of it. */ function trim_unreachable_code(compressor, stat, target) {
+        walk(stat, (node)=>{
+            if (node instanceof AST_Var) {
+                var decls;
+                let no_initializers = (decls = [], node.definitions.forEach(function(def) {
+                    def.name instanceof AST_SymbolDeclaration ? (def.value = null, decls.push(def)) : def.declarations_as_names().forEach((name)=>{
+                        decls.push(make_node(AST_VarDef, def, {
+                            name,
+                            value: null
+                        }));
+                    });
+                }), decls.length ? make_node(AST_Var, node, {
+                    definitions: decls
+                }) : null);
+                return no_initializers && target.push(no_initializers), !0;
+            }
+            return node instanceof AST_Defun && (node === stat || !compressor.has_directive("use strict")) ? (target.push(node === stat ? node : make_node(AST_Var, node, {
                 definitions: [
                     make_node(AST_VarDef, node, {
                         name: make_node(AST_SymbolVar, node.name, node.name),
                         value: null
                     })
                 ]
-            })), !0) : node instanceof AST_Export || node instanceof AST_Import ? (target.push(node), !0) : node instanceof AST_Scope || void 0);
+            })), !0) : node instanceof AST_Export || node instanceof AST_Import ? (target.push(node), !0) : node instanceof AST_Scope || void 0;
+        });
     }
-    // Tighten a bunch of statements together, and perform statement-level optimization.
-    function tighten_body(statements, compressor) {
-        var scope = compressor.find_parent(AST_Scope).get_defun_scope();
-        !function() {
-            var node = compressor.self(), level = 0;
-            do if (node instanceof AST_Catch || node instanceof AST_Finally) level++;
-            else if (node instanceof AST_IterationStatement) in_loop = !0;
-            else if (node instanceof AST_Scope) {
-                scope = node;
-                break;
-            } else node instanceof AST_Try && (in_try = !0);
+    /** Tighten a bunch of statements together, and perform statement-level optimization. */ function tighten_body(statements, compressor) {
+        let nearest_scope = compressor.find_scope(), defun_scope = nearest_scope.get_defun_scope(), { in_loop, in_try } = function() {
+            var node = compressor.self(), level = 0, in_loop = !1, in_try = !1;
+            do if (node instanceof AST_IterationStatement) in_loop = !0;
+            else if (node instanceof AST_Scope) break;
+            else node instanceof AST_TryBlock && (in_try = !0);
             while (node = compressor.parent(level++))
+            return {
+                in_loop,
+                in_try
+            };
         }();
-        var in_loop, in_try, CHANGED, max_iter = 10;
+        var CHANGED, max_iter = 10;
         do CHANGED = !1, function eliminate_spurious_blocks(statements) {
             for(var seen_dirs = [], i = 0; i < statements.length;){
                 var stat = statements[i];
@@ -7391,13 +8393,18 @@
                 trim_unreachable_code(compressor, stat, statements);
             });
         }(statements, compressor), compressor.option("if_return") && function(statements, compressor) {
-            for(var self1 = compressor.self(), multiple_if_returns = function(statements) {
+            var self1 = compressor.self(), multiple_if_returns = function(statements) {
                 for(var n = 0, i = statements.length; --i >= 0;){
                     var stat = statements[i];
                     if (stat instanceof AST_If && stat.body instanceof AST_Return && ++n > 1) return !0;
                 }
                 return !1;
-            }(statements), in_lambda = self1 instanceof AST_Lambda, i = statements.length; --i >= 0;){
+            }(statements), in_lambda = self1 instanceof AST_Lambda;
+            // Prevent extremely deep nesting
+            // https://github.com/terser/terser/issues/1432
+            // https://github.com/webpack/webpack/issues/17548
+            let iteration_start = Math.min(statements.length, 500);
+            for(var i = iteration_start; --i >= 0;){
                 var stat = statements[i], j = next_index(i), next = statements[j];
                 if (in_lambda && !next && stat instanceof AST_Return) {
                     if (!stat.value) {
@@ -7412,25 +8419,20 @@
                     }
                 }
                 if (stat instanceof AST_If) {
-                    var ab = aborts(stat.body);
-                    if (can_merge_flow(ab)) {
-                        ab.label && remove(ab.label.thedef.references, ab), CHANGED = !0, (stat = stat.clone()).condition = stat.condition.negate(compressor);
-                        var body = as_statement_array_with_return(stat.body, ab);
-                        stat.body = make_node(AST_BlockStatement, stat, {
+                    let ab, new_else;
+                    if (can_merge_flow(ab = aborts(stat.body)) && (new_else = as_statement_array_with_return(stat.body, ab))) {
+                        ab.label && remove(ab.label.thedef.references, ab), CHANGED = !0, (stat = stat.clone()).condition = stat.condition.negate(compressor), stat.body = make_node(AST_BlockStatement, stat, {
                             body: as_statement_array(stat.alternative).concat(extract_functions())
                         }), stat.alternative = make_node(AST_BlockStatement, stat, {
-                            body: body
+                            body: new_else
                         }), statements[i] = stat.transform(compressor);
                         continue;
                     }
-                    var ab = aborts(stat.alternative);
-                    if (can_merge_flow(ab)) {
+                    if (can_merge_flow(ab = aborts(stat.alternative)) && (new_else = as_statement_array_with_return(stat.alternative, ab))) {
                         ab.label && remove(ab.label.thedef.references, ab), CHANGED = !0, (stat = stat.clone()).body = make_node(AST_BlockStatement, stat.body, {
                             body: as_statement_array(stat.body).concat(extract_functions())
-                        });
-                        var body = as_statement_array_with_return(stat.alternative, ab);
-                        stat.alternative = make_node(AST_BlockStatement, stat.alternative, {
-                            body: body
+                        }), stat.alternative = make_node(AST_BlockStatement, stat.alternative, {
+                            body: new_else
                         }), statements[i] = stat.transform(compressor);
                         continue;
                     }
@@ -7502,8 +8504,8 @@
                 });
             }
             function as_statement_array_with_return(node, ab) {
-                var body = as_statement_array(node).slice(0, -1);
-                return ab.value && body.push(make_node(AST_SimpleStatement, ab.value, {
+                var body = as_statement_array(node);
+                if (ab === body[body.length - 1]) return body = body.slice(0, -1), ab.value && body.push(make_node(AST_SimpleStatement, ab.value, {
                     body: ab.value.expression
                 })), body;
             }
@@ -7545,7 +8547,7 @@
             }
             for(var prev, n = 0, i = 0; i < statements.length; i++){
                 var stat = statements[i];
-                if (!prev || (stat instanceof AST_Exit ? stat.value = cons_seq(stat.value || make_node(AST_Undefined, stat).transform(compressor)) : stat instanceof AST_For ? stat.init instanceof AST_Definitions || walk(prev.body, (node)=>node instanceof AST_Scope || (node instanceof AST_Binary && "in" === node.operator ? walk_abort : void 0)) || (stat.init ? stat.init = cons_seq(stat.init) : (stat.init = prev.body, n--, CHANGED = !0)) : stat instanceof AST_ForIn ? stat.init instanceof AST_Const || stat.init instanceof AST_Let || (stat.object = cons_seq(stat.object)) : stat instanceof AST_If ? stat.condition = cons_seq(stat.condition) : stat instanceof AST_Switch ? stat.expression = cons_seq(stat.expression) : stat instanceof AST_With && (stat.expression = cons_seq(stat.expression))), compressor.option("conditionals") && stat instanceof AST_If) {
+                if (prev && (stat instanceof AST_Exit ? stat.value = cons_seq(stat.value || make_node(AST_Undefined, stat).transform(compressor)) : stat instanceof AST_For ? stat.init instanceof AST_Definitions || walk(prev.body, (node)=>node instanceof AST_Scope || (node instanceof AST_Binary && "in" === node.operator ? walk_abort : void 0)) || (stat.init ? stat.init = cons_seq(stat.init) : (stat.init = prev.body, n--, CHANGED = !0)) : stat instanceof AST_ForIn ? stat.init instanceof AST_Const || stat.init instanceof AST_Let || (stat.object = cons_seq(stat.object)) : stat instanceof AST_If ? stat.condition = cons_seq(stat.condition) : stat instanceof AST_Switch ? stat.expression = cons_seq(stat.expression) : stat instanceof AST_With && (stat.expression = cons_seq(stat.expression))), compressor.option("conditionals") && stat instanceof AST_If) {
                     var decls = [], body = to_simple_statement(stat.body, decls), alt = to_simple_statement(stat.alternative, decls);
                     if (!1 !== body && !1 !== alt && decls.length > 0) {
                         var len = decls.length;
@@ -7567,7 +8569,7 @@
                 else if (stat instanceof AST_Exit) stat.value = extract_object_assignments(stat.value);
                 else if (stat instanceof AST_For) {
                     var exprs = join_object_assignments(prev, stat.init);
-                    exprs ? (CHANGED = !0, stat.init = exprs.length ? make_sequence(stat.init, exprs) : null, statements[++j] = stat) : prev instanceof AST_Var && (!stat.init || stat.init.TYPE == prev.TYPE) ? (stat.init && (prev.definitions = prev.definitions.concat(stat.init.definitions)), stat.init = prev, statements[j] = stat, CHANGED = !0) : defs && stat.init && defs.TYPE == stat.init.TYPE && declarations_only(stat.init) ? (defs.definitions = defs.definitions.concat(stat.init.definitions), stat.init = null, statements[++j] = stat, CHANGED = !0) : statements[++j] = stat;
+                    exprs ? (CHANGED = !0, stat.init = exprs.length ? make_sequence(stat.init, exprs) : null, statements[++j] = stat) : prev instanceof AST_Var && (!stat.init || stat.init.TYPE == prev.TYPE) ? (stat.init && (prev.definitions = prev.definitions.concat(stat.init.definitions)), stat.init = prev, statements[j] = stat, CHANGED = !0) : defs instanceof AST_Var && stat.init instanceof AST_Var && declarations_only(stat.init) ? (defs.definitions = defs.definitions.concat(stat.init.definitions), stat.init = null, statements[++j] = stat, CHANGED = !0) : statements[++j] = stat;
                 } else if (stat instanceof AST_ForIn) stat.object = extract_object_assignments(stat.object);
                 else if (stat instanceof AST_If) stat.condition = extract_object_assignments(stat.condition);
                 else if (stat instanceof AST_SimpleStatement) {
@@ -7577,7 +8579,7 @@
                         stat.body = make_sequence(stat.body, exprs);
                     }
                     statements[++j] = stat;
-                } else stat instanceof AST_Switch ? stat.expression = extract_object_assignments(stat.expression) : stat instanceof AST_With ? stat.expression = extract_object_assignments(stat.expression) : statements[++j] = stat;
+                } else stat instanceof AST_Switch || stat instanceof AST_With ? stat.expression = extract_object_assignments(stat.expression) : statements[++j] = stat;
             }
             function extract_object_assignments(value) {
                 statements[++j] = stat;
@@ -7594,7 +8596,7 @@
         // Will not attempt to collapse assignments into or past code blocks
         // which are not sequentially executed, e.g. loops and conditionals.
         function(statements, compressor) {
-            if (!scope.pinned()) for(var args, candidates = [], stat_index = statements.length, scanner = new TreeTransformer(function(node) {
+            if (!(nearest_scope.pinned() || defun_scope.pinned())) for(var args, candidates = [], stat_index = statements.length, scanner = new TreeTransformer(function(node) {
                 if (abort) return node;
                 // Skip nodes before `candidate` as quickly as possible
                 if (!hit) return node !== hit_stack[hit_index] ? node : ++hit_index < hit_stack.length ? handle_custom_scan_order(node) : (hit = !0, (stop_after = function find_stop(node, level, write_only) {
@@ -7603,19 +8605,20 @@
                 }(node, 0)) === node && (abort = !0), node);
                 // Stop immediately if these node types are encountered
                 var sym, parent = scanner.parent();
-                if (node instanceof AST_Assign && (node.logical || "=" != node.operator && lhs.equivalent_to(node.left)) || node instanceof AST_Await || node instanceof AST_Call && lhs instanceof AST_PropAccess && lhs.equivalent_to(node.expression) || node instanceof AST_Debugger || node instanceof AST_Destructuring || node instanceof AST_Expansion && node.expression instanceof AST_Symbol && (node.expression instanceof AST_This || node.expression.definition().references.length > 1) || node instanceof AST_IterationStatement && !(node instanceof AST_For) || node instanceof AST_LoopControl || node instanceof AST_Try || node instanceof AST_With || node instanceof AST_Yield || node instanceof AST_Export || node instanceof AST_Class || parent instanceof AST_For && node !== parent.init || !replace_all && node instanceof AST_SymbolRef && !node.is_declared(compressor) && !pure_prop_access_globals.has(node) || node instanceof AST_SymbolRef && parent instanceof AST_Call && has_annotation(parent, _NOINLINE)) return abort = !0, node;
+                if (node instanceof AST_Assign && (node.logical || "=" != node.operator && lhs.equivalent_to(node.left)) || node instanceof AST_Await || node instanceof AST_Call && lhs instanceof AST_PropAccess && lhs.equivalent_to(node.expression) || (node instanceof AST_Call || node instanceof AST_PropAccess) && node.optional || node instanceof AST_Debugger || node instanceof AST_Destructuring || node instanceof AST_Expansion && node.expression instanceof AST_Symbol && (node.expression instanceof AST_This || node.expression.definition().references.length > 1) || node instanceof AST_IterationStatement && !(node instanceof AST_For) || node instanceof AST_LoopControl || node instanceof AST_Try || node instanceof AST_With || node instanceof AST_Yield || node instanceof AST_Export || node instanceof AST_Class || parent instanceof AST_For && node !== parent.init || !replace_all && node instanceof AST_SymbolRef && !node.is_declared(compressor) && !pure_prop_access_globals.has(node) || node instanceof AST_SymbolRef && parent instanceof AST_Call && has_annotation(parent, _NOINLINE) || node instanceof AST_ObjectProperty && node.key instanceof AST_Node) return abort = !0, node;
                 // Replace variable with assignment when found
-                if (!stop_if_hit && (!lhs_local || !replace_all) && (parent instanceof AST_Binary && lazy_op.has(parent.operator) && parent.left !== node || parent instanceof AST_Conditional && parent.condition !== node || parent instanceof AST_If && parent.condition !== node) && (stop_if_hit = parent), can_replace && !(node instanceof AST_SymbolDeclaration) && lhs.equivalent_to(node) && !function(newScope, lvalues) {
-                    for (const { def } of lvalues.values()){
-                        let current = newScope;
-                        for(; current && current !== def.scope;){
-                            let nested_def = current.variables.get(def.name);
-                            if (nested_def && nested_def !== def) return !0;
-                            current = current.parent_scope;
+                if (!stop_if_hit && (!lhs_local || !replace_all) && (parent instanceof AST_Binary && lazy_op.has(parent.operator) && parent.left !== node || parent instanceof AST_Conditional && parent.condition !== node || parent instanceof AST_If && parent.condition !== node) && (stop_if_hit = parent), can_replace && !(node instanceof AST_SymbolDeclaration) && lhs.equivalent_to(node) && !/**
+             * Will any of the pulled-in lvalues shadow a variable in newScope or parents?
+             * similar to scope_encloses_variables_in_this_scope */ function(my_scope, lvalues) {
+                    for (let { def } of lvalues.values()){
+                        let looked_up = my_scope.find_variable(def.name);
+                        if (looked_up) {
+                            if (looked_up === def) continue;
+                            return !0;
                         }
                     }
                     return !1;
-                }(node.scope, lvalues)) {
+                }(scanner.find_scope() || nearest_scope, lvalues)) {
                     if (stop_if_hit) return abort = !0, node;
                     if (is_lhs(node, parent)) return value_def && replaced++, node;
                     if (replaced++, value_def && candidate instanceof AST_VarDef) return node;
@@ -7637,12 +8640,12 @@
                     if (node instanceof AST_VarDef) return node.value && side_effects_external(node.value);
                     if (lhs) {
                         if (node instanceof AST_Dot || node instanceof AST_Sub) return side_effects_external(node.expression, !0);
-                        if (node instanceof AST_SymbolRef) return node.definition().scope !== scope;
+                        if (node instanceof AST_SymbolRef) return node.definition().scope.get_defun_scope() !== defun_scope;
                     }
                     return !1;
                 }(node))) && (stop_after = node, node instanceof AST_Scope && (abort = !0)), handle_custom_scan_order(node);
             }, function(node) {
-                abort || (stop_after === node && (abort = !0), stop_if_hit !== node || (stop_if_hit = null));
+                abort || (stop_after === node && (abort = !0), stop_if_hit === node && (stop_if_hit = null));
             }), multi_replacer = new TreeTransformer(function(node) {
                 if (abort) return node;
                 // Skip nodes before `candidate` as quickly as possible
@@ -7656,7 +8659,7 @@
             }); --stat_index >= 0;){
                 0 == stat_index && compressor.option("unused") && function() {
                     var iife, fn = compressor.self();
-                    if (is_func_expr(fn) && !fn.name && !fn.uses_arguments && !fn.pinned() && (iife = compressor.parent()) instanceof AST_Call && iife.expression === fn && iife.args.every((arg)=>!(arg instanceof AST_Expansion))) {
+                    if (is_func_expr(fn) && !fn.name && !fn.uses_arguments && !fn.pinned() && (iife = compressor.parent()) instanceof AST_Call && iife.expression === fn && iife.args.every(arg_is_injectable)) {
                         var fn_strict = compressor.has_directive("use strict");
                         fn_strict && !member(fn_strict, fn.body) && (fn_strict = !1);
                         var len = fn.argnames.length;
@@ -7667,28 +8670,26 @@
                             // https://github.com/terser/terser/commit/011d3eb08cefe6922c7d1bdfa113fc4aeaca1b75
                             // This might mean that these two pieces of code (one here in collapse_vars and another in reduce_vars
                             // Might be doing the exact same thing.
-                            const def = sym.definition && sym.definition();
+                            let def = sym.definition && sym.definition();
                             if ((!def || !(def.orig.length > 1)) && (args.unshift(make_node(AST_VarDef, sym, {
                                 name: sym,
                                 value: arg
-                            })), !names.has(sym.name))) {
-                                if (names.add(sym.name), sym instanceof AST_Expansion) {
-                                    var elements = iife.args.slice(i);
-                                    elements.every((arg)=>!has_overlapping_symbol(fn, arg, fn_strict)) && candidates.unshift([
-                                        make_node(AST_VarDef, sym, {
-                                            name: sym.expression,
-                                            value: make_node(AST_Array, iife, {
-                                                elements: elements
-                                            })
-                                        })
-                                    ]);
-                                } else arg ? (arg instanceof AST_Lambda && arg.pinned() || has_overlapping_symbol(fn, arg, fn_strict)) && (arg = null) : arg = make_node(AST_Undefined, sym).transform(compressor), arg && candidates.unshift([
+                            })), !names.has(sym.name))) if (names.add(sym.name), sym instanceof AST_Expansion) {
+                                var elements = iife.args.slice(i);
+                                elements.every((arg)=>!has_overlapping_symbol(fn, arg, fn_strict)) && candidates.unshift([
                                     make_node(AST_VarDef, sym, {
-                                        name: sym,
-                                        value: arg
+                                        name: sym.expression,
+                                        value: make_node(AST_Array, iife, {
+                                            elements: elements
+                                        })
                                     })
                                 ]);
-                            }
+                            } else arg ? (arg instanceof AST_Lambda && arg.pinned() || has_overlapping_symbol(fn, arg, fn_strict)) && (arg = null) : arg = make_node(AST_Undefined, sym).transform(compressor), arg && candidates.unshift([
+                                make_node(AST_VarDef, sym, {
+                                    name: sym,
+                                    value: arg
+                                })
+                            ]);
                         }
                     }
                 }();
@@ -7722,7 +8723,7 @@
                                 }
                             }(expr) : !compressor.exposed(def))) return make_node(AST_SymbolRef, expr.name, expr.name);
                         } else {
-                            const lhs = expr instanceof AST_Assign ? expr.left : expr.expression;
+                            let lhs = expr instanceof AST_Assign ? expr.left : expr.expression;
                             return !is_ref_of(lhs, AST_SymbolConst) && !is_ref_of(lhs, AST_SymbolLet) && lhs;
                         }
                     }(candidate);
@@ -7745,7 +8746,7 @@
                             var tw = new TreeWalker(function(node) {
                                 for(var sym = node; sym instanceof AST_PropAccess;)sym = sym.expression;
                                 if (sym instanceof AST_SymbolRef) {
-                                    const prev = lvalues.get(sym.name);
+                                    let prev = lvalues.get(sym.name);
                                     prev && prev.modified || lvalues.set(sym.name, {
                                         def: sym.definition(),
                                         modified: is_modified(compressor, tw, node, node, 0)
@@ -7755,7 +8756,7 @@
                             return get_rvalue(expr).walk(tw), lvalues;
                         }(candidate), lhs_local = function(lhs) {
                             for(; lhs instanceof AST_PropAccess;)lhs = lhs.expression;
-                            return lhs instanceof AST_SymbolRef && lhs.definition().scope === scope && !(in_loop && (lvalues.has(lhs.name) || candidate instanceof AST_Unary || candidate instanceof AST_Assign && !candidate.logical && "=" != candidate.operator));
+                            return lhs instanceof AST_SymbolRef && lhs.definition().scope.get_defun_scope() === defun_scope && !(in_loop && (lvalues.has(lhs.name) || candidate instanceof AST_Unary || candidate instanceof AST_Assign && !candidate.logical && "=" != candidate.operator));
                         }(lhs);
                         lhs instanceof AST_SymbolRef && lvalues.set(lhs.name, {
                             def: lhs.definition(),
@@ -7771,7 +8772,7 @@
                             return !1;
                         }(), may_throw = candidate.may_throw(compressor), funarg = candidate.name instanceof AST_SymbolFunarg, hit = funarg, abort = !1, replaced = 0, can_replace = !args || !hit;
                         if (!can_replace) {
-                            for(var j = compressor.self().argnames.lastIndexOf(candidate.name) + 1; !abort && j < args.length; j++)args[j].transform(scanner);
+                            for(let j = compressor.self().argnames.lastIndexOf(candidate.name) + 1; !abort && j < args.length; j++)args[j].transform(scanner);
                             can_replace = !0;
                         }
                         for(var i = stat_index; !abort && i < statements.length; i++)statements[i].transform(scanner);
@@ -7845,8 +8846,8 @@
                         return !1;
                     }(node.definition(), fn))) {
                         var s = node.definition().scope;
-                        if (s !== scope) {
-                            for(; s = s.parent_scope;)if (s === scope) return !0;
+                        if (s !== defun_scope) {
+                            for(; s = s.parent_scope;)if (s === defun_scope) return !0;
                         }
                         return found = !0;
                     }
@@ -7857,16 +8858,18 @@
                     }
                 })), found;
             }
+            function arg_is_injectable(arg) {
+                return !(arg instanceof AST_Expansion || walk(arg, (node)=>{
+                    if (node instanceof AST_Await) return walk_abort;
+                }));
+            }
             function get_rvalue(expr) {
                 return expr instanceof AST_Assign ? expr.right : expr.value;
             }
             function may_modify(sym) {
                 if (!sym.definition) return !0; // AST_Destructuring
                 var def = sym.definition();
-                return (1 != def.orig.length || !(def.orig[0] instanceof AST_SymbolDefun)) && (def.scope.get_defun_scope() !== scope || !def.references.every((ref)=>{
-                    var s = ref.scope.get_defun_scope();
-                    return "Scope" == s.TYPE && (s = s.parent_scope), s === scope;
-                }));
+                return (1 != def.orig.length || !(def.orig[0] instanceof AST_SymbolDefun)) && (def.scope.get_defun_scope() !== defun_scope || def.references.some((ref)=>ref.scope.get_defun_scope() !== defun_scope));
             }
         }(statements, compressor);
         while (CHANGED && max_iter-- > 0)
@@ -7879,7 +8882,7 @@
                 var line = block.body[i];
                 if (line instanceof AST_Var && declarations_only(line)) decls.push(line);
                 else {
-                    if (stat) return !1;
+                    if (stat || line instanceof AST_Const || line instanceof AST_Let) return !1;
                     stat = line;
                 }
             }
@@ -7896,7 +8899,7 @@
                         var node = exprs[0];
                         if (!(node instanceof AST_Assign) || "=" != node.operator || !(node.left instanceof AST_PropAccess)) break;
                         var sym = node.left.expression;
-                        if (!(sym instanceof AST_SymbolRef) || def.name.name != sym.name || !node.right.is_constant_expression(scope)) break;
+                        if (!(sym instanceof AST_SymbolRef) || def.name.name != sym.name || !node.right.is_constant_expression(nearest_scope)) break;
                         var prop = node.left.property;
                         if (prop instanceof AST_Node && (prop = prop.evaluate(compressor)), prop instanceof AST_Node) break;
                         prop = "" + prop;
@@ -7926,15 +8929,23 @@
             }
         }
     }
+    function scope_encloses_variables_in_this_scope(scope, pulled_scope) {
+        for (let enclosed of pulled_scope.enclosed){
+            if (pulled_scope.variables.has(enclosed.name)) continue;
+            let looked_up = scope.find_variable(enclosed.name);
+            if (looked_up) {
+                if (looked_up === enclosed) continue;
+                return !0;
+            }
+        }
+        return !1;
+    }
     def_reduce_vars(AST_Accessor, function(tw, descend, compressor) {
         return push(tw), reset_variables(tw, compressor, this), descend(), pop(tw), !0;
     }), def_reduce_vars(AST_Assign, function(tw, descend, compressor) {
         var node = this;
-        if (node.left instanceof AST_Destructuring) {
-            suppress(node.left);
-            return;
-        }
-        const finish_walk = ()=>{
+        if (node.left instanceof AST_Destructuring) return void suppress(node.left);
+        let finish_walk = ()=>{
             if (node.logical) return node.left.walk(tw), push(tw), node.right.walk(tw), pop(tw), !0;
         };
         var sym = node.left;
@@ -7961,6 +8972,8 @@
         return push(tw), this.expression.walk(tw), pop(tw), push(tw), walk_body(this, tw), pop(tw), !0;
     }), def_reduce_vars(AST_Class, function(tw, descend) {
         return clear_flag(this, 0b00010000), push(tw), descend(), pop(tw), !0;
+    }), def_reduce_vars(AST_ClassStaticBlock, function(tw, descend, compressor) {
+        reset_block_variables(compressor, this);
     }), def_reduce_vars(AST_Conditional, function(tw) {
         return this.condition.walk(tw), push(tw), this.consequent.walk(tw), pop(tw), push(tw), this.alternative.walk(tw), pop(tw), !0;
     }), def_reduce_vars(AST_Chain, function(tw, descend) {
@@ -7968,11 +8981,11 @@
         // If we walk normally we don't go in that order because we would pop before pushing again
         // Solution: AST_PropAccess and AST_Call push when they are optional, and never pop.
         // Then we pop everything when they are done being walked.
-        const safe_ids = tw.safe_ids;
+        let safe_ids = tw.safe_ids;
         return descend(), // Unroll back to start
         tw.safe_ids = safe_ids, !0;
     }), def_reduce_vars(AST_Call, function(tw) {
-        for (const arg of (this.expression.walk(tw), this.optional && // Never pop -- it's popped at AST_Chain above
+        for (let arg of (this.expression.walk(tw), this.optional && // Never pop -- it's popped at AST_Chain above
         push(tw), this.args))arg.walk(tw);
         return !0;
     }), def_reduce_vars(AST_PropAccess, function(tw) {
@@ -7982,11 +8995,7 @@
         return push(tw), descend(), pop(tw), !0;
     }), def_reduce_vars(AST_Lambda, function(tw, descend, compressor) {
         var iife;
-        if (clear_flag(this, 0b00010000), push(tw), reset_variables(tw, compressor, this), this.uses_arguments) {
-            descend(), pop(tw);
-            return;
-        }
-        return !this.name && (iife = tw.parent()) instanceof AST_Call && iife.expression === this && !iife.args.some((arg)=>arg instanceof AST_Expansion) && this.argnames.every((arg_name)=>arg_name instanceof AST_Symbol) && // Virtually turn IIFE parameters into variable definitions:
+        return clear_flag(this, 0b00010000), push(tw), reset_variables(tw, compressor, this), !this.name && !this.uses_arguments && !this.pinned() && (iife = tw.parent()) instanceof AST_Call && iife.expression === this && !iife.args.some((arg)=>arg instanceof AST_Expansion) && this.argnames.every((arg_name)=>arg_name instanceof AST_Symbol) && // Virtually turn IIFE parameters into variable definitions:
         //   (function(a,b) {...})(c,d) => (function() {var a=c,b=d; ...})()
         // So existing transformation rules can work on them.
         this.argnames.forEach((arg, i)=>{
@@ -7997,18 +9006,18 @@
                     return iife.args[i] || make_node(AST_Undefined, iife);
                 }, tw.loop_ids.set(d.id, tw.in_loop), mark(tw, d, !0)) : d.fixed = !1);
             }
-        }), descend(), pop(tw), !0;
+        }), descend(), pop(tw), handle_defined_after_hoist(this), !0;
     }), def_reduce_vars(AST_Do, function(tw, descend, compressor) {
         reset_block_variables(compressor, this);
-        const saved_loop = tw.in_loop;
+        let saved_loop = tw.in_loop;
         return tw.in_loop = this, push(tw), this.body.walk(tw), has_break_or_continue(this) && (pop(tw), push(tw)), this.condition.walk(tw), pop(tw), tw.in_loop = saved_loop, !0;
     }), def_reduce_vars(AST_For, function(tw, descend, compressor) {
         reset_block_variables(compressor, this), this.init && this.init.walk(tw);
-        const saved_loop = tw.in_loop;
+        let saved_loop = tw.in_loop;
         return tw.in_loop = this, push(tw), this.condition && this.condition.walk(tw), this.body.walk(tw), this.step && (has_break_or_continue(this) && (pop(tw), push(tw)), this.step.walk(tw)), pop(tw), tw.in_loop = saved_loop, !0;
     }), def_reduce_vars(AST_ForIn, function(tw, descend, compressor) {
         reset_block_variables(compressor, this), suppress(this.init), this.object.walk(tw);
-        const saved_loop = tw.in_loop;
+        let saved_loop = tw.in_loop;
         return tw.in_loop = this, push(tw), this.body.walk(tw), pop(tw), tw.in_loop = saved_loop, !0;
     }), def_reduce_vars(AST_If, function(tw) {
         return this.condition.walk(tw), push(tw), this.body.walk(tw), pop(tw), this.alternative && (push(tw), this.alternative.walk(tw), pop(tw)), !0;
@@ -8020,11 +9029,11 @@
         var value, fixed_value, d = this.definition();
         (d.references.push(this), 1 == d.references.length && !d.fixed && d.orig[0] instanceof AST_SymbolDefun && tw.loop_ids.set(d.id, tw.in_loop), void 0 !== d.fixed && safe_to_read(tw, d)) ? d.fixed && ((fixed_value = this.fixed_value()) instanceof AST_Lambda && is_recursive_ref(tw, d) ? d.recursive_refs++ : fixed_value && !compressor.exposed(d) && compressor.option("unused") && !d.scope.pinned() && d.references.length - d.recursive_refs == 1 && tw.loop_ids.get(d.id) === tw.in_loop ? d.single_use = fixed_value instanceof AST_Lambda && !fixed_value.pinned() || fixed_value instanceof AST_Class || d.scope === this.scope && fixed_value.is_constant_expression() : d.single_use = !1, is_modified(compressor, tw, this, fixed_value, 0, !!(value = fixed_value) && (value.is_constant() || value instanceof AST_Lambda || value instanceof AST_This)) && (d.single_use ? d.single_use = "m" : d.fixed = !1)) : d.fixed = !1, mark_escaped(tw, d, this.scope, this, fixed_value, 0, 1);
     }), def_reduce_vars(AST_Toplevel, function(tw, descend, compressor) {
-        this.globals.forEach(function(def) {
+        return this.globals.forEach(function(def) {
             reset_def(compressor, def);
-        }), reset_variables(tw, compressor, this);
+        }), reset_variables(tw, compressor, this), descend(), handle_defined_after_hoist(this), !0;
     }), def_reduce_vars(AST_Try, function(tw, descend, compressor) {
-        return reset_block_variables(compressor, this), push(tw), walk_body(this, tw), pop(tw), this.bcatch && (push(tw), this.bcatch.walk(tw), pop(tw)), this.bfinally && this.bfinally.walk(tw), !0;
+        return reset_block_variables(compressor, this), push(tw), this.body.walk(tw), pop(tw), this.bcatch && (push(tw), this.bcatch.walk(tw), pop(tw)), this.bfinally && this.bfinally.walk(tw), !0;
     }), def_reduce_vars(AST_Unary, function(tw) {
         var node = this;
         if ("++" === node.operator || "--" === node.operator) {
@@ -8050,64 +9059,109 @@
         }
     }), def_reduce_vars(AST_VarDef, function(tw, descend) {
         var node = this;
-        if (node.name instanceof AST_Destructuring) {
-            suppress(node.name);
-            return;
-        }
+        if (node.name instanceof AST_Destructuring) return void suppress(node.name);
         var d = node.name.definition();
-        if (node.value) {
-            if (safe_to_assign(tw, d, node.name.scope, node.value)) return d.fixed = function() {
-                return node.value;
-            }, tw.loop_ids.set(d.id, tw.in_loop), mark(tw, d, !1), descend(), mark(tw, d, !0), !0;
-            d.fixed = !1;
-        }
+        if (node.value) if (safe_to_assign(tw, d, node.name.scope, node.value)) return d.fixed = function() {
+            return node.value;
+        }, tw.loop_ids.set(d.id, tw.in_loop), mark(tw, d, !1), descend(), mark(tw, d, !0), !0;
+        else d.fixed = !1;
     }), def_reduce_vars(AST_While, function(tw, descend, compressor) {
         reset_block_variables(compressor, this);
-        const saved_loop = tw.in_loop;
+        let saved_loop = tw.in_loop;
         return tw.in_loop = this, push(tw), descend(), pop(tw), tw.in_loop = saved_loop, !0;
     });
+    var def_find_defs = function(node, func) {
+        node.DEFMETHOD("_find_defs", func);
+    };
+    function to_node(value, orig) {
+        if (value instanceof AST_Node) return value instanceof AST_Constant || // Value may be a function, an array including functions and even a complex assign / block expression,
+        // so it should never be shared in different places.
+        // Otherwise wrong information may be used in the compression phase
+        (value = value.clone(!0)), make_node(value.CTOR, orig, value);
+        if (Array.isArray(value)) return make_node(AST_Array, orig, {
+            elements: value.map(function(value) {
+                return to_node(value, orig);
+            })
+        });
+        if (value && "object" == typeof value) {
+            var props = [];
+            for(var key in value)HOP(value, key) && props.push(make_node(AST_ObjectKeyVal, orig, {
+                key: key,
+                value: to_node(value[key], orig)
+            }));
+            return make_node(AST_Object, orig, {
+                properties: props
+            });
+        }
+        return make_node_from_constant(value, orig);
+    }
+    AST_Toplevel.DEFMETHOD("resolve_defines", function(compressor) {
+        return compressor.option("global_defs") ? (this.figure_out_scope({
+            ie8: compressor.option("ie8")
+        }), this.transform(new TreeTransformer(function(node) {
+            var def = node._find_defs(compressor, "");
+            if (def) {
+                for(var parent, level = 0, child = node; (parent = this.parent(level++)) && parent instanceof AST_PropAccess && parent.expression === child;)child = parent;
+                if (!is_lhs(child, parent)) return def;
+            }
+        }))) : this;
+    }), def_find_defs(AST_Node, noop), def_find_defs(AST_Chain, function(compressor, suffix) {
+        return this.expression._find_defs(compressor, suffix);
+    }), def_find_defs(AST_Dot, function(compressor, suffix) {
+        return this.expression._find_defs(compressor, "." + this.property + suffix);
+    }), def_find_defs(AST_SymbolDeclaration, function() {
+        if (!this.global()) return;
+    }), def_find_defs(AST_SymbolRef, function(compressor, suffix) {
+        if (this.global()) {
+            var defines = compressor.option("global_defs"), name = this.name + suffix;
+            if (HOP(defines, name)) return to_node(defines[name], this);
+        }
+    }), def_find_defs(AST_ImportMeta, function(compressor, suffix) {
+        var defines = compressor.option("global_defs"), name = "import.meta" + suffix;
+        if (HOP(defines, name)) return to_node(defines[name], this);
+    });
     /***********************************************************************
-
-  A JavaScript tokenizer / parser / beautifier / compressor.
-  https://github.com/mishoo/UglifyJS2
-
-  -------------------------------- (C) ---------------------------------
-
-                           Author: Mihai Bazon
-                         <mihai.bazon@gmail.com>
-                       http://mihai.bazon.net/blog
-
-  Distributed under the BSD license:
-
-    Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-        * Redistributions of source code must retain the above
-          copyright notice, this list of conditions and the following
-          disclaimer.
-
-        * Redistributions in binary form must reproduce the above
-          copyright notice, this list of conditions and the following
-          disclaimer in the documentation and/or other materials
-          provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-    OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-    TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-    THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-    SUCH DAMAGE.
-
- ***********************************************************************/ class Compressor extends TreeWalker {
+    
+      A JavaScript tokenizer / parser / beautifier / compressor.
+      https://github.com/mishoo/UglifyJS2
+    
+      -------------------------------- (C) ---------------------------------
+    
+                               Author: Mihai Bazon
+                             <mihai.bazon@gmail.com>
+                           http://mihai.bazon.net/blog
+    
+      Distributed under the BSD license:
+    
+        Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
+    
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions
+        are met:
+    
+            * Redistributions of source code must retain the above
+              copyright notice, this list of conditions and the following
+              disclaimer.
+    
+            * Redistributions in binary form must reproduce the above
+              copyright notice, this list of conditions and the following
+              disclaimer in the documentation and/or other materials
+              provided with the distribution.
+    
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+        EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+        PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+        OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+        PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+        PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+        THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+        TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+        THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+        SUCH DAMAGE.
+    
+     ***********************************************************************/ class Compressor extends TreeWalker {
         constructor(options, { false_by_default = !1, mangle_options = !1 }){
             super(), void 0 === options.defaults || options.defaults || (false_by_default = !0), this.options = defaults(options, {
                 arguments: !1,
@@ -8138,6 +9192,7 @@
                 keep_fargs: !0,
                 keep_fnames: !1,
                 keep_infinity: !1,
+                lhs_constants: !false_by_default,
                 loops: !false_by_default,
                 module: !1,
                 negate_iife: !false_by_default,
@@ -8145,6 +9200,7 @@
                 properties: !false_by_default,
                 pure_getters: !false_by_default && "strict",
                 pure_funcs: null,
+                pure_new: !1,
                 reduce_funcs: !false_by_default,
                 reduce_vars: !false_by_default,
                 sequences: !false_by_default,
@@ -8190,7 +9246,15 @@
                 vars: toplevel
             };
             var sequences = this.options.sequences;
-            this.sequences_limit = 1 == sequences ? 800 : 0 | sequences, this.evaluated_regexps = new Map(), this._toplevel = void 0, this.mangle_options = mangle_options;
+            this.sequences_limit = 1 == sequences ? 800 : 0 | sequences, this.evaluated_regexps = new Map(), this._toplevel = void 0, this._mangle_options = mangle_options ? format_mangler_options(mangle_options) : mangle_options;
+        }
+        mangle_options() {
+            var nth_identifier = this._mangle_options && this._mangle_options.nth_identifier || base54, module1 = this._mangle_options && this._mangle_options.module || this.option("module");
+            return {
+                ie8: this.option("ie8"),
+                nth_identifier,
+                module: module1
+            };
         }
         option(key) {
             return this.options[key];
@@ -8210,16 +9274,27 @@
                 self1 = p;
             }
         }
+        in_32_bit_context() {
+            if (!this.option("evaluate")) return !1;
+            for(var p, self1 = this.self(), i = 0; p = this.parent(i); i++){
+                if (p instanceof AST_Binary && bitwise_binop.has(p.operator)) return !0;
+                if (p instanceof AST_UnaryPrefix) return "~" === p.operator;
+                if ((!(p instanceof AST_Binary) || "&&" != p.operator && "||" != p.operator && "??" != p.operator) && (!(p instanceof AST_Conditional) || p.condition === self1) && p.tail_node() !== self1) return !1;
+                self1 = p;
+            }
+        }
+        in_computed_key() {
+            if (!this.option("evaluate")) return !1;
+            for(var p, self1 = this.self(), i = 0; p = this.parent(i); i++)if (p instanceof AST_ObjectProperty && p.key === self1) return !0;
+            return !1;
+        }
         get_toplevel() {
             return this._toplevel;
         }
         compress(toplevel) {
             toplevel = toplevel.resolve_defines(this), this._toplevel = toplevel, this.option("expression") && this._toplevel.process_expression(!0);
-            for(var passes = +this.options.passes || 1, min_count = 1 / 0, stopping = !1, nth_identifier = this.mangle_options && this.mangle_options.nth_identifier || base54, mangle = {
-                ie8: this.option("ie8"),
-                nth_identifier: nth_identifier
-            }, pass = 0; pass < passes; pass++)if (this._toplevel.figure_out_scope(mangle), 0 === pass && this.option("drop_console") && // must be run before reduce_vars and compress pass
-            (this._toplevel = this._toplevel.drop_console()), (pass > 0 || this.option("reduce_vars")) && this._toplevel.reset_opt_flags(this), this._toplevel = this._toplevel.transform(this), passes > 1) {
+            for(var passes = +this.options.passes || 1, min_count = 1 / 0, stopping = !1, mangle = this.mangle_options(), pass = 0; pass < passes; pass++)if (this._toplevel.figure_out_scope(mangle), 0 === pass && this.option("drop_console") && // must be run before reduce_vars and compress pass
+            (this._toplevel = this._toplevel.drop_console(this.option("drop_console"))), (pass > 0 || this.option("reduce_vars")) && this._toplevel.reset_opt_flags(this), this._toplevel = this._toplevel.transform(this), passes > 1) {
                 let count = 0;
                 if (walk(this._toplevel, ()=>{
                     count++;
@@ -8246,6 +9321,9 @@
             var opt = node.optimize(this);
             return was_scope && opt instanceof AST_Scope && (opt.drop_unused(this), descend(opt, this)), opt === node && set_flag(opt, 0b0000000100000000), opt;
         }
+        /** Alternative to plain is_lhs() which doesn't work within .optimize() */ is_lhs() {
+            return is_lhs(this.stack[this.stack.length - 1], this.stack[this.stack.length - 2]);
+        }
     }
     function def_optimize(node, optimizer) {
         node.DEFMETHOD("optimize", function(compressor) {
@@ -8254,13 +9332,6 @@
             return set_flag(opt, 0b0000001000000000), opt;
         });
     }
-    function find_scope(tw) {
-        for(let i = 0;; i++){
-            const p = tw.parent(i);
-            if (p instanceof AST_Toplevel || p instanceof AST_Lambda) return p;
-            if (p.block_scope) return p.block_scope;
-        }
-    }
     function find_variable(compressor, name) {
         for(var scope, i = 0; (scope = compressor.parent(i++)) && !(scope instanceof AST_Scope);)if (scope instanceof AST_Catch && scope.argname) {
             scope = scope.argname.definition().scope;
@@ -8268,23 +9339,33 @@
         }
         return scope.find_variable(name);
     }
-    function is_empty(thing) {
-        return null === thing || thing instanceof AST_EmptyStatement || thing instanceof AST_BlockStatement && 0 == thing.body.length;
-    }
     def_optimize(AST_Node, function(self1) {
         return self1;
-    }), AST_Toplevel.DEFMETHOD("drop_console", function() {
+    }), AST_Toplevel.DEFMETHOD("drop_console", function(options) {
+        var isArray = Array.isArray(options);
         return this.transform(new TreeTransformer(function(self1) {
-            if ("Call" == self1.TYPE) {
+            if ("Call" === self1.TYPE) {
                 var exp = self1.expression;
-                if (exp instanceof AST_PropAccess) {
+                if (exp instanceof AST_PropAccess && (!isArray || -1 !== options.indexOf(exp.property))) {
                     for(var name = exp.expression; name.expression;)name = name.expression;
                     if (is_undeclared_ref(name) && "console" == name.name) return make_node(AST_Undefined, self1);
                 }
             }
         }));
     }), AST_Node.DEFMETHOD("equivalent_to", function(node) {
-        return equivalent_to(this, node);
+        return ((tree1, tree2)=>{
+            if (!shallow_cmp(tree1, tree2)) return !1;
+            let walk_1_state = [
+                tree1
+            ], walk_2_state = [
+                tree2
+            ], walk_1_push = walk_1_state.push.bind(walk_1_state), walk_2_push = walk_2_state.push.bind(walk_2_state);
+            for(; walk_1_state.length && walk_2_state.length;){
+                let node_1 = walk_1_state.pop(), node_2 = walk_2_state.pop();
+                if (!shallow_cmp(node_1, node_2) || (node_1._children_backwards(walk_1_push), node_2._children_backwards(walk_2_push), walk_1_state.length !== walk_2_state.length)) return !1;
+            }
+            return 0 == walk_1_state.length && 0 == walk_2_state.length;
+        })(this, node);
     }), AST_Scope.DEFMETHOD("process_expression", function(insert, compressor) {
         var self1 = this, tt = new TreeTransformer(function(node) {
             if (insert && node instanceof AST_SimpleStatement) return make_node(AST_Return, node, {
@@ -8315,7 +9396,7 @@
         });
         self1.transform(tt);
     }), AST_Toplevel.DEFMETHOD("reset_opt_flags", function(compressor) {
-        const self1 = this, reduce_vars = compressor.option("reduce_vars"), preparation = new TreeWalker(function(node, descend) {
+        let self1 = this, reduce_vars = compressor.option("reduce_vars"), preparation = new TreeWalker(function(node, descend) {
             if (clear_flag(node, 1792), reduce_vars) return compressor.top_retain && node instanceof AST_Defun // Only functions are retained
              && preparation.parent() === self1 && set_flag(node, 0b0000010000000000), node.reduce_vars(preparation, descend, compressor);
         });
@@ -8359,189 +9440,9 @@
                 return make_node(AST_EmptyStatement, self1);
         }
         return self1;
-    }), def_optimize(AST_Lambda, opt_AST_Lambda);
-    const r_keep_assign = /keep_assign/;
-    // TODO this only works with AST_Defun, shouldn't it work for other ways of defining functions?
-    function retain_top_func(fn, compressor) {
-        return compressor.top_retain && fn instanceof AST_Defun && has_flag(fn, 0b0000010000000000) && fn.name && compressor.top_retain(fn.name);
-    }
-    AST_Scope.DEFMETHOD("drop_unused", function(compressor) {
-        if (!compressor.option("unused") || compressor.has_directive("use asm")) return;
+    }), def_optimize(AST_Lambda, opt_AST_Lambda), AST_Scope.DEFMETHOD("hoist_declarations", function(compressor) {
         var self1 = this;
-        if (self1.pinned()) return;
-        var drop_funcs = !(self1 instanceof AST_Toplevel) || compressor.toplevel.funcs, drop_vars = !(self1 instanceof AST_Toplevel) || compressor.toplevel.vars;
-        const assign_as_unused = r_keep_assign.test(compressor.option("unused")) ? return_false : function(node) {
-            return node instanceof AST_Assign && !node.logical && (has_flag(node, 0b00100000) || "=" == node.operator) ? node.left : node instanceof AST_Unary && has_flag(node, 0b00100000) ? node.expression : void 0;
-        };
-        var in_use_ids = new Map(), fixed_ids = new Map();
-        self1 instanceof AST_Toplevel && compressor.top_retain && self1.variables.forEach(function(def) {
-            compressor.top_retain(def) && !in_use_ids.has(def.id) && in_use_ids.set(def.id, def);
-        });
-        var var_defs_by_id = new Map(), initializations = new Map(), scope = this, tw = new TreeWalker(function(node, descend) {
-            if (node instanceof AST_Lambda && node.uses_arguments && !tw.has_directive("use strict") && node.argnames.forEach(function(argname) {
-                if (argname instanceof AST_SymbolDeclaration) {
-                    var def = argname.definition();
-                    in_use_ids.has(def.id) || in_use_ids.set(def.id, def);
-                }
-            }), node !== self1) {
-                if (node instanceof AST_Defun || node instanceof AST_DefClass) {
-                    var node_def = node.name.definition();
-                    if ((tw.parent() instanceof AST_Export || !drop_funcs && scope === self1) && node_def.global && !in_use_ids.has(node_def.id) && in_use_ids.set(node_def.id, node_def), node instanceof AST_DefClass) for (const prop of (node.extends && (node.extends.has_side_effects(compressor) || node.extends.may_throw(compressor)) && node.extends.walk(tw), node.properties))(prop.has_side_effects(compressor) || prop.may_throw(compressor)) && prop.walk(tw);
-                    return map_add(initializations, node_def.id, node), !0; // don't go in nested scopes
-                }
-                if (node instanceof AST_SymbolFunarg && scope === self1 && map_add(var_defs_by_id, node.definition().id, node), node instanceof AST_Definitions && scope === self1) {
-                    const in_export = tw.parent() instanceof AST_Export;
-                    return node.definitions.forEach(function(def) {
-                        if (def.name instanceof AST_SymbolVar && map_add(var_defs_by_id, def.name.definition().id, def), (in_export || !drop_vars) && walk(def.name, (node)=>{
-                            if (node instanceof AST_SymbolDeclaration) {
-                                const def = node.definition();
-                                (in_export || def.global) && !in_use_ids.has(def.id) && in_use_ids.set(def.id, def);
-                            }
-                        }), def.value) {
-                            if (def.name instanceof AST_Destructuring) def.walk(tw);
-                            else {
-                                var node_def = def.name.definition();
-                                map_add(initializations, node_def.id, def.value), node_def.chained || def.name.fixed_value() !== def.value || fixed_ids.set(node_def.id, def);
-                            }
-                            def.value.has_side_effects(compressor) && def.value.walk(tw);
-                        }
-                    }), !0;
-                }
-                return scan_ref_scoped(node, descend);
-            }
-        });
-        self1.walk(tw), // pass 2: for every used symbol we need to walk its
-        // initialization code to figure out if it uses other
-        // symbols (that may not be in_use).
-        tw = new TreeWalker(scan_ref_scoped), in_use_ids.forEach(function(def) {
-            var init = initializations.get(def.id);
-            init && init.forEach(function(init) {
-                init.walk(tw);
-            });
-        });
-        // pass 3: we should drop declarations not in_use
-        var tt = new TreeTransformer(function(node, descend, in_list) {
-            var def, block, parent = tt.parent();
-            if (drop_vars) {
-                const sym = assign_as_unused(node);
-                if (sym instanceof AST_SymbolRef) {
-                    var def = sym.definition(), in_use = in_use_ids.has(def.id);
-                    if (node instanceof AST_Assign) {
-                        if (!in_use || fixed_ids.has(def.id) && fixed_ids.get(def.id) !== node) return maintain_this_binding(parent, node, node.right.transform(tt));
-                    } else if (!in_use) return in_list ? MAP.skip : make_node(AST_Number, node, {
-                        value: 0
-                    });
-                }
-            }
-            if (scope === self1) {
-                if (node.name && (node instanceof AST_ClassExpression && !keep_name(compressor.option("keep_classnames"), (def = node.name.definition()).name) || node instanceof AST_Function && !keep_name(compressor.option("keep_fnames"), (def = node.name.definition()).name)) && (!in_use_ids.has(def.id) || def.orig.length > 1) && (node.name = null), node instanceof AST_Lambda && !(node instanceof AST_Accessor)) for(var trim = !compressor.option("keep_fargs"), a = node.argnames, i = a.length; --i >= 0;){
-                    var sym = a[i];
-                    sym instanceof AST_Expansion && (sym = sym.expression), sym instanceof AST_DefaultAssign && (sym = sym.left), sym instanceof AST_Destructuring || in_use_ids.has(sym.definition().id) ? trim = !1 : (set_flag(sym, 0b00000001), trim && a.pop());
-                }
-                if ((node instanceof AST_Defun || node instanceof AST_DefClass) && node !== self1) {
-                    const def = node.name.definition();
-                    if (!(def.global && !drop_funcs || in_use_ids.has(def.id))) {
-                        if (def.eliminated++, node instanceof AST_DefClass) {
-                            // Classes might have extends with side effects
-                            const side_effects = node.drop_side_effect_free(compressor);
-                            if (side_effects) return make_node(AST_SimpleStatement, node, {
-                                body: side_effects
-                            });
-                        }
-                        return in_list ? MAP.skip : make_node(AST_EmptyStatement, node);
-                    }
-                }
-                if (node instanceof AST_Definitions && !(parent instanceof AST_ForIn && parent.init === node)) {
-                    var drop_block = !(parent instanceof AST_Toplevel) && !(node instanceof AST_Var), body = [], head = [], tail = [], side_effects = [];
-                    switch(node.definitions.forEach(function(def) {
-                        def.value && (def.value = def.value.transform(tt));
-                        var is_destructure = def.name instanceof AST_Destructuring, sym = is_destructure ? new SymbolDef(null, {
-                            name: "<destructure>"
-                        }) : def.name.definition();
-                        if (drop_block && sym.global) return tail.push(def);
-                        if (!(drop_vars || drop_block) || is_destructure && (def.name.names.length || def.name.is_array || !0 != compressor.option("pure_getters")) || in_use_ids.has(sym.id)) {
-                            if (def.value && fixed_ids.has(sym.id) && fixed_ids.get(sym.id) !== def && (def.value = def.value.drop_side_effect_free(compressor)), def.name instanceof AST_SymbolVar) {
-                                var var_defs = var_defs_by_id.get(sym.id);
-                                if (var_defs.length > 1 && (!def.value || sym.orig.indexOf(def.name) > sym.eliminated)) {
-                                    if (def.value) {
-                                        var ref = make_node(AST_SymbolRef, def.name, def.name);
-                                        sym.references.push(ref);
-                                        var assign = make_node(AST_Assign, def, {
-                                            operator: "=",
-                                            logical: !1,
-                                            left: ref,
-                                            right: def.value
-                                        });
-                                        fixed_ids.get(sym.id) === def && fixed_ids.set(sym.id, assign), side_effects.push(assign.transform(tt));
-                                    }
-                                    remove(var_defs, def), sym.eliminated++;
-                                    return;
-                                }
-                            }
-                            def.value ? (side_effects.length > 0 && (tail.length > 0 ? (side_effects.push(def.value), def.value = make_sequence(def.value, side_effects)) : body.push(make_node(AST_SimpleStatement, node, {
-                                body: make_sequence(node, side_effects)
-                            })), side_effects = []), tail.push(def)) : head.push(def);
-                        } else if (sym.orig[0] instanceof AST_SymbolCatch) {
-                            var value = def.value && def.value.drop_side_effect_free(compressor);
-                            value && side_effects.push(value), def.value = null, head.push(def);
-                        } else {
-                            var value = def.value && def.value.drop_side_effect_free(compressor);
-                            value && side_effects.push(value), sym.eliminated++;
-                        }
-                    }), (head.length > 0 || tail.length > 0) && (node.definitions = head.concat(tail), body.push(node)), side_effects.length > 0 && body.push(make_node(AST_SimpleStatement, node, {
-                        body: make_sequence(node, side_effects)
-                    })), body.length){
-                        case 0:
-                            return in_list ? MAP.skip : make_node(AST_EmptyStatement, node);
-                        case 1:
-                            return body[0];
-                        default:
-                            return in_list ? MAP.splice(body) : make_node(AST_BlockStatement, node, {
-                                body: body
-                            });
-                    }
-                }
-                // certain combination of unused name + side effect leads to:
-                //    https://github.com/mishoo/UglifyJS2/issues/44
-                //    https://github.com/mishoo/UglifyJS2/issues/1830
-                //    https://github.com/mishoo/UglifyJS2/issues/1838
-                // that's an invalid AST.
-                // We fix it at this stage by moving the `var` outside the `for`.
-                if (node instanceof AST_For) return descend(node, this), node.init instanceof AST_BlockStatement && (block = node.init, node.init = block.body.pop(), block.body.push(node)), node.init instanceof AST_SimpleStatement ? node.init = node.init.body : is_empty(node.init) && (node.init = null), block ? in_list ? MAP.splice(block.body) : block : node;
-                if (node instanceof AST_LabeledStatement && node.body instanceof AST_For) {
-                    if (descend(node, this), node.body instanceof AST_BlockStatement) {
-                        var block = node.body;
-                        return node.body = block.body.pop(), block.body.push(node), in_list ? MAP.splice(block.body) : block;
-                    }
-                    return node;
-                }
-                if (node instanceof AST_BlockStatement) return (descend(node, this), in_list && node.body.every(can_be_evicted_from_block)) ? MAP.splice(node.body) : node;
-                if (node instanceof AST_Scope) {
-                    const save_scope = scope;
-                    return scope = node, descend(node, this), scope = save_scope, node;
-                }
-            }
-        });
-        function scan_ref_scoped(node, descend) {
-            var node_def;
-            const sym = assign_as_unused(node);
-            if (sym instanceof AST_SymbolRef && !is_ref_of(node.left, AST_SymbolBlockDeclaration) && self1.variables.get(sym.name) === (node_def = sym.definition())) return node instanceof AST_Assign && (node.right.walk(tw), node_def.chained || node.left.fixed_value() !== node.right || fixed_ids.set(node_def.id, node)), !0;
-            if (node instanceof AST_SymbolRef) {
-                if (node_def = node.definition(), !in_use_ids.has(node_def.id) && (in_use_ids.set(node_def.id, node_def), node_def.orig[0] instanceof AST_SymbolCatch)) {
-                    const redef = node_def.scope.is_block_scope() && node_def.scope.get_defun_scope().variables.get(node_def.name);
-                    redef && in_use_ids.set(redef.id, redef);
-                }
-                return !0;
-            }
-            if (node instanceof AST_Scope) {
-                var save_scope = scope;
-                return scope = node, descend(), scope = save_scope, !0;
-            }
-        }
-        self1.transform(tt);
-    }), AST_Scope.DEFMETHOD("hoist_declarations", function(compressor) {
-        var self1 = this;
-        if (compressor.has_directive("use asm") || !Array.isArray(self1.body)) return self1;
+        if (compressor.has_directive("use asm")) return self1;
         var hoist_funs = compressor.option("hoist_funs"), hoist_vars = compressor.option("hoist_vars");
         if (hoist_funs || hoist_vars) {
             var dirs = [], hoisted = [], vars = new Map(), vars_found = 0, var_decl = 0;
@@ -8574,7 +9475,7 @@
             if (self1 = self1.transform(tt), vars_found > 0) {
                 // collect only vars which don't show up in self's arguments list
                 var defs = [];
-                const is_lambda = self1 instanceof AST_Lambda, args_as_names = is_lambda ? self1.args_as_names() : null;
+                let is_lambda = self1 instanceof AST_Lambda, args_as_names = is_lambda ? self1.args_as_names() : null;
                 if (vars.forEach((def, name)=>{
                     is_lambda && args_as_names.some((x)=>x.name === def.name.name) ? vars.delete(name) : ((def = def.clone()).value = null, defs.push(def), vars.set(name, def));
                 }), defs.length > 0) {
@@ -8617,15 +9518,13 @@
         var self1 = this;
         if (!compressor.option("hoist_props") || compressor.has_directive("use asm")) return self1;
         var top_retain = self1 instanceof AST_Toplevel && compressor.top_retain || return_false, defs_by_id = new Map(), hoister = new TreeTransformer(function(node, descend) {
-            if (node instanceof AST_Definitions && hoister.parent() instanceof AST_Export) return node;
             if (node instanceof AST_VarDef) {
-                let def, value;
-                const sym = node.name;
+                let def, value, sym = node.name;
                 if (sym.scope === self1 && 1 != (def = sym.definition()).escaped && !def.assignments && !def.direct_access && !def.single_use && !compressor.exposed(def) && !top_retain(def) && (value = sym.fixed_value()) === node.value && value instanceof AST_Object && !value.properties.some((prop)=>prop instanceof AST_Expansion || prop.computed_key())) {
                     descend(node, this);
-                    const defs = new Map(), assignments = [];
+                    let defs = new Map(), assignments = [];
                     return value.properties.forEach(({ key, value })=>{
-                        const scope = find_scope(hoister), symbol = self1.create_symbol(sym.CTOR, {
+                        let scope = hoister.find_scope(), symbol = self1.create_symbol(sym.CTOR, {
                             source: sym,
                             scope,
                             conflict_scopes: new Set([
@@ -8641,9 +9540,9 @@
                     }), defs_by_id.set(def.id, defs), MAP.splice(assignments);
                 }
             } else if (node instanceof AST_PropAccess && node.expression instanceof AST_SymbolRef) {
-                const defs = defs_by_id.get(node.expression.definition().id);
+                let defs = defs_by_id.get(node.expression.definition().id);
                 if (defs) {
-                    const def = defs.get(String(get_simple_key(node.property))), sym = make_node(AST_SymbolRef, node, {
+                    let def = defs.get(String(get_simple_key(node.property))), sym = make_node(AST_SymbolRef, node, {
                         name: def.name,
                         scope: node.expression.scope,
                         thedef: def
@@ -8751,24 +9650,22 @@
             var orig = self1.condition;
             self1.condition = make_node_from_constant(cond, orig), self1.condition = best_of_expression(self1.condition.transform(compressor), orig);
         }
-        if (compressor.option("dead_code")) {
-            if (cond instanceof AST_Node && (cond = self1.condition.tail_node().evaluate(compressor)), cond) {
-                if (!(cond instanceof AST_Node)) {
-                    var body = [];
-                    return body.push(make_node(AST_SimpleStatement, self1.condition, {
-                        body: self1.condition
-                    })), body.push(self1.body), self1.alternative && trim_unreachable_code(compressor, self1.alternative, body), make_node(AST_BlockStatement, self1, {
-                        body: body
-                    }).optimize(compressor);
-                }
-            } else {
+        if (compressor.option("dead_code")) if (cond instanceof AST_Node && (cond = self1.condition.tail_node().evaluate(compressor)), cond) {
+            if (!(cond instanceof AST_Node)) {
                 var body = [];
-                return trim_unreachable_code(compressor, self1.body, body), body.push(make_node(AST_SimpleStatement, self1.condition, {
+                return body.push(make_node(AST_SimpleStatement, self1.condition, {
                     body: self1.condition
-                })), self1.alternative && body.push(self1.alternative), make_node(AST_BlockStatement, self1, {
+                })), body.push(self1.body), self1.alternative && trim_unreachable_code(compressor, self1.alternative, body), make_node(AST_BlockStatement, self1, {
                     body: body
                 }).optimize(compressor);
             }
+        } else {
+            var body = [];
+            return trim_unreachable_code(compressor, self1.body, body), body.push(make_node(AST_SimpleStatement, self1.condition, {
+                body: self1.condition
+            })), self1.alternative && body.push(self1.alternative), make_node(AST_BlockStatement, self1, {
+                body: body
+            }).optimize(compressor);
         }
         var negated = self1.condition.negate(compressor), self_condition_length = self1.condition.size(), negated_length = negated.size(), negated_is_best = negated_length < self_condition_length;
         if (self1.alternative && negated_is_best) {
@@ -8876,18 +9773,18 @@
         // that way the next micro-optimization will merge them.
         // ** bail micro-optimization if not a simple switch case with breaks
         if (default_branch = null, exact_match = null, body.every((branch, i)=>(branch === default_or_exact || branch.expression instanceof AST_Constant) && (0 === branch.body.length || aborts(branch) || body.length - 1 === i))) for(let i = 0; i < body.length; i++){
-            const branch = body[i];
+            let branch = body[i];
             for(let j = i + 1; j < body.length; j++){
-                const next = body[j];
+                let next = body[j];
                 if (0 === next.body.length) continue;
-                const last_branch = j === body.length - 1, equivalentBranch = branches_equivalent(next, branch, !1);
+                let last_branch = j === body.length - 1, equivalentBranch = branches_equivalent(next, branch, !1);
                 if (equivalentBranch || last_branch && branches_equivalent(next, branch, !0)) {
                     !equivalentBranch && last_branch && next.body.push(make_node(AST_Break));
                     // let's find previous siblings with inert fallthrough...
                     let x = j - 1, fallthroughDepth = 0;
                     for(; x > i;)if (is_inert_body(body[x--])) fallthroughDepth++;
                     else break;
-                    const plucked = body.splice(j - fallthroughDepth, 1 + fallthroughDepth);
+                    let plucked = body.splice(j - fallthroughDepth, 1 + fallthroughDepth);
                     body.splice(i + 1, 0, ...plucked), i += plucked.length;
                 }
             }
@@ -8980,7 +9877,7 @@
             // If there was no body, then we don't need a default branch (because the default is
             // do nothing). If there was a body, we'll extract it to after the switch, so the
             // switch's new default is to do nothing and we can still prune it.
-            const default_index = body.indexOf(default_or_exact);
+            let default_index = body.indexOf(default_or_exact);
             if (body.splice(default_index, 1), default_or_exact = null, caseBody) // Recurse into switch statement one more time so that we can append the case body
             // outside of the switch. This recursion will only happen once since we've pruned
             // the default case.
@@ -9089,26 +9986,16 @@
             }).has_side_effects(compressor);
         }
     }), def_optimize(AST_Try, function(self1, compressor) {
-        if (tighten_body(self1.body, compressor), self1.bcatch && self1.bfinally && self1.bfinally.body.every(is_empty) && (self1.bfinally = null), compressor.option("dead_code") && self1.body.every(is_empty)) {
+        if (self1.bcatch && self1.bfinally && self1.bfinally.body.every(is_empty) && (self1.bfinally = null), compressor.option("dead_code") && self1.body.body.every(is_empty)) {
             var body = [];
             return self1.bcatch && trim_unreachable_code(compressor, self1.bcatch, body), self1.bfinally && body.push(...self1.bfinally.body), make_node(AST_BlockStatement, self1, {
                 body: body
             }).optimize(compressor);
         }
         return self1;
-    }), AST_Definitions.DEFMETHOD("remove_initializers", function() {
-        var decls = [];
-        this.definitions.forEach(function(def) {
-            def.name instanceof AST_SymbolDeclaration ? (def.value = null, decls.push(def)) : walk(def.name, (node)=>{
-                node instanceof AST_SymbolDeclaration && decls.push(make_node(AST_VarDef, def, {
-                    name: node,
-                    value: null
-                }));
-            });
-        }), this.definitions = decls;
     }), AST_Definitions.DEFMETHOD("to_assignments", function(compressor) {
         var reduce_vars = compressor.option("reduce_vars"), assignments = [];
-        for (const def of this.definitions){
+        for (let def of this.definitions){
             if (def.value) {
                 var name = make_node(AST_SymbolRef, def.name, def.name);
                 assignments.push(make_node(AST_Assign, def, {
@@ -9117,19 +10004,8 @@
                     left: name,
                     right: def.value
                 })), reduce_vars && (name.definition().fixed = !1);
-            } else if (def.value) {
-                // Because it's a destructuring, do not turn into an assignment.
-                var varDef = make_node(AST_VarDef, def, {
-                    name: def.name,
-                    value: def.value
-                }), var_ = make_node(AST_Var, def, {
-                    definitions: [
-                        varDef
-                    ]
-                });
-                assignments.push(var_);
             }
-            const thedef = def.name.definition();
+            let thedef = def.name.definition();
             thedef.eliminated++, thedef.replaced--;
         }
         return 0 == assignments.length ? null : make_sequence(this, assignments);
@@ -9143,10 +10019,7 @@
         var exp = self1.expression, fn = exp;
         inline_array_like_spread(self1.args);
         var simple_args = self1.args.every((arg)=>!(arg instanceof AST_Expansion));
-        if (compressor.option("reduce_vars") && fn instanceof AST_SymbolRef && !has_annotation(self1, _NOINLINE)) {
-            const fixed = fn.fixed_value();
-            retain_top_func(fixed, compressor) || (fn = fixed);
-        }
+        compressor.option("reduce_vars") && fn instanceof AST_SymbolRef && (fn = fn.fixed_value());
         var is_func = fn instanceof AST_Lambda;
         if (is_func && fn.pinned()) return self1;
         if (compressor.option("unused") && simple_args && is_func && !fn.uses_arguments) {
@@ -9175,9 +10048,9 @@
             }
             self1.args.length = last;
         }
-        if (compressor.option("unsafe")) {
+        if (compressor.option("unsafe") && !exp.contains_optional()) {
             if (exp instanceof AST_Dot && "Array" === exp.start.value && "from" === exp.property && 1 === self1.args.length) {
-                const [argument] = self1.args;
+                let [argument] = self1.args;
                 if (argument instanceof AST_Array) return make_node(AST_Array, argument, {
                     elements: argument.elements
                 }).optimize(compressor);
@@ -9188,7 +10061,7 @@
                         elements: self1.args
                     }).optimize(compressor);
                     if (self1.args[0] instanceof AST_Number && self1.args[0].value <= 11) {
-                        const elements = [];
+                        let elements = [];
                         for(let i = 0; i < self1.args[0].value; i++)elements.push(new AST_Hole);
                         return new AST_Array({
                             elements
@@ -9235,13 +10108,13 @@
                     }).optimize(compressor);
                     break;
                 case "RegExp":
+                    let source;
                     var params = [];
                     if (self1.args.length >= 1 && self1.args.length <= 2 && self1.args.every((arg)=>{
                         var value = arg.evaluate(compressor);
                         return params.push(value), arg !== value;
-                    })) {
-                        let [source, flags] = params;
-                        const rx = make_node(AST_RegExp, self1, {
+                    }) && (source = params[0], re_safe_regexp.test(source))) {
+                        let [source, flags] = params, rx = make_node(AST_RegExp, self1, {
                             value: {
                                 source: source = regexp_source_fix(new RegExp(source).source),
                                 flags
@@ -9344,20 +10217,16 @@
                 argnames: [],
                 body: []
             }).optimize(compressor);
-            var nth_identifier = compressor.mangle_options && compressor.mangle_options.nth_identifier || base54;
             if (self1.args.every((x)=>x instanceof AST_String)) // quite a corner-case, but we can handle it:
             //   https://github.com/mishoo/UglifyJS2/issues/203
             // if the code argument is a constant, then we can minify it.
             try {
                 var fun, code = "n(function(" + self1.args.slice(0, -1).map(function(arg) {
                     return arg.value;
-                }).join(",") + "){" + self1.args[self1.args.length - 1].value + "})", ast = parse(code), mangle = {
-                    ie8: compressor.option("ie8"),
-                    nth_identifier: nth_identifier
-                };
+                }).join(",") + "){" + self1.args[self1.args.length - 1].value + "})", ast = parse(code), mangle = compressor.mangle_options();
                 ast.figure_out_scope(mangle);
                 var comp = new Compressor(compressor.options, {
-                    mangle_options: compressor.mangle_options
+                    mangle_options: compressor._mangle_options
                 });
                 (ast = ast.transform(comp)).figure_out_scope(mangle), ast.compute_char_frequency(mangle), ast.mangle_names(mangle), walk(ast, (node)=>{
                     if (is_func_expr(node)) return fun = node, walk_abort;
@@ -9378,170 +10247,180 @@
             // Otherwise, it crashes at runtime. Or maybe it's nonstandard syntax.
             }
         }
-        var stat = is_func && fn.body[0], is_regular_func = is_func && !fn.is_generator && !fn.async, can_inline = is_regular_func && compressor.option("inline") && !self1.is_callee_pure(compressor);
-        if (can_inline && stat instanceof AST_Return) {
-            let returned = stat.value;
-            if (!returned || returned.is_constant_expression()) {
-                returned = returned ? returned.clone(!0) : make_node(AST_Undefined, self1);
-                const args = self1.args.concat(returned);
+        return function(self1, compressor) {
+            if (compressor.in_computed_key()) return self1;
+            var exp = self1.expression, fn = exp, simple_args = self1.args.every((arg)=>!(arg instanceof AST_Expansion));
+            if (compressor.option("reduce_vars") && fn instanceof AST_SymbolRef && !has_annotation(self1, _NOINLINE)) {
+                let fixed = fn.fixed_value();
+                if (retain_top_func(fixed, compressor) || !compressor.toplevel.funcs && exp.definition().global) return self1;
+                fn = fixed;
+            }
+            var is_func = fn instanceof AST_Lambda, stat = is_func && fn.body[0], is_regular_func = is_func && !fn.is_generator && !fn.async, can_inline = is_regular_func && compressor.option("inline") && !self1.is_callee_pure(compressor);
+            if (can_inline && stat instanceof AST_Return) {
+                let returned = stat.value;
+                if (!returned || returned.is_constant_expression()) {
+                    returned = returned ? returned.clone(!0) : make_node(AST_Undefined, self1);
+                    let args = self1.args.concat(returned);
+                    return make_sequence(self1, args).optimize(compressor);
+                }
+                // optimize identity function
+                if (1 === fn.argnames.length && fn.argnames[0] instanceof AST_SymbolFunarg && self1.args.length < 2 && !(self1.args[0] instanceof AST_Expansion) && returned instanceof AST_SymbolRef && returned.name === fn.argnames[0].name) {
+                    let parent, replacement = (self1.args[0] || make_node(AST_Undefined)).optimize(compressor);
+                    return replacement instanceof AST_PropAccess && (parent = compressor.parent()) instanceof AST_Call && parent.expression === self1 ? make_sequence(self1, [
+                        make_node(AST_Number, self1, {
+                            value: 0
+                        }),
+                        replacement
+                    ]) : replacement;
+                }
+            }
+            if (can_inline) {
+                let def, returned_value, nearest_scope;
+                var scope, in_loop, level = -1;
+                if (simple_args && !fn.uses_arguments && !(compressor.parent() instanceof AST_Class) && !(fn.name && fn instanceof AST_Function) && (returned_value = function(stat) {
+                    var body = fn.body, len = body.length;
+                    if (3 > compressor.option("inline")) return 1 == len && return_value(stat);
+                    stat = null;
+                    for(var i = 0; i < len; i++){
+                        var line = body[i];
+                        if (line instanceof AST_Var) {
+                            if (stat && !line.definitions.every((var_def)=>!var_def.value)) return !1;
+                        } else {
+                            if (stat) return !1;
+                            line instanceof AST_EmptyStatement || (stat = line);
+                        }
+                    }
+                    return return_value(stat);
+                }(stat)) && (exp === fn || has_annotation(self1, _INLINE) || compressor.option("unused") && 1 == (def = exp.definition()).references.length && !is_recursive_ref(compressor, def) && fn.is_constant_expression(exp.scope)) && !has_annotation(self1, _PURE | _NOINLINE) && !fn.contains_this() && function() {
+                    var block_scoped = new Set();
+                    do if ((scope = compressor.parent(++level)).is_block_scope() && scope.block_scope && // TODO this is sometimes undefined during compression.
+                    // But it should always have a value!
+                    scope.block_scope.variables.forEach(function(variable) {
+                        block_scoped.add(variable.name);
+                    }), scope instanceof AST_Catch) // TODO can we delete? AST_Catch is a block scope.
+                    scope.argname && block_scoped.add(scope.argname.name);
+                    else if (scope instanceof AST_IterationStatement) in_loop = [];
+                    else if (scope instanceof AST_SymbolRef && scope.fixed_value() instanceof AST_Scope) return !1;
+                    while (!(scope instanceof AST_Scope))
+                    var safe_to_inject = !(scope instanceof AST_Toplevel) || compressor.toplevel.vars, inline = compressor.option("inline");
+                    return !!function(block_scoped, safe_to_inject) {
+                        for(var len = fn.body.length, i = 0; i < len; i++){
+                            var stat = fn.body[i];
+                            if (stat instanceof AST_Var) {
+                                if (!safe_to_inject) return !1;
+                                for(var j = stat.definitions.length; --j >= 0;){
+                                    var name = stat.definitions[j].name;
+                                    if (name instanceof AST_Destructuring || block_scoped.has(name.name) || identifier_atom.has(name.name) || scope.conflicting_def(name.name)) return !1;
+                                    in_loop && in_loop.push(name.definition());
+                                }
+                            }
+                        }
+                        return !0;
+                    }(block_scoped, inline >= 3 && safe_to_inject) && !!function(block_scoped, safe_to_inject) {
+                        for(var i = 0, len = fn.argnames.length; i < len; i++){
+                            var arg = fn.argnames[i];
+                            if (arg instanceof AST_DefaultAssign) {
+                                if (has_flag(arg.left, 0b00000001)) continue;
+                                return !1;
+                            }
+                            if (arg instanceof AST_Destructuring) return !1;
+                            if (arg instanceof AST_Expansion) {
+                                if (has_flag(arg.expression, 0b00000001)) continue;
+                                return !1;
+                            }
+                            if (!has_flag(arg, 0b00000001)) {
+                                if (!safe_to_inject || block_scoped.has(arg.name) || identifier_atom.has(arg.name) || scope.conflicting_def(arg.name)) return !1;
+                                in_loop && in_loop.push(arg.definition());
+                            }
+                        }
+                        return !0;
+                    }(block_scoped, inline >= 2 && safe_to_inject) && (!in_loop || 0 == in_loop.length || !is_reachable(fn, in_loop));
+                }() && (nearest_scope = compressor.find_scope()) && !scope_encloses_variables_in_this_scope(nearest_scope, fn) && !function() {
+                    // Due to the fact function parameters have their own scope
+                    // which can't use `var something` in the function body within,
+                    // we simply don't inline into DefaultAssign.
+                    let p, i = 0;
+                    for(; p = compressor.parent(i++);){
+                        if (p instanceof AST_DefaultAssign) return !0;
+                        if (p instanceof AST_Block) break;
+                    }
+                    return !1;
+                }() && !(scope instanceof AST_Class)) return set_flag(fn, 0b0000000100000000), nearest_scope.add_child_scope(fn), make_sequence(self1, function(returned_value) {
+                    var decls = [], expressions = [];
+                    if (!function(decls, expressions) {
+                        for(var len = fn.argnames.length, i = self1.args.length; --i >= len;)expressions.push(self1.args[i]);
+                        for(i = len; --i >= 0;){
+                            var name = fn.argnames[i], value = self1.args[i];
+                            if (has_flag(name, 0b00000001) || !name.name || scope.conflicting_def(name.name)) value && expressions.push(value);
+                            else {
+                                var symbol = make_node(AST_SymbolVar, name, name);
+                                name.definition().orig.push(symbol), !value && in_loop && (value = make_node(AST_Undefined, self1)), append_var(decls, expressions, symbol, value);
+                            }
+                        }
+                        decls.reverse(), expressions.reverse();
+                    }(decls, expressions), !function(decls, expressions) {
+                        for(var pos = expressions.length, i = 0, lines = fn.body.length; i < lines; i++){
+                            var stat = fn.body[i];
+                            if (stat instanceof AST_Var) for(var j = 0, defs = stat.definitions.length; j < defs; j++){
+                                var var_def = stat.definitions[j], name = var_def.name;
+                                if (append_var(decls, expressions, name, var_def.value), in_loop && fn.argnames.every((argname)=>argname.name != name.name)) {
+                                    var def = fn.variables.get(name.name), sym = make_node(AST_SymbolRef, name, name);
+                                    def.references.push(sym), expressions.splice(pos++, 0, make_node(AST_Assign, var_def, {
+                                        operator: "=",
+                                        logical: !1,
+                                        left: sym,
+                                        right: make_node(AST_Undefined, name)
+                                    }));
+                                }
+                            }
+                        }
+                    }(decls, expressions), expressions.push(returned_value), decls.length) {
+                        let i = scope.body.indexOf(compressor.parent(level - 1)) + 1;
+                        scope.body.splice(i, 0, make_node(AST_Var, fn, {
+                            definitions: decls
+                        }));
+                    }
+                    return expressions.map((exp)=>exp.clone(!0));
+                }(returned_value)).optimize(compressor);
+            }
+            if (can_inline && has_annotation(self1, _INLINE)) return set_flag(fn, 0b0000000100000000), (fn = (fn = make_node(fn.CTOR === AST_Defun ? AST_Function : fn.CTOR, fn, fn)).clone(!0)).figure_out_scope({}, {
+                parent_scope: compressor.find_scope(),
+                toplevel: compressor.get_toplevel()
+            }), make_node(AST_Call, self1, {
+                expression: fn,
+                args: self1.args
+            }).optimize(compressor);
+            if (is_regular_func && compressor.option("side_effects") && fn.body.every(is_empty)) {
+                var args = self1.args.concat(make_node(AST_Undefined, self1));
                 return make_sequence(self1, args).optimize(compressor);
             }
-            // optimize identity function
-            if (1 === fn.argnames.length && fn.argnames[0] instanceof AST_SymbolFunarg && self1.args.length < 2 && returned instanceof AST_SymbolRef && returned.name === fn.argnames[0].name) {
-                let parent;
-                const replacement = (self1.args[0] || make_node(AST_Undefined)).optimize(compressor);
-                return replacement instanceof AST_PropAccess && (parent = compressor.parent()) instanceof AST_Call && parent.expression === self1 ? make_sequence(self1, [
-                    make_node(AST_Number, self1, {
-                        value: 0
-                    }),
-                    replacement
-                ]) : replacement;
+            if (compressor.option("negate_iife") && compressor.parent() instanceof AST_SimpleStatement && is_iife_call(self1)) return self1.negate(compressor, !0);
+            var ev = self1.evaluate(compressor);
+            if (ev !== self1) return ev = make_node_from_constant(ev, self1).optimize(compressor), best_of(compressor, ev, self1);
+            return self1;
+            function return_value(stat) {
+                return stat ? stat instanceof AST_Return ? stat.value ? stat.value.clone(!0) : make_node(AST_Undefined, self1) : stat instanceof AST_SimpleStatement ? make_node(AST_UnaryPrefix, stat, {
+                    operator: "void",
+                    expression: stat.body.clone(!0)
+                }) : void 0 : make_node(AST_Undefined, self1);
             }
-        }
-        if (can_inline) {
-            let def, returned_value, nearest_scope;
-            var scope, in_loop, level = -1;
-            if (simple_args && !fn.uses_arguments && !(compressor.parent() instanceof AST_Class) && !(fn.name && fn instanceof AST_Function) && (returned_value = function(stat) {
-                var body = fn.body, len = body.length;
-                if (3 > compressor.option("inline")) return 1 == len && return_value(stat);
-                stat = null;
-                for(var i = 0; i < len; i++){
-                    var line = body[i];
-                    if (line instanceof AST_Var) {
-                        if (stat && !line.definitions.every((var_def)=>!var_def.value)) return !1;
-                    } else {
-                        if (stat) return !1;
-                        line instanceof AST_EmptyStatement || (stat = line);
-                    }
-                }
-                return return_value(stat);
-            }(stat)) && (exp === fn || has_annotation(self1, _INLINE) || compressor.option("unused") && 1 == (def = exp.definition()).references.length && !is_recursive_ref(compressor, def) && fn.is_constant_expression(exp.scope)) && !has_annotation(self1, _PURE | _NOINLINE) && !fn.contains_this() && function() {
-                var block_scoped = new Set();
-                do if ((scope = compressor.parent(++level)).is_block_scope() && scope.block_scope && // TODO this is sometimes undefined during compression.
-                // But it should always have a value!
-                scope.block_scope.variables.forEach(function(variable) {
-                    block_scoped.add(variable.name);
-                }), scope instanceof AST_Catch) // TODO can we delete? AST_Catch is a block scope.
-                scope.argname && block_scoped.add(scope.argname.name);
-                else if (scope instanceof AST_IterationStatement) in_loop = [];
-                else if (scope instanceof AST_SymbolRef && scope.fixed_value() instanceof AST_Scope) return !1;
-                while (!(scope instanceof AST_Scope))
-                var safe_to_inject = !(scope instanceof AST_Toplevel) || compressor.toplevel.vars, inline = compressor.option("inline");
-                return !!function(block_scoped, safe_to_inject) {
-                    for(var len = fn.body.length, i = 0; i < len; i++){
-                        var stat = fn.body[i];
-                        if (stat instanceof AST_Var) {
-                            if (!safe_to_inject) return !1;
-                            for(var j = stat.definitions.length; --j >= 0;){
-                                var name = stat.definitions[j].name;
-                                if (name instanceof AST_Destructuring || block_scoped.has(name.name) || identifier_atom.has(name.name) || scope.conflicting_def(name.name)) return !1;
-                                in_loop && in_loop.push(name.definition());
-                            }
-                        }
-                    }
-                    return !0;
-                }(block_scoped, inline >= 3 && safe_to_inject) && !!function(block_scoped, safe_to_inject) {
-                    for(var i = 0, len = fn.argnames.length; i < len; i++){
-                        var arg = fn.argnames[i];
-                        if (arg instanceof AST_DefaultAssign) {
-                            if (has_flag(arg.left, 0b00000001)) continue;
-                            return !1;
-                        }
-                        if (arg instanceof AST_Destructuring) return !1;
-                        if (arg instanceof AST_Expansion) {
-                            if (has_flag(arg.expression, 0b00000001)) continue;
-                            return !1;
-                        }
-                        if (!has_flag(arg, 0b00000001)) {
-                            if (!safe_to_inject || block_scoped.has(arg.name) || identifier_atom.has(arg.name) || scope.conflicting_def(arg.name)) return !1;
-                            in_loop && in_loop.push(arg.definition());
-                        }
-                    }
-                    return !0;
-                }(block_scoped, inline >= 2 && safe_to_inject) && (!in_loop || 0 == in_loop.length || !is_reachable(fn, in_loop));
-            }() && (nearest_scope = find_scope(compressor)) && !scope_encloses_variables_in_this_scope(nearest_scope, fn) && !function() {
-                // Due to the fact function parameters have their own scope
-                // which can't use `var something` in the function body within,
-                // we simply don't inline into DefaultAssign.
-                let p, i = 0;
-                for(; p = compressor.parent(i++);){
-                    if (p instanceof AST_DefaultAssign) return !0;
-                    if (p instanceof AST_Block) break;
-                }
-                return !1;
-            }() && !(scope instanceof AST_Class)) return set_flag(fn, 0b0000000100000000), nearest_scope.add_child_scope(fn), make_sequence(self1, function(returned_value) {
-                var decls = [], expressions = [];
-                if (function(decls, expressions) {
-                    for(var len = fn.argnames.length, i = self1.args.length; --i >= len;)expressions.push(self1.args[i]);
-                    for(i = len; --i >= 0;){
-                        var name = fn.argnames[i], value = self1.args[i];
-                        if (has_flag(name, 0b00000001) || !name.name || scope.conflicting_def(name.name)) value && expressions.push(value);
-                        else {
-                            var symbol = make_node(AST_SymbolVar, name, name);
-                            name.definition().orig.push(symbol), !value && in_loop && (value = make_node(AST_Undefined, self1)), append_var(decls, expressions, symbol, value);
-                        }
-                    }
-                    decls.reverse(), expressions.reverse();
-                }(decls, expressions), function(decls, expressions) {
-                    for(var pos = expressions.length, i = 0, lines = fn.body.length; i < lines; i++){
-                        var stat = fn.body[i];
-                        if (stat instanceof AST_Var) for(var j = 0, defs = stat.definitions.length; j < defs; j++){
-                            var var_def = stat.definitions[j], name = var_def.name;
-                            if (append_var(decls, expressions, name, var_def.value), in_loop && fn.argnames.every((argname)=>argname.name != name.name)) {
-                                var def = fn.variables.get(name.name), sym = make_node(AST_SymbolRef, name, name);
-                                def.references.push(sym), expressions.splice(pos++, 0, make_node(AST_Assign, var_def, {
-                                    operator: "=",
-                                    logical: !1,
-                                    left: sym,
-                                    right: make_node(AST_Undefined, name)
-                                }));
-                            }
-                        }
-                    }
-                }(decls, expressions), expressions.push(returned_value), decls.length) {
-                    const i = scope.body.indexOf(compressor.parent(level - 1)) + 1;
-                    scope.body.splice(i, 0, make_node(AST_Var, fn, {
-                        definitions: decls
-                    }));
-                }
-                return expressions.map((exp)=>exp.clone(!0));
-            }(returned_value)).optimize(compressor);
-        }
-        if (can_inline && has_annotation(self1, _INLINE)) return set_flag(fn, 0b0000000100000000), (fn = (fn = make_node(fn.CTOR === AST_Defun ? AST_Function : fn.CTOR, fn, fn)).clone(!0)).figure_out_scope({}, {
-            parent_scope: find_scope(compressor),
-            toplevel: compressor.get_toplevel()
-        }), make_node(AST_Call, self1, {
-            expression: fn,
-            args: self1.args
-        }).optimize(compressor);
-        if (is_regular_func && compressor.option("side_effects") && fn.body.every(is_empty)) {
-            var args = self1.args.concat(make_node(AST_Undefined, self1));
-            return make_sequence(self1, args).optimize(compressor);
-        }
-        if (compressor.option("negate_iife") && compressor.parent() instanceof AST_SimpleStatement && is_iife_call(self1)) return self1.negate(compressor, !0);
-        var ev = self1.evaluate(compressor);
-        if (ev !== self1) return ev = make_node_from_constant(ev, self1).optimize(compressor), best_of(compressor, ev, self1);
-        return self1;
-        function return_value(stat) {
-            return stat ? stat instanceof AST_Return ? stat.value ? stat.value.clone(!0) : make_node(AST_Undefined, self1) : stat instanceof AST_SimpleStatement ? make_node(AST_UnaryPrefix, stat, {
-                operator: "void",
-                expression: stat.body.clone(!0)
-            }) : void 0 : make_node(AST_Undefined, self1);
-        }
-        function append_var(decls, expressions, name, value) {
-            var def = name.definition();
-            scope.variables.has(name.name) || (scope.variables.set(name.name, def), scope.enclosed.push(def), decls.push(make_node(AST_VarDef, name, {
-                name: name,
-                value: null
-            })));
-            var sym = make_node(AST_SymbolRef, name, name);
-            def.references.push(sym), value && expressions.push(make_node(AST_Assign, self1, {
-                operator: "=",
-                logical: !1,
-                left: sym,
-                right: value.clone()
-            }));
-        }
+            function append_var(decls, expressions, name, value) {
+                var def = name.definition();
+                scope.variables.has(name.name) || (scope.variables.set(name.name, def), scope.enclosed.push(def), decls.push(make_node(AST_VarDef, name, {
+                    name: name,
+                    value: null
+                })));
+                var sym = make_node(AST_SymbolRef, name, name);
+                def.references.push(sym), value && expressions.push(make_node(AST_Assign, self1, {
+                    operator: "=",
+                    logical: !1,
+                    left: sym,
+                    right: value.clone()
+                }));
+            }
+        }(self1, compressor);
+    }), /** Does this node contain optional property access or optional call? */ AST_Node.DEFMETHOD("contains_optional", function() {
+        return (this instanceof AST_PropAccess || this instanceof AST_Call || this instanceof AST_Chain) && (!!this.optional || this.expression.contains_optional());
     }), def_optimize(AST_New, function(self1, compressor) {
         return compressor.option("unsafe") && is_undeclared_ref(self1.expression) && [
             "Object",
@@ -9604,7 +10483,14 @@
             }),
             right: e.right
         });
-        // avoids infinite recursion of numerals
+        if (compressor.option("evaluate")) {
+            // ~~x => x (in 32-bit context)
+            // ~~{32 bit integer} => {32 bit integer}
+            if ("~" === self1.operator && self1.expression instanceof AST_UnaryPrefix && "~" === self1.expression.operator && (compressor.in_32_bit_context() || self1.expression.expression.is_32_bit_integer())) return self1.expression.expression;
+            // ~(x ^ y) => x ^ ~y
+            if ("~" === self1.operator && e instanceof AST_Binary && "^" === e.operator) return e.left instanceof AST_UnaryPrefix && "~" === e.left.operator ? // ~(~x ^ y) => x ^ y
+            e.left = e.left.bitwise_negate(!0) : e.right = e.right.bitwise_negate(!0), e;
+        }
         if ("-" != self1.operator || !(e instanceof AST_Number || e instanceof AST_Infinity || e instanceof AST_BigInt)) {
             var ev = self1.evaluate(compressor);
             if (ev !== self1) return ev = make_node_from_constant(ev, self1).optimize(compressor), best_of(compressor, ev, self1);
@@ -9632,30 +10518,8 @@
         return this;
     });
     var commutativeOperators = makePredicate("== === != !== * & | ^");
-    function scope_encloses_variables_in_this_scope(scope, pulled_scope) {
-        for (const enclosed of pulled_scope.enclosed){
-            if (pulled_scope.variables.has(enclosed.name)) continue;
-            const looked_up = scope.find_variable(enclosed.name);
-            if (looked_up) {
-                if (looked_up === enclosed) continue;
-                return !0;
-            }
-        }
-        return !1;
-    }
     function is_atomic(lhs, self1) {
         return lhs instanceof AST_SymbolRef || lhs.TYPE === self1.TYPE;
-    }
-    function is_reachable(self1, defs) {
-        const find_ref = (node)=>{
-            if (node instanceof AST_SymbolRef && member(node.definition(), defs)) return walk_abort;
-        };
-        return walk_parent(self1, (node, info)=>{
-            if (node instanceof AST_Scope && node !== self1) {
-                var parent = info.parent();
-                return parent instanceof AST_Call && parent.expression === node && !(node.async || node.is_generator) ? void 0 : !walk(node, find_ref) || walk_abort;
-            }
-        });
     }
     def_optimize(AST_Binary, function(self1, compressor) {
         function reversible() {
@@ -9668,7 +10532,7 @@
                 self1.left = self1.right, self1.right = tmp;
             }
         }
-        if (commutativeOperators.has(self1.operator) && self1.right.is_constant() && !self1.left.is_constant() && !(self1.left instanceof AST_Binary && PRECEDENCE[self1.left.operator] >= PRECEDENCE[self1.operator]) && reverse(), self1 = self1.lift_sequences(compressor), compressor.option("comparisons")) switch(self1.operator){
+        if (compressor.option("lhs_constants") && commutativeOperators.has(self1.operator) && self1.right.is_constant() && !self1.left.is_constant() && !(self1.left instanceof AST_Binary && PRECEDENCE[self1.left.operator] >= PRECEDENCE[self1.operator]) && reverse(), self1 = self1.lift_sequences(compressor), compressor.option("comparisons")) switch(self1.operator){
             case "===":
             case "!==":
                 var is_strict_comparison = !0;
@@ -9678,10 +10542,33 @@
             case "!=":
                 // void 0 == x => null == x
                 if (!is_strict_comparison && is_undefined(self1.left, compressor)) self1.left = make_node(AST_Null, self1.left);
+                else if (!is_strict_comparison && is_undefined(self1.right, compressor)) self1.right = make_node(AST_Null, self1.right);
                 else if (compressor.option("typeofs") && self1.left instanceof AST_String && "undefined" == self1.left.value && self1.right instanceof AST_UnaryPrefix && "typeof" == self1.right.operator) {
                     var node, expr = self1.right.expression;
                     (expr instanceof AST_SymbolRef ? expr.is_declared(compressor) : !(expr instanceof AST_PropAccess && compressor.option("ie8"))) && (self1.right = expr, self1.left = make_node(AST_Undefined, self1.left).optimize(compressor), 2 == self1.operator.length && (self1.operator += "="));
-                } else if (self1.left instanceof AST_SymbolRef && self1.right instanceof AST_SymbolRef && self1.left.definition() === self1.right.definition() && ((node = self1.left.fixed_value()) instanceof AST_Array || node instanceof AST_Lambda || node instanceof AST_Object || node instanceof AST_Class)) return make_node("=" == self1.operator[0] ? AST_True : AST_False, self1);
+                } else if (compressor.option("typeofs") && self1.left instanceof AST_UnaryPrefix && "typeof" == self1.left.operator && self1.right instanceof AST_String && "undefined" == self1.right.value) {
+                    var expr = self1.left.expression;
+                    (expr instanceof AST_SymbolRef ? expr.is_declared(compressor) : !(expr instanceof AST_PropAccess && compressor.option("ie8"))) && (self1.left = expr, self1.right = make_node(AST_Undefined, self1.right).optimize(compressor), 2 == self1.operator.length && (self1.operator += "="));
+                } else {
+                    if (self1.left instanceof AST_SymbolRef && self1.right instanceof AST_SymbolRef && self1.left.definition() === self1.right.definition() && ((node = self1.left.fixed_value()) instanceof AST_Array || node instanceof AST_Lambda || node instanceof AST_Object || node instanceof AST_Class)) return make_node("=" == self1.operator[0] ? AST_True : AST_False, self1);
+                    if (self1.left.is_32_bit_integer() && self1.right.is_32_bit_integer()) {
+                        let and_op, x, mask, not = (node)=>make_node(AST_UnaryPrefix, node, {
+                                operator: "!",
+                                expression: node
+                            }), booleanify = (node, truthy)=>truthy ? compressor.in_boolean_context() ? node : not(not(node)) : not(node);
+                        // The only falsy 32-bit integer is 0
+                        if (self1.left instanceof AST_Number && 0 === self1.left.value) return booleanify(self1.right, "!" === self1.operator[0]);
+                        if (self1.right instanceof AST_Number && 0 === self1.right.value) return booleanify(self1.left, "!" === self1.operator[0]);
+                        if ((and_op = self1.left instanceof AST_Binary ? self1.left : self1.right instanceof AST_Binary ? self1.right : null) && (mask = and_op === self1.left ? self1.right : self1.left) && "&" === and_op.operator && mask instanceof AST_Number && mask.is_32_bit_integer() && (x = and_op.left.equivalent_to(mask) ? and_op.right : and_op.right.equivalent_to(mask) ? and_op.left : null)) return best_of(compressor, booleanify(make_node(AST_Binary, self1, {
+                            operator: "&",
+                            left: mask,
+                            right: make_node(AST_UnaryPrefix, self1, {
+                                operator: "~",
+                                expression: x
+                            })
+                        }), "!" === self1.operator[0]), self1);
+                    }
+                }
                 break;
             case "&&":
             case "||":
@@ -9772,13 +10659,11 @@
                     if (!(ll instanceof AST_Node)) return maintain_this_binding(compressor.parent(), compressor.self(), self1.left).optimize(compressor);
                     var rr = self1.right.evaluate(compressor);
                     if (rr) {
-                        if (!(rr instanceof AST_Node)) {
-                            if (compressor.in_boolean_context()) return make_sequence(self1, [
-                                self1.left,
-                                make_node(AST_True, self1)
-                            ]).optimize(compressor);
-                            set_flag(self1, 0b00000010);
-                        }
+                        if (!(rr instanceof AST_Node)) if (compressor.in_boolean_context()) return make_sequence(self1, [
+                            self1.left,
+                            make_node(AST_True, self1)
+                        ]).optimize(compressor);
+                        else set_flag(self1, 0b00000010);
                     } else {
                         var parent = compressor.parent();
                         if ("||" == parent.operator && parent.left === compressor.self() || compressor.in_boolean_context()) return self1.left.optimize(compressor);
@@ -9798,7 +10683,7 @@
                     if (!(ll instanceof AST_Node)) // if we know the value for sure we can simply compute right away.
                     return null == ll ? self1.right : self1.left;
                     if (compressor.in_boolean_context()) {
-                        const rr = self1.right.evaluate(compressor);
+                        let rr = self1.right.evaluate(compressor);
                         if (!(rr instanceof AST_Node) && !rr) return self1.left;
                     }
             }
@@ -9930,6 +10815,72 @@
                         right: self1.right.right
                     })));
             }
+            // bitwise ops
+            if (bitwise_binop.has(self1.operator)) {
+                // Use De Morgan's laws
+                // z & (X | y)
+                // => z & X (given y & z === 0)
+                // => z & X | {y & z} (given y & z !== 0)
+                let y, z, x_node, y_node, z_node = self1.left;
+                if ("&" === self1.operator && self1.right instanceof AST_Binary && "|" === self1.right.operator && "number" == typeof (z = self1.left.evaluate(compressor)) && ("number" == typeof (y = self1.right.right.evaluate(compressor)) ? (// z & (X | y)
+                x_node = self1.right.left, y_node = self1.right.right) : "number" == typeof (y = self1.right.left.evaluate(compressor)) && (// z & (y | X)
+                x_node = self1.right.right, y_node = self1.right.left), x_node && y_node)) if ((y & z) == 0) self1 = make_node(AST_Binary, self1, {
+                    operator: self1.operator,
+                    left: z_node,
+                    right: x_node
+                });
+                else {
+                    let reordered_ops = make_node(AST_Binary, self1, {
+                        operator: "|",
+                        left: make_node(AST_Binary, self1, {
+                            operator: "&",
+                            left: x_node,
+                            right: z_node
+                        }),
+                        right: make_node_from_constant(y & z, y_node)
+                    });
+                    self1 = best_of(compressor, self1, reordered_ops);
+                }
+                if (self1.left.equivalent_to(self1.right) && !self1.left.has_side_effects(compressor)) {
+                    if ("^" === self1.operator) return make_node(AST_Number, self1, {
+                        value: 0
+                    });
+                    ("|" === self1.operator || "&" === self1.operator) && (self1.left = make_node(AST_Number, self1, {
+                        value: 0
+                    }), self1.operator = "|");
+                }
+                // Shifts that do nothing
+                // {anything} >> 0 => {anything} | 0
+                // {anything} << 0 => {anything} | 0
+                ("<<" === self1.operator || ">>" === self1.operator) && self1.right instanceof AST_Number && 0 === self1.right.value && (self1.operator = "|");
+                // Find useless to-bitwise conversions
+                // {32 bit integer} | 0 => {32 bit integer}
+                // {32 bit integer} ^ 0 => {32 bit integer}
+                let zero_side = self1.right instanceof AST_Number && 0 === self1.right.value ? self1.right : self1.left instanceof AST_Number && 0 === self1.left.value ? self1.left : null, non_zero_side = zero_side && (zero_side === self1.right ? self1.left : self1.right);
+                if (zero_side && ("|" === self1.operator || "^" === self1.operator) && (non_zero_side.is_32_bit_integer() || compressor.in_32_bit_context())) return non_zero_side;
+                // {anything} & 0 => 0
+                if (zero_side && "&" === self1.operator && !non_zero_side.has_side_effects(compressor)) return zero_side;
+                let is_full_mask = (node)=>node instanceof AST_Number && -1 === node.value || node instanceof AST_UnaryPrefix && ("-" === node.operator && node.expression instanceof AST_Number && 1 === node.expression.value || "~" === node.operator && node.expression instanceof AST_Number && 0 === node.expression.value), full_mask = is_full_mask(self1.right) ? self1.right : is_full_mask(self1.left) ? self1.left : null, non_full_mask_side = full_mask && (full_mask === self1.right ? self1.left : self1.right);
+                switch(self1.operator){
+                    case "|":
+                        // {anything} | -1 => -1
+                        if (full_mask && !non_full_mask_side.has_side_effects(compressor)) return full_mask;
+                        break;
+                    case "&":
+                        // {32 bit integer} & -1 => {32 bit integer}
+                        if (full_mask && (non_full_mask_side.is_32_bit_integer() || compressor.in_32_bit_context())) return non_full_mask_side;
+                        break;
+                    case "^":
+                        // {anything} ^ -1 => ~{anything}
+                        if (full_mask) return non_full_mask_side.bitwise_negate(compressor.in_32_bit_context());
+                        // ~x ^ ~y => x ^ y
+                        self1.left instanceof AST_UnaryPrefix && "~" === self1.left.operator && self1.right instanceof AST_UnaryPrefix && "~" === self1.right.operator && (self1 = make_node(AST_Binary, self1, {
+                            operator: "^",
+                            left: self1.left.expression,
+                            right: self1.right.expression
+                        }));
+                }
+            }
         }
         // x && (y && z)  ==>  x && y && z
         // x || (y || z)  ==>  x || y || z
@@ -9953,28 +10904,76 @@
             case "Infinity":
                 return make_node(AST_Infinity, self1).optimize(compressor);
         }
-        const parent = compressor.parent();
-        if (compressor.option("reduce_vars") && is_lhs(self1, parent) !== self1) {
-            const def = self1.definition(), nearest_scope = find_scope(compressor);
-            if (compressor.top_retain && def.global && compressor.top_retain(def)) return def.fixed = !1, def.single_use = !1, self1;
-            let fixed = self1.fixed_value(), single_use = def.single_use && !(parent instanceof AST_Call && parent.is_callee_pure(compressor) || has_annotation(parent, _NOINLINE)) && !(parent instanceof AST_Export && fixed instanceof AST_Lambda && fixed.name);
-            if (single_use && fixed instanceof AST_Node && (single_use = !fixed.has_side_effects(compressor) && !fixed.may_throw(compressor)), single_use && (fixed instanceof AST_Lambda || fixed instanceof AST_Class)) {
+        return compressor.option("reduce_vars") && !compressor.is_lhs() ? function(self1, compressor) {
+            if (compressor.in_computed_key()) return self1;
+            let parent = compressor.parent(), def = self1.definition(), nearest_scope = compressor.find_scope(), fixed = self1.fixed_value();
+            if (compressor.top_retain && def.global && compressor.top_retain(def) && (fixed_value = fixed, 1 !== def.orig.length || !fixed_value || fixed_value.size() > def.name.length)) return(// keep it
+            def.fixed = !1, def.single_use = !1, self1);
+            let single_use = def.single_use && !(parent instanceof AST_Call && parent.is_callee_pure(compressor) || has_annotation(parent, _NOINLINE)) && !(parent instanceof AST_Export && fixed instanceof AST_Lambda && fixed.name);
+            if (single_use && fixed instanceof AST_Node && (single_use = !fixed.has_side_effects(compressor) && !fixed.may_throw(compressor)), fixed instanceof AST_Class && def.scope !== self1.scope) return self1;
+            if (single_use && (fixed instanceof AST_Lambda || fixed instanceof AST_Class)) {
                 if (retain_top_func(fixed, compressor)) single_use = !1;
-                else if (def.scope !== self1.scope && (1 == def.escaped || has_flag(fixed, 0b00010000) || function(compressor) {
+                else if (def.scope !== self1.scope && (1 == def.escaped || has_flag(fixed, 0b00010000) || /***********************************************************************
+    
+      A JavaScript tokenizer / parser / beautifier / compressor.
+      https://github.com/mishoo/UglifyJS2
+    
+      -------------------------------- (C) ---------------------------------
+    
+                               Author: Mihai Bazon
+                             <mihai.bazon@gmail.com>
+                           http://mihai.bazon.net/blog
+    
+      Distributed under the BSD license:
+    
+        Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
+    
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions
+        are met:
+    
+            * Redistributions of source code must retain the above
+              copyright notice, this list of conditions and the following
+              disclaimer.
+    
+            * Redistributions in binary form must reproduce the above
+              copyright notice, this list of conditions and the following
+              disclaimer in the documentation and/or other materials
+              provided with the distribution.
+    
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+        EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+        PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+        OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+        PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+        PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+        THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+        TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+        THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+        SUCH DAMAGE.
+    
+     ***********************************************************************/ /**
+     * Module that contains the inlining logic.
+     *
+     * @module
+     *
+     * The stars of the show are `inline_into_symbolref` and `inline_into_call`.
+     */ function(compressor) {
                     for(var node, level = 0; (node = compressor.parent(level++)) && !(node instanceof AST_Statement);)if (node instanceof AST_Array || node instanceof AST_ObjectKeyVal || node instanceof AST_Object) return !0;
                     return !1;
                 }(compressor) || !compressor.option("reduce_funcs"))) single_use = !1;
                 else if (is_recursive_ref(compressor, def)) single_use = !1;
                 else if ((def.scope !== self1.scope || def.orig[0] instanceof AST_SymbolFunarg) && "f" == (single_use = fixed.is_constant_expression(self1.scope))) {
-                    var scope = self1.scope;
+                    var fixed_value, scope = self1.scope;
                     do (scope instanceof AST_Defun || is_func_expr(scope)) && set_flag(scope, 0b00010000);
                     while (scope = scope.parent_scope)
                 }
             }
-            if (single_use && fixed instanceof AST_Lambda && (single_use = def.scope === self1.scope && !scope_encloses_variables_in_this_scope(nearest_scope, fixed) || parent instanceof AST_Call && parent.expression === self1 && !scope_encloses_variables_in_this_scope(nearest_scope, fixed) && !(fixed.name && fixed.name.definition().recursive_refs > 0)), single_use && fixed) {
+            if (single_use && (fixed instanceof AST_Lambda || fixed instanceof AST_Class) && (single_use = def.scope === self1.scope && !scope_encloses_variables_in_this_scope(nearest_scope, fixed) || parent instanceof AST_Call && parent.expression === self1 && !scope_encloses_variables_in_this_scope(nearest_scope, fixed) && !(fixed.name && fixed.name.definition().recursive_refs > 0)), single_use && fixed) {
                 if (fixed instanceof AST_DefClass && (set_flag(fixed, 0b0000000100000000), fixed = make_node(AST_ClassExpression, fixed, fixed)), fixed instanceof AST_Defun && (set_flag(fixed, 0b0000000100000000), fixed = make_node(AST_Function, fixed, fixed)), def.recursive_refs > 0 && fixed.name instanceof AST_SymbolDefun) {
-                    const defun_def = fixed.name.definition();
-                    let lambda_def = fixed.variables.get(fixed.name.name), name = lambda_def && lambda_def.orig[0];
+                    let defun_def = fixed.name.definition(), lambda_def = fixed.variables.get(fixed.name.name), name = lambda_def && lambda_def.orig[0];
                     name instanceof AST_SymbolLambda || ((name = make_node(AST_SymbolLambda, fixed.name, fixed.name)).scope = fixed, fixed.name = name, lambda_def = fixed.def_function(name)), walk(fixed, (node)=>{
                         node instanceof AST_SymbolRef && node.definition() === defun_def && (node.thedef = lambda_def, lambda_def.references.push(node));
                     });
@@ -9990,13 +10989,12 @@
                     ev !== fixed && (compressor.option("unsafe_regexp") || !(ev instanceof RegExp)) && (replace = make_node_from_constant(ev, fixed));
                 }
                 if (replace) {
-                    const name_length = self1.size(compressor), replace_size = replace.size(compressor);
-                    let overhead = 0;
-                    if (compressor.option("unused") && !compressor.exposed(def) && (overhead = (name_length + 2 + replace_size) / (def.references.length - def.assignments)), replace_size <= name_length + overhead) return replace;
+                    let name_length = self1.size(compressor), replace_size = replace.size(compressor), overhead = 0;
+                    if (compressor.option("unused") && !compressor.exposed(def) && (overhead = (name_length + 2 + fixed.size(compressor)) / (def.references.length - def.assignments)), replace_size <= name_length + overhead) return replace;
                 }
             }
-        }
-        return self1;
+            return self1;
+        }(self1, compressor) : self1;
     }), def_optimize(AST_Undefined, function(self1, compressor) {
         if (compressor.option("unsafe_undefined")) {
             var undef = find_variable(compressor, "undefined");
@@ -10009,7 +11007,7 @@
                 return set_flag(ref, 0b00001000), ref;
             }
         }
-        var lhs = is_lhs(compressor.self(), compressor.parent());
+        var lhs = compressor.is_lhs();
         return lhs && is_atomic(lhs, self1) ? self1 : make_node(AST_UnaryPrefix, self1, {
             operator: "void",
             expression: make_node(AST_Number, self1, {
@@ -10017,7 +11015,7 @@
             })
         });
     }), def_optimize(AST_Infinity, function(self1, compressor) {
-        var lhs = is_lhs(compressor.self(), compressor.parent());
+        var lhs = compressor.is_lhs();
         return lhs && is_atomic(lhs, self1) || compressor.option("keep_infinity") && !(lhs && !is_atomic(lhs, self1)) && !find_variable(compressor, "Infinity") ? self1 : make_node(AST_Binary, self1, {
             operator: "/",
             left: make_node(AST_Number, self1, {
@@ -10028,7 +11026,7 @@
             })
         });
     }), def_optimize(AST_NaN, function(self1, compressor) {
-        var lhs = is_lhs(compressor.self(), compressor.parent());
+        var lhs = compressor.is_lhs();
         return lhs && !is_atomic(lhs, self1) || find_variable(compressor, "NaN") ? make_node(AST_Binary, self1, {
             operator: "/",
             left: make_node(AST_Number, self1, {
@@ -10039,7 +11037,7 @@
             })
         }) : self1;
     });
-    const ASSIGN_OPS = makePredicate("+ - / * % >> << >>> | ^ &"), ASSIGN_OPS_COMMUTATIVE = makePredicate("* | ^ &");
+    let ASSIGN_OPS = makePredicate("+ - / * % >> << >>> | ^ &"), ASSIGN_OPS_COMMUTATIVE = makePredicate("* | ^ &");
     function safe_to_flatten(value, compressor) {
         return value instanceof AST_SymbolRef && (value = value.fixed_value()), !!value && (!((value instanceof AST_Lambda || value instanceof AST_Class) && value instanceof AST_Lambda && value.contains_this()) || compressor.parent() instanceof AST_New);
     }
@@ -10067,117 +11065,30 @@
         if (!compressor.option("computed_props") || !(self1.key instanceof AST_Constant)) return self1;
         // allow certain acceptable props as not all AST_Constants are true constants
         if (self1.key instanceof AST_String || self1.key instanceof AST_Number) {
-            if ("__proto__" === self1.key.value || "constructor" == self1.key.value && compressor.parent() instanceof AST_Class) return self1;
-            self1 instanceof AST_ObjectKeyVal ? (self1.quote = self1.key.quote, self1.key = self1.key.value) : self1 instanceof AST_ClassProperty ? (self1.quote = self1.key.quote, self1.key = make_node(AST_SymbolClassProperty, self1.key, {
-                name: self1.key.value
+            let key = self1.key.value.toString();
+            if ("__proto__" === key || "constructor" == key && compressor.parent() instanceof AST_Class) return self1;
+            self1 instanceof AST_ObjectKeyVal ? (self1.quote = self1.key.quote, self1.key = key) : self1 instanceof AST_ClassProperty ? (self1.quote = self1.key.quote, self1.key = make_node(AST_SymbolClassProperty, self1.key, {
+                name: key
             })) : (self1.quote = self1.key.quote, self1.key = make_node(AST_SymbolMethod, self1.key, {
-                name: self1.key.value
+                name: key
             }));
         }
         return self1;
     }
-    /***********************************************************************
-
-  A JavaScript tokenizer / parser / beautifier / compressor.
-  https://github.com/mishoo/UglifyJS2
-
-  -------------------------------- (C) ---------------------------------
-
-                           Author: Mihai Bazon
-                         <mihai.bazon@gmail.com>
-                       http://mihai.bazon.net/blog
-
-  Distributed under the BSD license:
-
-    Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-        * Redistributions of source code must retain the above
-          copyright notice, this list of conditions and the following
-          disclaimer.
-
-        * Redistributions in binary form must reproduce the above
-          copyright notice, this list of conditions and the following
-          disclaimer in the documentation and/or other materials
-          provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-    OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-    TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-    THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-    SUCH DAMAGE.
-
- ***********************************************************************/ // a small wrapper around fitzgen's source-map library
-    async function SourceMap(options) {
-        options = defaults(options, {
-            file: null,
-            root: null,
-            orig: null,
-            orig_line_diff: 0,
-            dest_line_diff: 0
-        });
-        var orig_map, generator = new MOZ_SourceMap__default.default.SourceMapGenerator({
-            file: options.file,
-            sourceRoot: options.root
-        });
-        return options.orig && (orig_map = await new MOZ_SourceMap__default.default.SourceMapConsumer(options.orig)).sources.forEach(function(source) {
-            var sourceContent = orig_map.sourceContentFor(source, !0);
-            sourceContent && generator.setSourceContent(source, sourceContent);
-        }), {
-            add: function(source, gen_line, gen_col, orig_line, orig_col, name) {
-                if (orig_map) {
-                    var info = orig_map.originalPositionFor({
-                        line: orig_line,
-                        column: orig_col
-                    });
-                    if (null === info.source) return;
-                    source = info.source, orig_line = info.line, orig_col = info.column, name = info.name || name;
-                }
-                generator.addMapping({
-                    generated: {
-                        line: gen_line + options.dest_line_diff,
-                        column: gen_col
-                    },
-                    original: {
-                        line: orig_line + options.orig_line_diff,
-                        column: orig_col
-                    },
-                    source: source,
-                    name: name
-                });
-            },
-            get: function() {
-                return generator;
-            },
-            toString: function() {
-                return generator.toString();
-            },
-            destroy: function() {
-                orig_map && orig_map.destroy && orig_map.destroy();
-            }
-        };
-    }
     def_optimize(AST_Assign, function(self1, compressor) {
         if (self1.logical) return self1.lift_sequences(compressor);
+        // x = x ---> x
+        if ("=" === self1.operator && self1.left instanceof AST_SymbolRef && "arguments" !== self1.left.name && !(def = self1.left.definition()).undeclared && self1.right.equivalent_to(self1.left)) return self1.right;
         if (compressor.option("dead_code") && self1.left instanceof AST_SymbolRef && (def = self1.left.definition()).scope === compressor.find_parent(AST_Lambda)) {
             var def, node, level = 0, parent = self1;
             do if (node = parent, (parent = compressor.parent(level++)) instanceof AST_Exit) {
                 if (function(level, node) {
-                    var parent, right = self1.right;
-                    self1.right = make_node(AST_Null, right);
-                    var may_throw = node.may_throw(compressor);
-                    self1.right = right;
-                    for(var scope = self1.left.definition().scope; (parent = compressor.parent(level++)) !== scope;)if (parent instanceof AST_Try && (parent.bfinally || may_throw && parent.bcatch)) return !0;
+                    for(var parent, stop_at = self1.left.definition().scope.get_defun_scope(); (parent = compressor.parent(level++)) !== stop_at;)if (parent instanceof AST_Try && (parent.bfinally || parent.bcatch && function() {
+                        let right = self1.right;
+                        self1.right = make_node(AST_Null, right);
+                        let may_throw = node.may_throw(compressor);
+                        return self1.right = right, may_throw;
+                    }())) return !0;
                 }(level, parent) || is_reachable(def.scope, [
                     def
                 ])) break;
@@ -10194,9 +11105,10 @@
         self1.operator = self1.right.operator + "=", self1.right = self1.right.right) : self1.right.right instanceof AST_SymbolRef && self1.right.right.name == self1.left.name && ASSIGN_OPS_COMMUTATIVE.has(self1.right.operator) && !self1.right.left.has_side_effects(compressor) && (// x = 2 & x  --->  x &= 2
         self1.operator = self1.right.operator + "=", self1.right = self1.right.left)), self1;
     }), def_optimize(AST_DefaultAssign, function(self1, compressor) {
+        let lambda, iife;
         if (!compressor.option("evaluate")) return self1;
         var evaluateRight = self1.right.evaluate(compressor);
-        return void 0 === evaluateRight ? self1 = self1.left : evaluateRight !== self1.right && (evaluateRight = make_node_from_constant(evaluateRight, self1.right), self1.right = best_of_expression(evaluateRight, self1.right)), self1;
+        return void 0 === evaluateRight ? (lambda = compressor.parent()) instanceof AST_Lambda && !1 !== compressor.option("keep_fargs") && ("Call" !== (iife = compressor.parent(1)).TYPE || iife.expression !== lambda) || (self1 = self1.left) : evaluateRight !== self1.right && (evaluateRight = make_node_from_constant(evaluateRight, self1.right), self1.right = best_of_expression(evaluateRight, self1.right)), self1;
     }), def_optimize(AST_Conditional, function(self1, compressor) {
         if (!compressor.option("conditionals")) return self1;
         // This looks like lift_sequences(), should probably be under "sequences"
@@ -10205,7 +11117,8 @@
             return self1.condition = expressions.pop(), expressions.push(self1), make_sequence(self1, expressions);
         }
         var cond = self1.condition.evaluate(compressor);
-        if (cond !== self1.condition) return cond ? maintain_this_binding(compressor.parent(), compressor.self(), self1.consequent) : maintain_this_binding(compressor.parent(), compressor.self(), self1.alternative);
+        if (cond !== self1.condition) if (cond) return maintain_this_binding(compressor.parent(), compressor.self(), self1.consequent);
+        else return maintain_this_binding(compressor.parent(), compressor.self(), self1.alternative);
         var negated = cond.negate(compressor, first_in_statement(compressor));
         best_of(compressor, cond, negated) === negated && (self1 = make_node(AST_Conditional, self1, {
             condition: negated,
@@ -10268,12 +11181,11 @@
             if (check instanceof AST_Binary && "==" === check.operator && ((nullish_side = is_nullish(check.left, compressor) && check.left) || (nullish_side = is_nullish(check.right, compressor) && check.right)) && (nullish_side === check.left ? check.right : check.left).equivalent_to(check_subject)) return !0;
             // foo === null || foo === undefined
             if (check instanceof AST_Binary && "||" === check.operator) {
-                let null_cmp, undefined_cmp;
-                const find_comparison = (cmp)=>{
+                let null_cmp, undefined_cmp, find_comparison = (cmp)=>{
                     let defined_side;
                     if (!(cmp instanceof AST_Binary && ("===" === cmp.operator || "==" === cmp.operator))) return !1;
                     let found = 0;
-                    return cmp.left instanceof AST_Null && (found++, null_cmp = cmp, defined_side = cmp.right), cmp.right instanceof AST_Null && (found++, null_cmp = cmp, defined_side = cmp.left), is_undefined(cmp.left, compressor) && (found++, undefined_cmp = cmp, defined_side = cmp.right), is_undefined(cmp.right, compressor) && (found++, undefined_cmp = cmp, defined_side = cmp.left), !!(1 === found && defined_side.equivalent_to(check_subject));
+                    return cmp.left instanceof AST_Null && (found++, null_cmp = cmp, defined_side = cmp.right), cmp.right instanceof AST_Null && (found++, null_cmp = cmp, defined_side = cmp.left), is_undefined(cmp.left, compressor) && (found++, undefined_cmp = cmp, defined_side = cmp.right), is_undefined(cmp.right, compressor) && (found++, undefined_cmp = cmp, defined_side = cmp.left), 1 === found && !!defined_side.equivalent_to(check_subject);
                 };
                 if (!find_comparison(check.left) || !find_comparison(check.right)) return !1;
                 if (null_cmp && undefined_cmp && null_cmp !== undefined_cmp) return !0;
@@ -10328,7 +11240,7 @@
             }),
             right: alternative
         }).optimize(compressor);
-        const in_bool = compressor.in_boolean_context();
+        let in_bool = compressor.in_boolean_context();
         if (is_true(self1.consequent)) return is_false(self1.alternative) ? booleanize(self1.condition) : make_node(AST_Binary, self1, {
             operator: "||",
             left: booleanize(self1.condition),
@@ -10412,12 +11324,10 @@
         if (compressor.option("properties")) {
             var key = prop.evaluate(compressor);
             if (key !== prop) {
-                if ("string" == typeof key) {
-                    if ("undefined" == key) key = void 0;
-                    else {
-                        var value = parseFloat(key);
-                        value.toString() == key && (key = value);
-                    }
+                if ("string" == typeof key) if ("undefined" == key) key = void 0;
+                else {
+                    var value = parseFloat(key);
+                    value.toString() == key && (key = value);
                 }
                 prop = self1.property = best_of_expression(prop, make_node_from_constant(key, prop).transform(compressor));
                 var property = "" + key;
@@ -10450,7 +11360,7 @@
                 return sym.reference({}), clear_flag(argname, 0b00000001), sym;
             }
         }
-        if (is_lhs(self1, compressor.parent())) return self1;
+        if (compressor.is_lhs()) return self1;
         if (key !== prop) {
             var sub = self1.flatten_object(property, compressor);
             sub && (expr = self1.expression = sub.expression, prop = self1.property = sub.property);
@@ -10490,11 +11400,9 @@
             parent instanceof AST_UnaryPrefix && "delete" === parent.operator ? make_node_from_constant(0, self1) : make_node(AST_Undefined, self1));
         }
         return self1;
-    }), AST_Lambda.DEFMETHOD("contains_this", function() {
-        return walk(this, (node)=>node instanceof AST_This ? walk_abort : node !== this && node instanceof AST_Scope && !(node instanceof AST_Arrow) || void 0);
     }), def_optimize(AST_Dot, function(self1, compressor) {
-        const parent = compressor.parent();
-        if (is_lhs(self1, parent)) return self1;
+        let parent = compressor.parent();
+        if (compressor.is_lhs()) return self1;
         if (compressor.option("unsafe_proto") && self1.expression instanceof AST_Dot && "prototype" == self1.expression.property) {
             var exp = self1.expression.expression;
             if (is_undeclared_ref(exp)) switch(exp.name){
@@ -10534,9 +11442,10 @@
             }
         }
         if (!(parent instanceof AST_Call) || !has_annotation(parent, _NOINLINE)) {
-            const sub = self1.flatten_object(self1.property, compressor);
+            let sub = self1.flatten_object(self1.property, compressor);
             if (sub) return sub.optimize(compressor);
         }
+        if (self1.expression instanceof AST_PropAccess && parent instanceof AST_PropAccess) return self1;
         let ev = self1.evaluate(compressor);
         return ev !== self1 ? (ev = make_node_from_constant(ev, self1).optimize(compressor), best_of(compressor, ev, self1)) : self1;
     }), def_optimize(AST_Array, function(self1, compressor) {
@@ -10544,11 +11453,11 @@
         return optimized !== self1 ? optimized : (inline_array_like_spread(self1.elements), self1);
     }), def_optimize(AST_Object, function(self1, compressor) {
         var optimized = literals_in_boolean_context(self1, compressor);
-        return optimized !== self1 ? optimized : (function(props, compressor) {
+        return optimized !== self1 ? optimized : (!function(props, compressor) {
             for(var i = 0; i < props.length; i++){
                 var prop = props[i];
                 if (prop instanceof AST_Expansion) {
-                    const expr = prop.expression;
+                    let expr = prop.expression;
                     expr instanceof AST_Object && expr.properties.every((prop)=>prop instanceof AST_ObjectKeyVal) ? (props.splice(i, 1, ...expr.properties), // Step back one, as the property at i is now new.
                     i--) : expr instanceof AST_Constant && !(expr instanceof AST_String) ? (// Unlike array-like spread, in object spread, spreading a
                     // non-iterable value silently does nothing; it is thus safe
@@ -10565,9 +11474,13 @@
             if (node instanceof AST_This) return walk_abort;
         })) ? self1 : make_node(AST_Arrow, self1, self1).optimize(compressor);
     }), def_optimize(AST_Class, function(self1) {
-        // HACK to avoid compress failure.
-        // AST_Class is not really an AST_Scope/AST_Block as it lacks a body.
+        for(let i = 0; i < self1.properties.length; i++){
+            let prop = self1.properties[i];
+            prop instanceof AST_ClassStaticBlock && 0 == prop.body.length && (self1.properties.splice(i, 1), i--);
+        }
         return self1;
+    }), def_optimize(AST_ClassStaticBlock, function(self1, compressor) {
+        return tighten_body(self1.body, compressor), self1;
     }), def_optimize(AST_Yield, function(self1, compressor) {
         return self1.expression && !self1.is_star && is_undefined(self1.expression, compressor) && (self1.expression = null), self1;
     }), def_optimize(AST_TemplateString, function(self1, compressor) {
@@ -10852,6 +11765,7 @@
         "ADDITION",
         "ALIASED_LINE_WIDTH_RANGE",
         "ALIASED_POINT_SIZE_RANGE",
+        "ALL",
         "ALLOW_KEYBOARD_INPUT",
         "ALLPASS",
         "ALPHA",
@@ -10921,6 +11835,7 @@
         "BLEND_EQUATION_RGB",
         "BLEND_SRC_ALPHA",
         "BLEND_SRC_RGB",
+        "BLUE",
         "BLUE_BITS",
         "BLUR",
         "BOOL",
@@ -10997,11 +11912,13 @@
         "COMMENT_NODE",
         "COMPARE_REF_TO_TEXTURE",
         "COMPILE_STATUS",
+        "COMPLETION_STATUS_KHR",
         "COMPRESSED_RGBA_S3TC_DXT1_EXT",
         "COMPRESSED_RGBA_S3TC_DXT3_EXT",
         "COMPRESSED_RGBA_S3TC_DXT5_EXT",
         "COMPRESSED_RGB_S3TC_DXT1_EXT",
         "COMPRESSED_TEXTURE_FORMATS",
+        "COMPUTE",
         "CONDITION_SATISFIED",
         "CONFIGURATION_UNSUPPORTED",
         "CONNECTING",
@@ -11010,8 +11927,10 @@
         "CONSTRAINT_ERR",
         "CONTEXT_LOST_WEBGL",
         "CONTROL_MASK",
+        "COPY_DST",
         "COPY_READ_BUFFER",
         "COPY_READ_BUFFER_BINDING",
+        "COPY_SRC",
         "COPY_WRITE_BUFFER",
         "COPY_WRITE_BUFFER_BINDING",
         "COUNTER_STYLE_RULE",
@@ -11745,6 +12664,7 @@
         "FOCUS",
         "FONT_FACE_RULE",
         "FONT_FEATURE_VALUES_RULE",
+        "FRAGMENT",
         "FRAGMENT_SHADER",
         "FRAGMENT_SHADER_DERIVATIVE_HINT",
         "FRAGMENT_SHADER_DERIVATIVE_HINT_OES",
@@ -11805,6 +12725,7 @@
         "GENERATE_MIPMAP_HINT",
         "GEQUAL",
         "GREATER",
+        "GREEN",
         "GREEN_BITS",
         "GainNode",
         "Gamepad",
@@ -11956,7 +12877,9 @@
         "IMPORT_RULE",
         "INCR",
         "INCR_WRAP",
+        "INDEX",
         "INDEX_SIZE_ERR",
+        "INDIRECT",
         "INT",
         "INTERLEAVED_ATTRIBS",
         "INT_2_10_10_10_REV",
@@ -12058,6 +12981,8 @@
         "Location",
         "Lock",
         "LockManager",
+        "MAP_READ",
+        "MAP_WRITE",
         "MAX",
         "MAX_3D_TEXTURE_SIZE",
         "MAX_ARRAY_TEXTURE_LAYERS",
@@ -12501,6 +13426,7 @@
         "PushSubscription",
         "PushSubscriptionOptions",
         "Q",
+        "QUERY_RESOLVE",
         "QUERY_RESULT",
         "QUERY_RESULT_AVAILABLE",
         "QUOTA_ERR",
@@ -12518,6 +13444,7 @@
         "R8UI",
         "R8_SNORM",
         "RASTERIZER_DISCARD",
+        "READ",
         "READ_BUFFER",
         "READ_FRAMEBUFFER",
         "READ_FRAMEBUFFER_BINDING",
@@ -12547,6 +13474,7 @@
         "RENDERING_INTENT_RELATIVE_COLORIMETRIC",
         "RENDERING_INTENT_SATURATION",
         "RENDERING_INTENT_UNKNOWN",
+        "RENDER_ATTACHMENT",
         "REPEAT",
         "REPLACE",
         "RG",
@@ -12727,6 +13655,8 @@
         "STENCIL_TEST",
         "STENCIL_VALUE_MASK",
         "STENCIL_WRITEMASK",
+        "STORAGE",
+        "STORAGE_BINDING",
         "STREAM_COPY",
         "STREAM_DRAW",
         "STREAM_READ",
@@ -13099,6 +14029,7 @@
         "TEXTURE_2D_ARRAY",
         "TEXTURE_3D",
         "TEXTURE_BASE_LEVEL",
+        "TEXTURE_BINDING",
         "TEXTURE_BINDING_2D",
         "TEXTURE_BINDING_2D_ARRAY",
         "TEXTURE_BINDING_3D",
@@ -13183,6 +14114,7 @@
         "U2F",
         "UIEvent",
         "UNCACHED",
+        "UNIFORM",
         "UNIFORM_ARRAY_STRIDE",
         "UNIFORM_BLOCK_ACTIVE_UNIFORMS",
         "UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES",
@@ -13273,6 +14205,7 @@
         "VERSION",
         "VERSION_CHANGE",
         "VERSION_ERR",
+        "VERTEX",
         "VERTEX_ARRAY_BINDING",
         "VERTEX_ATTRIB_ARRAY_BUFFER_BINDING",
         "VERTEX_ATTRIB_ARRAY_DIVISOR",
@@ -13309,6 +14242,7 @@
         "WEBKIT_KEYFRAMES_RULE",
         "WEBKIT_KEYFRAME_RULE",
         "WEBKIT_REGION_RULE",
+        "WRITE",
         "WRONG_DOCUMENT_ERR",
         "WakeLock",
         "WakeLockSentinel",
@@ -13478,6 +14412,7 @@
         "ZERO",
         "_XD0M_",
         "_YD0M_",
+        "__brand",
         "__defineGetter__",
         "__defineSetter__",
         "__lookupGetter__",
@@ -13498,6 +14433,7 @@
         "accept",
         "acceptCharset",
         "acceptNode",
+        "access",
         "accessKey",
         "accessKeyLabel",
         "accuracy",
@@ -13554,6 +14490,9 @@
         "addons",
         "address",
         "addressLine",
+        "addressModeU",
+        "addressModeV",
+        "addressModeW",
         "adoptNode",
         "adoptedStyleSheets",
         "adr",
@@ -13581,6 +14520,8 @@
         "allowedToPlay",
         "allowsFeature",
         "alpha",
+        "alphaMode",
+        "alphaToCoverageEnabled",
         "alt",
         "altGraphKey",
         "altHtml",
@@ -13656,6 +14597,7 @@
         "applyElement",
         "arc",
         "arcTo",
+        "architecture",
         "archive",
         "areas",
         "arguments",
@@ -13698,6 +14640,8 @@
         "ariaValueNow",
         "ariaValueText",
         "arrayBuffer",
+        "arrayLayerCount",
+        "arrayStride",
         "artist",
         "artwork",
         "as",
@@ -13705,6 +14649,7 @@
         "asUintN",
         "asin",
         "asinh",
+        "aspect",
         "assert",
         "assign",
         "assignedElements",
@@ -13789,10 +14734,12 @@
         "badInput",
         "badge",
         "balance",
+        "baseArrayLayer",
         "baseFrequencyX",
         "baseFrequencyY",
         "baseLatency",
         "baseLayer",
+        "baseMipLevel",
         "baseNode",
         "baseOffset",
         "baseURI",
@@ -13801,11 +14748,15 @@
         "battery",
         "bday",
         "before",
+        "beginComputePass",
         "beginElement",
         "beginElementAt",
+        "beginOcclusionQuery",
         "beginPath",
         "beginQuery",
+        "beginRenderPass",
         "beginTransformFeedback",
+        "beginningOfPassWriteIndex",
         "behavior",
         "behaviorCookie",
         "behaviorPart",
@@ -13825,11 +14776,15 @@
         "bindBufferBase",
         "bindBufferRange",
         "bindFramebuffer",
+        "bindGroupLayouts",
         "bindRenderbuffer",
         "bindSampler",
         "bindTexture",
         "bindTransformFeedback",
         "bindVertexArray",
+        "binding",
+        "bitness",
+        "blend",
         "blendColor",
         "blendEquation",
         "blendEquationSeparate",
@@ -13991,6 +14946,8 @@
         "boxDecorationBreak",
         "boxShadow",
         "boxSizing",
+        "brand",
+        "brands",
         "break-after",
         "break-before",
         "break-inside",
@@ -14009,6 +14966,7 @@
         "buffered",
         "bufferedAmount",
         "bufferedAmountLowThreshold",
+        "buffers",
         "buildID",
         "buildNumber",
         "button",
@@ -14016,6 +14974,7 @@
         "buttons",
         "byteLength",
         "byteOffset",
+        "bytesPerRow",
         "bytesWritten",
         "c",
         "cache",
@@ -14112,6 +15071,7 @@
         "clear",
         "clearAppBadge",
         "clearAttributes",
+        "clearBuffer",
         "clearBufferfi",
         "clearBufferfv",
         "clearBufferiv",
@@ -14132,6 +15092,7 @@
         "clearShadow",
         "clearStencil",
         "clearTimeout",
+        "clearValue",
         "clearWatch",
         "click",
         "clickCount",
@@ -14186,10 +15147,13 @@
         "color-interpolation",
         "color-interpolation-filters",
         "colorAdjust",
+        "colorAttachments",
         "colorDepth",
+        "colorFormats",
         "colorInterpolation",
         "colorInterpolationFilters",
         "colorMask",
+        "colorSpace",
         "colorType",
         "cols",
         "column-count",
@@ -14218,6 +15182,7 @@
         "commitStyles",
         "commonAncestorContainer",
         "compact",
+        "compare",
         "compareBoundaryPoints",
         "compareDocumentPosition",
         "compareEndPoints",
@@ -14241,16 +15206,19 @@
         "compressedTexImage3D",
         "compressedTexSubImage2D",
         "compressedTexSubImage3D",
+        "compute",
         "computedStyleMap",
         "concat",
         "conditionText",
         "coneInnerAngle",
         "coneOuterAngle",
         "coneOuterGain",
+        "configurable",
         "configuration",
         "configurationName",
         "configurationValue",
         "configurations",
+        "configure",
         "confirm",
         "confirmComposition",
         "confirmSiteSpecificTrackingException",
@@ -14267,6 +15235,7 @@
         "connections",
         "console",
         "consolidate",
+        "constants",
         "constraint",
         "constrictionActive",
         "construct",
@@ -14311,10 +15280,15 @@
         "cookieEnabled",
         "coords",
         "copyBufferSubData",
+        "copyBufferToBuffer",
+        "copyBufferToTexture",
+        "copyExternalImageToTexture",
         "copyFromChannel",
         "copyTexImage2D",
         "copyTexSubImage2D",
         "copyTexSubImage3D",
+        "copyTextureToBuffer",
+        "copyTextureToTexture",
         "copyToChannel",
         "copyWithin",
         "correspondingElement",
@@ -14338,6 +15312,8 @@
         "createAnswer",
         "createAttribute",
         "createAttributeNS",
+        "createBindGroup",
+        "createBindGroupLayout",
         "createBiquadFilter",
         "createBuffer",
         "createBufferSource",
@@ -14346,7 +15322,10 @@
         "createCaption",
         "createChannelMerger",
         "createChannelSplitter",
+        "createCommandEncoder",
         "createComment",
+        "createComputePipeline",
+        "createComputePipelineAsync",
         "createConstantSource",
         "createContextualFragment",
         "createControlRange",
@@ -14393,15 +15372,20 @@
         "createPanner",
         "createPattern",
         "createPeriodicWave",
+        "createPipelineLayout",
         "createPolicy",
         "createPopup",
         "createProcessingInstruction",
         "createProgram",
         "createQuery",
+        "createQuerySet",
         "createRadialGradient",
         "createRange",
         "createRangeCollection",
         "createReader",
+        "createRenderBundleEncoder",
+        "createRenderPipeline",
+        "createRenderPipelineAsync",
         "createRenderbuffer",
         "createSVGAngle",
         "createSVGLength",
@@ -14436,6 +15420,7 @@
         "createScriptURL",
         "createSession",
         "createShader",
+        "createShaderModule",
         "createShadowRoot",
         "createStereoPanner",
         "createStyleSheet",
@@ -14450,6 +15435,7 @@
         "createTransformFeedback",
         "createTreeWalker",
         "createVertexArray",
+        "createView",
         "createWaveShaper",
         "creationTime",
         "credentials",
@@ -14466,6 +15452,7 @@
         "ctrlLeft",
         "cues",
         "cullFace",
+        "cullMode",
         "currentDirection",
         "currentLocalDescription",
         "currentNode",
@@ -14519,6 +15506,7 @@
         "defaultPlaybackRate",
         "defaultPolicy",
         "defaultPrevented",
+        "defaultQueue",
         "defaultRequest",
         "defaultSelected",
         "defaultStatus",
@@ -14573,11 +15561,25 @@
         "deltaY",
         "deltaZ",
         "dependentLocality",
+        "depthBias",
+        "depthBiasClamp",
+        "depthBiasSlopeScale",
+        "depthClearValue",
+        "depthCompare",
+        "depthFailOp",
         "depthFar",
         "depthFunc",
+        "depthLoadOp",
         "depthMask",
         "depthNear",
+        "depthOrArrayLayers",
         "depthRange",
+        "depthReadOnly",
+        "depthStencil",
+        "depthStencilAttachment",
+        "depthStencilFormat",
+        "depthStoreOp",
+        "depthWriteEnabled",
         "deref",
         "deriveBits",
         "deriveKey",
@@ -14587,6 +15589,7 @@
         "desiredSize",
         "destination",
         "destinationURL",
+        "destroy",
         "detach",
         "detachEvent",
         "detachShader",
@@ -14610,6 +15613,7 @@
         "didTimeout",
         "diffuseConstant",
         "digest",
+        "dimension",
         "dimensions",
         "dir",
         "dirName",
@@ -14624,6 +15628,8 @@
         "disconnect",
         "disconnectShark",
         "dispatchEvent",
+        "dispatchWorkgroups",
+        "dispatchWorkgroupsIndirect",
         "display",
         "displayId",
         "displayName",
@@ -14669,6 +15675,7 @@
         "dppx",
         "dragDrop",
         "draggable",
+        "draw",
         "drawArrays",
         "drawArraysInstanced",
         "drawArraysInstancedANGLE",
@@ -14680,6 +15687,9 @@
         "drawFocusIfNeeded",
         "drawImage",
         "drawImageFromRect",
+        "drawIndexed",
+        "drawIndexedIndirect",
+        "drawIndirect",
         "drawRangeElements",
         "drawSystemFocusRing",
         "drawingBufferHeight",
@@ -14687,6 +15697,7 @@
         "dropEffect",
         "droppedVideoFrames",
         "dropzone",
+        "dstFactor",
         "dtmf",
         "dump",
         "dumpProfile",
@@ -14742,6 +15753,8 @@
         "endContainer",
         "endElement",
         "endElementAt",
+        "endOcclusionQuery",
+        "endOfPassWriteIndex",
         "endOfStream",
         "endOffset",
         "endQuery",
@@ -14755,7 +15768,9 @@
         "enterKeyHint",
         "entities",
         "entries",
+        "entryPoint",
         "entryType",
+        "enumerable",
         "enumerate",
         "enumerateDevices",
         "enumerateEditable",
@@ -14779,6 +15794,7 @@
         "execCommand",
         "execCommandShowHelp",
         "execScript",
+        "executeBundles",
         "exitFullscreen",
         "exitPictureInPicture",
         "exitPointerLock",
@@ -14804,12 +15820,14 @@
         "extentOffset",
         "external",
         "externalResourcesRequired",
+        "externalTexture",
         "extractContents",
         "extractable",
         "eye",
         "f",
         "face",
         "factoryReset",
+        "failOp",
         "failureReason",
         "fallback",
         "family",
@@ -14941,6 +15959,7 @@
         "for",
         "forEach",
         "force",
+        "forceFallbackAdapter",
         "forceRedraw",
         "form",
         "formAction",
@@ -14958,6 +15977,7 @@
         "forwardZ",
         "foundation",
         "fr",
+        "fragment",
         "fragmentDirective",
         "frame",
         "frameBorder",
@@ -14989,11 +16009,13 @@
         "fround",
         "fullPath",
         "fullScreen",
+        "fullVersionList",
         "fullscreen",
         "fullscreenElement",
         "fullscreenEnabled",
         "fx",
         "fy",
+        "g",
         "gain",
         "gamepad",
         "gamma",
@@ -15035,6 +16057,7 @@
         "getBattery",
         "getBigInt64",
         "getBigUint64",
+        "getBindGroupLayout",
         "getBlob",
         "getBookmark",
         "getBoundingClientRect",
@@ -15057,6 +16080,7 @@
         "getClientRect",
         "getClientRects",
         "getCoalescedEvents",
+        "getCompilationInfo",
         "getCompositionAlternatives",
         "getComputedStyle",
         "getComputedTextLength",
@@ -15070,6 +16094,7 @@
         "getCueAsHTML",
         "getCueById",
         "getCurrentPosition",
+        "getCurrentTexture",
         "getCurrentTime",
         "getData",
         "getDatabaseNames",
@@ -15114,6 +16139,7 @@
         "getFrequencyResponse",
         "getFullYear",
         "getGamepads",
+        "getHighEntropyValues",
         "getHitTestResults",
         "getHitTestResultsForTransientInput",
         "getHours",
@@ -15137,6 +16163,7 @@
         "getLocalCandidates",
         "getLocalParameters",
         "getLocalStreams",
+        "getMappedRange",
         "getMarks",
         "getMatchedCSSRules",
         "getMaxGCPauseSinceClear",
@@ -15171,6 +16198,7 @@
         "getPredictedEvents",
         "getPreference",
         "getPreferenceDefault",
+        "getPreferredCanvasFormat",
         "getPresentationAttribute",
         "getPreventDefault",
         "getPrimaryService",
@@ -15289,6 +16317,7 @@
         "glyphOrientationVertical",
         "glyphRef",
         "go",
+        "gpu",
         "grabFrame",
         "grad",
         "gradientTransform",
@@ -15332,6 +16361,7 @@
         "gridTemplateRows",
         "gripSpace",
         "group",
+        "groups",
         "groupCollapsed",
         "groupEnd",
         "groupId",
@@ -15347,6 +16377,7 @@
         "hasBeenActive",
         "hasChildNodes",
         "hasComposition",
+        "hasDynamicOffset",
         "hasEnrolledInstrument",
         "hasExtension",
         "hasExternalDisplay",
@@ -15371,6 +16402,7 @@
         "high",
         "highWaterMark",
         "hint",
+        "hints",
         "history",
         "honorificPrefix",
         "honorificSuffix",
@@ -15417,6 +16449,7 @@
         "ime-mode",
         "imeMode",
         "implementation",
+        "importExternalTexture",
         "importKey",
         "importNode",
         "importStylesheet",
@@ -15436,6 +16469,8 @@
         "indexOf",
         "indexedDB",
         "indicate",
+        "indices",
+        "inert",
         "inertiaDestinationX",
         "inertiaDestinationY",
         "info",
@@ -15511,6 +16546,7 @@
         "insertCell",
         "insertDTMF",
         "insertData",
+        "insertDebugMarker",
         "insertItemBefore",
         "insertNode",
         "insertRow",
@@ -15581,6 +16617,7 @@
         "isEqualNode",
         "isExtensible",
         "isExternalCTAP2SecurityKeySupported",
+        "isFallbackAdapter",
         "isFile",
         "isFinite",
         "isFramebuffer",
@@ -15706,6 +16743,7 @@
         "latitude",
         "layerX",
         "layerY",
+        "layout",
         "layoutFlow",
         "layoutGrid",
         "layoutGridChar",
@@ -15728,6 +16766,7 @@
         "lighting-color",
         "lightingColor",
         "limitingConeAngle",
+        "limits",
         "line",
         "line-break",
         "line-height",
@@ -15737,7 +16776,9 @@
         "lineDashOffset",
         "lineHeight",
         "lineJoin",
+        "lineNum",
         "lineNumber",
+        "linePos",
         "lineTo",
         "lineWidth",
         "linearAcceleration",
@@ -15762,6 +16803,7 @@
         "load",
         "loadEventEnd",
         "loadEventStart",
+        "loadOp",
         "loadTime",
         "loadTimes",
         "loaded",
@@ -15778,6 +16820,8 @@
         "locked",
         "lockedFile",
         "locks",
+        "lodMaxClamp",
+        "lodMinClamp",
         "log",
         "log10",
         "log1p",
@@ -15792,6 +16836,7 @@
         "loopEnd",
         "loopStart",
         "looping",
+        "lost",
         "low",
         "lower",
         "lowerBound",
@@ -15813,11 +16858,15 @@
         "m42",
         "m43",
         "m44",
+        "magFilter",
         "makeXRCompatible",
         "manifest",
         "manufacturer",
         "manufacturerName",
         "map",
+        "mapAsync",
+        "mapState",
+        "mappedAtCreation",
         "mapping",
         "margin",
         "margin-block",
@@ -15895,21 +16944,53 @@
         "max-width",
         "maxActions",
         "maxAlternatives",
+        "maxAnisotropy",
+        "maxBindGroups",
+        "maxBindGroupsPlusVertexBuffers",
+        "maxBindingsPerBindGroup",
         "maxBlockSize",
+        "maxBufferSize",
         "maxChannelCount",
         "maxChannels",
+        "maxColorAttachmentBytesPerSample",
+        "maxColorAttachments",
+        "maxComputeInvocationsPerWorkgroup",
+        "maxComputeWorkgroupSizeX",
+        "maxComputeWorkgroupSizeY",
+        "maxComputeWorkgroupSizeZ",
+        "maxComputeWorkgroupStorageSize",
+        "maxComputeWorkgroupsPerDimension",
         "maxConnectionsPerServer",
         "maxDecibels",
         "maxDistance",
+        "maxDrawCount",
+        "maxDynamicStorageBuffersPerPipelineLayout",
+        "maxDynamicUniformBuffersPerPipelineLayout",
         "maxHeight",
         "maxInlineSize",
+        "maxInterStageShaderComponents",
+        "maxInterStageShaderVariables",
         "maxLayers",
         "maxLength",
         "maxMessageSize",
         "maxPacketLifeTime",
         "maxRetransmits",
+        "maxSampledTexturesPerShaderStage",
+        "maxSamplersPerShaderStage",
+        "maxStorageBufferBindingSize",
+        "maxStorageBuffersPerShaderStage",
+        "maxStorageTexturesPerShaderStage",
+        "maxTextureArrayLayers",
+        "maxTextureDimension1D",
+        "maxTextureDimension2D",
+        "maxTextureDimension3D",
         "maxTouchPoints",
+        "maxUniformBufferBindingSize",
+        "maxUniformBuffersPerShaderStage",
         "maxValue",
+        "maxVertexAttributes",
+        "maxVertexBufferArrayStride",
+        "maxVertexBuffers",
         "maxWidth",
         "measure",
         "measureText",
@@ -15930,6 +17011,7 @@
         "messageClass",
         "messageHandlers",
         "messageType",
+        "messages",
         "metaKey",
         "metadata",
         "method",
@@ -15943,19 +17025,29 @@
         "min-height",
         "min-inline-size",
         "min-width",
+        "minBindingSize",
         "minBlockSize",
         "minDecibels",
+        "minFilter",
         "minHeight",
         "minInlineSize",
         "minLength",
+        "minStorageBufferOffsetAlignment",
+        "minUniformBufferOffsetAlignment",
         "minValue",
         "minWidth",
+        "mipLevel",
+        "mipLevelCount",
+        "mipmapFilter",
         "miterLimit",
         "mix-blend-mode",
         "mixBlendMode",
         "mm",
+        "mobile",
         "mode",
+        "model",
         "modify",
+        "module",
         "mount",
         "move",
         "moveBy",
@@ -16206,6 +17298,8 @@
         "multiple",
         "multiply",
         "multiplySelf",
+        "multisample",
+        "multisampled",
         "mutableFile",
         "muted",
         "n",
@@ -16282,6 +17376,7 @@
         "objectStoreNames",
         "objectType",
         "observe",
+        "occlusionQuerySet",
         "of",
         "offscreenBuffering",
         "offset",
@@ -16307,6 +17402,7 @@
         "oldVersion",
         "olderShadowRoot",
         "onLine",
+        "onSubmittedWorkDone",
         "onabort",
         "onabsolutedeviceorientation",
         "onactivate",
@@ -16603,6 +17699,7 @@
         "ontransitionend",
         "ontransitionrun",
         "ontransitionstart",
+        "onuncapturederror",
         "onunhandledrejection",
         "onunload",
         "onunmute",
@@ -16651,6 +17748,7 @@
         "opened",
         "opener",
         "opera",
+        "operation",
         "operationType",
         "operator",
         "opr",
@@ -16689,6 +17787,7 @@
         "outlineStyle",
         "outlineWidth",
         "outputBuffer",
+        "outputChannelCount",
         "outputLatency",
         "outputs",
         "overflow",
@@ -16776,6 +17875,7 @@
         "palette",
         "pan",
         "panningModel",
+        "parameterData",
         "parameters",
         "parent",
         "parentElement",
@@ -16791,6 +17891,7 @@
         "parseInt",
         "part",
         "participants",
+        "passOp",
         "passive",
         "password",
         "pasteHTML",
@@ -16861,6 +17962,7 @@
         "placeSelf",
         "placeholder",
         "platform",
+        "platformVersion",
         "platforms",
         "play",
         "playEffect",
@@ -16887,6 +17989,8 @@
         "pointsAtZ",
         "polygonOffset",
         "pop",
+        "popDebugGroup",
+        "popErrorScope",
         "populateMatrix",
         "popupWindowFeatures",
         "popupWindowName",
@@ -16914,12 +18018,14 @@
         "pow",
         "powerEfficient",
         "powerOff",
+        "powerPreference",
         "preMultiplySelf",
         "precision",
         "preferredStyleSheetSet",
         "preferredStylesheetSet",
         "prefix",
         "preload",
+        "premultipliedAlpha",
         "prepend",
         "presentation",
         "preserveAlpha",
@@ -16939,6 +18045,7 @@
         "previousSibling",
         "previousTranslate",
         "primaryKey",
+        "primitive",
         "primitiveType",
         "primitiveUnits",
         "principals",
@@ -16950,6 +18057,7 @@
         "processIceMessage",
         "processingEnd",
         "processingStart",
+        "processorOptions",
         "product",
         "productId",
         "productName",
@@ -16975,6 +18083,8 @@
         "published",
         "pulse",
         "push",
+        "pushDebugGroup",
+        "pushErrorScope",
         "pushManager",
         "pushNotification",
         "pushState",
@@ -16993,6 +18103,8 @@
         "queryCommandValue",
         "querySelector",
         "querySelectorAll",
+        "querySet",
+        "queue",
         "queueMicrotask",
         "quote",
         "quotes",
@@ -17149,6 +18261,8 @@
         "replaceWith",
         "reportValidity",
         "request",
+        "requestAdapter",
+        "requestAdapterInfo",
         "requestAnimationFrame",
         "requestAutocomplete",
         "requestData",
@@ -17176,6 +18290,7 @@
         "required",
         "requiredExtensions",
         "requiredFeatures",
+        "requiredLimits",
         "reset",
         "resetPose",
         "resetTransform",
@@ -17183,6 +18298,9 @@
         "resizeBy",
         "resizeTo",
         "resolve",
+        "resolveQuerySet",
+        "resolveTarget",
+        "resource",
         "response",
         "responseBody",
         "responseEnd",
@@ -17231,11 +18349,13 @@
         "rotationAngle",
         "rotationRate",
         "round",
+        "roundRect",
         "row-gap",
         "rowGap",
         "rowIndex",
         "rowSpan",
         "rows",
+        "rowsPerImage",
         "rtcpTransport",
         "rtt",
         "ruby-align",
@@ -17251,8 +18371,11 @@
         "s",
         "safari",
         "sample",
+        "sampleCount",
         "sampleCoverage",
         "sampleRate",
+        "sampleType",
+        "sampler",
         "samplerParameterf",
         "samplerParameteri",
         "sandbox",
@@ -17431,7 +18554,9 @@
         "setBaseAndExtent",
         "setBigInt64",
         "setBigUint64",
+        "setBindGroup",
         "setBingCurrentSearchDefault",
+        "setBlendConstant",
         "setCapture",
         "setCodecPreferences",
         "setColor",
@@ -17457,6 +18582,7 @@
         "setHours",
         "setIdentityProvider",
         "setImmediate",
+        "setIndexBuffer",
         "setInt16",
         "setInt32",
         "setInt8",
@@ -17487,6 +18613,7 @@
         "setParameter",
         "setParameters",
         "setPeriodicWave",
+        "setPipeline",
         "setPointerCapture",
         "setPosition",
         "setPositionState",
@@ -17503,6 +18630,7 @@
         "setResourceTimingBufferSize",
         "setRotate",
         "setScale",
+        "setScissorRect",
         "setSeconds",
         "setSelectionRange",
         "setServerCertificate",
@@ -17514,6 +18642,7 @@
         "setStartAfter",
         "setStartBefore",
         "setStdDeviation",
+        "setStencilReference",
         "setStreams",
         "setStringValue",
         "setStrokeColor",
@@ -17541,10 +18670,13 @@
         "setVariable",
         "setVelocity",
         "setVersion",
+        "setVertexBuffer",
+        "setViewport",
         "setYear",
         "settingName",
         "settingValue",
         "sex",
+        "shaderLocation",
         "shaderSource",
         "shadowBlur",
         "shadowColor",
@@ -17612,6 +18744,7 @@
         "sourceCapabilities",
         "sourceFile",
         "sourceIndex",
+        "sourceMap",
         "sources",
         "spacing",
         "span",
@@ -17633,6 +18766,7 @@
         "sqrt",
         "src",
         "srcElement",
+        "srcFactor",
         "srcFilter",
         "srcObject",
         "srcUrn",
@@ -17664,15 +18798,24 @@
         "statusbar",
         "stdDeviationX",
         "stdDeviationY",
+        "stencilBack",
+        "stencilClearValue",
+        "stencilFront",
         "stencilFunc",
         "stencilFuncSeparate",
+        "stencilLoadOp",
         "stencilMask",
         "stencilMaskSeparate",
         "stencilOp",
         "stencilOpSeparate",
+        "stencilReadMask",
+        "stencilReadOnly",
+        "stencilStoreOp",
+        "stencilWriteMask",
         "step",
         "stepDown",
         "stepMismatch",
+        "stepMode",
         "stepUp",
         "sticky",
         "stitchTiles",
@@ -17691,7 +18834,9 @@
         "storageArea",
         "storageName",
         "storageStatus",
+        "storageTexture",
         "store",
+        "storeOp",
         "storeSiteSpecificTrackingException",
         "storeWebWideTrackingException",
         "stpVersion",
@@ -17702,6 +18847,7 @@
         "string",
         "stringValue",
         "stringify",
+        "stripIndexFormat",
         "stroke",
         "stroke-dasharray",
         "stroke-dashoffset",
@@ -17789,6 +18935,7 @@
         "targetTouches",
         "targetX",
         "targetY",
+        "targets",
         "tcpType",
         "tee",
         "tel",
@@ -17862,6 +19009,7 @@
         "textTransform",
         "textUnderlineOffset",
         "textUnderlinePosition",
+        "texture",
         "then",
         "threadId",
         "threshold",
@@ -17880,6 +19028,7 @@
         "timeout",
         "timestamp",
         "timestampOffset",
+        "timestampWrites",
         "timing",
         "title",
         "to",
@@ -17925,6 +19074,7 @@
         "toolbar",
         "top",
         "topMargin",
+        "topology",
         "total",
         "totalFrameDelay",
         "totalVideoFrames",
@@ -17993,6 +19143,8 @@
         "uint32",
         "uint8",
         "uint8Clamped",
+        "unclippedDepth",
+        "unconfigure",
         "undefined",
         "unescape",
         "uneval",
@@ -18043,6 +19195,7 @@
         "unloadEventEnd",
         "unloadEventStart",
         "unlock",
+        "unmap",
         "unmount",
         "unobserve",
         "unpause",
@@ -18086,6 +19239,7 @@
         "url",
         "urn",
         "urns",
+        "usage",
         "usages",
         "usb",
         "usbVersionMajor",
@@ -18098,6 +19252,7 @@
         "user-select",
         "userActivation",
         "userAgent",
+        "userAgentData",
         "userChoice",
         "userHandle",
         "userHint",
@@ -18140,6 +19295,7 @@
         "vendorSub",
         "verify",
         "version",
+        "vertex",
         "vertexAttrib1f",
         "vertexAttrib1fv",
         "vertexAttrib2f",
@@ -18170,6 +19326,8 @@
         "view",
         "viewBox",
         "viewBoxString",
+        "viewDimension",
+        "viewFormats",
         "viewTarget",
         "viewTargetString",
         "viewport",
@@ -18388,6 +19546,7 @@
         "webkitdropzone",
         "webstore",
         "weight",
+        "wgslLanguageFeatures",
         "whatToShow",
         "wheelDelta",
         "wheelDeltaX",
@@ -18411,12 +19570,17 @@
         "wordSpacing",
         "wordWrap",
         "workerStart",
+        "wow64",
         "wrap",
         "wrapKey",
         "writable",
         "writableAuxiliaries",
         "write",
+        "writeBuffer",
+        "writeMask",
         "writeText",
+        "writeTexture",
+        "writeTimestamp",
         "writeValue",
         "writeWithoutResponse",
         "writeln",
@@ -18451,18 +19615,23 @@
             return node instanceof AST_Sequence ? addStrings(node.tail_node(), add) : node instanceof AST_String ? add(node.value) : node instanceof AST_Conditional && (addStrings(node.consequent, add), addStrings(node.alternative, add)), !0;
         }));
     }
-    var to_ascii = "undefined" == typeof atob ? function(b64) {
-        return Buffer.from(b64, "base64").toString();
-    } : atob, to_base64 = "undefined" == typeof btoa ? function(str) {
-        return Buffer.from(str).toString("base64");
-    } : btoa;
+    function find_annotated_props(ast) {
+        var annotated_props = new Set();
+        return walk(ast, (node)=>{
+            node instanceof AST_ClassPrivateProperty || node instanceof AST_PrivateMethod || node instanceof AST_PrivateGetter || node instanceof AST_PrivateSetter || node instanceof AST_DotHash || (node instanceof AST_ObjectKeyVal ? "string" == typeof node.key && has_annotation(node, _MANGLEPROP) && annotated_props.add(node.key) : node instanceof AST_ObjectProperty ? has_annotation(node, _MANGLEPROP) && annotated_props.add(node.key.name) : node instanceof AST_Dot ? has_annotation(node, _MANGLEPROP) && annotated_props.add(node.property) : node instanceof AST_Sub && node.property instanceof AST_String && has_annotation(node, _MANGLEPROP) && annotated_props.add(node.property.value));
+        }), annotated_props;
+    }
+    // to/from base64 functions
+    // Prefer built-in Buffer, if available, then use hack
+    // https://developer.mozilla.org/en-US/docs/Glossary/Base64#The_Unicode_Problem
+    var to_ascii = "u" > typeof Buffer ? (b64)=>Buffer.from(b64, "base64").toString() : (b64)=>decodeURIComponent(escape(atob(b64))), to_base64 = "u" > typeof Buffer ? (str)=>Buffer.from(str).toString("base64") : (str)=>btoa(unescape(encodeURIComponent(str)));
     function set_shorthand(name, options, keys) {
         options[name] && keys.forEach(function(key) {
-            !options[key] || ("object" != typeof options[key] && (options[key] = {}), name in options[key] || (options[key][name] = options[name]));
+            options[key] && ("object" != typeof options[key] && (options[key] = {}), name in options[key] || (options[key][name] = options[name]));
         });
     }
     function init_cache(cache) {
-        !cache || ("props" in cache ? cache.props instanceof Map || (cache.props = function(obj) {
+        cache && ("props" in cache ? cache.props instanceof Map || (cache.props = function(obj) {
             var map = new Map();
             for(var key in obj)HOP(obj, key) && "$" === key.charAt(0) && map.set(key.substr(1), obj[key]);
             return map;
@@ -18476,7 +19645,8 @@
             }), obj)
         };
     }
-    async function minify(files, options, _fs_module) {
+    function* minify_sync_or_async(files, options, _fs_module) {
+        let format_options;
         _fs_module && "object" == typeof process && process.env && "string" == typeof process.env.TERSER_DEBUG_DIR && function(files, options, fs, debug_folder) {
             if (!(fs && fs.writeFileSync && fs.mkdirSync)) return;
             try {
@@ -18484,10 +19654,10 @@
             } catch (e) {
                 if ("EEXIST" !== e.code) throw e;
             }
-            const log_path = `${debug_folder}/terser-debug-${9999999 * Math.random() | 0}.log`, options_str = JSON.stringify(options = options || {}, (_key, thing)=>"function" == typeof thing ? "[Function " + thing.toString() + "]" : thing instanceof RegExp ? "[RegExp " + thing.toString() + "]" : thing, 4), files_str = (file)=>"object" == typeof file && options.parse && options.parse.spidermonkey ? JSON.stringify(file, null, 2) : "object" == typeof file ? Object.keys(file).map((key)=>key + ": " + files_str(file[key])).join("\n\n") : "string" == typeof file ? "```\n" + file + "\n```" : file;
+            let log_path = `${debug_folder}/terser-debug-${9999999 * Math.random() | 0}.log`, options_str = JSON.stringify(options = options || {}, (_key, thing)=>"function" == typeof thing ? "[Function " + thing.toString() + "]" : thing instanceof RegExp ? "[RegExp " + thing.toString() + "]" : thing, 4), files_str = (file)=>"object" == typeof file && options.parse && options.parse.spidermonkey ? JSON.stringify(file, null, 2) : "object" == typeof file ? Object.keys(file).map((key)=>key + ": " + files_str(file[key])).join("\n\n") : "string" == typeof file ? "```\n" + file + "\n```" : file;
             fs.writeFileSync(log_path, "Options: \n" + options_str + "\n\nInput files:\n\n" + files_str(files) + "\n");
         }(files, options, _fs_module, process.env.TERSER_DEBUG_DIR);
-        var quoted_props, toplevel, timings = (options = defaults(options, {
+        var quoted_props, toplevel, annotated_props, timings = (options = defaults(options, {
             compress: {},
             ecma: void 0,
             enclose: !1,
@@ -18550,7 +19720,7 @@
             reserved: [],
             safari10: !1,
             toplevel: !1
-        }, !0), !options.mangle.properties || ("object" != typeof options.mangle.properties && (options.mangle.properties = {}), options.mangle.properties.keep_quoted && (Array.isArray(quoted_props = options.mangle.properties.reserved) || (quoted_props = []), options.mangle.properties.reserved = quoted_props), !options.nameCache || "cache" in options.mangle.properties || (options.mangle.properties.cache = options.nameCache.props || {})), init_cache(options.mangle.cache), init_cache(options.mangle.properties.cache)), options.sourceMap && (options.sourceMap = defaults(options.sourceMap, {
+        }, !0), options.mangle.properties && ("object" != typeof options.mangle.properties && (options.mangle.properties = {}), options.mangle.properties.keep_quoted && (Array.isArray(quoted_props = options.mangle.properties.reserved) || (quoted_props = []), options.mangle.properties.reserved = quoted_props), !options.nameCache || "cache" in options.mangle.properties || (options.mangle.properties.cache = options.nameCache.props || {})), init_cache(options.mangle.cache), init_cache(options.mangle.properties.cache)), options.sourceMap && (options.sourceMap = defaults(options.sourceMap, {
             asObject: !1,
             content: null,
             filename: null,
@@ -18571,6 +19741,7 @@
                     return match ? to_ascii(match[2]) : (console.warn("inline source map not found"), null);
                 }(files[name]);
             }
+            if (null === options.parse.toplevel) throw Error("no source file given");
             toplevel = options.parse.toplevel;
         }
         quoted_props && "strict" !== options.mangle.properties.keep_quoted && function(ast, reserved) {
@@ -18580,18 +19751,18 @@
             ast.walk(new TreeWalker(function(node) {
                 node instanceof AST_ObjectKeyVal && node.quote ? add(node.key) : node instanceof AST_ObjectProperty && node.quote ? add(node.key.name) : node instanceof AST_Sub && addStrings(node.property, add);
             }));
-        }(toplevel, quoted_props), options.wrap && (toplevel = toplevel.wrap_commonjs(options.wrap)), options.enclose && (toplevel = toplevel.wrap_enclose(options.enclose)), timings && (timings.rename = Date.now()), timings && (timings.compress = Date.now()), options.compress && (toplevel = new Compressor(options.compress, {
+        }(toplevel, quoted_props), options.mangle && options.mangle.properties && (annotated_props = find_annotated_props(toplevel)), options.wrap && (toplevel = toplevel.wrap_commonjs(options.wrap)), options.enclose && (toplevel = toplevel.wrap_enclose(options.enclose)), timings && (timings.rename = Date.now()), timings && (timings.compress = Date.now()), options.compress && (toplevel = new Compressor(options.compress, {
             mangle_options: options.mangle
         }).compress(toplevel)), timings && (timings.scope = Date.now()), options.mangle && toplevel.figure_out_scope(options.mangle), timings && (timings.mangle = Date.now()), options.mangle && (toplevel.compute_char_frequency(options.mangle), toplevel.mangle_names(options.mangle), toplevel = function(ast, options) {
             var cprivate = -1, private_cache = new Map(), nth_identifier = options.nth_identifier || base54;
-            return ast = ast.transform(new TreeTransformer(function(node) {
-                node instanceof AST_ClassPrivateProperty || node instanceof AST_PrivateMethod || node instanceof AST_PrivateGetter || node instanceof AST_PrivateSetter ? node.key.name = mangle_private(node.key.name) : node instanceof AST_DotHash && (node.property = mangle_private(node.property));
+            return ast.transform(new TreeTransformer(function(node) {
+                node instanceof AST_ClassPrivateProperty || node instanceof AST_PrivateMethod || node instanceof AST_PrivateGetter || node instanceof AST_PrivateSetter || node instanceof AST_PrivateIn ? node.key.name = mangle_private(node.key.name) : node instanceof AST_DotHash && (node.property = mangle_private(node.property));
             }));
             function mangle_private(name) {
                 let mangled = private_cache.get(name);
                 return mangled || (mangled = nth_identifier.get(++cprivate), private_cache.set(name, mangled)), mangled;
             }
-        }(toplevel, options.mangle)), timings && (timings.properties = Date.now()), options.mangle && options.mangle.properties && (toplevel = function(ast, options) {
+        }(toplevel, options.mangle)), timings && (timings.properties = Date.now()), options.mangle && options.mangle.properties && (toplevel = function(ast, options, annotated_props = find_annotated_props(ast)) {
             var cache, debug_name_suffix, nth_identifier = (options = defaults(options, {
                 builtins: !1,
                 cache: null,
@@ -18601,54 +19772,55 @@
                 only_cache: !1,
                 regex: null,
                 reserved: null,
-                undeclared: !1
+                undeclared: !1,
+                only_annotated: !1
             }, !0)).nth_identifier, reserved_option = options.reserved;
             Array.isArray(reserved_option) || (reserved_option = [
                 reserved_option
             ]);
             var reserved = new Set(reserved_option);
             options.builtins || /***********************************************************************
-
-  A JavaScript tokenizer / parser / beautifier / compressor.
-  https://github.com/mishoo/UglifyJS2
-
-  -------------------------------- (C) ---------------------------------
-
-                           Author: Mihai Bazon
-                         <mihai.bazon@gmail.com>
-                       http://mihai.bazon.net/blog
-
-  Distributed under the BSD license:
-
-    Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
-
-    Redistribution and use in source and binary forms, with or without
-    modification, are permitted provided that the following conditions
-    are met:
-
-        * Redistributions of source code must retain the above
-          copyright notice, this list of conditions and the following
-          disclaimer.
-
-        * Redistributions in binary form must reproduce the above
-          copyright notice, this list of conditions and the following
-          disclaimer in the documentation and/or other materials
-          provided with the distribution.
-
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
-    EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-    IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-    PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
-    LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
-    OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-    PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
-    PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-    THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
-    TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
-    THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
-    SUCH DAMAGE.
-
- ***********************************************************************/ function(reserved) {
+    
+      A JavaScript tokenizer / parser / beautifier / compressor.
+      https://github.com/mishoo/UglifyJS2
+    
+      -------------------------------- (C) ---------------------------------
+    
+                               Author: Mihai Bazon
+                             <mihai.bazon@gmail.com>
+                           http://mihai.bazon.net/blog
+    
+      Distributed under the BSD license:
+    
+        Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
+    
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions
+        are met:
+    
+            * Redistributions of source code must retain the above
+              copyright notice, this list of conditions and the following
+              disclaimer.
+    
+            * Redistributions in binary form must reproduce the above
+              copyright notice, this list of conditions and the following
+              disclaimer in the documentation and/or other materials
+              provided with the distribution.
+    
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+        EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+        PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+        OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+        PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+        PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+        THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+        TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+        THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+        SUCH DAMAGE.
+    
+     ***********************************************************************/ function(reserved) {
                 domprops.forEach(add);
                 var objects = {}, global_ref = "object" == typeof global ? global : self;
                 function add(name) {
@@ -18664,7 +19836,7 @@
                     "WeakMap",
                     "WeakSet"
                 ].forEach(function(new_global) {
-                    objects[new_global] = global_ref[new_global] || Function();
+                    objects[new_global] = global_ref[new_global] || function() {};
                 }), [
                     "null",
                     "true",
@@ -18725,7 +19897,7 @@
             }(reserved);
             var cname = -1;
             cache = options.cache ? options.cache.props : new Map();
-            var regex = options.regex && new RegExp(options.regex), debug = !1 !== options.debug;
+            var only_annotated = options.only_annotated, regex = options.regex && new RegExp(options.regex), debug = !1 !== options.debug;
             debug && (debug_name_suffix = !0 === options.debug ? "" : options.debug);
             var names_to_mangle = new Set(), unmangleable = new Set();
             // Track each already-mangled name to prevent nth_identifier from generating
@@ -18746,16 +19918,17 @@
                         declared = !(root.thedef && root.thedef.undeclared);
                     }
                     !declared || keep_quoted && node.quote || add(node.property);
-                } else node instanceof AST_Sub ? keep_quoted || addStrings(node.property, add) : node instanceof AST_Call && "Object.defineProperty" == node.expression.print_to_string() ? addStrings(node.args[1], add) : node instanceof AST_Binary && "in" === node.operator && addStrings(node.left, add);
+                } else node instanceof AST_Sub ? keep_quoted || addStrings(node.property, add) : node instanceof AST_Call && "Object.defineProperty" == node.expression.print_to_string() ? addStrings(node.args[1], add) : node instanceof AST_Binary && "in" === node.operator ? addStrings(node.left, add) : node instanceof AST_String && has_annotation(node, _KEY) && add(node.value);
             })), ast.transform(new TreeTransformer(function(node) {
-                node instanceof AST_ClassPrivateProperty || node instanceof AST_PrivateMethod || node instanceof AST_PrivateGetter || node instanceof AST_PrivateSetter || node instanceof AST_DotHash || (node instanceof AST_ObjectKeyVal ? "string" != typeof node.key || keep_quoted && node.quote || (node.key = mangle(node.key)) : node instanceof AST_ObjectProperty ? keep_quoted && node.quote || (node.key.name = mangle(node.key.name)) : node instanceof AST_Dot ? keep_quoted && node.quote || (node.property = mangle(node.property)) : !keep_quoted && node instanceof AST_Sub ? node.property = mangleStrings(node.property) : node instanceof AST_Call && "Object.defineProperty" == node.expression.print_to_string() ? node.args[1] = mangleStrings(node.args[1]) : node instanceof AST_Binary && "in" === node.operator && (node.left = mangleStrings(node.left)));
+                node instanceof AST_ClassPrivateProperty || node instanceof AST_PrivateMethod || node instanceof AST_PrivateGetter || node instanceof AST_PrivateSetter || node instanceof AST_DotHash || (node instanceof AST_ObjectKeyVal ? "string" != typeof node.key || keep_quoted && node.quote || (node.key = mangle(node.key)) : node instanceof AST_ObjectProperty ? keep_quoted && node.quote || (node.key.name = mangle(node.key.name)) : node instanceof AST_Dot ? keep_quoted && node.quote || (node.property = mangle(node.property)) : !keep_quoted && node instanceof AST_Sub ? node.property = mangleStrings(node.property) : node instanceof AST_Call && "Object.defineProperty" == node.expression.print_to_string() ? node.args[1] = mangleStrings(node.args[1]) : node instanceof AST_Binary && "in" === node.operator ? node.left = mangleStrings(node.left) : node instanceof AST_String && has_annotation(node, _KEY) && (// Clear _KEY annotation to prevent double mangling
+                clear_annotation(node, _KEY), node.value = mangle(node.value)));
             })));
             // only function declarations after this line
             function can_mangle(name) {
                 return !(unmangleable.has(name) || reserved.has(name)) && (options.only_cache ? cache.has(name) : !/^-?[0-9]+(\.[0-9]+)?(e[+-][0-9]+)?$/.test(name));
             }
             function should_mangle(name) {
-                return !(regex && !regex.test(name) || reserved.has(name)) && (cache.has(name) || names_to_mangle.has(name));
+                return (!only_annotated || !!annotated_props.has(name)) && (regex && !regex.test(name) ? annotated_props.has(name) : !reserved.has(name) && (cache.has(name) || names_to_mangle.has(name)));
             }
             function add(name) {
                 can_mangle(name) && names_to_mangle.add(name), should_mangle(name) || unmangleable.add(name);
@@ -18781,31 +19954,157 @@
                     if (node instanceof AST_Sequence) {
                         var last = node.expressions.length - 1;
                         node.expressions[last] = mangleStrings(node.expressions[last]);
-                    } else node instanceof AST_String ? node.value = mangle(node.value) : node instanceof AST_Conditional && (node.consequent = mangleStrings(node.consequent), node.alternative = mangleStrings(node.alternative));
+                    } else node instanceof AST_String ? (// Clear _KEY annotation to prevent double mangling
+                    clear_annotation(node, _KEY), node.value = mangle(node.value)) : node instanceof AST_Conditional && (node.consequent = mangleStrings(node.consequent), node.alternative = mangleStrings(node.alternative));
                     return node;
                 }));
             }
-        }(toplevel, options.mangle.properties)), timings && (timings.format = Date.now());
+        }(toplevel, options.mangle.properties, annotated_props)), timings && (timings.format = Date.now());
         var result = {};
         if (options.format.ast && (result.ast = toplevel), options.format.spidermonkey && (result.ast = toplevel.to_mozilla_ast()), !HOP(options.format, "code") || options.format.code) {
-            if (options.sourceMap && (options.format.source_map = await SourceMap({
-                file: options.sourceMap.filename,
-                orig: options.sourceMap.content,
-                root: options.sourceMap.root
-            }), options.sourceMap.includeSources)) {
-                if (files instanceof AST_Toplevel) throw Error("original source content unavailable");
-                for(var name in files)HOP(files, name) && options.format.source_map.get().setSourceContent(name, files[name]);
+            if (// Make a shallow copy so that we can modify without mutating the user's input.
+            (format_options = {
+                ...options.format
+            }).ast || (// Destroy stuff to save RAM. (unless the deprecated `ast` option is on)
+            format_options._destroy_ast = !0, walk(toplevel, (node)=>{
+                node instanceof AST_Scope && (node.variables = void 0, node.enclosed = void 0, node.parent_scope = void 0), node.block_scope && (node.block_scope.variables = void 0, node.block_scope.enclosed = void 0, node.parent_scope = void 0);
+            })), options.sourceMap) {
+                if (options.sourceMap.includeSources && files instanceof AST_Toplevel) throw Error("original source content unavailable");
+                format_options.source_map = yield*(/***********************************************************************
+    
+      A JavaScript tokenizer / parser / beautifier / compressor.
+      https://github.com/mishoo/UglifyJS2
+    
+      -------------------------------- (C) ---------------------------------
+    
+                               Author: Mihai Bazon
+                             <mihai.bazon@gmail.com>
+                           http://mihai.bazon.net/blog
+    
+      Distributed under the BSD license:
+    
+        Copyright 2012 (c) Mihai Bazon <mihai.bazon@gmail.com>
+    
+        Redistribution and use in source and binary forms, with or without
+        modification, are permitted provided that the following conditions
+        are met:
+    
+            * Redistributions of source code must retain the above
+              copyright notice, this list of conditions and the following
+              disclaimer.
+    
+            * Redistributions in binary form must reproduce the above
+              copyright notice, this list of conditions and the following
+              disclaimer in the documentation and/or other materials
+              provided with the distribution.
+    
+        THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDER “AS IS” AND ANY
+        EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+        IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+        PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE
+        LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY,
+        OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+        PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+        PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+        THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR
+        TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
+        THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+        SUCH DAMAGE.
+    
+     ***********************************************************************/ // a small wrapper around source-map and @jridgewell/source-map
+                function*(options) {
+                    options = defaults(options, {
+                        file: null,
+                        root: null,
+                        orig: null,
+                        files: {}
+                    });
+                    var orig_map, generator = new sourceMap.SourceMapGenerator({
+                        file: options.file,
+                        sourceRoot: options.root
+                    });
+                    let sourcesContent = {
+                        __proto__: null
+                    }, files = options.files;
+                    for(var name in files)HOP(files, name) && (sourcesContent[name] = files[name]);
+                    function clean(map) {
+                        return map.sourcesContent && map.sourcesContent.every((c)=>null == c) && delete map.sourcesContent, void 0 === map.file && delete map.file, void 0 === map.sourceRoot && delete map.sourceRoot, map;
+                    }
+                    return options.orig && // We support both @jridgewell/source-map (which has a sync
+                    // SourceMapConsumer) and source-map (which has an async
+                    // SourceMapConsumer).
+                    (orig_map = yield new sourceMap.SourceMapConsumer(options.orig)).sourcesContent && orig_map.sources.forEach(function(source, i) {
+                        var content = orig_map.sourcesContent[i];
+                        content && (sourcesContent[source] = content);
+                    }), {
+                        add: function(source, gen_line, gen_col, orig_line, orig_col, name) {
+                            let generatedPos = {
+                                line: gen_line,
+                                column: gen_col
+                            };
+                            if (orig_map) {
+                                var info = orig_map.originalPositionFor({
+                                    line: orig_line,
+                                    column: orig_col
+                                });
+                                if (null === info.source) return void generator.addMapping({
+                                    generated: generatedPos,
+                                    original: null,
+                                    source: null,
+                                    name: null
+                                });
+                                source = info.source, orig_line = info.line, orig_col = info.column, name = info.name || name;
+                            }
+                            generator.addMapping({
+                                generated: generatedPos,
+                                original: {
+                                    line: orig_line,
+                                    column: orig_col
+                                },
+                                source: source,
+                                name: name
+                            }), generator.setSourceContent(source, sourcesContent[source]);
+                        },
+                        getDecoded: function() {
+                            return generator.toDecodedMap ? clean(generator.toDecodedMap()) : null;
+                        },
+                        getEncoded: function() {
+                            return clean(generator.toJSON());
+                        },
+                        destroy: function() {
+                            // @jridgewell/source-map's SourceMapConsumer does not need to be
+                            // manually freed.
+                            orig_map && orig_map.destroy && orig_map.destroy();
+                        }
+                    };
+                }({
+                    file: options.sourceMap.filename,
+                    orig: options.sourceMap.content,
+                    root: options.sourceMap.root,
+                    files: options.sourceMap.includeSources ? files : null
+                }));
             }
-            delete options.format.ast, delete options.format.code, delete options.format.spidermonkey;
-            var stream = OutputStream(options.format);
-            if (toplevel.print(stream), result.code = stream.get(), options.sourceMap) {
-                if (options.sourceMap.asObject ? result.map = options.format.source_map.get().toJSON() : result.map = options.format.source_map.toString(), "inline" == options.sourceMap.url) {
-                    var sourceMap = "object" == typeof result.map ? JSON.stringify(result.map) : result.map;
-                    result.code += "\n//# sourceMappingURL=data:application/json;charset=utf-8;base64," + to_base64(sourceMap);
-                } else options.sourceMap.url && (result.code += "\n//# sourceMappingURL=" + options.sourceMap.url);
-            }
+            delete format_options.ast, delete format_options.code, delete format_options.spidermonkey;
+            var stream = OutputStream(format_options);
+            if (toplevel.print(stream), result.code = stream.get(), options.sourceMap) if (Object.defineProperty(result, "map", {
+                configurable: !0,
+                enumerable: !0,
+                get () {
+                    let map = format_options.source_map.getEncoded();
+                    return result.map = options.sourceMap.asObject ? map : JSON.stringify(map);
+                },
+                set (value) {
+                    Object.defineProperty(result, "map", {
+                        value,
+                        writable: !0
+                    });
+                }
+            }), result.decoded_map = format_options.source_map.getDecoded(), "inline" == options.sourceMap.url) {
+                var sourceMap1 = "object" == typeof result.map ? JSON.stringify(result.map) : result.map;
+                result.code += "\n//# sourceMappingURL=data:application/json;charset=utf-8;base64," + to_base64(sourceMap1);
+            } else options.sourceMap.url && (result.code += "\n//# sourceMappingURL=" + options.sourceMap.url);
         }
-        return options.nameCache && options.mangle && (options.mangle.cache && (options.nameCache.vars = cache_to_json(options.mangle.cache)), options.mangle.properties && options.mangle.properties.cache && (options.nameCache.props = cache_to_json(options.mangle.properties.cache))), options.format && options.format.source_map && options.format.source_map.destroy(), timings && (timings.end = Date.now(), result.timings = {
+        return options.nameCache && options.mangle && (options.mangle.cache && (options.nameCache.vars = cache_to_json(options.mangle.cache)), options.mangle.properties && options.mangle.properties.cache && (options.nameCache.props = cache_to_json(options.mangle.properties.cache))), format_options && format_options.source_map && format_options.source_map.destroy(), timings && (timings.end = Date.now(), result.timings = {
             parse: 1e-3 * (timings.rename - timings.parse),
             rename: 1e-3 * (timings.compress - timings.rename),
             compress: 1e-3 * (timings.scope - timings.compress),
@@ -18816,9 +20115,14 @@
             total: 1e-3 * (timings.end - timings.start)
         }), result;
     }
+    async function minify(files, options, _fs_module) {
+        let yielded, val, gen = minify_sync_or_async(files, options, _fs_module);
+        do yielded = (val = gen.next(await yielded)).value;
+        while (!val.done)
+        return val.value;
+    }
     async function run_cli({ program, packageJson, fs, path }) {
-        let filesList;
-        const skip_keys = new Set([
+        let filesList, skip_keys = new Set([
             "cname",
             "parent_scope",
             "scope",
@@ -18829,14 +20133,14 @@
             compress: !1,
             mangle: !1
         };
-        const default_options = await _default_options();
+        let default_options = await _default_options();
         if (program.version(packageJson.name + " " + packageJson.version), program.parseArgv = program.parse, program.parse = void 0, process.argv.includes("ast") ? program.helpInformation = function() {
             var out = OutputStream({
                 beautify: !0
             });
-            return function doitem(ctor) {
+            return !function doitem(ctor) {
                 out.print("AST_" + ctor.TYPE);
-                const props = ctor.SELF_PROPS.filter((prop)=>!/^\$/.test(prop));
+                let props = ctor.SELF_PROPS.filter((prop)=>!/^\$/.test(prop));
                 props.length > 0 && (out.space(), out.with_parens(function() {
                     props.forEach(function(prop, i) {
                         i && out.space(), out.print(prop);
@@ -18865,11 +20169,11 @@
             name in program && (options[name] = program[name]);
         }), "ecma" in program) {
             program.ecma != (0 | program.ecma) && fatal("ERROR: ecma must be an integer");
-            const ecma = 0 | program.ecma;
+            let ecma = 0 | program.ecma;
             ecma > 5 && ecma < 2015 ? options.ecma = ecma + 2009 : options.ecma = ecma;
         }
         if (program.format || program.beautify) {
-            const chosenOption = program.format || program.beautify;
+            let chosenOption = program.format || program.beautify;
             options.format = "object" == typeof chosenOption ? chosenOption : {};
         }
         if (program.comments && ("object" != typeof options.format && (options.format = {}), options.format.comments = "string" == typeof program.comments ? "false" != program.comments && program.comments : "some"), program.define) for(var expr in "object" != typeof options.compress && (options.compress = {}), "object" != typeof options.compress.global_defs && (options.compress.global_defs = {}), program.define)options.compress.global_defs[expr] = program.define[expr];
@@ -18931,14 +20235,14 @@
                             _class: "AST_" + value.TYPE
                         };
                         return value.block_scope && (result1.variables = value.block_scope.variables, result1.enclosed = value.block_scope.enclosed), value.CTOR.PROPS.forEach(function(prop) {
-                            result1[prop] = value[prop];
+                            "block_scope" !== prop && (result1[prop] = value[prop]);
                         }), result1;
                     }
                     return value;
                 }
             }, 2));
             else if ("spidermonkey" == program.output) try {
-                const minified = await minify(result.code, {
+                let minified = await minify(result.code, {
                     compress: !1,
                     mangle: !1,
                     format: {
@@ -19050,11 +20354,11 @@
         }), await run_cli();
     }
     async function _default_options() {
-        const defs = {};
+        let defs = {};
         return Object.keys(infer_options({
             0: 0
         })).forEach((component)=>{
-            const options = infer_options({
+            let options = infer_options({
                 [component]: {
                     0: 0
                 }
@@ -19069,5 +20373,12 @@
             return error.defs;
         }
     }
-    exports1._default_options = _default_options, exports1._run_cli = run_cli, exports1.minify = minify;
+    exports1._default_options = _default_options, exports1._run_cli = run_cli, exports1.minify = minify, exports1.minify_sync = function(files, options, _fs_module) {
+        let yielded, val, gen = minify_sync_or_async(files, options, _fs_module);
+        do {
+            if (yielded && "function" == typeof yielded.then) throw Error("minify_sync cannot be used with the legacy source-map module");
+            yielded = (val = gen.next(yielded)).value;
+        }while (!val.done)
+        return val.value;
+    };
 });

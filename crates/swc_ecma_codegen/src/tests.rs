@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 
+use ascii::AsciiChar;
 use swc_common::{comments::SingleThreadedComments, FileName, SourceMap};
 use swc_ecma_parser;
 use swc_ecma_testing::{exec_node_js, JsExecOptions};
@@ -7,7 +8,7 @@ use testing::DebugUsingDisplay;
 
 use self::swc_ecma_parser::{EsSyntax, Parser, StringInput, Syntax};
 use super::*;
-use crate::text_writer::omit_trailing_semi;
+use crate::{lit::get_quoted_utf16, text_writer::omit_trailing_semi};
 
 struct Builder {
     cfg: Config,
@@ -18,7 +19,7 @@ struct Builder {
 impl Builder {
     pub fn with<'a, F, Ret>(self, _: &str, s: &'a mut std::vec::Vec<u8>, op: F) -> Ret
     where
-        F: for<'aa> FnOnce(&mut Emitter<'aa, Box<(dyn WriteJs + 'aa)>, SourceMap>) -> Ret,
+        F: for<'aa> FnOnce(&mut Emitter<'aa, Box<dyn WriteJs + 'aa>, SourceMap>) -> Ret,
         Ret: 'static,
     {
         let writer = text_writer::JsWriter::new(self.cm.clone(), "\n", s, None);
@@ -42,7 +43,7 @@ impl Builder {
 
     pub fn text<F>(self, src: &str, op: F) -> String
     where
-        F: for<'aa> FnOnce(&mut Emitter<'aa, Box<(dyn WriteJs + 'aa)>, SourceMap>),
+        F: for<'aa> FnOnce(&mut Emitter<'aa, Box<dyn WriteJs + 'aa>, SourceMap>),
     {
         let mut buf = std::vec::Vec::new();
 
@@ -74,7 +75,7 @@ fn parse_then_emit(from: &str, cfg: Config, syntax: Syntax) -> String {
             res?
         };
 
-        let out = Builder { cfg, cm, comments }.text(from, |e| e.emit_module(&res).unwrap());
+        let out = Builder { cfg, cm, comments }.text(from, |e| res.emit_with(e).unwrap());
         Ok(out)
     })
     .unwrap()
@@ -140,8 +141,8 @@ pub(crate) fn assert_pretty(from: &str, to: &str) {
         Syntax::default(),
     );
 
-    println!("Expected: {:?}", to);
-    println!("Actual:   {:?}", out);
+    println!("Expected: {to:?}");
+    println!("Actual:   {out:?}");
     assert_eq!(DebugUsingDisplay(out.trim()), DebugUsingDisplay(to),);
 }
 
@@ -199,7 +200,7 @@ a;",
 
 #[test]
 fn comment_2() {
-    test_from_to("a // foo", "a // foo\n;\n");
+    test_from_to("a // foo", "a; // foo");
 }
 
 #[test]
@@ -210,7 +211,7 @@ fn comment_3() {
 a
 // foo
 b // bar",
-        "// foo\n// bar\na;\n// foo\nb // bar\n;\n",
+        "// foo\n// bar\na;\n// foo\nb; // bar",
     );
 }
 
@@ -584,10 +585,18 @@ CONTENT\r
 
 #[test]
 fn test_get_quoted_utf16() {
+    fn combine((quote_char, s): (AsciiChar, CowStr<'_>)) -> String {
+        let mut new = String::with_capacity(s.len() + 2);
+        new.push(quote_char.as_char());
+        new.push_str(s.as_ref());
+        new.push(quote_char.as_char());
+        new
+    }
+
     #[track_caller]
     fn es2020(src: &str, expected: &str) {
         assert_eq!(
-            super::get_quoted_utf16(src, true, EsVersion::Es2020),
+            combine(get_quoted_utf16(src.into(), true, EsVersion::Es2020)),
             expected
         )
     }
@@ -595,14 +604,17 @@ fn test_get_quoted_utf16() {
     #[track_caller]
     fn es2020_nonascii(src: &str, expected: &str) {
         assert_eq!(
-            super::get_quoted_utf16(src, true, EsVersion::Es2020),
+            combine(get_quoted_utf16(src.into(), true, EsVersion::Es2020)),
             expected
         )
     }
 
     #[track_caller]
     fn es5(src: &str, expected: &str) {
-        assert_eq!(super::get_quoted_utf16(src, true, EsVersion::Es5), expected)
+        assert_eq!(
+            combine(get_quoted_utf16(src.into(), true, EsVersion::Es5)),
+            expected
+        )
     }
 
     es2020("abcde", "\"abcde\"");
@@ -669,8 +681,8 @@ fn issue_1619_2() {
 #[test]
 fn issue_1619_3() {
     assert_eq!(
-        get_quoted_utf16("\x00\x31", true, EsVersion::Es3),
-        "\"\\x001\""
+        &*get_quoted_utf16("\x00\x31".into(), true, EsVersion::Es3).1,
+        "\\x001"
     );
 }
 
@@ -689,7 +701,7 @@ fn check_latest(src: &str, expected: &str) {
 
 #[test]
 fn invalid_unicode_in_ident() {
-    check_latest("\\ud83d;", "\\ud83d;");
+    check_latest("\\ud83d;", "\\uD83D;");
 }
 
 #[test]
@@ -712,10 +724,11 @@ fn issue_3617() {
     let from = r"// a string of all valid unicode whitespaces
     module.exports = '\u0009\u000A\u000B\u000C\u000D\u0020\u00A0\u1680\u2000\u2001\u2002' +
       '\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F\u3000\u2028\u2029\uFEFF' + '\u{a0}';";
+
     let expected = "// a string of all valid unicode whitespaces\nmodule.exports = \
                     '\\u0009\\u000A\\u000B\\u000C\\u000D\\u0020\\u00A0\\u1680\\u2000\\u2001\\\
                     u2002' + '\\u2003\\u2004\\u2005\\u2006\\u2007\\u2008\\u2009\\u200A\\u202F\\\
-                    u205F\\u3000\\u2028\\u2029\\uFEFF' + '\\u{a0}';\n";
+                    u205F\\u3000\\u2028\\u2029\\uFEFF' + \"\\xa0\";\n";
 
     let out = parse_then_emit(
         from,
@@ -872,6 +885,71 @@ export default {
 };
         "#,
         r#"export default{"\u3131":"\u11B0"}"#,
+        Config {
+            ascii_only: true,
+            ..Default::default()
+        },
+    );
+}
+
+#[test]
+fn ascii_only_regex_1() {
+    test_all(
+        r"/[\w@Ø-ÞÀ-Öß-öø-ÿ]/",
+        r"/[\w@Ø-ÞÀ-Öß-öø-ÿ]/;",
+        r"/[\w@Ø-ÞÀ-Öß-öø-ÿ]/",
+        Config {
+            ascii_only: false,
+            ..Default::default()
+        },
+    );
+}
+
+#[test]
+fn ascii_only_regex_2() {
+    test_all(
+        r"/[\w@Ø-ÞÀ-Öß-öø-ÿ]/",
+        r"/[\w@\xd8-\xde\xc0-\xd6\xdf-\xf6\xf8-\xff]/;",
+        r"/[\w@\xd8-\xde\xc0-\xd6\xdf-\xf6\xf8-\xff]/",
+        Config {
+            ascii_only: true,
+            ..Default::default()
+        },
+    );
+}
+
+#[test]
+fn ascii_only_regex_3() {
+    test_all(
+        r"/[😊❤️]/g",
+        r"/[😊❤️]/g;",
+        r"/[😊❤️]/g",
+        Config {
+            ascii_only: false,
+            ..Default::default()
+        },
+    );
+}
+
+#[test]
+fn ascii_only_regex_4() {
+    test_all(
+        r"/[😊❤️]/g",
+        r"/[\ud83d\ude0a\u2764\ufe0f]/g;",
+        r"/[\ud83d\ude0a\u2764\ufe0f]/g",
+        Config {
+            ascii_only: true,
+            ..Default::default()
+        },
+    );
+}
+
+#[test]
+fn ascii_only_regex_5() {
+    test_all(
+        r"/test/",
+        r"/test/;",
+        r"/test/",
         Config {
             ascii_only: true,
             ..Default::default()

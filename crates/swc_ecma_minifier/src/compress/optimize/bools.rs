@@ -1,177 +1,92 @@
 use swc_common::{util::take::Take, EqIgnoreSpan, Span, Spanned, DUMMY_SP};
 use swc_ecma_ast::*;
-use swc_ecma_utils::{
-    ExprExt, Type,
-    Value::{self, Known},
-};
+use swc_ecma_utils::{ExprExt, Type, Value};
 
 use super::Optimizer;
-use crate::compress::{optimize::Ctx, util::negate_cost};
-#[cfg(feature = "debug")]
-use crate::debug::dump;
+use crate::program_data::VarUsageInfoFlags;
 
 /// Methods related to the options `bools` and `bool_as_ints`.
 impl Optimizer<'_> {
-    /// **This negates bool**.
+    /// Optimizes `typeof` comparisons with `"undefined"`:
     ///
-    /// Returns true if it's negated.
-    #[cfg_attr(feature = "debug", tracing::instrument(skip(self, expr)))]
-    pub(super) fn optimize_bang_within_logical_ops(
-        &mut self,
-        expr: &mut Expr,
-        is_ret_val_ignored: bool,
-    ) -> bool {
-        let cost = negate_cost(
-            &self.ctx.expr_ctx,
-            expr,
-            is_ret_val_ignored,
-            is_ret_val_ignored,
-        );
-        if cost >= 0 {
-            return false;
-        }
-
-        let e = match expr {
-            Expr::Bin(b) => b,
-            _ => return false,
+    /// - `typeof x == "undefined"` => `void 0 === x` (when x is declared)
+    /// - `typeof x == "undefined"` => `typeof x > "u"` (when x is undeclared)
+    /// - `typeof x != "undefined"` => `typeof x < "u"` (when x is undeclared)
+    ///
+    /// The `> "u"` optimization works because `"undefined"` is the only typeof
+    /// result that is greater than `"u"` in lexicographic order.
+    pub(super) fn compress_typeof_undefined(&mut self, e: &mut BinExpr) {
+        let is_eq = match e.op {
+            op!("==") | op!("===") => true,
+            op!("!=") | op!("!==") => false,
+            _ => return,
         };
 
-        match e.op {
-            op!("&&") | op!("||") => {}
-            _ => return false,
-        }
-
-        if !is_ret_val_ignored {
-            if let Known(Type::Bool) = e.left.get_type() {
-            } else {
-                // Don't change type.
-                return false;
+        let (arg, undefined_expr, reverse) = match (&mut *e.left, &mut *e.right) {
+            (
+                Expr::Unary(UnaryExpr {
+                    op: op!("typeof"),
+                    arg,
+                    ..
+                }),
+                Expr::Lit(Lit::Str(lit_str)),
+            ) if lit_str.value == "undefined" => (arg, &mut e.right, false),
+            (
+                Expr::Lit(Lit::Str(lit_str)),
+                Expr::Unary(UnaryExpr {
+                    op: op!("typeof"),
+                    arg,
+                    ..
+                }),
+            ) if lit_str.value == "undefined" => (arg, &mut e.left, true),
+            _ => {
+                return;
             }
-
-            if let Known(Type::Bool) = e.right.get_type() {
-            } else {
-                // Don't change type.
-                return false;
-            }
-        }
-
-        // `!_ && 'undefined' !== typeof require`
-        //
-        //  =>
-        //
-        // `_ || 'undefined' == typeof require`
-        report_change!(
-            is_return_value_ignored = is_ret_val_ignored,
-            negate_cost = cost,
-            "bools: Negating: (!a && !b) => !(a || b) (because both expression are good for \
-             negation)",
-        );
-        #[cfg(feature = "debug")]
-        let start = dump(&*e, false);
-
-        e.op = if e.op == op!("&&") {
-            op!("||")
-        } else {
-            op!("&&")
         };
 
-        let ctx = Ctx {
-            in_bool_ctx: true,
-            ..self.ctx.clone()
-        };
+        self.changed = true;
+        if self.is_undeclared_ident(arg) {
+            // typeof x == "undefined"  => typeof x > "u"
+            // typeof x != "undefined"  => typeof x < "u"
+            // "undefined" == typeof x  => "u" < typeof x
+            // "undefined" != typeof x  => "u" > typeof x
+            e.op = if is_eq ^ reverse { op!(">") } else { op!("<") };
+            let span = undefined_expr.span();
+            *undefined_expr = "u".into();
+            undefined_expr.set_span(span);
 
-        self.with_ctx(ctx.clone()).negate(&mut e.left, false);
-        self.with_ctx(ctx.clone())
-            .negate(&mut e.right, is_ret_val_ignored);
-
-        dump_change_detail!("{} => {}", start, dump(&*e, false));
-
-        true
-    }
-
-    pub(super) fn compress_if_stmt_as_expr(&mut self, s: &mut Stmt) {
-        if !self.options.conditionals && !self.options.bools {
+            report_change!("bools: Optimizing `typeof x == \"undefined\"` into `typeof x > \"u\"`");
             return;
         }
 
-        let stmt = match s {
-            Stmt::If(v) => v,
-            _ => return,
-        };
+        // "undefined" -> void 0
+        *undefined_expr = Expr::undefined(undefined_expr.span());
+        let arg = arg.take();
+        let typeof_expr = if reverse { &mut e.right } else { &mut e.left };
 
-        if stmt.alt.is_none() {
-            if let Stmt::Expr(cons) = &mut *stmt.cons {
-                self.changed = true;
-                report_change!("conditionals: `if (foo) bar;` => `foo && bar`");
-                *s = ExprStmt {
-                    span: stmt.span,
-                    expr: BinExpr {
-                        span: stmt.test.span(),
-                        op: op!("&&"),
-                        left: stmt.test.take(),
-                        right: cons.expr.take(),
-                    }
-                    .into(),
-                }
-                .into();
-            }
-        }
+        // typeof x -> x
+        *typeof_expr = arg;
+        e.op = if is_eq { op!("===") } else { op!("!==") };
+
+        report_change!("bools: Optimizing `typeof x == \"undefined\"` into `x === void 0`");
     }
 
-    ///
-    /// - `"undefined" == typeof value;` => `void 0 === value`
-    pub(super) fn compress_typeof_undefined(&mut self, e: &mut BinExpr) {
-        fn opt(o: &mut Optimizer, l: &mut Expr, r: &mut Expr) -> bool {
-            match (&mut *l, &mut *r) {
-                (
-                    Expr::Lit(Lit::Str(Str { value: l_v, .. })),
-                    Expr::Unary(UnaryExpr {
-                        op: op!("typeof"),
-                        arg,
-                        ..
-                    }),
-                ) if &**l_v == "undefined" => {
-                    // TODO?
-                    if let Expr::Ident(arg) = &**arg {
-                        if let Some(usage) = o.data.vars.get(&arg.to_id()) {
-                            if !usage.declared {
-                                return false;
-                            }
-                        }
-                    }
-
-                    *l = *Expr::undefined(l.span());
-                    *r = *arg.take();
-                    true
-                }
-                _ => false,
-            }
-        }
-
-        match e.op {
-            op!("==") | op!("!=") | op!("===") | op!("!==") => {}
-            _ => return,
-        }
-
-        if opt(self, &mut e.left, &mut e.right) || opt(self, &mut e.right, &mut e.left) {
-            e.op = match e.op {
-                op!("==") => {
-                    op!("===")
-                }
-                op!("!=") => {
-                    op!("!==")
-                }
-                _ => e.op,
-            };
-        }
+    fn is_undeclared_ident(&self, arg: &Expr) -> bool {
+        arg.as_ident().is_some_and(|ident| {
+            self.data
+                .vars
+                .get(&ident.to_id())
+                .map(|u| !u.flags.contains(VarUsageInfoFlags::DECLARED))
+                .unwrap_or(false)
+        })
     }
 
     ///
     /// - `a === undefined || a === null` => `a == null`
-    pub(super) fn optimize_cmp_with_null_or_undefined(&mut self, e: &mut BinExpr) {
+    pub(super) fn optimize_optional_chain_generated(&mut self, e: &mut BinExpr) {
         if e.op == op!("||") || e.op == op!("&&") {
             {
-                let res = self.optimize_cmp_with_null_or_undefined_inner(
+                let res = self.optimize_optional_chain_generated_inner(
                     e.span,
                     e.op,
                     &mut e.left,
@@ -187,7 +102,7 @@ impl Optimizer<'_> {
 
             if let (Expr::Bin(left), right) = (&mut *e.left, &mut *e.right) {
                 if e.op == left.op {
-                    let res = self.optimize_cmp_with_null_or_undefined_inner(
+                    let res = self.optimize_optional_chain_generated_inner(
                         right.span(),
                         e.op,
                         &mut left.right,
@@ -210,7 +125,7 @@ impl Optimizer<'_> {
         }
     }
 
-    fn optimize_cmp_with_null_or_undefined_inner(
+    fn optimize_optional_chain_generated_inner(
         &mut self,
         span: Span,
         top_op: BinaryOp,
@@ -232,6 +147,10 @@ impl Optimizer<'_> {
 
                 match &*left_bin.right {
                     Expr::Ident(..) | Expr::Lit(..) => {}
+                    Expr::Assign(AssignExpr {
+                        left: AssignTarget::Simple(SimpleAssignTarget::Ident(_)),
+                        ..
+                    }) => (),
                     Expr::Member(MemberExpr {
                         obj,
                         prop: MemberProp::Ident(..),
@@ -258,7 +177,20 @@ impl Optimizer<'_> {
                             return None;
                         }
 
-                        if !right_bin.right.eq_ignore_span(&left_bin.right) {
+                        let same_assign = if let (
+                            Expr::Assign(AssignExpr {
+                                left: AssignTarget::Simple(SimpleAssignTarget::Ident(l_id)),
+                                ..
+                            }),
+                            Expr::Ident(r_id),
+                        ) = (&*left_bin.right, &*right_bin.right)
+                        {
+                            l_id.id.eq_ignore_span(r_id)
+                        } else {
+                            false
+                        };
+
+                        if !(same_assign || right_bin.right.eq_ignore_span(&left_bin.right)) {
                             return None;
                         }
 
@@ -277,36 +209,27 @@ impl Optimizer<'_> {
             _ => return None,
         };
 
-        let lt = left.get_type();
-        let rt = right.get_type();
-        if let Value::Known(lt) = lt {
-            if let Value::Known(rt) = rt {
-                match (lt, rt) {
-                    (Type::Undefined, Type::Null) | (Type::Null, Type::Undefined) => {
-                        if op == op!("===") {
-                            report_change!(
-                                "Reducing `!== null || !== undefined` check to `!= null`"
-                            );
-                            return Some(BinExpr {
-                                span,
-                                op: op!("=="),
-                                left: cmp.take(),
-                                right: Lit::Null(Null { span: DUMMY_SP }).into(),
-                            });
-                        } else {
-                            report_change!(
-                                "Reducing `=== null || === undefined` check to `== null`"
-                            );
-                            return Some(BinExpr {
-                                span,
-                                op: op!("!="),
-                                left: cmp.take(),
-                                right: Lit::Null(Null { span: DUMMY_SP }).into(),
-                            });
-                        }
-                    }
-                    _ => {}
-                }
+        let lt = left.get_type(self.ctx.expr_ctx);
+        let rt = right.get_type(self.ctx.expr_ctx);
+        if let (Value::Known(Type::Undefined), Value::Known(Type::Null))
+        | (Value::Known(Type::Null), Value::Known(Type::Undefined)) = (lt, rt)
+        {
+            if op == op!("===") {
+                report_change!("Reducing `!== null || !== undefined` check to `!= null`");
+                return Some(BinExpr {
+                    span,
+                    op: op!("=="),
+                    left: cmp.take(),
+                    right: Lit::Null(Null { span: DUMMY_SP }).into(),
+                });
+            } else {
+                report_change!("Reducing `=== null || === undefined` check to `== null`");
+                return Some(BinExpr {
+                    span,
+                    op: op!("!="),
+                    left: cmp.take(),
+                    right: Lit::Null(Null { span: DUMMY_SP }).into(),
+                });
             }
         }
 

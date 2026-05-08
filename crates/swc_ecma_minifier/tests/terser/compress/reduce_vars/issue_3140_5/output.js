@@ -1,7 +1,6 @@
 var n = 1, c = 0;
-(function(a) {
+(function() {
     var b = function() {
-        this;
         n-- && h();
     }();
     function h() {

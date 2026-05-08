@@ -10,13 +10,13 @@
     /** @type {number} */ FINE: 2
 };
 /** @enum {function(number): number} */ export var Fs = {
-    ADD1: function(n) {
+    ADD1: function ADD1(n) {
         return n + 1;
     },
-    ID: function(n) {
+    ID: function ID(n) {
         return n;
     },
-    SUB1: function(n) {
+    SUB1: function SUB1(n) {
         return n - 1;
     }
 };
@@ -29,8 +29,7 @@
     /** @type {number} */ var num = s;
     /** @type {(n: number) => number} */ var fun = f;
     /** @type {Target} */ var v = Target.START;
-    v = 'something else' // allowed, like Typescript's classic enums and unlike its string enums
-    ;
+    v = 'something else'; // allowed, like Typescript's classic enums and unlike its string enums
 }
 /** @param {string} s */ export function ff(s) {
     // element access with arbitrary string is an error only with noImplicitAny

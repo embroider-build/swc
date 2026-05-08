@@ -11,12 +11,14 @@ use crate::{
         Accessibility, TsExprWithTypeArgs, TsIndexSignature, TsTypeAnn, TsTypeParamDecl,
         TsTypeParamInstantiation,
     },
-    BigInt, ComputedPropName, EmptyStmt, Id, Ident, IdentName, Number,
+    BigInt, ComputedPropName, ContentTagContent, ContentTagEnd, ContentTagStart, EmptyStmt, Id,
+    Ident, IdentName, Number,
 };
 
 #[ast_node]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct Class {
     pub span: Span,
 
@@ -29,15 +31,27 @@ pub struct Class {
     pub body: Vec<ClassMember>,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub super_class: Option<Box<Expr>>,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
     pub is_abstract: bool,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub type_params: Option<Box<TsTypeParamDecl>>,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub super_type_params: Option<Box<TsTypeParamInstantiation>>,
 
     /// Typescript extension.
@@ -56,6 +70,7 @@ impl Take for Class {
 #[ast_node]
 #[derive(Eq, Hash, Is, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum ClassMember {
     #[tag("Constructor")]
     Constructor(Constructor),
@@ -81,6 +96,9 @@ pub enum ClassMember {
     /// Stage 3
     #[tag("AutoAccessor")]
     AutoAccessor(AutoAccessor),
+
+    #[tag("ContentTag")]
+    ContentTagMember(ContentTagMember),
 }
 
 impl Take for ClassMember {
@@ -92,6 +110,7 @@ impl Take for ClassMember {
 #[ast_node("ClassProperty")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ClassProp {
     #[cfg_attr(feature = "serde-impl", serde(default))]
     pub span: Span,
@@ -99,9 +118,17 @@ pub struct ClassProp {
     pub key: PropName,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub value: Option<Box<Expr>>,
 
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "typeAnnotation"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub type_ann: Option<Box<TsTypeAnn>>,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
@@ -112,6 +139,10 @@ pub struct ClassProp {
 
     /// Typescript extension.
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub accessibility: Option<Accessibility>,
 
     /// Typescript extension.
@@ -137,6 +168,7 @@ pub struct ClassProp {
 #[ast_node("PrivateProperty")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct PrivateProp {
     #[cfg_attr(feature = "serde-impl", serde(default))]
     pub span: Span,
@@ -147,9 +179,17 @@ pub struct PrivateProp {
     pub key: PrivateName,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub value: Option<Box<Expr>>,
 
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "typeAnnotation"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub type_ann: Option<Box<TsTypeAnn>>,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
@@ -160,6 +200,10 @@ pub struct PrivateProp {
 
     /// Typescript extension.
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub accessibility: Option<Accessibility>,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
@@ -178,6 +222,7 @@ pub struct PrivateProp {
 #[ast_node("ClassMethod")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct ClassMethod {
     #[cfg_attr(feature = "serde-impl", serde(default))]
     pub span: Span,
@@ -188,6 +233,10 @@ pub struct ClassMethod {
     pub is_static: bool,
     #[doc = r" Typescript extension."]
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub accessibility: Option<Accessibility>,
     #[doc = r" Typescript extension."]
     #[cfg_attr(feature = "serde-impl", serde(default))]
@@ -201,6 +250,7 @@ pub struct ClassMethod {
 #[ast_node("PrivateMethod")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct PrivateMethod {
     #[cfg_attr(feature = "serde-impl", serde(default))]
     pub span: Span,
@@ -211,6 +261,10 @@ pub struct PrivateMethod {
     pub is_static: bool,
     #[doc = r" Typescript extension."]
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub accessibility: Option<Accessibility>,
     #[doc = r" Typescript extension."]
     #[cfg_attr(feature = "serde-impl", serde(default))]
@@ -224,6 +278,7 @@ pub struct PrivateMethod {
 #[ast_node("Constructor")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct Constructor {
     pub span: Span,
 
@@ -234,9 +289,17 @@ pub struct Constructor {
     pub params: Vec<ParamOrTsParamProp>,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub body: Option<BlockStmt>,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub accessibility: Option<Accessibility>,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
@@ -246,6 +309,7 @@ pub struct Constructor {
 #[ast_node("Decorator")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct Decorator {
     pub span: Span,
 
@@ -259,9 +323,15 @@ pub struct Decorator {
     any(feature = "rkyv-impl"),
     derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize)
 )]
-#[cfg_attr(feature = "rkyv-impl", archive(check_bytes))]
-#[cfg_attr(feature = "rkyv-impl", archive_attr(repr(u32)))]
+#[cfg_attr(feature = "rkyv-impl", derive(bytecheck::CheckBytes))]
+#[cfg_attr(feature = "rkyv-impl", repr(u32))]
 #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
+#[cfg_attr(
+    feature = "encoding-impl",
+    derive(::swc_common::Encode, ::swc_common::Decode)
+)]
+#[cfg_attr(swc_ast_unknown, non_exhaustive)]
 pub enum MethodKind {
     #[default]
     #[cfg_attr(feature = "serde-impl", serde(rename = "method"))]
@@ -275,6 +345,7 @@ pub enum MethodKind {
 #[ast_node("StaticBlock")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct StaticBlock {
     pub span: Span,
     pub body: BlockStmt,
@@ -293,6 +364,7 @@ impl Take for StaticBlock {
 #[ast_node]
 #[derive(Is, Eq, Hash, EqIgnoreSpan)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub enum Key {
     #[tag("PrivateName")]
     Private(PrivateName),
@@ -326,6 +398,7 @@ impl Default for Key {
 #[ast_node("AutoAccessor")]
 #[derive(Eq, Hash, EqIgnoreSpan, Default)]
 #[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[cfg_attr(feature = "shrink-to-fit", derive(shrink_to_fit::ShrinkToFit))]
 pub struct AutoAccessor {
     #[cfg_attr(feature = "serde-impl", serde(default))]
     pub span: Span,
@@ -333,9 +406,17 @@ pub struct AutoAccessor {
     pub key: Key,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub value: Option<Box<Expr>>,
 
     #[cfg_attr(feature = "serde-impl", serde(default, rename = "typeAnnotation"))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub type_ann: Option<Box<TsTypeAnn>>,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
@@ -346,6 +427,10 @@ pub struct AutoAccessor {
 
     /// Typescript extension.
     #[cfg_attr(feature = "serde-impl", serde(default))]
+    #[cfg_attr(
+        feature = "encoding-impl",
+        encoding(with = "cbor4ii::core::types::Maybe")
+    )]
     pub accessibility: Option<Accessibility>,
 
     #[cfg_attr(feature = "serde-impl", serde(default))]
@@ -373,4 +458,22 @@ impl Take for AutoAccessor {
             definite: false,
         }
     }
+}
+
+#[ast_node("ContentTagMember")]
+#[derive(Eq, Hash, EqIgnoreSpan)]
+pub struct ContentTagMember {
+    pub span: Span,
+
+    #[cfg_attr(feature = "serde-impl", serde(flatten))]
+    #[span]
+    pub opening: Box<ContentTagStart>,
+
+    #[cfg_attr(feature = "serde-impl", serde(flatten))]
+    #[span]
+    pub contents: Box<ContentTagContent>,
+
+    #[cfg_attr(feature = "serde-impl", serde(flatten))]
+    #[span]
+    pub closing: Box<ContentTagEnd>,
 }

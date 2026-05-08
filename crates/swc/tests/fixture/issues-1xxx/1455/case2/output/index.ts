@@ -1,5 +1,5 @@
-var _async_to_generator = require("@swc/helpers/_/_async_to_generator");
-var _ts_generator = require("@swc/helpers/_/_ts_generator");
+import { _ as _async_to_generator } from "@swc/helpers/_/_async_to_generator";
+import { _ as _ts_generator } from "@swc/helpers/_/_ts_generator";
 var obj = {
     find: function find(param) {
         var platform = param.platform;
@@ -7,10 +7,10 @@ var obj = {
             platform: platform
         };
     },
-    byPlatform: /*#__PURE__*/ function() {
-        var _ref = _async_to_generator._(function(platform) {
+    byPlatform: function byPlatform(platform) {
+        return _async_to_generator(function() {
             var result;
-            return _ts_generator._(this, function(_state) {
+            return _ts_generator(this, function(_state) {
                 switch(_state.label){
                     case 0:
                         return [
@@ -29,11 +29,8 @@ var obj = {
                         ];
                 }
             });
-        });
-        return function(platform) {
-            return _ref.apply(this, arguments);
-        };
-    }()
+        }).call(this);
+    }
 };
 obj.byPlatform("foo").then(function(v) {
     return console.log(v);

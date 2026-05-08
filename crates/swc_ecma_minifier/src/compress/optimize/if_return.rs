@@ -1,47 +1,32 @@
-use swc_common::{util::take::Take, Spanned, DUMMY_SP};
+use swc_common::{util::take::Take, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_transforms_optimization::debug_assert_valid;
-use swc_ecma_utils::StmtLike;
+use swc_ecma_utils::{ExprCtx, StmtLike};
 use swc_ecma_visit::{noop_visit_type, Visit, VisitWith};
 
 use super::Optimizer;
 #[cfg(feature = "debug")]
 use crate::debug::dump;
-use crate::{compress::util::is_pure_undefined, util::ExprOptExt};
+use crate::{
+    compress::{
+        optimize::BitCtx,
+        util::{eval_to_undefined, is_pure_undefined},
+    },
+    util::ExprOptExt,
+};
+
+/// Prevent creating extremely deep nested conditionals from long `if (...)
+/// return ...` chains.
+///
+/// Some engines have recursion/stack limits while parsing or transforming
+/// deeply nested ternary expressions (notably WebKit on iOS). Known limitation:
+/// very long chains stay as `if` statements, which may produce slightly larger
+/// output, but avoids stack overflows.
+const MAX_IF_RETURN_CHAINED_CONDITIONALS: usize = 250;
 
 /// Methods related to the option `if_return`. All methods are noop if
 /// `if_return` is false.
 impl Optimizer<'_> {
-    pub(super) fn merge_nested_if(&mut self, s: &mut IfStmt) {
-        if !self.options.conditionals && !self.options.bools {
-            return;
-        }
-
-        if s.alt.is_some() {
-            return;
-        }
-
-        if let Stmt::If(IfStmt {
-            test,
-            cons,
-            alt: None,
-            ..
-        }) = &mut *s.cons
-        {
-            self.changed = true;
-            report_change!("if_return: Merging nested if statements");
-
-            s.test = BinExpr {
-                span: s.test.span(),
-                op: op!("&&"),
-                left: s.test.take(),
-                right: test.take(),
-            }
-            .into();
-            s.cons = cons.take();
-        }
-    }
-
     pub(super) fn merge_if_returns(
         &mut self,
         stmts: &mut Vec<Stmt>,
@@ -189,11 +174,28 @@ impl Optimizer<'_> {
                 })
                 .count();
 
+            fn is_return_undefined(expr_ctx: ExprCtx, s: &Stmt) -> bool {
+                let Stmt::Return(s) = s else {
+                    return false;
+                };
+
+                match &s.arg {
+                    None => true,
+                    Some(e) => eval_to_undefined(expr_ctx, e),
+                }
+            }
+
             if stmts.len() >= 2 {
                 match (
                     &stmts[stmts.len() - 2].as_stmt(),
                     &stmts[stmts.len() - 1].as_stmt(),
                 ) {
+                    (
+                        Some(Stmt::If(IfStmt {
+                            alt: None, cons, ..
+                        })),
+                        Some(Stmt::Expr(_)),
+                    ) if is_return_undefined(self.ctx.expr_ctx, cons) => {}
                     (_, Some(Stmt::If(IfStmt { alt: None, .. }) | Stmt::Expr(..)))
                         if if_return_count <= 1 =>
                     {
@@ -250,7 +252,7 @@ impl Optimizer<'_> {
                 .last()
                 .map(|stmt| match stmt.as_stmt() {
                     Some(Stmt::If(IfStmt { alt: None, .. }))
-                        if self.ctx.is_nested_if_return_merging =>
+                        if self.ctx.bit_ctx.contains(BitCtx::IsNestedIfReturnMerging) =>
                     {
                         false
                     }
@@ -274,6 +276,26 @@ impl Optimizer<'_> {
                     });
             if !can_merge {
                 return;
+            }
+        }
+
+        {
+            let mut chained_conditionals = 0usize;
+            let chain_limit_plus_one = MAX_IF_RETURN_CHAINED_CONDITIONALS + 1;
+
+            for stmt in &stmts[skip..=last_idx] {
+                if matches!(stmt, Stmt::If(..)) {
+                    chained_conditionals += 1;
+
+                    if chained_conditionals >= chain_limit_plus_one {
+                        log_abort!(
+                            "if_return: [x] Aborting to avoid very deep conditional chain (limit \
+                             = {})",
+                            MAX_IF_RETURN_CHAINED_CONDITIONALS
+                        );
+                        return;
+                    }
+                }
             }
         }
 
@@ -396,8 +418,27 @@ impl Optimizer<'_> {
                         && seq
                             .exprs
                             .last()
-                            .map(|v| is_pure_undefined(&self.ctx.expr_ctx, v))
+                            .map(|v| is_pure_undefined(self.ctx.expr_ctx, v))
                             .unwrap_or(true) =>
+                {
+                    let expr = self.ignore_return_value(&mut cur);
+
+                    if let Some(cur) = expr {
+                        new.push(
+                            ExprStmt {
+                                span: DUMMY_SP,
+                                expr: Box::new(cur),
+                            }
+                            .into(),
+                        )
+                    } else {
+                        trace_op!("if_return: Ignoring return value");
+                    }
+                }
+                Expr::Cond(cond)
+                    if !should_preserve_last_return
+                        && eval_to_undefined(self.ctx.expr_ctx, &cond.cons)
+                        && eval_to_undefined(self.ctx.expr_ctx, &cond.alt) =>
                 {
                     let expr = self.ignore_return_value(&mut cur);
 
@@ -539,7 +580,7 @@ pub(super) struct ReturnFinder {
 }
 
 impl Visit for ReturnFinder {
-    noop_visit_type!();
+    noop_visit_type!(fail);
 
     fn visit_return_stmt(&mut self, n: &ReturnStmt) {
         n.visit_children_with(self);

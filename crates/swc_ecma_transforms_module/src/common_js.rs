@@ -1,9 +1,11 @@
+use std::borrow::Cow;
+
+use rustc_hash::FxHashSet;
 use swc_common::{
-    collections::AHashSet, source_map::PURE_SP, util::take::Take, Mark, Span, SyntaxContext,
-    DUMMY_SP,
+    source_map::PURE_SP, util::take::Take, Mark, Span, Spanned, SyntaxContext, DUMMY_SP,
 };
 use swc_ecma_ast::*;
-use swc_ecma_transforms_base::{feature::FeatureFlag, helper_expr};
+use swc_ecma_transforms_base::helper_expr;
 use swc_ecma_utils::{
     member_expr, private_ident, quote_expr, quote_ident, ExprFactory, FunctionFactory, IsDirective,
 };
@@ -18,10 +20,16 @@ use crate::{
     path::Resolver,
     top_level_this::top_level_this,
     util::{
-        define_es_module, emit_export_stmts, local_name_for_src, prop_name, use_strict,
-        ImportInterop, VecStmtLike,
+        define_es_module, emit_export_stmts, local_name_for_src, prop_name,
+        sort_export_obj_prop_list, use_strict, ImportInterop, VecStmtLike,
     },
 };
+
+#[derive(Default)]
+pub struct FeatureFlag {
+    pub support_block_scoping: bool,
+    pub support_arrow: bool,
+}
 
 pub fn common_js(
     resolver: Resolver,
@@ -33,9 +41,8 @@ pub fn common_js(
         config,
         resolver,
         unresolved_mark,
-        available_features,
-        support_arrow: caniuse!(available_features.ArrowFunctions),
-        const_var_kind: if caniuse!(available_features.BlockScoping) {
+        support_arrow: available_features.support_arrow,
+        const_var_kind: if available_features.support_block_scoping {
             VarDeclKind::Const
         } else {
             VarDeclKind::Var
@@ -47,7 +54,6 @@ pub struct Cjs {
     config: Config,
     resolver: Resolver,
     unresolved_mark: Mark,
-    available_features: FeatureFlag,
     support_arrow: bool,
     const_var_kind: VarDeclKind,
 }
@@ -184,7 +190,10 @@ impl VisitMut for Cjs {
                         if let Expr::Lit(Lit::Str(Str { value, raw, .. })) = &mut **expr {
                             is_lit_path = true;
 
-                            *value = self.resolver.resolve(value.clone());
+                            *value = self
+                                .resolver
+                                .resolve(value.to_atom_lossy().into_owned())
+                                .into();
                             *raw = None;
                         }
                     }
@@ -202,20 +211,87 @@ impl VisitMut for Cjs {
                 );
             }
             Expr::Member(MemberExpr { span, obj, prop })
-                if prop.is_ident_with("url")
-                    && !self.config.preserve_import_meta
+                if !self.config.preserve_import_meta
                     && obj
                         .as_meta_prop()
                         .map(|p| p.kind == MetaPropKind::ImportMeta)
                         .unwrap_or_default() =>
             {
-                obj.visit_mut_with(self);
+                let p = match prop {
+                    MemberProp::Ident(IdentName { sym, .. }) => Cow::Borrowed(&**sym),
+                    MemberProp::Computed(ComputedPropName { expr, .. }) => match &**expr {
+                        Expr::Lit(Lit::Str(s)) => s.value.to_string_lossy(),
+                        _ => return,
+                    },
+                    MemberProp::PrivateName(..) => return,
+                    #[cfg(swc_ast_unknown)]
+                    _ => panic!("unable to access unknown nodes"),
+                };
 
-                let require = quote_ident!(
-                    SyntaxContext::empty().apply_mark(self.unresolved_mark),
-                    "require"
-                );
-                *n = cjs_import_meta_url(*span, require, self.unresolved_mark);
+                match &*p {
+                    "url" => {
+                        let require = quote_ident!(
+                            SyntaxContext::empty().apply_mark(self.unresolved_mark),
+                            "require"
+                        );
+                        *n = cjs_import_meta_url(*span, require, self.unresolved_mark);
+                    }
+                    "resolve" => {
+                        let require = quote_ident!(
+                            SyntaxContext::empty().apply_mark(self.unresolved_mark),
+                            obj.span(),
+                            "require"
+                        );
+
+                        **obj = require.into();
+                    }
+                    "filename" => {
+                        *n = quote_ident!(
+                            SyntaxContext::empty().apply_mark(self.unresolved_mark),
+                            *span,
+                            "__filename"
+                        )
+                        .into();
+                    }
+                    "dirname" => {
+                        *n = quote_ident!(
+                            SyntaxContext::empty().apply_mark(self.unresolved_mark),
+                            *span,
+                            "__dirname"
+                        )
+                        .into();
+                    }
+                    "main" => {
+                        let ctxt = SyntaxContext::empty().apply_mark(self.unresolved_mark);
+                        let require = quote_ident!(ctxt, "require");
+                        let require_main = require.make_member(quote_ident!("main"));
+                        let module = quote_ident!(ctxt, "module");
+
+                        *n = BinExpr {
+                            span: *span,
+                            op: op!("=="),
+                            left: require_main.into(),
+                            right: module.into(),
+                        }
+                        .into();
+                    }
+                    _ => {}
+                }
+            }
+            Expr::OptChain(OptChainExpr { base, .. }) if !self.config.preserve_import_meta => {
+                if let OptChainBase::Member(member) = &mut **base {
+                    if member
+                        .obj
+                        .as_meta_prop()
+                        .is_some_and(|meta_prop| meta_prop.kind == MetaPropKind::ImportMeta)
+                    {
+                        *n = member.take().into();
+                        n.visit_mut_with(self);
+                        return;
+                    }
+                };
+
+                n.visit_mut_children_with(self);
             }
             _ => n.visit_mut_children_with(self),
         }
@@ -226,7 +302,7 @@ impl Cjs {
     fn handle_import_export(
         &mut self,
         import_map: &mut ImportMap,
-        lazy_record: &mut AHashSet<Id>,
+        lazy_record: &mut FxHashSet<Id>,
         link: Link,
         export: Export,
         is_export_assign: bool,
@@ -324,19 +400,12 @@ impl Cjs {
         let mut export_stmts: Vec<Stmt> = Default::default();
 
         if !export_obj_prop_list.is_empty() && !is_export_assign {
-            export_obj_prop_list.sort_by_cached_key(|(key, ..)| key.clone());
+            sort_export_obj_prop_list(&mut export_obj_prop_list);
 
-            let mut features = self.available_features;
             let exports = self.exports();
 
-            if export_interop_annotation {
-                if export_obj_prop_list.len() > 1 {
-                    export_stmts.extend(self.emit_lexer_exports_init(&export_obj_prop_list));
-                } else {
-                    // `cjs-module-lexer` does not support `get: ()=> foo`
-                    // see https://github.com/nodejs/cjs-module-lexer/pull/74
-                    features -= FeatureFlag::ArrowFunctions;
-                }
+            if export_interop_annotation && export_obj_prop_list.len() > 1 {
+                export_stmts.extend(self.emit_lexer_exports_init(&export_obj_prop_list));
             }
 
             export_stmts.extend(emit_export_stmts(exports, export_obj_prop_list));
@@ -379,9 +448,11 @@ impl Cjs {
 
                 *has_ts_import_equals = true;
 
-                let require = self
-                    .resolver
-                    .make_require_call(self.unresolved_mark, src, src_span);
+                let require = self.resolver.make_require_call(
+                    self.unresolved_mark,
+                    src.to_atom_lossy().into_owned(),
+                    src_span,
+                );
 
                 if is_export {
                     // exports.foo = require("mod")

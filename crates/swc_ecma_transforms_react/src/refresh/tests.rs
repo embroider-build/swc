@@ -710,8 +710,8 @@ test!(
             refresh(
                 true,
                 Some(RefreshOptions {
-                    refresh_reg: "import_meta_refreshReg".to_string(),
-                    refresh_sig: "import_meta_refreshSig".to_string(),
+                    refresh_reg: "import_meta_refreshReg".into(),
+                    refresh_sig: "import_meta_refreshSig".into(),
                     emit_full_signatures: true,
                 }),
                 t.cm.clone(),
@@ -809,5 +809,85 @@ test!(
         <button type="button" onClick={() => setCount(c => c + 1)}>{count}</button>
       );
     }
+"#
+);
+
+// Recursive custom hooks must not be added to their own dependency
+// array, otherwise react-refresh's runtime `computeFullKey` recurses
+// infinitely. See https://github.com/swc-project/swc/issues/11832.
+test!(
+    module,
+    ::swc_ecma_parser::Syntax::Es(::swc_ecma_parser::EsSyntax {
+        jsx: true,
+        ..Default::default()
+    }),
+    tr,
+    issue_11832_recursive_fn_decl,
+    r#"
+    function useFoo(cond) {
+      const [count, setCount] = useState(0);
+      if (cond) {
+        useFoo(false);
+      }
+      return count;
+    }
+"#
+);
+
+test!(
+    module,
+    ::swc_ecma_parser::Syntax::Es(::swc_ecma_parser::EsSyntax {
+        jsx: true,
+        ..Default::default()
+    }),
+    tr,
+    issue_11832_recursive_var_fn_expr,
+    r#"
+    const useFoo = function (cond) {
+      const [count, setCount] = useState(0);
+      if (cond) {
+        useFoo(false);
+      }
+      return count;
+    };
+"#
+);
+
+test!(
+    module,
+    ::swc_ecma_parser::Syntax::Es(::swc_ecma_parser::EsSyntax {
+        jsx: true,
+        ..Default::default()
+    }),
+    tr,
+    issue_11832_recursive_var_arrow,
+    r#"
+    const useFoo = (cond) => {
+      const [count, setCount] = useState(0);
+      if (cond) {
+        useFoo(false);
+      }
+      return count;
+    };
+"#
+);
+
+test!(
+    module,
+    ::swc_ecma_parser::Syntax::Es(::swc_ecma_parser::EsSyntax {
+        jsx: true,
+        ..Default::default()
+    }),
+    tr,
+    issue_11832_recursive_named_fn_expr,
+    r#"
+    const useFoo = function useInner(cond) {
+      const [count, setCount] = useState(0);
+      if (cond) {
+        useInner(false);
+        useFoo(false);
+      }
+      return count;
+    };
 "#
 );

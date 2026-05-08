@@ -1,14 +1,20 @@
 #![cfg_attr(not(feature = "extra-serde"), allow(unused))]
 
-use std::sync::Arc;
+use std::{
+    hash::{Hash, Hasher},
+    ops::{Deref, DerefMut},
+    sync::Arc,
+};
 
 use parking_lot::RwLock;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHasher};
 use serde::{Deserialize, Serialize};
-use swc_atoms::{Atom, JsWord};
-use swc_common::{collections::AHashMap, Mark};
-use swc_config::{merge::Merge, CachedRegex};
-use swc_ecma_ast::{EsVersion, Expr, Id};
+use swc_atoms::Atom;
+use swc_common::Mark;
+use swc_config::{merge::Merge, regex::CachedRegex};
+use swc_ecma_ast::{EsVersion, Expr};
+use swc_ecma_transforms_base::rename::RenameMap;
+use terser::TerserExperimentalOptions;
 
 /// Implement default using serde.
 macro_rules! impl_default {
@@ -34,7 +40,7 @@ pub struct ExtraOptions {
     pub mangle_name_cache: Option<Arc<dyn MangleCache>>,
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "extra-serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "extra-serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(feature = "extra-serde", serde(deny_unknown_fields))]
@@ -51,14 +57,14 @@ pub struct MinifyOptions {
     pub enclose: bool,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
 pub struct TopLevelOptions {
     pub functions: bool,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 #[serde(deny_unknown_fields)]
 pub struct MangleOptions {
@@ -85,42 +91,126 @@ pub struct MangleOptions {
     pub safari10: bool,
 
     #[serde(default, alias = "reserved")]
-    pub reserved: Vec<JsWord>,
+    pub reserved: Vec<Atom>,
 
     /// mangle names visible in scopes where eval or with are used
     #[serde(default)]
     pub eval: bool,
+
+    /// Disable char frequency analysis.
+    #[serde(default)]
+    pub disable_char_freq: bool,
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Merge)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Merge, PartialEq, Eq, Hash)]
 #[serde(rename_all = "camelCase")]
 pub struct ManglePropertiesOptions {
     #[serde(default, alias = "reserved")]
-    pub reserved: Vec<JsWord>,
+    pub reserved: Vec<Atom>,
     #[serde(default, alias = "undeclared")]
     pub undeclared: Option<bool>,
     #[serde(default)]
     pub regex: Option<CachedRegex>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
 #[serde(deny_unknown_fields)]
 #[serde(untagged)]
+#[derive(Default)]
 pub enum PureGetterOption {
     Bool(bool),
     #[serde(rename = "strict")]
+    #[default]
     Strict,
-    Str(Vec<JsWord>),
+    Str(Vec<Atom>),
 }
 
-impl Default for PureGetterOption {
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "camelCase")]
+#[serde(deny_unknown_fields)]
+#[non_exhaustive]
+pub struct CompressExperimentalOptions {
+    #[serde(default = "true_by_default")]
+    pub reduce_escaped_newline: bool,
+}
+
+impl CompressExperimentalOptions {
+    fn from_defaults(defaults: bool) -> Self {
+        CompressExperimentalOptions {
+            reduce_escaped_newline: defaults,
+        }
+    }
+
+    fn from_terser_with_defaults(terser: TerserExperimentalOptions, defaults: bool) -> Self {
+        CompressExperimentalOptions {
+            reduce_escaped_newline: terser.reduce_escaped_newline.unwrap_or(defaults),
+        }
+    }
+}
+
+impl Default for CompressExperimentalOptions {
     fn default() -> Self {
-        Self::Strict
+        CompressExperimentalOptions {
+            reduce_escaped_newline: true,
+        }
+    }
+}
+
+/// Please do not rely on Hash for GlobalDefs.
+/// This implementation uses XOR to combine per-pair hashes, which may lead to
+/// hash collisions in some cases.
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct GlobalDefs(pub FxHashMap<Box<Expr>, Box<Expr>>);
+
+impl From<FxHashMap<Box<Expr>, Box<Expr>>> for GlobalDefs {
+    fn from(value: FxHashMap<Box<Expr>, Box<Expr>>) -> Self {
+        GlobalDefs(value)
+    }
+}
+
+impl FromIterator<(Box<Expr>, Box<Expr>)> for GlobalDefs {
+    fn from_iter<T: IntoIterator<Item = (Box<Expr>, Box<Expr>)>>(iter: T) -> Self {
+        GlobalDefs(iter.into_iter().collect())
+    }
+}
+
+impl Deref for GlobalDefs {
+    type Target = FxHashMap<Box<Expr>, Box<Expr>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for GlobalDefs {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Hash for GlobalDefs {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        // Use iteration order-independent hash combination.
+        // Method: Mix all key-value pair hashes with XOR, and include the length for
+        // distinction.
+        let mut hash = 0u64;
+        for (k, v) in &self.0 {
+            // let mut pair_hasher = std::collections::hash_map::DefaultHasher::new();
+            let mut pair_hasher = FxHasher::default();
+            k.hash(&mut pair_hasher);
+            v.hash(&mut pair_hasher);
+            // XOR ensures order independence: a ^ b == b ^ a
+            hash ^= pair_hasher.finish();
+        }
+        // Mix length to prevent conflicts like `[("a",1),("b",2)]` and
+        // `[("a",1),("b",2),("a",1),("b",2)]`
+        self.0.len().hash(state);
+        hash.hash(state);
     }
 }
 
 /// https://terser.org/docs/api-reference.html#compress-options
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "extra-serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "extra-serde", serde(rename_all = "camelCase"))]
 #[cfg_attr(feature = "extra-serde", serde(deny_unknown_fields))]
@@ -188,7 +278,7 @@ pub struct CompressOptions {
     /// to remove spans.
     #[cfg_attr(feature = "extra-serde", serde(skip))]
     #[cfg_attr(feature = "extra-serde", serde(alias = "global_defs"))]
-    pub global_defs: AHashMap<Box<Expr>, Box<Expr>>,
+    pub global_defs: GlobalDefs,
 
     #[cfg_attr(feature = "extra-serde", serde(default))]
     #[cfg_attr(feature = "extra-serde", serde(alias = "hoist_funs"))]
@@ -245,6 +335,10 @@ pub struct CompressOptions {
     #[cfg_attr(feature = "extra-serde", serde(alias = "loops"))]
     pub loops: bool,
 
+    #[cfg_attr(feature = "extra-serde", serde(default = "true_by_default"))]
+    #[cfg_attr(feature = "extra-serde", serde(alias = "merge_imports"))]
+    pub merge_imports: bool,
+
     #[cfg_attr(feature = "extra-serde", serde(default))]
     pub module: bool,
 
@@ -266,7 +360,7 @@ pub struct CompressOptions {
     #[cfg_attr(feature = "extra-serde", serde(alias = "pure_getters"))]
     pub pure_getters: PureGetterOption,
 
-    #[cfg_attr(feature = "extra-serde", serde(default))]
+    #[cfg_attr(feature = "extra-serde", serde(skip))]
     #[cfg_attr(feature = "extra-serde", serde(alias = "pure_funcs"))]
     pub pure_funcs: Vec<Box<Expr>>,
 
@@ -292,7 +386,7 @@ pub struct CompressOptions {
     /// Top level symbols to retain.
     #[cfg_attr(feature = "extra-serde", serde(default))]
     #[cfg_attr(feature = "extra-serde", serde(alias = "top_retain"))]
-    pub top_retain: Vec<JsWord>,
+    pub top_retain: Vec<Atom>,
 
     #[cfg_attr(feature = "extra-serde", serde(default))]
     #[cfg_attr(feature = "extra-serde", serde(alias = "toplevel"))]
@@ -334,6 +428,32 @@ pub struct CompressOptions {
     #[cfg_attr(feature = "extra-serde", serde(default))]
     pub unsafe_undefined: bool,
 
+    /// Hoist static methods of built-in objects like `Object.assign` to local
+    /// variables when they are used multiple times. This can reduce code size
+    /// after mangling.
+    ///
+    /// This is unsafe because user code may have overridden these methods.
+    #[cfg_attr(feature = "extra-serde", serde(default))]
+    pub unsafe_hoist_static_method_alias: bool,
+
+    /// Hoist global built-in constructors like `Map`, `Set`, `Promise` to local
+    /// variables when they are used multiple times. This can reduce code size
+    /// after mangling.
+    ///
+    /// For example:
+    /// ```js
+    /// new Map(); new Map(); new Map();
+    /// ```
+    /// Becomes:
+    /// ```js
+    /// var _Map = Map;
+    /// new _Map(); new _Map(); new _Map();
+    /// ```
+    ///
+    /// This is unsafe because user code may have overridden these constructors.
+    #[cfg_attr(feature = "extra-serde", serde(default))]
+    pub unsafe_hoist_global_objects_alias: bool,
+
     #[cfg_attr(feature = "extra-serde", serde(default = "true_by_default"))]
     pub unused: bool,
 
@@ -345,6 +465,9 @@ pub struct CompressOptions {
     /// Defaults to true.
     #[cfg_attr(feature = "extra-serde", serde(default = "true_by_default"))]
     pub pristine_globals: bool,
+
+    #[cfg_attr(feature = "extra-serde", serde(default))]
+    pub experimental: CompressExperimentalOptions,
 }
 
 impl CompressOptions {
@@ -367,7 +490,7 @@ const fn true_by_default() -> bool {
 }
 
 const fn default_passes() -> usize {
-    3
+    2
 }
 
 const fn three_by_default() -> u8 {
@@ -411,6 +534,7 @@ impl Default for CompressOptions {
             keep_fnames: false,
             keep_infinity: false,
             loops: true,
+            merge_imports: true,
             module: false,
             negate_iife: true,
             passes: default_passes(),
@@ -435,31 +559,34 @@ impl Default for CompressOptions {
             unsafe_regexp: false,
             unsafe_symbols: false,
             unsafe_undefined: false,
+            unsafe_hoist_static_method_alias: false,
+            unsafe_hoist_global_objects_alias: false,
             unused: true,
             const_to_let: true,
             pristine_globals: true,
+            experimental: Default::default(),
         }
     }
 }
 
 pub trait MangleCache: Send + Sync {
-    fn vars_cache(&self, op: &mut dyn FnMut(&FxHashMap<Id, Atom>));
+    fn vars_cache(&self, op: &mut dyn FnMut(&RenameMap));
 
     fn props_cache(&self, op: &mut dyn FnMut(&FxHashMap<Atom, Atom>));
 
-    fn update_vars_cache(&self, new_data: &FxHashMap<Id, Atom>);
+    fn update_vars_cache(&self, new_data: &RenameMap);
 
     fn update_props_cache(&self, new_data: &FxHashMap<Atom, Atom>);
 }
 
 #[derive(Debug, Default)]
 pub struct SimpleMangleCache {
-    pub vars: RwLock<FxHashMap<Id, Atom>>,
+    pub vars: RwLock<RenameMap>,
     pub props: RwLock<FxHashMap<Atom, Atom>>,
 }
 
 impl MangleCache for SimpleMangleCache {
-    fn vars_cache(&self, op: &mut dyn FnMut(&FxHashMap<Id, Atom>)) {
+    fn vars_cache(&self, op: &mut dyn FnMut(&RenameMap)) {
         let vars = self.vars.read();
         op(&vars);
     }
@@ -469,12 +596,12 @@ impl MangleCache for SimpleMangleCache {
         op(&props);
     }
 
-    fn update_vars_cache(&self, new_data: &FxHashMap<Id, JsWord>) {
+    fn update_vars_cache(&self, new_data: &RenameMap) {
         let mut vars = self.vars.write();
         vars.extend(new_data.iter().map(|(k, v)| (k.clone(), v.clone())));
     }
 
-    fn update_props_cache(&self, new_data: &FxHashMap<JsWord, JsWord>) {
+    fn update_props_cache(&self, new_data: &FxHashMap<Atom, Atom>) {
         let mut props = self.props.write();
         props.extend(new_data.iter().map(|(k, v)| (k.clone(), v.clone())));
     }

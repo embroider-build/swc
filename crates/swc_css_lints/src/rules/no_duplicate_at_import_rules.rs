@@ -1,7 +1,7 @@
 use std::fmt::Display;
 
-use swc_atoms::JsWord;
-use swc_common::collections::AHashSet;
+use rustc_hash::FxHashSet;
+use swc_atoms::Atom;
 use swc_css_ast::*;
 use swc_css_visit::{Visit, VisitWith};
 
@@ -22,13 +22,13 @@ fn build_message<S>(href: S) -> String
 where
     S: AsRef<str> + Display,
 {
-    format!("Unexpected duplicate '@import' rule '{}'.", href)
+    format!("Unexpected duplicate '@import' rule '{href}'.")
 }
 
 #[derive(Debug, Default)]
 struct NoDuplicateAtImportRules {
     ctx: LintRuleContext<()>,
-    imports: AHashSet<(JsWord, Option<JsWord>)>,
+    imports: FxHashSet<(Atom, Option<Atom>)>,
     import_at_rules: Option<AtRule>,
 }
 

@@ -1,5 +1,6 @@
+use rustc_hash::FxHashMap;
 use serde::{Deserialize, Serialize};
-use swc_common::{collections::AHashMap, errors::HANDLER, Span};
+use swc_common::{errors::HANDLER, Span};
 use swc_ecma_ast::*;
 use swc_ecma_visit::{Visit, VisitWith};
 
@@ -54,7 +55,7 @@ struct VariableMeta {
 #[derive(Debug, Default)]
 struct PreferConst {
     expected_reaction: LintRuleReaction,
-    vars_meta: AHashMap<Id, VariableMeta>,
+    vars_meta: FxHashMap<Id, VariableMeta>,
     scope_vars_idx: usize,
     block_depth: usize,
     cycle_head_depth: usize,
@@ -76,7 +77,7 @@ impl PreferConst {
     }
 
     fn emit_report(&self, span: Span, var_name: &str) {
-        let message = format!("'{}' is never reassigned. Use 'const' insted", var_name);
+        let message = format!("'{var_name}' is never reassigned. Use 'const' insted");
 
         HANDLER.with(|handler| match self.expected_reaction {
             LintRuleReaction::Error => {
@@ -189,7 +190,7 @@ impl PreferConst {
     fn emit_ordered(&self) {
         let mut vars = self.vars_meta.iter().collect::<Vec<_>>();
 
-        vars.sort_by(|(_, a), (_, b)| a.order.cmp(&b.order));
+        vars.sort_by_key(|(_, a)| a.order);
 
         vars.into_iter().for_each(|(id, var_meta)| {
             let postinitialized = if self.ignore_read_before_assign {

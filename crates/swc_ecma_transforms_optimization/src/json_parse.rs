@@ -1,4 +1,5 @@
 use serde_json::Value;
+use swc_atoms::Wtf8Atom;
 use swc_common::{util::take::Take, Spanned, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_transforms_base::perf::Parallel;
@@ -93,6 +94,28 @@ impl VisitMut for JsonParse {
     }
 }
 
+/// Converts a Wtf8Atom to a JSON-safe string, escaping lone surrogates
+fn wtf8_to_json_string(value: &Wtf8Atom) -> String {
+    if let Some(s) = value.as_str() {
+        // Fast path: valid UTF-8
+        return s.to_string();
+    }
+
+    // Slow path: contains lone surrogates, need to escape them
+    let mut result = String::with_capacity(value.len());
+    for cp in value.as_wtf8().code_points() {
+        if let Some(ch) = cp.to_char() {
+            // Valid Rust char, push directly
+            result.push(ch);
+        } else {
+            // Lone surrogate - escape as \uXXXX
+            use std::fmt::Write;
+            write!(&mut result, "\\u{:04X}", cp.to_u32()).unwrap();
+        }
+    }
+    result
+}
+
 fn jsonify(e: Expr) -> Value {
     match e {
         Expr::Object(obj) => Value::Object(
@@ -105,7 +128,7 @@ fn jsonify(e: Expr) -> Value {
                 .map(|p: KeyValueProp| {
                     let value = jsonify(*p.value);
                     let key = match p.key {
-                        PropName::Str(s) => s.value.to_string(),
+                        PropName::Str(s) => wtf8_to_json_string(&s.value),
                         PropName::Ident(id) => id.sym.to_string(),
                         PropName::Num(n) => format!("{}", n.value),
                         _ => unreachable!(),
@@ -120,15 +143,24 @@ fn jsonify(e: Expr) -> Value {
                 .map(|v| jsonify(*v.unwrap().expr))
                 .collect(),
         ),
-        Expr::Lit(Lit::Str(Str { value, .. })) => Value::String(value.to_string()),
-        Expr::Lit(Lit::Num(Number { value, .. })) => Value::Number((value as i64).into()),
+        Expr::Lit(Lit::Str(Str { value, .. })) => Value::String(wtf8_to_json_string(&value)),
+        Expr::Lit(Lit::Num(Number { value, .. })) => {
+            if value.fract() == 0.0 {
+                Value::Number((value as i64).into())
+            } else {
+                match serde_json::Number::from_f64(value) {
+                    Some(n) => Value::Number(n),
+                    None => Value::Number((value as i64).into()),
+                }
+            }
+        }
         Expr::Lit(Lit::Null(..)) => Value::Null,
         Expr::Lit(Lit::Bool(v)) => Value::Bool(v.value),
         Expr::Tpl(Tpl { quasis, .. }) => Value::String(match quasis.first() {
             Some(TplElement {
                 cooked: Some(value),
                 ..
-            }) => value.to_string(),
+            }) => wtf8_to_json_string(value),
             _ => String::new(),
         }),
         _ => unreachable!("jsonify: Expr {:?} cannot be converted to json", e),
@@ -237,6 +269,13 @@ mod tests {
         |_| json_parse(0),
         number,
         "const a = { b: 1 };"
+    );
+
+    test!(
+        ::swc_ecma_parser::Syntax::default(),
+        |_| json_parse(0),
+        decimal_number,
+        "const a = { b: 24.0197, c: 0.0, d: 1.0 };"
     );
 
     test!(

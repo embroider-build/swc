@@ -1,6 +1,7 @@
+use bytes_str::BytesStr;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize, Clone, Copy)]
 #[serde(rename_all = "camelCase")]
 pub struct Config {
     /// https://www.typescriptlang.org/tsconfig#verbatimModuleSyntax
@@ -33,17 +34,26 @@ pub struct Config {
     /// Defaults to false.
     #[serde(default)]
     pub ts_enum_is_mutable: bool,
+
+    /// Indicates that the input AST was parsed from Flow syntax.
+    ///
+    /// Set this when reusing the strip pass with
+    /// `swc_ecma_parser::Syntax::Flow(...)` so Flow-only post-processing runs
+    /// after type stripping. Leave this disabled for TypeScript and plain
+    /// JavaScript inputs to avoid extra overhead on the common path.
+    #[serde(skip)]
+    pub flow_syntax: bool,
 }
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct TsxConfig {
     /// Note: this pass handle jsx directives in comments
     #[serde(default)]
-    pub pragma: Option<String>,
+    pub pragma: Option<BytesStr>,
 
     /// Note: this pass handle jsx directives in comments
     #[serde(default)]
-    pub pragma_frag: Option<String>,
+    pub pragma_frag: Option<BytesStr>,
 }
 
 #[derive(Default, Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -83,6 +93,3 @@ pub enum ImportsNotUsedAsValues {
     #[serde(rename = "preserve")]
     Preserve,
 }
-
-#[deprecated = "ImportNotUsedAsValues is renamed to ImportsNotUsedAsValues"]
-pub type ImportNotUsedAsValues = ImportsNotUsedAsValues;

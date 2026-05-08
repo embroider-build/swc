@@ -2,9 +2,10 @@
 #![allow(unused_variables)]
 #[cfg(feature = "__plugin_mode")]
 use swc_common::{
+    plugin::serialized::ResultValue,
     source_map::{
-        DistinctSources, FileLinesResult, MalformedSourceMapPositions, PartialFileLinesResult,
-        PartialLoc, SmallPos, SpanSnippetError,
+        DistinctSources, FileLinesResult, MalformedSourceMapPositions, PartialFileLines,
+        PartialLoc, SmallPos, SpanLinesError, SpanSnippetError,
     },
     sync::Lrc,
     BytePos, FileName, Loc, SourceFileAndBytePos, SourceMapper, Span,
@@ -14,10 +15,15 @@ use swc_common::{sync::OnceCell, CharPos, FileLines, SourceFile};
 use swc_ecma_ast::SourceMapperExt;
 use swc_trace_macro::swc_trace;
 
-#[cfg(all(feature = "__rkyv", feature = "__plugin_mode", target_arch = "wasm32"))]
+#[cfg(all(
+    feature = "encoding-impl",
+    feature = "__plugin_mode",
+    target_arch = "wasm32"
+))]
 use crate::memory_interop::read_returned_result_from_host;
 
 #[cfg(target_arch = "wasm32")]
+#[link(wasm_import_module = "env")]
 extern "C" {
     fn __lookup_char_pos_source_map_proxy(
         byte_pos: u32,
@@ -53,7 +59,11 @@ pub struct PluginSourceMapProxy {
     pub source_file: OnceCell<swc_common::sync::Lrc<SourceFile>>,
 }
 
-#[cfg(all(feature = "__rkyv", feature = "__plugin_mode", target_arch = "wasm32"))]
+#[cfg(all(
+    feature = "encoding-impl",
+    feature = "__plugin_mode",
+    target_arch = "wasm32"
+))]
 #[swc_trace]
 impl PluginSourceMapProxy {
     pub fn span_to_source<F, Ret>(
@@ -66,13 +76,15 @@ impl PluginSourceMapProxy {
     {
         #[cfg(target_arch = "wasm32")]
         {
-            let src: Result<String, Box<SpanSnippetError>> =
+            use swc_common::plugin::serialized::ResultValue;
+
+            let src: ResultValue<String, Box<SpanSnippetError>> =
                 read_returned_result_from_host(|serialized_ptr| unsafe {
                     __span_to_source_proxy(sp.lo.0, sp.hi.0, serialized_ptr)
                 })
                 .expect("Host should return source code");
 
-            let src = src?;
+            let src = src.0?;
             return Ok(extract_source(&src, 0, src.len()));
         }
 
@@ -130,12 +142,14 @@ impl SourceMapper for PluginSourceMapProxy {
     fn span_to_lines(&self, sp: Span) -> FileLinesResult {
         #[cfg(target_arch = "wasm32")]
         {
+            use swc_common::plugin::serialized::ResultValue;
+
             let should_request_source_file = if self.source_file.get().is_none() {
                 1
             } else {
                 0
             };
-            let partial_files: PartialFileLinesResult =
+            let partial_files: ResultValue<PartialFileLines, Box<SpanLinesError>> =
                 read_returned_result_from_host(|serialized_ptr| unsafe {
                     __span_to_lines_proxy(
                         sp.lo.0,
@@ -147,7 +161,7 @@ impl SourceMapper for PluginSourceMapProxy {
                 .expect("Host should return PartialFileLinesResult");
 
             if self.source_file.get().is_none() {
-                if let Ok(p) = &partial_files {
+                if let Ok(p) = &partial_files.0 {
                     if let Some(source_file) = &p.file {
                         self.source_file
                             .set(source_file.clone())
@@ -156,7 +170,7 @@ impl SourceMapper for PluginSourceMapProxy {
                 }
             }
 
-            return partial_files.map(|files| FileLines {
+            return partial_files.0.map(|files| FileLines {
                 file: self
                     .source_file
                     .get()

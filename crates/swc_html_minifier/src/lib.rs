@@ -3,13 +3,14 @@
 use std::{borrow::Cow, cmp::Ordering, mem::take};
 
 use once_cell::sync::Lazy;
+use rustc_hash::FxHashMap;
 use serde_json::Value;
-use swc_atoms::{js_word, JsWord};
-use swc_cached::regex::CachedRegex;
+use swc_atoms::{atom, Atom};
 use swc_common::{
-    collections::AHashMap, comments::SingleThreadedComments, sync::Lrc, EqIgnoreSpan, FileName,
-    FilePathMapping, Mark, SourceMap, DUMMY_SP,
+    comments::SingleThreadedComments, sync::Lrc, EqIgnoreSpan, FileName, FilePathMapping, Mark,
+    SourceMap, DUMMY_SP,
 };
+use swc_config::regex::CachedRegex;
 use swc_html_ast::*;
 use swc_html_parser::parser::ParserConfig;
 use swc_html_utils::{HTML_ELEMENTS_AND_ATTRIBUTES, SVG_ELEMENTS_AND_ATTRIBUTES};
@@ -232,7 +233,7 @@ struct Minifier<'a, C: MinifyCss> {
     current_element: Option<Element>,
     latest_element: Option<Child>,
     descendant_of_pre: bool,
-    attribute_name_counter: Option<AHashMap<JsWord, usize>>,
+    attribute_name_counter: Option<FxHashMap<Atom, usize>>,
 
     css_minifier: &'a C,
 }
@@ -358,7 +359,7 @@ impl<C: MinifyCss> Minifier<'_, C> {
             return false;
         }
 
-        if let Some(global_pseudo_element) = HTML_ELEMENTS_AND_ATTRIBUTES.get(&js_word!("*")) {
+        if let Some(global_pseudo_element) = HTML_ELEMENTS_AND_ATTRIBUTES.get(&atom!("*")) {
             if let Some(element) = global_pseudo_element.other.get(&attribute.name) {
                 if element.boolean.is_some() && element.boolean.unwrap() {
                     return true;
@@ -569,7 +570,7 @@ impl<C: MinifyCss> Minifier<'_, C> {
         }
     }
 
-    fn is_type_text_css(&self, value: &JsWord) -> bool {
+    fn is_type_text_css(&self, value: &Atom) -> bool {
         let value = value.trim().to_ascii_lowercase();
 
         matches!(&*value, "text/css")
@@ -585,28 +586,22 @@ impl<C: MinifyCss> Minifier<'_, C> {
             Namespace::HTML | Namespace::SVG => {
                 match &*element.tag_name {
                     "html" => match &*attribute.name {
-                        "xmlns" => {
+                        "xmlns"
                             if &*attribute_value.trim().to_ascii_lowercase()
-                                == "http://www.w3.org/1999/xhtml"
-                            {
-                                return true;
-                            }
+                                == "http://www.w3.org/1999/xhtml" =>
+                        {
+                            return true;
                         }
-                        "xmlns:xlink" => {
+                        "xmlns:xlink"
                             if &*attribute_value.trim().to_ascii_lowercase()
-                                == "http://www.w3.org/1999/xlink"
-                            {
-                                return true;
-                            }
+                                == "http://www.w3.org/1999/xlink" =>
+                        {
+                            return true;
                         }
                         _ => {}
                     },
                     "script" => match &*attribute.name {
-                        "type" => {
-                            if self.is_type_text_javascript(attribute_value) {
-                                return true;
-                            }
-                        }
+                        "type" if self.is_type_text_javascript(attribute_value) => return true,
                         "language" => match &*attribute_value.trim().to_ascii_lowercase() {
                             "javascript" | "javascript1.2" | "javascript1.3" | "javascript1.4"
                             | "javascript1.5" | "javascript1.6" | "javascript1.7" => return true,
@@ -614,19 +609,18 @@ impl<C: MinifyCss> Minifier<'_, C> {
                         },
                         _ => {}
                     },
-                    "link" => {
-                        if attribute.name == "type" && self.is_type_text_css(attribute_value) {
-                            return true;
-                        }
+                    "link"
+                        if attribute.name == "type" && self.is_type_text_css(attribute_value) =>
+                    {
+                        return true;
                     }
 
-                    "svg" => {
+                    "svg"
                         if attribute.name == "xmlns"
                             && &*attribute_value.trim().to_ascii_lowercase()
-                                == "http://www.w3.org/2000/svg"
-                        {
-                            return true;
-                        }
+                                == "http://www.w3.org/2000/svg" =>
+                    {
+                        return true;
                     }
                     _ => {}
                 }
@@ -650,7 +644,7 @@ impl<C: MinifyCss> Minifier<'_, C> {
                     with_namespace.push(':');
                     with_namespace.push_str(&attribute.name);
 
-                    attributes.other.get(&JsWord::from(with_namespace))
+                    attributes.other.get(&Atom::from(with_namespace))
                 } else {
                     attributes.other.get(&attribute.name)
                 };
@@ -734,7 +728,7 @@ impl<C: MinifyCss> Minifier<'_, C> {
         false
     }
 
-    fn is_preserved_comment(&self, data: &JsWord) -> bool {
+    fn is_preserved_comment(&self, data: &Atom) -> bool {
         if let Some(preserve_comments) = &self.options.preserve_comments {
             return preserve_comments.iter().any(|regex| regex.is_match(data));
         }
@@ -742,7 +736,7 @@ impl<C: MinifyCss> Minifier<'_, C> {
         false
     }
 
-    fn is_conditional_comment(&self, data: &JsWord) -> bool {
+    fn is_conditional_comment(&self, data: &Atom) -> bool {
         if CONDITIONAL_COMMENT_START.is_match(data) || CONDITIONAL_COMMENT_END.is_match(data) {
             return true;
         }
@@ -1138,7 +1132,7 @@ impl<C: MinifyCss> Minifier<'_, C> {
         Cow::Owned(collapsed)
     }
 
-    fn is_additional_minifier_attribute(&self, name: &JsWord) -> Option<MinifierType> {
+    fn is_additional_minifier_attribute(&self, name: &Atom) -> Option<MinifierType> {
         if let Some(minify_additional_attributes) = &self.options.minify_additional_attributes {
             for item in minify_additional_attributes {
                 if item.0.is_match(name) {
@@ -1240,7 +1234,7 @@ impl<C: MinifyCss> Minifier<'_, C> {
                                 {
                                     false
                                 } else if is_script_tag
-                                    && value.trim().to_ascii_lowercase() == "module"
+                                    && value.trim().eq_ignore_ascii_case("module")
                                 {
                                     true
                                 } else {
@@ -1282,7 +1276,7 @@ impl<C: MinifyCss> Minifier<'_, C> {
                                 {
                                     false
                                 } else if is_script_tag
-                                    && value.trim().to_ascii_lowercase() == "module"
+                                    && value.trim().eq_ignore_ascii_case("module")
                                 {
                                     true
                                 } else {
@@ -1340,7 +1334,7 @@ impl<C: MinifyCss> Minifier<'_, C> {
 
         if is_script_tag {
             let is_modules = if is_script_tag {
-                left.attributes.iter().any(|attribute| matches!(&attribute.value, Some(value) if value.trim().to_ascii_lowercase() == "module"))
+                left.attributes.iter().any(|attribute| matches!(&attribute.value, Some(value) if value.trim().eq_ignore_ascii_case("module")))
             } else {
                 false
             };
@@ -1736,7 +1730,7 @@ impl<C: MinifyCss> Minifier<'_, C> {
         &self,
         attributes: &'a Vec<Attribute>,
         name: &str,
-    ) -> Option<&'a JsWord> {
+    ) -> Option<&'a Atom> {
         let mut type_attribute_value = None;
 
         for attribute in attributes {
@@ -1792,10 +1786,7 @@ impl<C: MinifyCss> Minifier<'_, C> {
             false => serde_json::to_string(&json),
         };
 
-        match result {
-            Ok(minified_json) => Some(minified_json),
-            _ => None,
-        }
+        result.ok()
     }
 
     fn need_minify_js(&self) -> bool {
@@ -1926,6 +1917,8 @@ impl<C: MinifyCss> Minifier<'_, C> {
                     unreachable!();
                 }
             },
+            #[cfg(swc_ast_unknown)]
+            _ => panic!("unable to access unknown nodes"),
         }
 
         if is_modules {
@@ -2156,7 +2149,7 @@ impl<C: MinifyCss> Minifier<'_, C> {
                 // `template` element, because it can be used in any place in source code
                 context_element = Some(Element {
                     span: Default::default(),
-                    tag_name: "template".into(),
+                    tag_name: atom!("template"),
                     namespace: Namespace::HTML,
                     attributes: Vec::new(),
                     children: Vec::new(),
@@ -2223,6 +2216,7 @@ impl<C: MinifyCss> Minifier<'_, C> {
                 scripting_enabled: false,
                 context_element: context_element.as_ref(),
                 tag_omission: None,
+                keep_head_and_body: None,
                 self_closing_void_elements: None,
                 quotes: None,
             },
@@ -2306,7 +2300,7 @@ impl<C: MinifyCss> Minifier<'_, C> {
                     && n.name == "contenteditable"
                     && n.value.as_deref() == Some("true") =>
                 {
-                    n.value = Some(js_word!(""));
+                    n.value = Some(atom!(""));
                 }
                 _ if self.options.normalize_attributes
                     && self.is_semicolon_separated_attribute(element, n) =>
@@ -2507,7 +2501,7 @@ impl<C: MinifyCss> VisitMut for Minifier<'_, C> {
             return;
         }
 
-        n.name = Some("html".into());
+        n.name = Some(atom!("html"));
         n.system_id = None;
         n.public_id = None;
     }
@@ -2567,7 +2561,7 @@ impl<C: MinifyCss> VisitMut for Minifier<'_, C> {
         let mut remove_list = Vec::new();
 
         for (i, i1) in n.attributes.iter().enumerate() {
-            if i1.value.is_some() {
+            if let Some(value) = i1.value.as_ref() {
                 if self.options.remove_redundant_attributes != RemoveRedundantAttributes::None
                     && self.is_default_attribute_value(n, i1)
                 {
@@ -2576,17 +2570,14 @@ impl<C: MinifyCss> VisitMut for Minifier<'_, C> {
                     continue;
                 }
 
-                if self.options.remove_empty_attributes {
-                    let value = i1.value.as_ref().unwrap();
-
-                    if (matches!(&*i1.name, "id") && value.is_empty())
+                if self.options.remove_empty_attributes
+                    && ((matches!(&*i1.name, "id") && value.is_empty())
                         || (matches!(&*i1.name, "class" | "style") && value.is_empty())
-                        || self.is_event_handler_attribute(i1) && value.is_empty()
-                    {
-                        remove_list.push(i);
+                        || self.is_event_handler_attribute(i1) && value.is_empty())
+                {
+                    remove_list.push(i);
 
-                        continue;
-                    }
+                    continue;
                 }
             }
 
@@ -2642,7 +2633,7 @@ impl<C: MinifyCss> VisitMut for Minifier<'_, C> {
     fn visit_mut_text(&mut self, n: &mut Text) {
         n.visit_mut_children_with(self);
 
-        if n.data.len() == 0 {
+        if n.data.is_empty() {
             return;
         }
 
@@ -2661,7 +2652,7 @@ impl<C: MinifyCss> VisitMut for Minifier<'_, C> {
                             .iter()
                             .any(|attribute| matches!(&*attribute.name, "src")) =>
                 {
-                    let type_attribute_value: Option<JsWord> = self
+                    let type_attribute_value: Option<Atom> = self
                         .get_attribute_value(&current_element.attributes, "type")
                         .map(|v| v.to_ascii_lowercase().trim().into());
 
@@ -2707,9 +2698,10 @@ impl<C: MinifyCss> VisitMut for Minifier<'_, C> {
                     let mut type_attribute_value = None;
 
                     for attribute in &current_element.attributes {
-                        if attribute.name == "type" && attribute.value.is_some() {
-                            type_attribute_value = Some(attribute.value.as_ref().unwrap());
-
+                        if attribute.name == "type" {
+                            if let Some(value) = attribute.value.as_ref() {
+                                type_attribute_value = Some(value);
+                            }
                             break;
                         }
                     }
@@ -2783,7 +2775,7 @@ impl<C: MinifyCss> VisitMut for Minifier<'_, C> {
             return;
         }
 
-        if self.is_conditional_comment(&n.data) && n.data.len() > 0 {
+        if self.is_conditional_comment(&n.data) && !n.data.is_empty() {
             let start_pos = match n.data.find("]>") {
                 Some(start_pos) => start_pos,
                 _ => return,
@@ -2818,7 +2810,7 @@ impl<C: MinifyCss> VisitMut for Minifier<'_, C> {
 }
 
 struct AttributeNameCounter {
-    tree: AHashMap<JsWord, usize>,
+    tree: FxHashMap<Atom, usize>,
 }
 
 impl VisitMut for AttributeNameCounter {
@@ -2935,7 +2927,7 @@ impl MinifyCss for DefaultCssMinifier {
                                 span: Default::default(),
                                 name: swc_css_ast::AtRuleName::Ident(swc_css_ast::Ident {
                                     span: Default::default(),
-                                    value: "media".into(),
+                                    value: atom!("media"),
                                     raw: None,
                                 }),
                                 prelude: Some(
@@ -2953,7 +2945,7 @@ impl MinifyCss for DefaultCssMinifier {
                                     value: vec![swc_css_ast::ComponentValue::Str(Box::new(
                                         swc_css_ast::Str {
                                             span: Default::default(),
-                                            value: "placeholder".into(),
+                                            value: atom!("placeholder"),
                                             raw: None,
                                         },
                                     ))],

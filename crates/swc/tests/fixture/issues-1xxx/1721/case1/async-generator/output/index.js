@@ -1,11 +1,8 @@
-var _wrap_async_generator = require("@swc/helpers/_/_wrap_async_generator");
-var _ts_generator = require("@swc/helpers/_/_ts_generator");
+import { _ as _wrap_async_generator } from "@swc/helpers/_/_wrap_async_generator";
+import { _ as _ts_generator } from "@swc/helpers/_/_ts_generator";
 function lol() {
-    return _lol.apply(this, arguments);
-}
-function _lol() {
-    _lol = _wrap_async_generator._(function() {
-        return _ts_generator._(this, function(_state) {
+    return _wrap_async_generator(function() {
+        return _ts_generator(this, function(_state) {
             switch(_state.label){
                 case 0:
                     return [
@@ -25,6 +22,5 @@ function _lol() {
                     ];
             }
         });
-    });
-    return _lol.apply(this, arguments);
+    })();
 }

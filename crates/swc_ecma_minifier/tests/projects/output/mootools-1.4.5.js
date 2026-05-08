@@ -688,7 +688,7 @@ delete Function.prototype.bind, Function.implement({
         var self = this;
         return options = options || {}, function(event) {
             var args = options.arguments;
-            args = null != args ? Array.from(args) : Array.slice(arguments, options.event ? 1 : 0), options.event && (args = [
+            args = null != args ? Array.from(args) : Array.slice(arguments, +!!options.event), options.event && (args = [
                 event || window.event
             ].extend(args));
             var returns = function() {
@@ -1400,7 +1400,7 @@ __END__
     Slick1.parse = function(expression) {
         return parse(expression);
     }, Slick1.escapeRegExp = escapeRegExp, this.Slick || (this.Slick = Slick1);
-}).apply(/*<CommonJS>*/ "undefined" != typeof exports ? exports : /*</CommonJS>*/ this), /*
+}).apply(/*<CommonJS>*/ "u" > typeof exports ? exports : /*</CommonJS>*/ this), /*
 ---
 name: Slick.Finder
 description: The new, superfast css selector engine.
@@ -1528,7 +1528,7 @@ requires: Slick.Parser
             }, // document order sorting
             // credits to Sizzle (http://sizzlejs.com/)
             features.documentSorter = root.compareDocumentPosition ? function(a, b) {
-                return a.compareDocumentPosition && b.compareDocumentPosition ? 4 & a.compareDocumentPosition(b) ? -1 : a === b ? 0 : 1 : 0;
+                return a.compareDocumentPosition && b.compareDocumentPosition ? 4 & a.compareDocumentPosition(b) ? -1 : +(a !== b) : 0;
             } : "sourceIndex" in root ? function(a, b) {
                 return a.sourceIndex && b.sourceIndex ? a.sourceIndex - b.sourceIndex : 0;
             } : document1.createRange ? function(a, b) {
@@ -1569,7 +1569,7 @@ requires: Slick.Parser
                             for(i = 0; node = nodes[i++];)hasOthers && uniques[this.getUID(node)] || found.push(node);
                         } else {
                             var matchClass = RegExp("(^|\\s)" + Slick1.escapeRegExp(name) + "(\\s|$)");
-                            for(i = 0, nodes = context.getElementsByTagName("*"); node = nodes[i++];)if ((className = node.className) && matchClass.test(className)) {
+                            for(nodes = context.getElementsByTagName("*"), i = 0; node = nodes[i++];)if ((className = node.className) && matchClass.test(className)) {
                                 if (first) return node;
                                 hasOthers && uniques[this.getUID(node)] || found.push(node);
                             }
@@ -1756,11 +1756,9 @@ requires: Slick.Parser
                     }
                     if (item) {
                         if (this.document !== node && !this.contains(node, item)) return;
-                    } else {
-                        // if the context is in the dom we return, else we will try GEBTN, breaking the getById label
-                        if (this.contains(this.root, node)) return;
-                        break getById;
-                    }
+                    } else // if the context is in the dom we return, else we will try GEBTN, breaking the getById label
+                    if (this.contains(this.root, node)) return;
+                    else break getById;
                     this.push(item, tag, null, classes, attributes, pseudos);
                     return;
                 }
@@ -1945,7 +1943,7 @@ requires: Slick.Parser
         return local.setDocument(node), local.hasAttribute(node, name);
     }, // Slick matcher
     Slick1.match = function(node, selector) {
-        return !!node && !!selector && (!selector || selector === node || (local.setDocument(node), local.matchNode(node, selector)));
+        return !!(node && selector) && (!selector || selector === node || (local.setDocument(node), local.matchNode(node, selector)));
     }, // Slick attribute accessor
     Slick1.defineAttributeGetter = function(name, fn) {
         return local.attributeGetters[name] = fn, this;
@@ -1967,7 +1965,7 @@ requires: Slick.Parser
     }, Slick1.isXML = local.isXML, Slick1.uidOf = function(node) {
         return local.getUIDHTML(node);
     }, this.Slick || (this.Slick = Slick1);
-}).apply(/*<CommonJS>*/ "undefined" != typeof exports ? exports : /*</CommonJS>*/ this);
+}).apply(/*<CommonJS>*/ "u" > typeof exports ? exports : /*</CommonJS>*/ this);
 /*
 ---
 
@@ -1990,7 +1988,7 @@ provides: [Element, Elements, $, $$, Iframe, Selectors]
         var parsed = Slick.parse(tag).expressions[0][0];
         tag = "*" == parsed.tag ? "div" : parsed.tag, parsed.id && null == props.id && (props.id = parsed.id);
         var attributes = parsed.attributes;
-        if (attributes) for(var attr, i = 0, l = attributes.length; i < l; i++)null != props[(attr = attributes[i]).key] || (null != attr.value && "=" == attr.operator ? props[attr.key] = attr.value : attr.value || attr.operator || (props[attr.key] = !0));
+        if (attributes) for(var attr, i = 0, l = attributes.length; i < l; i++)null == props[(attr = attributes[i]).key] && (null != attr.value && "=" == attr.operator ? props[attr.key] = attr.value : attr.value || attr.operator || (props[attr.key] = !0));
         parsed.classList && null == props.class && (props.class = parsed.classList.join(" "));
     }
     return document.newElement(tag, props);
@@ -2246,7 +2244,7 @@ function() {
     }), null == window.$$ && Window.implement("$$", function(selector) {
         if (1 == arguments.length) {
             if ("string" == typeof selector) return Slick.search(this.document, selector, new Elements());
-            if (Type.isEnumerable(selector)) return new Elements(selector);
+            else if (Type.isEnumerable(selector)) return new Elements(selector);
         }
         return new Elements(arguments);
     });
@@ -2680,7 +2678,7 @@ provides: Element.Style
         return filter && (opacity = filter.match(reAlpha)), null == opacity || null == filter ? 1 : opacity[1] / 100;
     } : function(element) {
         var opacity = element.retrieve("$opacity");
-        return null == opacity && (opacity = "hidden" == element.style.visibility ? 0 : 1), opacity;
+        return null == opacity && (opacity = +("hidden" != element.style.visibility)), opacity;
     }, floatName = null == html.style.cssFloat ? "styleFloat" : "cssFloat";
     Element.implement({
         getComputedStyle: function(property) {
@@ -3645,7 +3643,7 @@ provides: [Fx.Tween, Element.fade, Element.highlight]
                 break;
             case "toggle":
                 var flag = this.retrieve("fade:flag", 1 == this.getStyle("opacity"));
-                method = "start", args[1] = flag ? 0 : 1, this.store("fade:flag", !flag), toggle = !0;
+                method = "start", args[1] = +!flag, this.store("fade:flag", !flag), toggle = !0;
                 break;
             default:
                 method = "start";
@@ -4078,7 +4076,7 @@ provides: Request.HTML
             url: Type.isString
         })), this;
     }
-}), "undefined" == typeof JSON && (this.JSON = {}), //<1.2compat>
+}), "u" < typeof JSON && (this.JSON = {}), //<1.2compat>
 JSON = new Hash({
     stringify: JSON.stringify,
     parse: JSON.parse
@@ -4199,7 +4197,7 @@ provides: Cookie
     write: function(value) {
         if (this.options.encode && (value = encodeURIComponent(value)), this.options.domain && (value += "; domain=" + this.options.domain), this.options.path && (value += "; path=" + this.options.path), this.options.duration) {
             var date = new Date();
-            date.setTime(date.getTime() + 86400000 * this.options.duration), value += "; expires=" + date.toGMTString();
+            date.setTime(date.getTime() + 24 * this.options.duration * 3600000), value += "; expires=" + date.toGMTString();
         }
         return this.options.secure && (value += "; secure"), this.options.document.cookie = this.key + "=" + value, this;
     },

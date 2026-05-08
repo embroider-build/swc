@@ -1,31 +1,24 @@
 #![allow(clippy::too_many_arguments)]
 
-use std::{
-    fmt::{Display, Formatter},
-    mem::{transmute_copy, ManuallyDrop},
-};
+use std::{hash::BuildHasherDefault, mem::take};
 
+use indexmap::IndexSet;
 #[cfg(feature = "concurrent-renamer")]
-use rayon::prelude::*;
-use rustc_hash::FxHashSet;
+use par_iter::prelude::*;
+use rustc_hash::{FxHashMap, FxHashSet, FxHasher};
 use swc_atoms::{atom, Atom};
-use swc_common::{collections::AHashMap, util::take::Take, Mark, SyntaxContext};
+use swc_common::Mark;
 use swc_ecma_ast::*;
 use tracing::debug;
 
 use super::reverse_map::ReverseMap;
-use crate::rename::{RenameMap, Renamer};
+use crate::rename::{RenamedVariable, Renamer};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub(crate) enum ScopeKind {
+    #[default]
     Fn,
     Block,
-}
-
-impl Default for ScopeKind {
-    fn default() -> Self {
-        Self::Fn
-    }
 }
 
 #[derive(Debug, Default)]
@@ -35,6 +28,8 @@ pub(crate) struct Scope {
 
     pub(super) children: Vec<Scope>,
 }
+
+pub(super) type FxIndexSet<T> = IndexSet<T, BuildHasherDefault<FxHasher>>;
 
 #[derive(Debug, Default)]
 pub(super) struct ScopeData {
@@ -46,7 +41,7 @@ pub(super) struct ScopeData {
     /// because we merge every items in children to current scope.
     all: FxHashSet<Id>,
 
-    queue: Vec<Id>,
+    queue: FxIndexSet<Id>,
 }
 
 impl Scope {
@@ -62,7 +57,7 @@ impl Scope {
                 return;
             }
 
-            self.data.queue.push(id.clone());
+            self.data.queue.insert(id.clone());
         }
     }
 
@@ -93,18 +88,19 @@ impl Scope {
         });
     }
 
-    pub(crate) fn rename_in_normal_mode<R>(
+    pub(crate) fn rename_in_normal_mode<R, V>(
         &mut self,
         renamer: &R,
-        to: &mut RenameMap,
-        previous: &RenameMap,
+        to: &mut FxHashMap<Id, V>,
+        previous: &FxHashMap<Id, V>,
         reverse: &mut ReverseMap,
         preserved: &FxHashSet<Id>,
         preserved_symbols: &FxHashSet<Atom>,
     ) where
         R: Renamer,
+        V: RenamedVariable,
     {
-        let queue = self.data.queue.take();
+        let queue = take(&mut self.data.queue);
 
         // let mut cloned_reverse = reverse.clone();
 
@@ -130,22 +126,25 @@ impl Scope {
         }
     }
 
-    fn rename_one_scope_in_normal_mode<R>(
+    fn rename_one_scope_in_normal_mode<R, V>(
         &self,
         renamer: &R,
-        to: &mut RenameMap,
-        previous: &RenameMap,
+        to: &mut FxHashMap<Id, V>,
+        previous: &FxHashMap<Id, V>,
         reverse: &mut ReverseMap,
-        queue: Vec<Id>,
+        queue: FxIndexSet<Id>,
         preserved: &FxHashSet<Id>,
         preserved_symbols: &FxHashSet<Atom>,
     ) where
         R: Renamer,
+        V: RenamedVariable,
     {
+        let mut latest_n = FxHashMap::default();
         let mut n = 0;
 
         for id in queue {
-            if preserved.contains(&id)
+            if renamer.preserve_name(&id)
+                || preserved.contains(&id)
                 || to.get(&id).is_some()
                 || previous.get(&id).is_some()
                 || id.0 == "eval"
@@ -154,7 +153,7 @@ impl Scope {
             }
 
             if R::RESET_N {
-                n = 0;
+                n = latest_n.get(&id.0).copied().unwrap_or(0);
             }
 
             loop {
@@ -165,13 +164,18 @@ impl Scope {
                 }
 
                 if self.can_rename(&id, &sym, reverse) {
+                    let renamed = V::new_private(sym.clone());
                     if cfg!(debug_assertions) {
-                        debug!("Renaming `{}{:?}` to `{}`", id.0, id.1, sym);
+                        let renamed = renamed.to_id();
+                        debug!(
+                            "Renaming `{}{:?}` to `{}{:?}`",
+                            id.0, id.1, renamed.0, renamed.1
+                        );
                     }
+                    latest_n.insert(id.0.clone(), n);
 
-                    reverse.push_entry(sym.clone(), id.clone());
-                    to.insert(id, sym);
-
+                    reverse.push_entry(sym, id.clone());
+                    to.insert(id.clone(), renamed);
                     break;
                 }
             }
@@ -195,20 +199,24 @@ impl Scope {
         true
     }
 
-    #[cfg_attr(not(feature = "concurrent-renamer"), allow(unused))]
-    pub(crate) fn rename_in_mangle_mode<R>(
+    #[cfg_attr(
+        not(feature = "concurrent-renamer"),
+        allow(unused, clippy::only_used_in_recursion)
+    )]
+    pub(crate) fn rename_in_mangle_mode<R, V>(
         &mut self,
         renamer: &R,
-        to: &mut RenameMap,
-        previous: &RenameMap,
+        to: &mut FxHashMap<Id, V>,
+        previous: &FxHashMap<Id, V>,
         reverse: &ReverseMap,
         preserved: &FxHashSet<Id>,
         preserved_symbols: &FxHashSet<Atom>,
         parallel: bool,
     ) where
         R: Renamer,
+        V: RenamedVariable,
     {
-        let queue = self.data.queue.take();
+        let queue = take(&mut self.data.queue);
 
         let mut cloned_reverse = reverse.next();
 
@@ -266,22 +274,24 @@ impl Scope {
         }
     }
 
-    fn rename_one_scope_in_mangle_mode<R>(
+    fn rename_one_scope_in_mangle_mode<R, V>(
         &self,
         renamer: &R,
-        to: &mut RenameMap,
-        previous: &RenameMap,
+        to: &mut FxHashMap<Id, V>,
+        previous: &FxHashMap<Id, V>,
         reverse: &mut ReverseMap,
-        queue: Vec<Id>,
+        queue: FxIndexSet<Id>,
         preserved: &FxHashSet<Id>,
         preserved_symbols: &FxHashSet<Atom>,
     ) where
         R: Renamer,
+        V: RenamedVariable,
     {
         let mut n = 0;
 
         for id in queue {
-            if preserved.contains(&id)
+            if renamer.preserve_name(&id)
+                || preserved.contains(&id)
                 || to.get(&id).is_some()
                 || previous.get(&id).is_some()
                 || id.0 == "eval"
@@ -304,7 +314,7 @@ impl Scope {
                     }
 
                     reverse.push_entry(sym.clone(), id.clone());
-                    to.insert(id.clone(), sym);
+                    to.insert(id.clone(), V::new_private(sym));
                     // self.data.decls.remove(&id);
                     // self.data.usages.remove(&id);
 

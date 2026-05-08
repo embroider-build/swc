@@ -1,7 +1,7 @@
 #![allow(dead_code)]
 
 use swc_macros_common::prelude::*;
-use syn::{parse::Parse, *};
+use syn::{parse::Parse, spanned::Spanned, *};
 
 struct MyField {
     /// Name of the field.
@@ -27,6 +27,21 @@ impl Parse for InputFieldAttr {
     }
 }
 
+fn is_unknown(attrs: &[syn::Attribute]) -> bool {
+    attrs
+        .iter()
+        .filter(|attr| attr.path().is_ident("span"))
+        .any(|attr| {
+            let mut is_unknown = false;
+            attr.parse_nested_meta(|meta| {
+                is_unknown |= meta.path.is_ident("unknown");
+                Ok(())
+            })
+            .unwrap();
+            is_unknown
+        })
+}
+
 impl MyField {
     fn from_field(f: &Field) -> Self {
         let mut lo = false;
@@ -49,7 +64,7 @@ impl MyField {
                         } else if kind == "hi" {
                             hi = true
                         } else {
-                            panic!("Unknown span attribute: {:?}", kind)
+                            panic!("Unknown span attribute: {kind:?}")
                         }
                     }
                 }
@@ -121,6 +136,12 @@ fn make_body_for_variant(v: &VariantBinder<'_>, bindings: Vec<BindedField<'_>>) 
         }))
     }
 
+    if is_unknown(v.attrs()) {
+        return Box::new(parse_quote_spanned! { v.data().span() => {
+            swc_common::DUMMY_SP
+        }});
+    }
+
     if bindings.is_empty() {
         panic!("#[derive(Spanned)] requires a field to get span from")
     }
@@ -142,15 +163,12 @@ fn make_body_for_variant(v: &VariantBinder<'_>, bindings: Vec<BindedField<'_>>) 
     }
 
     // If all fields do not have `#[span(..)]`, check for field named `span`.
-    let has_any_span_attr = bindings
-        .iter()
-        .map(|b| {
-            b.field()
-                .attrs
-                .iter()
-                .any(|attr| is_attr_name(attr, "span"))
-        })
-        .any(|b| b);
+    let has_any_span_attr = bindings.iter().any(|b| {
+        b.field()
+            .attrs
+            .iter()
+            .any(|attr| is_attr_name(attr, "span"))
+    });
     if !has_any_span_attr {
         let span_field = bindings
             .iter()

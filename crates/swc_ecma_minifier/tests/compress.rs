@@ -18,6 +18,7 @@ use serde::Deserialize;
 use swc_common::{
     comments::{Comments, SingleThreadedComments},
     errors::{Handler, HANDLER},
+    input::SourceFileInput,
     sync::Lrc,
     util::take::Take,
     EqIgnoreSpan, FileName, Mark, SourceMap,
@@ -34,10 +35,7 @@ use swc_ecma_minifier::{
         MinifyOptions, TopLevelOptions,
     },
 };
-use swc_ecma_parser::{
-    lexer::{input::SourceFileInput, Lexer},
-    EsSyntax, Parser, Syntax,
-};
+use swc_ecma_parser::{lexer::Lexer, EsSyntax, Parser, Syntax};
 use swc_ecma_testing::{exec_node_js, JsExecOptions};
 use swc_ecma_transforms_base::{
     fixer::{fixer, paren_remover},
@@ -132,7 +130,6 @@ fn parse_compressor_config(cm: Lrc<SourceMap>, s: &str) -> (bool, CompressOption
         serde_json::from_str(s).expect("failed to deserialize value into a compressor config");
 
     c.defaults = opts.defaults;
-    c.const_to_let = Some(false);
     c.pristine_globals = Some(true);
     c.passes = opts.passes;
 
@@ -518,7 +515,7 @@ fn fixture(input: PathBuf) {
 
         let output = print(
             cm.clone(),
-            &[output_program.clone()],
+            std::slice::from_ref(&output_program),
             Some(&comments),
             false,
             false,

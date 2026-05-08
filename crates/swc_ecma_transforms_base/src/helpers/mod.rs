@@ -1,9 +1,7 @@
-use std::{cell::RefCell, mem::replace};
+use std::cell::RefCell;
 
-use once_cell::sync::Lazy;
-use rustc_hash::FxHashMap;
-use swc_atoms::JsWord;
-use swc_common::{FileName, FilePathMapping, Mark, SourceMap, SyntaxContext, DUMMY_SP};
+use swc_atoms::atom;
+use swc_common::{Mark, SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_utils::{prepend_stmts, quote_ident, DropSpan, ExprFactory};
 use swc_ecma_visit::{noop_visit_mut_type, visit_mut_pass, VisitMut, VisitMutWith};
@@ -18,12 +16,13 @@ macro_rules! enable_helper {
     }};
 }
 
+#[cfg(feature = "inline-helpers")]
 fn parse(code: &str) -> Vec<Stmt> {
-    let cm = SourceMap::new(FilePathMapping::empty());
+    let cm = swc_common::SourceMap::default();
 
     let fm = cm.new_source_file(
-        FileName::Custom(stringify!($name).into()).into(),
-        code.into(),
+        swc_common::FileName::Custom(stringify!($name).into()).into(),
+        code.to_string(),
     );
     swc_ecma_parser::parse_file_as_script(
         &fm,
@@ -42,9 +41,10 @@ fn parse(code: &str) -> Vec<Stmt> {
     .unwrap()
 }
 
+#[cfg(feature = "inline-helpers")]
 macro_rules! add_to {
     ($buf:expr, $name:ident, $b:expr, $mark:expr) => {{
-        static STMTS: Lazy<Vec<Stmt>> = Lazy::new(|| {
+        static STMTS: once_cell::sync::Lazy<Vec<Stmt>> = once_cell::sync::Lazy::new(|| {
             let code = include_str!(concat!("./_", stringify!($name), ".js"));
             parse(&code)
         });
@@ -203,11 +203,11 @@ macro_rules! define_helpers {
                 })
             }
 
+            #[cfg(feature = "inline-helpers")]
             fn build_helpers(&self) -> Vec<Stmt> {
                 let mut buf = Vec::new();
 
                 HELPERS.with(|helpers|{
-                    debug_assert!(!helpers.external);
                     let inner = helpers.inner.borrow();
                     $(
                             add_to!(buf, $name, inner.$name, helpers.mark.0);
@@ -222,7 +222,6 @@ macro_rules! define_helpers {
 
                 HELPERS.with(|helpers|{
                     let inner = helpers.inner.borrow();
-                    debug_assert!(helpers.external);
                     $(
                             add_import_to!(buf, $name, inner.$name, helpers.mark.0);
                     )*
@@ -234,7 +233,6 @@ macro_rules! define_helpers {
             fn build_requires(&self) -> Vec<Stmt>{
                 let mut buf = Vec::new();
                 HELPERS.with(|helpers|{
-                    debug_assert!(helpers.external);
                     let inner = helpers.inner.borrow();
                     $(
                         let enable = inner.$name;
@@ -256,11 +254,11 @@ define_helpers!(Helpers {
     array_with_holes: (),
     array_without_holes: (array_like_to_array),
     assert_this_initialized: (),
-    async_generator: (await_value),
-    async_generator_delegate: (),
+    async_generator: (overload_yield),
+    async_generator_delegate: (overload_yield),
     async_iterator: (),
     async_to_generator: (),
-    await_async_generator: (await_value),
+    await_async_generator: (overload_yield),
     await_value: (),
     call_super: (
         get_prototype_of,
@@ -333,6 +331,7 @@ define_helpers!(Helpers {
     object_spread_props: (),
     object_without_properties: (object_without_properties_loose),
     object_without_properties_loose: (),
+    overload_yield: (),
     possible_constructor_return: (type_of, assert_this_initialized),
     read_only_error: (),
     set: (super_prop_base, define_property),
@@ -380,6 +379,7 @@ define_helpers!(Helpers {
         set_prototype_of,
         is_native_function
     ),
+    wrap_reg_exp: (inherits, set_prototype_of),
     write_only_error: (),
 
     class_private_field_destructure: (
@@ -412,8 +412,10 @@ define_helpers!(Helpers {
     ts_values: (),
     ts_add_disposable_resource: (),
     ts_dispose_resources: (),
+    ts_rewrite_relative_import_extension: (),
 
     apply_decs_2203_r: (),
+    apply_decs_2311: (),
     identity: (),
     dispose: (),
     using: (),
@@ -433,35 +435,41 @@ struct InjectHelpers {
 }
 
 impl InjectHelpers {
+    #[allow(unused_variables)]
     fn make_helpers_for_module(&mut self) -> Vec<ModuleItem> {
         let (helper_mark, external) = HELPERS.with(|helper| (helper.mark(), helper.external()));
-        if external {
-            if self.is_helper_used() {
-                self.helper_ctxt = Some(SyntaxContext::empty().apply_mark(helper_mark));
-                self.build_imports()
-            } else {
-                Vec::new()
-            }
-        } else {
-            self.build_helpers()
+
+        #[cfg(feature = "inline-helpers")]
+        if !external {
+            return self
+                .build_helpers()
                 .into_iter()
                 .map(ModuleItem::Stmt)
-                .collect()
+                .collect();
+        }
+
+        if self.is_helper_used() {
+            self.helper_ctxt = Some(SyntaxContext::empty().apply_mark(helper_mark));
+            self.build_imports()
+        } else {
+            Vec::new()
         }
     }
 
+    #[allow(unused_variables)]
     fn make_helpers_for_script(&mut self) -> Vec<Stmt> {
         let (helper_mark, external) = HELPERS.with(|helper| (helper.mark(), helper.external()));
 
-        if external {
-            if self.is_helper_used() {
-                self.helper_ctxt = Some(SyntaxContext::empty().apply_mark(helper_mark));
-                self.build_requires()
-            } else {
-                Default::default()
-            }
+        #[cfg(feature = "inline-helpers")]
+        if !external {
+            return self.build_helpers();
+        }
+
+        if self.is_helper_used() {
+            self.helper_ctxt = Some(SyntaxContext::empty().apply_mark(helper_mark));
+            self.build_requires()
         } else {
-            self.build_helpers()
+            Default::default()
         }
     }
 
@@ -471,13 +479,13 @@ impl InjectHelpers {
             callee: Expr::from(Ident {
                 span: DUMMY_SP,
                 ctxt: SyntaxContext::empty().apply_mark(self.global_mark),
-                sym: "require".into(),
+                sym: atom!("require"),
                 ..Default::default()
             })
             .as_callee(),
             args: vec![Str {
                 span: DUMMY_SP,
-                value: format!("@swc/helpers/_/_{}", name).into(),
+                value: format!("@swc/helpers/_/_{name}").into(),
                 raw: None,
             }
             .as_arg()],
@@ -488,7 +496,7 @@ impl InjectHelpers {
             kind: VarDeclKind::Var,
             decls: vec![VarDeclarator {
                 span: DUMMY_SP,
-                name: Pat::Ident(Ident::new(format!("_{}", name).into(), DUMMY_SP, ctxt).into()),
+                name: Pat::Ident(Ident::new(format!("_{name}").into(), DUMMY_SP, ctxt).into()),
                 init: Some(c.into()),
                 definite: false,
             }],
@@ -506,7 +514,7 @@ impl InjectHelpers {
                 MemberExpr {
                     span: ref_ident.span,
                     obj: Box::new(ident.into()),
-                    prop: MemberProp::Ident("_".into()),
+                    prop: MemberProp::Ident(atom!("_").into()),
                 }
                 .into()
             })
@@ -546,18 +554,20 @@ impl VisitMut for InjectHelpers {
     }
 }
 
+#[cfg(feature = "inline-helpers")]
 struct Marker {
     base: SyntaxContext,
-    decls: FxHashMap<JsWord, SyntaxContext>,
+    decls: rustc_hash::FxHashMap<swc_atoms::Atom, SyntaxContext>,
 
     decl_ctxt: SyntaxContext,
 }
 
+#[cfg(feature = "inline-helpers")]
 impl VisitMut for Marker {
     noop_visit_mut_type!();
 
     fn visit_mut_fn_decl(&mut self, n: &mut FnDecl) {
-        let old_decl_ctxt = replace(
+        let old_decl_ctxt = std::mem::replace(
             &mut self.decl_ctxt,
             SyntaxContext::empty().apply_mark(Mark::new()),
         );
@@ -570,7 +580,7 @@ impl VisitMut for Marker {
     }
 
     fn visit_mut_fn_expr(&mut self, n: &mut FnExpr) {
-        let old_decl_ctxt = replace(
+        let old_decl_ctxt = std::mem::replace(
             &mut self.decl_ctxt,
             SyntaxContext::empty().apply_mark(Mark::new()),
         );
@@ -620,7 +630,7 @@ impl VisitMut for Marker {
                 return;
             }
 
-            if !i.sym.starts_with("__") {
+            if !(i.sym.starts_with("__") && i.sym.starts_with("_ts_")) {
                 self.decls.insert(i.sym.clone(), self.decl_ctxt);
             }
         }
@@ -667,8 +677,8 @@ _throw();",
                     return Ok(());
                 }
 
-                println!(">>>>> Orig <<<<<\n{}", input);
-                println!(">>>>> Code <<<<<\n{}", actual_src);
+                println!(">>>>> Orig <<<<<\n{input}");
+                println!(">>>>> Code <<<<<\n{actual_src}");
                 assert_eq!(
                     DebugUsingDisplay(&actual_src),
                     DebugUsingDisplay(&expected_src)
@@ -679,6 +689,7 @@ _throw();",
     }
 
     #[test]
+    #[cfg(feature = "inline-helpers")]
     fn use_strict_before_helper() {
         crate::tests::test_transform(
             Default::default(),
@@ -698,6 +709,7 @@ function _throw(e) {
     }
 
     #[test]
+    #[cfg(feature = "inline-helpers")]
     fn name_conflict() {
         crate::tests::test_transform(
             Default::default(),
@@ -733,6 +745,7 @@ let x = 4;",
     }
 
     #[test]
+    #[cfg(feature = "inline-helpers")]
     fn issue_8871() {
         crate::tests::test_transform(
             Default::default(),

@@ -2,14 +2,14 @@ use std::{collections::HashMap, env, sync::Arc};
 
 use anyhow::{bail, Context, Error};
 use helpers::Helpers;
+use rustc_hash::FxHashMap;
 use swc::{
     config::{GlobalInliningPassEnvs, InputSourceMap, IsModule, JscConfig, TransformConfig},
     try_with_handler,
 };
-use swc_atoms::JsWord;
+use swc_atoms::Atom;
 use swc_bundler::{Load, ModuleData};
 use swc_common::{
-    collections::AHashMap,
     comments::{NoopComments, SingleThreadedComments},
     errors::{Handler, HANDLER},
     sync::Lrc,
@@ -41,7 +41,7 @@ impl SwcLoader {
         SwcLoader { compiler, options }
     }
 
-    fn env_map(&self) -> Lrc<AHashMap<JsWord, Expr>> {
+    fn env_map(&self) -> Lrc<FxHashMap<Atom, Expr>> {
         let mut m = HashMap::default();
 
         let envs = self
@@ -55,7 +55,7 @@ impl SwcLoader {
             .map(|g| g.envs.clone())
             .unwrap_or_default();
 
-        let envs_map: AHashMap<_, _> = match envs {
+        let envs_map: FxHashMap<_, _> = match envs {
             GlobalInliningPassEnvs::Map(m) => m,
             GlobalInliningPassEnvs::List(envs) => envs
                 .into_iter()
@@ -72,7 +72,7 @@ impl SwcLoader {
                 Lit::Str(Str {
                     span: DUMMY_SP,
                     raw: None,
-                    value: v,
+                    value: v.into(),
                 })
                 .into(),
             );
@@ -132,9 +132,9 @@ impl SwcLoader {
             .cm
             .load_file(match name {
                 FileName::Real(v) => v,
-                _ => bail!("swc-loader only accepts path. Got `{}`", name),
+                _ => bail!("swc-loader only accepts path. Got `{name}`"),
             })
-            .with_context(|| format!("failed to load file `{}`", name))?;
+            .with_context(|| format!("failed to load file `{name}`"))?;
 
         if let FileName::Real(path) = name {
             if let Some(ext) = path.extension() {
@@ -186,6 +186,7 @@ impl SwcLoader {
 
                     program.mutate(&mut inline_globals(
                         self.env_map(),
+                        Default::default(),
                         Default::default(),
                         Default::default(),
                     ));
@@ -283,6 +284,7 @@ impl SwcLoader {
                             self.env_map(),
                             Default::default(),
                             Default::default(),
+                            Default::default(),
                         ));
 
                         program.mutate(&mut expr_simplifier(unresolved_mark, Default::default()));
@@ -327,5 +329,6 @@ impl Load for SwcLoader {
         try_with_handler(self.compiler.cm.clone(), Default::default(), |handler| {
             self.load_with_handler(handler, name)
         })
+        .map_err(|e| e.to_pretty_error())
     }
 }
