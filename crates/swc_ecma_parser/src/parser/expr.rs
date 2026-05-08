@@ -360,8 +360,9 @@ impl<I: Tokens> Parser<I> {
 
     fn parse_content_tag_contents(&mut self) -> PResult<ContentTagContent> {
         let start = self.input().cur_pos();
+        let tok = self.input().cur();
         self.bump();
-        match self.input().cur() {
+        match tok {
             Token::ContentTagContent => {
                 let value = Token::ContentTagContent.take_content_tag_content(&mut self.input);
                 let span = self.span(start);
