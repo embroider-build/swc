@@ -1198,6 +1198,7 @@ impl Optimizer<'_> {
             Expr::Member(me) => self.is_member_expr_skippable_for_seq(a, me),
 
             Expr::Lit(..) => true,
+            Expr::ContentTagExpression(..) => true,
 
             Expr::Yield(..) | Expr::Await(..) => false,
 

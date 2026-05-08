@@ -120,6 +120,7 @@ pub trait ExprExt {
             }
 
             Expr::TsConstAssertion(..) => false,
+            Expr::ContentTagExpression(..) => false,
 
             Expr::Invalid(..) => false,
             #[cfg(swc_ast_unknown)]

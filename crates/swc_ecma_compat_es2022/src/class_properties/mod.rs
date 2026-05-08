@@ -530,6 +530,7 @@ impl ClassProperties {
 
             ClassMember::ClassProp(_)
             | ClassMember::PrivateProp(_)
+            | ClassMember::ContentTagMember(_)
             | ClassMember::StaticBlock(_) => true,
 
             #[cfg(swc_ast_unknown)]
@@ -947,6 +948,8 @@ impl ClassProperties {
                 ClassMember::StaticBlock(..) => {
                     unreachable!("static_blocks pass should remove this")
                 }
+
+                ClassMember::ContentTagMember(..) => {}
 
                 ClassMember::AutoAccessor(accessor) => {
                     // AutoAccessor nodes should be handled by the decorator transform.

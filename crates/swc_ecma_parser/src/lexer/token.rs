@@ -25,6 +25,7 @@ pub enum TokenValue {
     Num(f64),
     BigInt(Box<num_bigint::BigInt>),
     Error(crate::error::Error),
+    ContentTagContent(Atom),
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -275,6 +276,10 @@ pub enum Token {
     Shebang,
     Error,
     Eof,
+
+    ContentTagStart,
+    ContentTagContent,
+    ContentTagEnd,
 }
 
 impl Token {
@@ -409,6 +414,17 @@ impl<'a> Token {
     #[inline(always)]
     pub fn take_shebang<I: Tokens>(self, buffer: &mut Buffer<I>) -> Atom {
         buffer.expect_word_token_value()
+    }
+
+    #[inline(always)]
+    pub fn content_tag_content(value: Atom, lexer: &mut Lexer) -> Self {
+        lexer.set_token_value(Some(TokenValue::ContentTagContent(value)));
+        Token::ContentTagContent
+    }
+
+    #[inline(always)]
+    pub fn take_content_tag_content<I: Tokens>(self, buffer: &mut Buffer<I>) -> Atom {
+        buffer.expect_content_tag_content_token_value()
     }
 }
 
@@ -858,6 +874,9 @@ impl Display for Token {
             Token::Shebang => "#!",
             Token::LessSlash => "</",
             Token::Eof => "<eof>",
+            Token::ContentTagStart => "<template>",
+            Token::ContentTagContent => "<content tag content>",
+            Token::ContentTagEnd => "</template>",
         };
         f.write_str(s)
     }

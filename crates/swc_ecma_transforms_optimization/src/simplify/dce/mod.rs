@@ -847,6 +847,7 @@ impl VisitMut for TreeShaker {
                             .is_some_and(|e| e.may_have_side_effects(self.expr_ctx)),
 
                         ClassMember::StaticBlock(_) => false,
+                        ClassMember::ContentTagMember(_) => false,
 
                         ClassMember::TsIndexSignature(_)
                         | ClassMember::Empty(_)

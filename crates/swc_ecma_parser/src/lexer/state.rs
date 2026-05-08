@@ -42,6 +42,14 @@ pub struct State {
 
     pub(super) token_value: Option<TokenValue>,
     token_type: Option<Token>,
+    pub content_tag_template: ContentTagState,
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum ContentTagState {
+    None,
+    Reading,
+    Ending,
 }
 
 pub struct LexerCheckpoint {
@@ -402,6 +410,14 @@ impl Lexer<'_> {
     }
 
     fn read_next_token(&mut self, start: &mut BytePos) -> Result<Token, Error> {
+        if self.state.content_tag_template == ContentTagState::Reading {
+            return Ok(self.read_content_tag_template()?);
+        }
+
+        if self.state.content_tag_template == ContentTagState::Ending {
+            return Ok(self.end_content_tag_template()?);
+        }
+
         if let Some(next_regexp) = self.state.next_regexp {
             *start = next_regexp;
             return self.read_regexp(next_regexp);
@@ -672,6 +688,7 @@ impl State {
             prev_hi: start_pos,
             token_value: None,
             token_type: None,
+            content_tag_template: ContentTagState::None,
         }
     }
 

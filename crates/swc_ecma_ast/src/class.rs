@@ -11,7 +11,8 @@ use crate::{
         Accessibility, TsExprWithTypeArgs, TsIndexSignature, TsTypeAnn, TsTypeParamDecl,
         TsTypeParamInstantiation,
     },
-    BigInt, ComputedPropName, EmptyStmt, Id, Ident, IdentName, Number,
+    BigInt, ComputedPropName, ContentTagContent, ContentTagEnd, ContentTagStart, EmptyStmt, Id,
+    Ident, IdentName, Number,
 };
 
 #[ast_node]
@@ -95,6 +96,9 @@ pub enum ClassMember {
     /// Stage 3
     #[tag("AutoAccessor")]
     AutoAccessor(AutoAccessor),
+
+    #[tag("ContentTag")]
+    ContentTagMember(ContentTagMember),
 }
 
 impl Take for ClassMember {
@@ -454,4 +458,22 @@ impl Take for AutoAccessor {
             definite: false,
         }
     }
+}
+
+#[ast_node("ContentTagMember")]
+#[derive(Eq, Hash, EqIgnoreSpan)]
+pub struct ContentTagMember {
+    pub span: Span,
+
+    #[cfg_attr(feature = "serde-impl", serde(flatten))]
+    #[span]
+    pub opening: Box<ContentTagStart>,
+
+    #[cfg_attr(feature = "serde-impl", serde(flatten))]
+    #[span]
+    pub contents: Box<ContentTagContent>,
+
+    #[cfg_attr(feature = "serde-impl", serde(flatten))]
+    #[span]
+    pub closing: Box<ContentTagEnd>,
 }

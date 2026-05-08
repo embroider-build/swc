@@ -426,6 +426,8 @@ impl Visit for TypeUsageAnalyzer<'_> {
             ClassMember::TsIndexSignature(_) => false,
             ClassMember::Empty(_) => false,
             ClassMember::StaticBlock(_) => false,
+            ClassMember::ContentTagMember(_) => false,
+
             ClassMember::AutoAccessor(auto_accessor) => {
                 auto_accessor
                     .accessibility

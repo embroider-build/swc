@@ -141,6 +141,9 @@ pub enum Expr {
     #[tag("JSXFragment")]
     JSXFragment(JSXFragment),
 
+    #[tag("ContentTag")]
+    ContentTagExpression(ContentTagExpression),
+
     #[tag("TsTypeAssertion")]
     TsTypeAssertion(TsTypeAssertion),
 
@@ -373,6 +376,7 @@ impl Expr {
             Expr::JSXEmpty(e) => e.span = span,
             Expr::JSXElement(e) => e.span = span,
             Expr::JSXFragment(e) => e.span = span,
+            Expr::ContentTagExpression(e) => e.span = span,
             Expr::PrivateName(e) => e.span = span,
             Expr::OptChain(e) => e.span = span,
             Expr::Lit(e) => e.set_span(span),
@@ -419,6 +423,7 @@ impl Clone for Expr {
             JSXEmpty(e) => JSXEmpty(e.clone()),
             JSXElement(e) => JSXElement(e.clone()),
             JSXFragment(e) => JSXFragment(e.clone()),
+            ContentTagExpression(e) => ContentTagExpression(e.clone()),
             TsTypeAssertion(e) => TsTypeAssertion(e.clone()),
             TsConstAssertion(e) => TsConstAssertion(e.clone()),
             TsNonNull(e) => TsNonNull(e.clone()),
@@ -1857,3 +1862,40 @@ test_de!(
       "closing": null
     }"#
 );
+
+#[ast_node("ContentTagExpression")]
+#[derive(Eq, Hash, EqIgnoreSpan)]
+pub struct ContentTagExpression {
+    pub span: Span,
+
+    #[cfg_attr(feature = "serde-impl", serde(flatten))]
+    #[span]
+    pub opening: Box<ContentTagStart>,
+
+    #[cfg_attr(feature = "serde-impl", serde(flatten))]
+    #[span]
+    pub contents: Box<ContentTagContent>,
+
+    #[cfg_attr(feature = "serde-impl", serde(flatten))]
+    #[span]
+    pub closing: Box<ContentTagEnd>,
+}
+
+#[ast_node("ContentTagStart")]
+#[derive(Eq, Hash, EqIgnoreSpan, Copy)]
+pub struct ContentTagStart {
+    pub span: Span,
+}
+
+#[ast_node("ContentTagEnd")]
+#[derive(Eq, Hash, EqIgnoreSpan, Copy)]
+pub struct ContentTagEnd {
+    pub span: Span,
+}
+
+#[ast_node("ContentTagContent")]
+#[derive(Eq, Hash, EqIgnoreSpan)]
+pub struct ContentTagContent {
+    pub span: Span,
+    pub value: Atom,
+}

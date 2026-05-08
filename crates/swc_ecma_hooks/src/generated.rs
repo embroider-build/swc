@@ -298,6 +298,47 @@ pub trait VisitHook<C> {
     #[inline]
     #[allow(unused_variables)]
     fn exit_constructor(&mut self, node: &Constructor, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `ContentTagContent` before visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_content_tag_content(&mut self, node: &ContentTagContent, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `ContentTagContent` after visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_content_tag_content(&mut self, node: &ContentTagContent, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `ContentTagEnd` before visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_content_tag_end(&mut self, node: &ContentTagEnd, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `ContentTagEnd` after visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_content_tag_end(&mut self, node: &ContentTagEnd, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `ContentTagExpression` before visiting its \
+             children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_content_tag_expression(&mut self, node: &ContentTagExpression, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `ContentTagExpression` after visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_content_tag_expression(&mut self, node: &ContentTagExpression, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `ContentTagMember` before visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_content_tag_member(&mut self, node: &ContentTagMember, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `ContentTagMember` after visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_content_tag_member(&mut self, node: &ContentTagMember, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `ContentTagStart` before visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_content_tag_start(&mut self, node: &ContentTagStart, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `ContentTagStart` after visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_content_tag_start(&mut self, node: &ContentTagStart, ctx: &mut C) {}
     #[doc = "Called when entering a node of type `ContinueStmt` before visiting its children."]
     #[inline]
     #[allow(unused_variables)]
@@ -2951,6 +2992,66 @@ where
     fn exit_constructor(&mut self, node: &Constructor, ctx: &mut C) {
         self.second.exit_constructor(node, ctx);
         self.first.exit_constructor(node, ctx);
+    }
+
+    #[inline]
+    fn enter_content_tag_content(&mut self, node: &ContentTagContent, ctx: &mut C) {
+        self.first.enter_content_tag_content(node, ctx);
+        self.second.enter_content_tag_content(node, ctx);
+    }
+
+    #[inline]
+    fn exit_content_tag_content(&mut self, node: &ContentTagContent, ctx: &mut C) {
+        self.second.exit_content_tag_content(node, ctx);
+        self.first.exit_content_tag_content(node, ctx);
+    }
+
+    #[inline]
+    fn enter_content_tag_end(&mut self, node: &ContentTagEnd, ctx: &mut C) {
+        self.first.enter_content_tag_end(node, ctx);
+        self.second.enter_content_tag_end(node, ctx);
+    }
+
+    #[inline]
+    fn exit_content_tag_end(&mut self, node: &ContentTagEnd, ctx: &mut C) {
+        self.second.exit_content_tag_end(node, ctx);
+        self.first.exit_content_tag_end(node, ctx);
+    }
+
+    #[inline]
+    fn enter_content_tag_expression(&mut self, node: &ContentTagExpression, ctx: &mut C) {
+        self.first.enter_content_tag_expression(node, ctx);
+        self.second.enter_content_tag_expression(node, ctx);
+    }
+
+    #[inline]
+    fn exit_content_tag_expression(&mut self, node: &ContentTagExpression, ctx: &mut C) {
+        self.second.exit_content_tag_expression(node, ctx);
+        self.first.exit_content_tag_expression(node, ctx);
+    }
+
+    #[inline]
+    fn enter_content_tag_member(&mut self, node: &ContentTagMember, ctx: &mut C) {
+        self.first.enter_content_tag_member(node, ctx);
+        self.second.enter_content_tag_member(node, ctx);
+    }
+
+    #[inline]
+    fn exit_content_tag_member(&mut self, node: &ContentTagMember, ctx: &mut C) {
+        self.second.exit_content_tag_member(node, ctx);
+        self.first.exit_content_tag_member(node, ctx);
+    }
+
+    #[inline]
+    fn enter_content_tag_start(&mut self, node: &ContentTagStart, ctx: &mut C) {
+        self.first.enter_content_tag_start(node, ctx);
+        self.second.enter_content_tag_start(node, ctx);
+    }
+
+    #[inline]
+    fn exit_content_tag_start(&mut self, node: &ContentTagStart, ctx: &mut C) {
+        self.second.exit_content_tag_start(node, ctx);
+        self.first.exit_content_tag_start(node, ctx);
     }
 
     #[inline]
@@ -6659,6 +6760,86 @@ where
         match self {
             Self::Left(hook) => hook.exit_constructor(node, ctx),
             Self::Right(hook) => hook.exit_constructor(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_content(&mut self, node: &ContentTagContent, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_content_tag_content(node, ctx),
+            Self::Right(hook) => hook.enter_content_tag_content(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_content(&mut self, node: &ContentTagContent, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_content_tag_content(node, ctx),
+            Self::Right(hook) => hook.exit_content_tag_content(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_end(&mut self, node: &ContentTagEnd, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_content_tag_end(node, ctx),
+            Self::Right(hook) => hook.enter_content_tag_end(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_end(&mut self, node: &ContentTagEnd, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_content_tag_end(node, ctx),
+            Self::Right(hook) => hook.exit_content_tag_end(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_expression(&mut self, node: &ContentTagExpression, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_content_tag_expression(node, ctx),
+            Self::Right(hook) => hook.enter_content_tag_expression(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_expression(&mut self, node: &ContentTagExpression, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_content_tag_expression(node, ctx),
+            Self::Right(hook) => hook.exit_content_tag_expression(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_member(&mut self, node: &ContentTagMember, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_content_tag_member(node, ctx),
+            Self::Right(hook) => hook.enter_content_tag_member(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_member(&mut self, node: &ContentTagMember, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_content_tag_member(node, ctx),
+            Self::Right(hook) => hook.exit_content_tag_member(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_start(&mut self, node: &ContentTagStart, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_content_tag_start(node, ctx),
+            Self::Right(hook) => hook.enter_content_tag_start(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_start(&mut self, node: &ContentTagStart, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_content_tag_start(node, ctx),
+            Self::Right(hook) => hook.exit_content_tag_start(node, ctx),
         }
     }
 
@@ -11335,6 +11516,76 @@ where
     }
 
     #[inline]
+    fn enter_content_tag_content(&mut self, node: &ContentTagContent, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_content_tag_content(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_content(&mut self, node: &ContentTagContent, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_content_tag_content(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_end(&mut self, node: &ContentTagEnd, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_content_tag_end(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_end(&mut self, node: &ContentTagEnd, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_content_tag_end(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_expression(&mut self, node: &ContentTagExpression, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_content_tag_expression(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_expression(&mut self, node: &ContentTagExpression, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_content_tag_expression(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_member(&mut self, node: &ContentTagMember, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_content_tag_member(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_member(&mut self, node: &ContentTagMember, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_content_tag_member(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_start(&mut self, node: &ContentTagStart, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_content_tag_start(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_start(&mut self, node: &ContentTagStart, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_content_tag_start(node, ctx);
+        }
+    }
+
+    #[inline]
     fn enter_continue_stmt(&mut self, node: &ContinueStmt, ctx: &mut C) {
         if let Some(hook) = self {
             hook.enter_continue_stmt(node, ctx);
@@ -15278,6 +15529,48 @@ impl<H: VisitHook<C>, C> Visit for VisitWithHook<H, C> {
         self.hook.exit_constructor(node, &mut self.context);
     }
 
+    #[doc = "Visits a node of type `ContentTagContent` using the hook's enter and exit methods."]
+    #[inline]
+    fn visit_content_tag_content(&mut self, node: &ContentTagContent) {
+        self.hook.enter_content_tag_content(node, &mut self.context);
+        node.visit_children_with(self);
+        self.hook.exit_content_tag_content(node, &mut self.context);
+    }
+
+    #[doc = "Visits a node of type `ContentTagEnd` using the hook's enter and exit methods."]
+    #[inline]
+    fn visit_content_tag_end(&mut self, node: &ContentTagEnd) {
+        self.hook.enter_content_tag_end(node, &mut self.context);
+        node.visit_children_with(self);
+        self.hook.exit_content_tag_end(node, &mut self.context);
+    }
+
+    #[doc = "Visits a node of type `ContentTagExpression` using the hook's enter and exit methods."]
+    #[inline]
+    fn visit_content_tag_expression(&mut self, node: &ContentTagExpression) {
+        self.hook
+            .enter_content_tag_expression(node, &mut self.context);
+        node.visit_children_with(self);
+        self.hook
+            .exit_content_tag_expression(node, &mut self.context);
+    }
+
+    #[doc = "Visits a node of type `ContentTagMember` using the hook's enter and exit methods."]
+    #[inline]
+    fn visit_content_tag_member(&mut self, node: &ContentTagMember) {
+        self.hook.enter_content_tag_member(node, &mut self.context);
+        node.visit_children_with(self);
+        self.hook.exit_content_tag_member(node, &mut self.context);
+    }
+
+    #[doc = "Visits a node of type `ContentTagStart` using the hook's enter and exit methods."]
+    #[inline]
+    fn visit_content_tag_start(&mut self, node: &ContentTagStart) {
+        self.hook.enter_content_tag_start(node, &mut self.context);
+        node.visit_children_with(self);
+        self.hook.exit_content_tag_start(node, &mut self.context);
+    }
+
     #[doc = "Visits a node of type `ContinueStmt` using the hook's enter and exit methods."]
     #[inline]
     fn visit_continue_stmt(&mut self, node: &ContinueStmt) {
@@ -17756,6 +18049,47 @@ pub trait VisitMutHook<C> {
     #[inline]
     #[allow(unused_variables)]
     fn exit_constructor(&mut self, node: &mut Constructor, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `ContentTagContent` before visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_content_tag_content(&mut self, node: &mut ContentTagContent, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `ContentTagContent` after visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_content_tag_content(&mut self, node: &mut ContentTagContent, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `ContentTagEnd` before visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_content_tag_end(&mut self, node: &mut ContentTagEnd, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `ContentTagEnd` after visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_content_tag_end(&mut self, node: &mut ContentTagEnd, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `ContentTagExpression` before visiting its \
+             children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_content_tag_expression(&mut self, node: &mut ContentTagExpression, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `ContentTagExpression` after visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_content_tag_expression(&mut self, node: &mut ContentTagExpression, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `ContentTagMember` before visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_content_tag_member(&mut self, node: &mut ContentTagMember, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `ContentTagMember` after visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_content_tag_member(&mut self, node: &mut ContentTagMember, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `ContentTagStart` before visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_content_tag_start(&mut self, node: &mut ContentTagStart, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `ContentTagStart` after visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_content_tag_start(&mut self, node: &mut ContentTagStart, ctx: &mut C) {}
     #[doc = "Called when entering a node of type `ContinueStmt` before visiting its children."]
     #[inline]
     #[allow(unused_variables)]
@@ -20455,6 +20789,66 @@ where
     fn exit_constructor(&mut self, node: &mut Constructor, ctx: &mut C) {
         self.second.exit_constructor(node, ctx);
         self.first.exit_constructor(node, ctx);
+    }
+
+    #[inline]
+    fn enter_content_tag_content(&mut self, node: &mut ContentTagContent, ctx: &mut C) {
+        self.first.enter_content_tag_content(node, ctx);
+        self.second.enter_content_tag_content(node, ctx);
+    }
+
+    #[inline]
+    fn exit_content_tag_content(&mut self, node: &mut ContentTagContent, ctx: &mut C) {
+        self.second.exit_content_tag_content(node, ctx);
+        self.first.exit_content_tag_content(node, ctx);
+    }
+
+    #[inline]
+    fn enter_content_tag_end(&mut self, node: &mut ContentTagEnd, ctx: &mut C) {
+        self.first.enter_content_tag_end(node, ctx);
+        self.second.enter_content_tag_end(node, ctx);
+    }
+
+    #[inline]
+    fn exit_content_tag_end(&mut self, node: &mut ContentTagEnd, ctx: &mut C) {
+        self.second.exit_content_tag_end(node, ctx);
+        self.first.exit_content_tag_end(node, ctx);
+    }
+
+    #[inline]
+    fn enter_content_tag_expression(&mut self, node: &mut ContentTagExpression, ctx: &mut C) {
+        self.first.enter_content_tag_expression(node, ctx);
+        self.second.enter_content_tag_expression(node, ctx);
+    }
+
+    #[inline]
+    fn exit_content_tag_expression(&mut self, node: &mut ContentTagExpression, ctx: &mut C) {
+        self.second.exit_content_tag_expression(node, ctx);
+        self.first.exit_content_tag_expression(node, ctx);
+    }
+
+    #[inline]
+    fn enter_content_tag_member(&mut self, node: &mut ContentTagMember, ctx: &mut C) {
+        self.first.enter_content_tag_member(node, ctx);
+        self.second.enter_content_tag_member(node, ctx);
+    }
+
+    #[inline]
+    fn exit_content_tag_member(&mut self, node: &mut ContentTagMember, ctx: &mut C) {
+        self.second.exit_content_tag_member(node, ctx);
+        self.first.exit_content_tag_member(node, ctx);
+    }
+
+    #[inline]
+    fn enter_content_tag_start(&mut self, node: &mut ContentTagStart, ctx: &mut C) {
+        self.first.enter_content_tag_start(node, ctx);
+        self.second.enter_content_tag_start(node, ctx);
+    }
+
+    #[inline]
+    fn exit_content_tag_start(&mut self, node: &mut ContentTagStart, ctx: &mut C) {
+        self.second.exit_content_tag_start(node, ctx);
+        self.first.exit_content_tag_start(node, ctx);
     }
 
     #[inline]
@@ -24199,6 +24593,86 @@ where
         match self {
             Self::Left(hook) => hook.exit_constructor(node, ctx),
             Self::Right(hook) => hook.exit_constructor(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_content(&mut self, node: &mut ContentTagContent, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_content_tag_content(node, ctx),
+            Self::Right(hook) => hook.enter_content_tag_content(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_content(&mut self, node: &mut ContentTagContent, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_content_tag_content(node, ctx),
+            Self::Right(hook) => hook.exit_content_tag_content(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_end(&mut self, node: &mut ContentTagEnd, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_content_tag_end(node, ctx),
+            Self::Right(hook) => hook.enter_content_tag_end(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_end(&mut self, node: &mut ContentTagEnd, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_content_tag_end(node, ctx),
+            Self::Right(hook) => hook.exit_content_tag_end(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_expression(&mut self, node: &mut ContentTagExpression, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_content_tag_expression(node, ctx),
+            Self::Right(hook) => hook.enter_content_tag_expression(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_expression(&mut self, node: &mut ContentTagExpression, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_content_tag_expression(node, ctx),
+            Self::Right(hook) => hook.exit_content_tag_expression(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_member(&mut self, node: &mut ContentTagMember, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_content_tag_member(node, ctx),
+            Self::Right(hook) => hook.enter_content_tag_member(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_member(&mut self, node: &mut ContentTagMember, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_content_tag_member(node, ctx),
+            Self::Right(hook) => hook.exit_content_tag_member(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_start(&mut self, node: &mut ContentTagStart, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_content_tag_start(node, ctx),
+            Self::Right(hook) => hook.enter_content_tag_start(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_start(&mut self, node: &mut ContentTagStart, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_content_tag_start(node, ctx),
+            Self::Right(hook) => hook.exit_content_tag_start(node, ctx),
         }
     }
 
@@ -28911,6 +29385,76 @@ where
     }
 
     #[inline]
+    fn enter_content_tag_content(&mut self, node: &mut ContentTagContent, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_content_tag_content(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_content(&mut self, node: &mut ContentTagContent, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_content_tag_content(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_end(&mut self, node: &mut ContentTagEnd, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_content_tag_end(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_end(&mut self, node: &mut ContentTagEnd, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_content_tag_end(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_expression(&mut self, node: &mut ContentTagExpression, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_content_tag_expression(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_expression(&mut self, node: &mut ContentTagExpression, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_content_tag_expression(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_member(&mut self, node: &mut ContentTagMember, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_content_tag_member(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_member(&mut self, node: &mut ContentTagMember, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_content_tag_member(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn enter_content_tag_start(&mut self, node: &mut ContentTagStart, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_content_tag_start(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_content_tag_start(&mut self, node: &mut ContentTagStart, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_content_tag_start(node, ctx);
+        }
+    }
+
+    #[inline]
     fn enter_continue_stmt(&mut self, node: &mut ContinueStmt, ctx: &mut C) {
         if let Some(hook) = self {
             hook.enter_continue_stmt(node, ctx);
@@ -32888,6 +33432,48 @@ impl<H: VisitMutHook<C>, C> VisitMut for VisitMutWithHook<H, C> {
         self.hook.enter_constructor(node, &mut self.context);
         node.visit_mut_children_with(self);
         self.hook.exit_constructor(node, &mut self.context);
+    }
+
+    #[doc = "Visits a node of type `ContentTagContent` using the hook's enter and exit methods."]
+    #[inline]
+    fn visit_mut_content_tag_content(&mut self, node: &mut ContentTagContent) {
+        self.hook.enter_content_tag_content(node, &mut self.context);
+        node.visit_mut_children_with(self);
+        self.hook.exit_content_tag_content(node, &mut self.context);
+    }
+
+    #[doc = "Visits a node of type `ContentTagEnd` using the hook's enter and exit methods."]
+    #[inline]
+    fn visit_mut_content_tag_end(&mut self, node: &mut ContentTagEnd) {
+        self.hook.enter_content_tag_end(node, &mut self.context);
+        node.visit_mut_children_with(self);
+        self.hook.exit_content_tag_end(node, &mut self.context);
+    }
+
+    #[doc = "Visits a node of type `ContentTagExpression` using the hook's enter and exit methods."]
+    #[inline]
+    fn visit_mut_content_tag_expression(&mut self, node: &mut ContentTagExpression) {
+        self.hook
+            .enter_content_tag_expression(node, &mut self.context);
+        node.visit_mut_children_with(self);
+        self.hook
+            .exit_content_tag_expression(node, &mut self.context);
+    }
+
+    #[doc = "Visits a node of type `ContentTagMember` using the hook's enter and exit methods."]
+    #[inline]
+    fn visit_mut_content_tag_member(&mut self, node: &mut ContentTagMember) {
+        self.hook.enter_content_tag_member(node, &mut self.context);
+        node.visit_mut_children_with(self);
+        self.hook.exit_content_tag_member(node, &mut self.context);
+    }
+
+    #[doc = "Visits a node of type `ContentTagStart` using the hook's enter and exit methods."]
+    #[inline]
+    fn visit_mut_content_tag_start(&mut self, node: &mut ContentTagStart) {
+        self.hook.enter_content_tag_start(node, &mut self.context);
+        node.visit_mut_children_with(self);
+        self.hook.exit_content_tag_start(node, &mut self.context);
     }
 
     #[doc = "Visits a node of type `ContinueStmt` using the hook's enter and exit methods."]

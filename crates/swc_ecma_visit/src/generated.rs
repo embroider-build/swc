@@ -253,6 +253,41 @@ pub trait Visit {
     fn visit_constructor(&mut self, node: &Constructor) {
         <Constructor as VisitWith<Self>>::visit_children_with(node, self)
     }
+    #[doc = "Visit a node of type `ContentTagContent`.\n\nBy default, this method calls \
+             [`ContentTagContent::visit_children_with`]. If you want to recurse, you need to call \
+             it manually."]
+    #[inline]
+    fn visit_content_tag_content(&mut self, node: &ContentTagContent) {
+        <ContentTagContent as VisitWith<Self>>::visit_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagEnd`.\n\nBy default, this method calls \
+             [`ContentTagEnd::visit_children_with`]. If you want to recurse, you need to call it \
+             manually."]
+    #[inline]
+    fn visit_content_tag_end(&mut self, node: &ContentTagEnd) {
+        <ContentTagEnd as VisitWith<Self>>::visit_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagExpression`.\n\nBy default, this method calls \
+             [`ContentTagExpression::visit_children_with`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn visit_content_tag_expression(&mut self, node: &ContentTagExpression) {
+        <ContentTagExpression as VisitWith<Self>>::visit_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagMember`.\n\nBy default, this method calls \
+             [`ContentTagMember::visit_children_with`]. If you want to recurse, you need to call \
+             it manually."]
+    #[inline]
+    fn visit_content_tag_member(&mut self, node: &ContentTagMember) {
+        <ContentTagMember as VisitWith<Self>>::visit_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagStart`.\n\nBy default, this method calls \
+             [`ContentTagStart::visit_children_with`]. If you want to recurse, you need to call it \
+             manually."]
+    #[inline]
+    fn visit_content_tag_start(&mut self, node: &ContentTagStart) {
+        <ContentTagStart as VisitWith<Self>>::visit_children_with(node, self)
+    }
     #[doc = "Visit a node of type `ContinueStmt`.\n\nBy default, this method calls \
              [`ContinueStmt::visit_children_with`]. If you want to recurse, you need to call it \
              manually."]
@@ -2227,6 +2262,31 @@ where
     }
 
     #[inline]
+    fn visit_content_tag_content(&mut self, node: &ContentTagContent) {
+        <V as Visit>::visit_content_tag_content(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_end(&mut self, node: &ContentTagEnd) {
+        <V as Visit>::visit_content_tag_end(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_expression(&mut self, node: &ContentTagExpression) {
+        <V as Visit>::visit_content_tag_expression(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_member(&mut self, node: &ContentTagMember) {
+        <V as Visit>::visit_content_tag_member(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_start(&mut self, node: &ContentTagStart) {
+        <V as Visit>::visit_content_tag_start(&mut **self, node)
+    }
+
+    #[inline]
     fn visit_continue_stmt(&mut self, node: &ContinueStmt) {
         <V as Visit>::visit_continue_stmt(&mut **self, node)
     }
@@ -3706,6 +3766,31 @@ where
     #[inline]
     fn visit_constructor(&mut self, node: &Constructor) {
         <V as Visit>::visit_constructor(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_content(&mut self, node: &ContentTagContent) {
+        <V as Visit>::visit_content_tag_content(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_end(&mut self, node: &ContentTagEnd) {
+        <V as Visit>::visit_content_tag_end(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_expression(&mut self, node: &ContentTagExpression) {
+        <V as Visit>::visit_content_tag_expression(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_member(&mut self, node: &ContentTagMember) {
+        <V as Visit>::visit_content_tag_member(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_content_tag_start(&mut self, node: &ContentTagStart) {
+        <V as Visit>::visit_content_tag_start(&mut **self, node)
     }
 
     #[inline]
@@ -5296,6 +5381,46 @@ where
         match self {
             swc_visit::Either::Left(visitor) => Visit::visit_constructor(visitor, node),
             swc_visit::Either::Right(visitor) => Visit::visit_constructor(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_content(&mut self, node: &ContentTagContent) {
+        match self {
+            swc_visit::Either::Left(visitor) => Visit::visit_content_tag_content(visitor, node),
+            swc_visit::Either::Right(visitor) => Visit::visit_content_tag_content(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_end(&mut self, node: &ContentTagEnd) {
+        match self {
+            swc_visit::Either::Left(visitor) => Visit::visit_content_tag_end(visitor, node),
+            swc_visit::Either::Right(visitor) => Visit::visit_content_tag_end(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_expression(&mut self, node: &ContentTagExpression) {
+        match self {
+            swc_visit::Either::Left(visitor) => Visit::visit_content_tag_expression(visitor, node),
+            swc_visit::Either::Right(visitor) => Visit::visit_content_tag_expression(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_member(&mut self, node: &ContentTagMember) {
+        match self {
+            swc_visit::Either::Left(visitor) => Visit::visit_content_tag_member(visitor, node),
+            swc_visit::Either::Right(visitor) => Visit::visit_content_tag_member(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_start(&mut self, node: &ContentTagStart) {
+        match self {
+            swc_visit::Either::Left(visitor) => Visit::visit_content_tag_start(visitor, node),
+            swc_visit::Either::Right(visitor) => Visit::visit_content_tag_start(visitor, node),
         }
     }
 
@@ -7714,6 +7839,46 @@ where
     fn visit_constructor(&mut self, node: &Constructor) {
         if self.enabled {
             <V as Visit>::visit_constructor(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_content(&mut self, node: &ContentTagContent) {
+        if self.enabled {
+            <V as Visit>::visit_content_tag_content(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_end(&mut self, node: &ContentTagEnd) {
+        if self.enabled {
+            <V as Visit>::visit_content_tag_end(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_expression(&mut self, node: &ContentTagExpression) {
+        if self.enabled {
+            <V as Visit>::visit_content_tag_expression(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_member(&mut self, node: &ContentTagMember) {
+        if self.enabled {
+            <V as Visit>::visit_content_tag_member(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_start(&mut self, node: &ContentTagStart) {
+        if self.enabled {
+            <V as Visit>::visit_content_tag_start(&mut self.visitor, node)
         } else {
         }
     }
@@ -10521,6 +10686,9 @@ impl<V: ?Sized + Visit> VisitWith<V> for ClassMember {
             ClassMember::AutoAccessor { 0: _field_0 } => {
                 <AutoAccessor as VisitWith<V>>::visit_with(_field_0, visitor);
             }
+            ClassMember::ContentTagMember { 0: _field_0 } => {
+                <ContentTagMember as VisitWith<V>>::visit_with(_field_0, visitor);
+            }
             #[cfg(swc_ast_unknown)]
             _ => (),
         }
@@ -10692,6 +10860,117 @@ impl<V: ?Sized + Visit> VisitWith<V> for Constructor {
                 };
                 {
                     <Option<Accessibility> as VisitWith<V>>::visit_with(accessibility, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + Visit> VisitWith<V> for ContentTagContent {
+    #[doc = "Calls [Visit`::visit_content_tag_content`] with `self`."]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit>::visit_content_tag_content(visitor, self)
+    }
+
+    fn visit_children_with(&self, visitor: &mut V) {
+        match self {
+            ContentTagContent { span, value } => {
+                {
+                    <swc_common::Span as VisitWith<V>>::visit_with(span, visitor)
+                };
+                {
+                    <swc_atoms::Atom as VisitWith<V>>::visit_with(value, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + Visit> VisitWith<V> for ContentTagEnd {
+    #[doc = "Calls [Visit`::visit_content_tag_end`] with `self`."]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit>::visit_content_tag_end(visitor, self)
+    }
+
+    fn visit_children_with(&self, visitor: &mut V) {
+        match self {
+            ContentTagEnd { span } => {
+                {
+                    <swc_common::Span as VisitWith<V>>::visit_with(span, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + Visit> VisitWith<V> for ContentTagExpression {
+    #[doc = "Calls [Visit`::visit_content_tag_expression`] with `self`."]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit>::visit_content_tag_expression(visitor, self)
+    }
+
+    fn visit_children_with(&self, visitor: &mut V) {
+        match self {
+            ContentTagExpression {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                {
+                    <swc_common::Span as VisitWith<V>>::visit_with(span, visitor)
+                };
+                {
+                    <Box<ContentTagStart> as VisitWith<V>>::visit_with(opening, visitor)
+                };
+                {
+                    <Box<ContentTagContent> as VisitWith<V>>::visit_with(contents, visitor)
+                };
+                {
+                    <Box<ContentTagEnd> as VisitWith<V>>::visit_with(closing, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + Visit> VisitWith<V> for ContentTagMember {
+    #[doc = "Calls [Visit`::visit_content_tag_member`] with `self`."]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit>::visit_content_tag_member(visitor, self)
+    }
+
+    fn visit_children_with(&self, visitor: &mut V) {
+        match self {
+            ContentTagMember {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                {
+                    <swc_common::Span as VisitWith<V>>::visit_with(span, visitor)
+                };
+                {
+                    <Box<ContentTagStart> as VisitWith<V>>::visit_with(opening, visitor)
+                };
+                {
+                    <Box<ContentTagContent> as VisitWith<V>>::visit_with(contents, visitor)
+                };
+                {
+                    <Box<ContentTagEnd> as VisitWith<V>>::visit_with(closing, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + Visit> VisitWith<V> for ContentTagStart {
+    #[doc = "Calls [Visit`::visit_content_tag_start`] with `self`."]
+    fn visit_with(&self, visitor: &mut V) {
+        <V as Visit>::visit_content_tag_start(visitor, self)
+    }
+
+    fn visit_children_with(&self, visitor: &mut V) {
+        match self {
+            ContentTagStart { span } => {
+                {
+                    <swc_common::Span as VisitWith<V>>::visit_with(span, visitor)
                 };
             }
         }
@@ -11110,6 +11389,9 @@ impl<V: ?Sized + Visit> VisitWith<V> for Expr {
             }
             Expr::JSXFragment { 0: _field_0 } => {
                 <JSXFragment as VisitWith<V>>::visit_with(_field_0, visitor);
+            }
+            Expr::ContentTagExpression { 0: _field_0 } => {
+                <ContentTagExpression as VisitWith<V>>::visit_with(_field_0, visitor);
             }
             Expr::TsTypeAssertion { 0: _field_0 } => {
                 <TsTypeAssertion as VisitWith<V>>::visit_with(_field_0, visitor);
@@ -16955,6 +17237,71 @@ pub trait VisitAstPath {
             node, self, __ast_path,
         )
     }
+    #[doc = "Visit a node of type `ContentTagContent`.\n\nBy default, this method calls \
+             [`ContentTagContent::visit_children_with_ast_path`]. If you want to recurse, you need \
+             to call it manually."]
+    #[inline]
+    fn visit_content_tag_content<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagContent,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <ContentTagContent as VisitWithAstPath<Self>>::visit_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagEnd`.\n\nBy default, this method calls \
+             [`ContentTagEnd::visit_children_with_ast_path`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn visit_content_tag_end<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagEnd,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <ContentTagEnd as VisitWithAstPath<Self>>::visit_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagExpression`.\n\nBy default, this method calls \
+             [`ContentTagExpression::visit_children_with_ast_path`]. If you want to recurse, you \
+             need to call it manually."]
+    #[inline]
+    fn visit_content_tag_expression<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagExpression,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <ContentTagExpression as VisitWithAstPath<Self>>::visit_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagMember`.\n\nBy default, this method calls \
+             [`ContentTagMember::visit_children_with_ast_path`]. If you want to recurse, you need \
+             to call it manually."]
+    #[inline]
+    fn visit_content_tag_member<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagMember,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <ContentTagMember as VisitWithAstPath<Self>>::visit_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagStart`.\n\nBy default, this method calls \
+             [`ContentTagStart::visit_children_with_ast_path`]. If you want to recurse, you need \
+             to call it manually."]
+    #[inline]
+    fn visit_content_tag_start<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagStart,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <ContentTagStart as VisitWithAstPath<Self>>::visit_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
     #[doc = "Visit a node of type `ContinueStmt`.\n\nBy default, this method calls \
              [`ContinueStmt::visit_children_with_ast_path`]. If you want to recurse, you need to \
              call it manually."]
@@ -20377,6 +20724,51 @@ where
     }
 
     #[inline]
+    fn visit_content_tag_content<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagContent,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_content(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_end<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagEnd,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_end(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_expression<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagExpression,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_expression(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_member<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagMember,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_member(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_start<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagStart,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_start(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
     fn visit_continue_stmt<'ast: 'r, 'r>(
         &mut self,
         node: &'ast ContinueStmt,
@@ -22939,6 +23331,51 @@ where
         __ast_path: &mut AstNodePath<'r>,
     ) {
         <V as VisitAstPath>::visit_constructor(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_content<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagContent,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_content(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_end<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagEnd,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_end(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_expression<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagExpression,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_expression(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_member<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagMember,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_member(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_content_tag_start<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagStart,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_start(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -25751,6 +26188,86 @@ where
             }
             swc_visit::Either::Right(visitor) => {
                 VisitAstPath::visit_constructor(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_content<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagContent,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitAstPath::visit_content_tag_content(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitAstPath::visit_content_tag_content(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_end<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagEnd,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitAstPath::visit_content_tag_end(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitAstPath::visit_content_tag_end(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_expression<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagExpression,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitAstPath::visit_content_tag_expression(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitAstPath::visit_content_tag_expression(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_member<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagMember,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitAstPath::visit_content_tag_member(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitAstPath::visit_content_tag_member(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_start<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagStart,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitAstPath::visit_content_tag_start(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitAstPath::visit_content_tag_start(visitor, node, __ast_path)
             }
         }
     }
@@ -30203,6 +30720,66 @@ where
     ) {
         if self.enabled {
             <V as VisitAstPath>::visit_constructor(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_content<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagContent,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        if self.enabled {
+            <V as VisitAstPath>::visit_content_tag_content(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_end<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagEnd,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        if self.enabled {
+            <V as VisitAstPath>::visit_content_tag_end(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_expression<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagExpression,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        if self.enabled {
+            <V as VisitAstPath>::visit_content_tag_expression(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_member<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagMember,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        if self.enabled {
+            <V as VisitAstPath>::visit_content_tag_member(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_content_tag_start<'ast: 'r, 'r>(
+        &mut self,
+        node: &'ast ContentTagStart,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        if self.enabled {
+            <V as VisitAstPath>::visit_content_tag_start(&mut self.visitor, node, __ast_path)
         } else {
         }
     }
@@ -34950,6 +35527,17 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ClassMember {
                     &mut *__ast_path,
                 );
             }
+            ClassMember::ContentTagMember { 0: _field_0 } => {
+                let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::ClassMember(
+                    self,
+                    self::fields::ClassMemberField::ContentTagMember,
+                ));
+                <ContentTagMember as VisitWithAstPath<V>>::visit_with_ast_path(
+                    _field_0,
+                    visitor,
+                    &mut *__ast_path,
+                );
+            }
             #[cfg(swc_ast_unknown)]
             _ => (),
         }
@@ -35352,6 +35940,269 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Constructor {
                     ));
                     <Option<Accessibility> as VisitWithAstPath<V>>::visit_with_ast_path(
                         accessibility,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ContentTagContent {
+    #[doc = "Calls [VisitAstPath`::visit_content_tag_content`] with `self`."]
+    fn visit_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_content(visitor, self, __ast_path)
+    }
+
+    fn visit_children_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            ContentTagContent { span, value } => {
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentNodeRef::ContentTagContent(
+                            self,
+                            self::fields::ContentTagContentField::Span,
+                        ));
+                    <swc_common::Span as VisitWithAstPath<V>>::visit_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentNodeRef::ContentTagContent(
+                            self,
+                            self::fields::ContentTagContentField::Value,
+                        ));
+                    <swc_atoms::Atom as VisitWithAstPath<V>>::visit_with_ast_path(
+                        value,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ContentTagEnd {
+    #[doc = "Calls [VisitAstPath`::visit_content_tag_end`] with `self`."]
+    fn visit_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_end(visitor, self, __ast_path)
+    }
+
+    fn visit_children_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            ContentTagEnd { span } => {
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::ContentTagEnd(
+                        self,
+                        self::fields::ContentTagEndField::Span,
+                    ));
+                    <swc_common::Span as VisitWithAstPath<V>>::visit_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ContentTagExpression {
+    #[doc = "Calls [VisitAstPath`::visit_content_tag_expression`] with `self`."]
+    fn visit_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_expression(visitor, self, __ast_path)
+    }
+
+    fn visit_children_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            ContentTagExpression {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentNodeRef::ContentTagExpression(
+                            self,
+                            self::fields::ContentTagExpressionField::Span,
+                        ));
+                    <swc_common::Span as VisitWithAstPath<V>>::visit_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentNodeRef::ContentTagExpression(
+                            self,
+                            self::fields::ContentTagExpressionField::Opening,
+                        ));
+                    <Box<ContentTagStart> as VisitWithAstPath<V>>::visit_with_ast_path(
+                        opening,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentNodeRef::ContentTagExpression(
+                            self,
+                            self::fields::ContentTagExpressionField::Contents,
+                        ));
+                    <Box<ContentTagContent> as VisitWithAstPath<V>>::visit_with_ast_path(
+                        contents,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentNodeRef::ContentTagExpression(
+                            self,
+                            self::fields::ContentTagExpressionField::Closing,
+                        ));
+                    <Box<ContentTagEnd> as VisitWithAstPath<V>>::visit_with_ast_path(
+                        closing,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ContentTagMember {
+    #[doc = "Calls [VisitAstPath`::visit_content_tag_member`] with `self`."]
+    fn visit_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_member(visitor, self, __ast_path)
+    }
+
+    fn visit_children_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            ContentTagMember {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::ContentTagMember(
+                        self,
+                        self::fields::ContentTagMemberField::Span,
+                    ));
+                    <swc_common::Span as VisitWithAstPath<V>>::visit_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::ContentTagMember(
+                        self,
+                        self::fields::ContentTagMemberField::Opening,
+                    ));
+                    <Box<ContentTagStart> as VisitWithAstPath<V>>::visit_with_ast_path(
+                        opening,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::ContentTagMember(
+                        self,
+                        self::fields::ContentTagMemberField::Contents,
+                    ));
+                    <Box<ContentTagContent> as VisitWithAstPath<V>>::visit_with_ast_path(
+                        contents,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::ContentTagMember(
+                        self,
+                        self::fields::ContentTagMemberField::Closing,
+                    ));
+                    <Box<ContentTagEnd> as VisitWithAstPath<V>>::visit_with_ast_path(
+                        closing,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for ContentTagStart {
+    #[doc = "Calls [VisitAstPath`::visit_content_tag_start`] with `self`."]
+    fn visit_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        <V as VisitAstPath>::visit_content_tag_start(visitor, self, __ast_path)
+    }
+
+    fn visit_children_with_ast_path<'ast: 'r, 'r>(
+        &'ast self,
+        visitor: &mut V,
+        __ast_path: &mut AstNodePath<'r>,
+    ) {
+        match self {
+            ContentTagStart { span } => {
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::ContentTagStart(
+                        self,
+                        self::fields::ContentTagStartField::Span,
+                    ));
+                    <swc_common::Span as VisitWithAstPath<V>>::visit_with_ast_path(
+                        span,
                         visitor,
                         &mut *__ast_path,
                     )
@@ -36433,6 +37284,17 @@ impl<V: ?Sized + VisitAstPath> VisitWithAstPath<V> for Expr {
                     self::fields::ExprField::Jsxfragment,
                 ));
                 <JSXFragment as VisitWithAstPath<V>>::visit_with_ast_path(
+                    _field_0,
+                    visitor,
+                    &mut *__ast_path,
+                );
+            }
+            Expr::ContentTagExpression { 0: _field_0 } => {
+                let mut __ast_path = __ast_path.with_guard(AstParentNodeRef::Expr(
+                    self,
+                    self::fields::ExprField::ContentTagExpression,
+                ));
+                <ContentTagExpression as VisitWithAstPath<V>>::visit_with_ast_path(
                     _field_0,
                     visitor,
                     &mut *__ast_path,
@@ -49335,6 +50197,41 @@ pub trait VisitMut {
     fn visit_mut_constructor(&mut self, node: &mut Constructor) {
         <Constructor as VisitMutWith<Self>>::visit_mut_children_with(node, self)
     }
+    #[doc = "Visit a node of type `ContentTagContent`.\n\nBy default, this method calls \
+             [`ContentTagContent::visit_mut_children_with`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_content(&mut self, node: &mut ContentTagContent) {
+        <ContentTagContent as VisitMutWith<Self>>::visit_mut_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagEnd`.\n\nBy default, this method calls \
+             [`ContentTagEnd::visit_mut_children_with`]. If you want to recurse, you need to call \
+             it manually."]
+    #[inline]
+    fn visit_mut_content_tag_end(&mut self, node: &mut ContentTagEnd) {
+        <ContentTagEnd as VisitMutWith<Self>>::visit_mut_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagExpression`.\n\nBy default, this method calls \
+             [`ContentTagExpression::visit_mut_children_with`]. If you want to recurse, you need \
+             to call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_expression(&mut self, node: &mut ContentTagExpression) {
+        <ContentTagExpression as VisitMutWith<Self>>::visit_mut_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagMember`.\n\nBy default, this method calls \
+             [`ContentTagMember::visit_mut_children_with`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_member(&mut self, node: &mut ContentTagMember) {
+        <ContentTagMember as VisitMutWith<Self>>::visit_mut_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagStart`.\n\nBy default, this method calls \
+             [`ContentTagStart::visit_mut_children_with`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_start(&mut self, node: &mut ContentTagStart) {
+        <ContentTagStart as VisitMutWith<Self>>::visit_mut_children_with(node, self)
+    }
     #[doc = "Visit a node of type `ContinueStmt`.\n\nBy default, this method calls \
              [`ContinueStmt::visit_mut_children_with`]. If you want to recurse, you need to call \
              it manually."]
@@ -51336,6 +52233,31 @@ where
     }
 
     #[inline]
+    fn visit_mut_content_tag_content(&mut self, node: &mut ContentTagContent) {
+        <V as VisitMut>::visit_mut_content_tag_content(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_end(&mut self, node: &mut ContentTagEnd) {
+        <V as VisitMut>::visit_mut_content_tag_end(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_expression(&mut self, node: &mut ContentTagExpression) {
+        <V as VisitMut>::visit_mut_content_tag_expression(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_member(&mut self, node: &mut ContentTagMember) {
+        <V as VisitMut>::visit_mut_content_tag_member(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_start(&mut self, node: &mut ContentTagStart) {
+        <V as VisitMut>::visit_mut_content_tag_start(&mut **self, node)
+    }
+
+    #[inline]
     fn visit_mut_continue_stmt(&mut self, node: &mut ContinueStmt) {
         <V as VisitMut>::visit_mut_continue_stmt(&mut **self, node)
     }
@@ -52815,6 +53737,31 @@ where
     #[inline]
     fn visit_mut_constructor(&mut self, node: &mut Constructor) {
         <V as VisitMut>::visit_mut_constructor(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_content(&mut self, node: &mut ContentTagContent) {
+        <V as VisitMut>::visit_mut_content_tag_content(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_end(&mut self, node: &mut ContentTagEnd) {
+        <V as VisitMut>::visit_mut_content_tag_end(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_expression(&mut self, node: &mut ContentTagExpression) {
+        <V as VisitMut>::visit_mut_content_tag_expression(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_member(&mut self, node: &mut ContentTagMember) {
+        <V as VisitMut>::visit_mut_content_tag_member(&mut **self, node)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_start(&mut self, node: &mut ContentTagStart) {
+        <V as VisitMut>::visit_mut_content_tag_start(&mut **self, node)
     }
 
     #[inline]
@@ -54417,6 +55364,62 @@ where
         match self {
             swc_visit::Either::Left(visitor) => VisitMut::visit_mut_constructor(visitor, node),
             swc_visit::Either::Right(visitor) => VisitMut::visit_mut_constructor(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_content(&mut self, node: &mut ContentTagContent) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMut::visit_mut_content_tag_content(visitor, node)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMut::visit_mut_content_tag_content(visitor, node)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_end(&mut self, node: &mut ContentTagEnd) {
+        match self {
+            swc_visit::Either::Left(visitor) => VisitMut::visit_mut_content_tag_end(visitor, node),
+            swc_visit::Either::Right(visitor) => VisitMut::visit_mut_content_tag_end(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_expression(&mut self, node: &mut ContentTagExpression) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMut::visit_mut_content_tag_expression(visitor, node)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMut::visit_mut_content_tag_expression(visitor, node)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_member(&mut self, node: &mut ContentTagMember) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMut::visit_mut_content_tag_member(visitor, node)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMut::visit_mut_content_tag_member(visitor, node)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_start(&mut self, node: &mut ContentTagStart) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMut::visit_mut_content_tag_start(visitor, node)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMut::visit_mut_content_tag_start(visitor, node)
+            }
         }
     }
 
@@ -57131,6 +58134,46 @@ where
     fn visit_mut_constructor(&mut self, node: &mut Constructor) {
         if self.enabled {
             <V as VisitMut>::visit_mut_constructor(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_content(&mut self, node: &mut ContentTagContent) {
+        if self.enabled {
+            <V as VisitMut>::visit_mut_content_tag_content(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_end(&mut self, node: &mut ContentTagEnd) {
+        if self.enabled {
+            <V as VisitMut>::visit_mut_content_tag_end(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_expression(&mut self, node: &mut ContentTagExpression) {
+        if self.enabled {
+            <V as VisitMut>::visit_mut_content_tag_expression(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_member(&mut self, node: &mut ContentTagMember) {
+        if self.enabled {
+            <V as VisitMut>::visit_mut_content_tag_member(&mut self.visitor, node)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_start(&mut self, node: &mut ContentTagStart) {
+        if self.enabled {
+            <V as VisitMut>::visit_mut_content_tag_start(&mut self.visitor, node)
         } else {
         }
     }
@@ -59952,6 +60995,9 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for ClassMember {
             ClassMember::AutoAccessor { 0: _field_0 } => {
                 <AutoAccessor as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
+            ClassMember::ContentTagMember { 0: _field_0 } => {
+                <ContentTagMember as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
+            }
             #[cfg(swc_ast_unknown)]
             _ => (),
         }
@@ -60132,6 +61178,117 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Constructor {
                         accessibility,
                         visitor,
                     )
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for ContentTagContent {
+    #[doc = "Calls [VisitMut`::visit_mut_content_tag_content`] with `self`."]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut>::visit_mut_content_tag_content(visitor, self)
+    }
+
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        match self {
+            ContentTagContent { span, value } => {
+                {
+                    <swc_common::Span as VisitMutWith<V>>::visit_mut_with(span, visitor)
+                };
+                {
+                    <swc_atoms::Atom as VisitMutWith<V>>::visit_mut_with(value, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for ContentTagEnd {
+    #[doc = "Calls [VisitMut`::visit_mut_content_tag_end`] with `self`."]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut>::visit_mut_content_tag_end(visitor, self)
+    }
+
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        match self {
+            ContentTagEnd { span } => {
+                {
+                    <swc_common::Span as VisitMutWith<V>>::visit_mut_with(span, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for ContentTagExpression {
+    #[doc = "Calls [VisitMut`::visit_mut_content_tag_expression`] with `self`."]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut>::visit_mut_content_tag_expression(visitor, self)
+    }
+
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        match self {
+            ContentTagExpression {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                {
+                    <swc_common::Span as VisitMutWith<V>>::visit_mut_with(span, visitor)
+                };
+                {
+                    <Box<ContentTagStart> as VisitMutWith<V>>::visit_mut_with(opening, visitor)
+                };
+                {
+                    <Box<ContentTagContent> as VisitMutWith<V>>::visit_mut_with(contents, visitor)
+                };
+                {
+                    <Box<ContentTagEnd> as VisitMutWith<V>>::visit_mut_with(closing, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for ContentTagMember {
+    #[doc = "Calls [VisitMut`::visit_mut_content_tag_member`] with `self`."]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut>::visit_mut_content_tag_member(visitor, self)
+    }
+
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        match self {
+            ContentTagMember {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                {
+                    <swc_common::Span as VisitMutWith<V>>::visit_mut_with(span, visitor)
+                };
+                {
+                    <Box<ContentTagStart> as VisitMutWith<V>>::visit_mut_with(opening, visitor)
+                };
+                {
+                    <Box<ContentTagContent> as VisitMutWith<V>>::visit_mut_with(contents, visitor)
+                };
+                {
+                    <Box<ContentTagEnd> as VisitMutWith<V>>::visit_mut_with(closing, visitor)
+                };
+            }
+        }
+    }
+}
+impl<V: ?Sized + VisitMut> VisitMutWith<V> for ContentTagStart {
+    #[doc = "Calls [VisitMut`::visit_mut_content_tag_start`] with `self`."]
+    fn visit_mut_with(&mut self, visitor: &mut V) {
+        <V as VisitMut>::visit_mut_content_tag_start(visitor, self)
+    }
+
+    fn visit_mut_children_with(&mut self, visitor: &mut V) {
+        match self {
+            ContentTagStart { span } => {
+                {
+                    <swc_common::Span as VisitMutWith<V>>::visit_mut_with(span, visitor)
                 };
             }
         }
@@ -60550,6 +61707,9 @@ impl<V: ?Sized + VisitMut> VisitMutWith<V> for Expr {
             }
             Expr::JSXFragment { 0: _field_0 } => {
                 <JSXFragment as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
+            }
+            Expr::ContentTagExpression { 0: _field_0 } => {
+                <ContentTagExpression as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
             }
             Expr::TsTypeAssertion { 0: _field_0 } => {
                 <TsTypeAssertion as VisitMutWith<V>>::visit_mut_with(_field_0, visitor);
@@ -66354,6 +67514,71 @@ pub trait VisitMutAstPath {
             node, self, __ast_path,
         )
     }
+    #[doc = "Visit a node of type `ContentTagContent`.\n\nBy default, this method calls \
+             [`ContentTagContent::visit_mut_children_with_ast_path`]. If you want to recurse, you \
+             need to call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_content(
+        &mut self,
+        node: &mut ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <ContentTagContent as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagEnd`.\n\nBy default, this method calls \
+             [`ContentTagEnd::visit_mut_children_with_ast_path`]. If you want to recurse, you need \
+             to call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_end(
+        &mut self,
+        node: &mut ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <ContentTagEnd as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagExpression`.\n\nBy default, this method calls \
+             [`ContentTagExpression::visit_mut_children_with_ast_path`]. If you want to recurse, \
+             you need to call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_expression(
+        &mut self,
+        node: &mut ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <ContentTagExpression as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagMember`.\n\nBy default, this method calls \
+             [`ContentTagMember::visit_mut_children_with_ast_path`]. If you want to recurse, you \
+             need to call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_member(
+        &mut self,
+        node: &mut ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <ContentTagMember as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagStart`.\n\nBy default, this method calls \
+             [`ContentTagStart::visit_mut_children_with_ast_path`]. If you want to recurse, you \
+             need to call it manually."]
+    #[inline]
+    fn visit_mut_content_tag_start(
+        &mut self,
+        node: &mut ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <ContentTagStart as VisitMutWithAstPath<Self>>::visit_mut_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
     #[doc = "Visit a node of type `ContinueStmt`.\n\nBy default, this method calls \
              [`ContinueStmt::visit_mut_children_with_ast_path`]. If you want to recurse, you need \
              to call it manually."]
@@ -69344,6 +70569,51 @@ where
     }
 
     #[inline]
+    fn visit_mut_content_tag_content(
+        &mut self,
+        node: &mut ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_content(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_end(
+        &mut self,
+        node: &mut ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_end(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_expression(
+        &mut self,
+        node: &mut ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_expression(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_member(
+        &mut self,
+        node: &mut ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_member(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_start(
+        &mut self,
+        node: &mut ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_start(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
     fn visit_mut_continue_stmt(&mut self, node: &mut ContinueStmt, __ast_path: &mut AstKindPath) {
         <V as VisitMutAstPath>::visit_mut_continue_stmt(&mut **self, node, __ast_path)
     }
@@ -71314,6 +72584,51 @@ where
     #[inline]
     fn visit_mut_constructor(&mut self, node: &mut Constructor, __ast_path: &mut AstKindPath) {
         <V as VisitMutAstPath>::visit_mut_constructor(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_content(
+        &mut self,
+        node: &mut ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_content(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_end(
+        &mut self,
+        node: &mut ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_end(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_expression(
+        &mut self,
+        node: &mut ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_expression(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_member(
+        &mut self,
+        node: &mut ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_member(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_start(
+        &mut self,
+        node: &mut ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_start(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -73538,6 +74853,86 @@ where
             }
             swc_visit::Either::Right(visitor) => {
                 VisitMutAstPath::visit_mut_constructor(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_content(
+        &mut self,
+        node: &mut ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_content(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_content(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_end(
+        &mut self,
+        node: &mut ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_end(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_end(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_expression(
+        &mut self,
+        node: &mut ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_expression(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_expression(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_member(
+        &mut self,
+        node: &mut ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_member(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_member(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_start(
+        &mut self,
+        node: &mut ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_start(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                VisitMutAstPath::visit_mut_content_tag_start(visitor, node, __ast_path)
             }
         }
     }
@@ -77436,6 +78831,78 @@ where
     fn visit_mut_constructor(&mut self, node: &mut Constructor, __ast_path: &mut AstKindPath) {
         if self.enabled {
             <V as VisitMutAstPath>::visit_mut_constructor(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_content(
+        &mut self,
+        node: &mut ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) {
+        if self.enabled {
+            <V as VisitMutAstPath>::visit_mut_content_tag_content(
+                &mut self.visitor,
+                node,
+                __ast_path,
+            )
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_end(
+        &mut self,
+        node: &mut ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) {
+        if self.enabled {
+            <V as VisitMutAstPath>::visit_mut_content_tag_end(&mut self.visitor, node, __ast_path)
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_expression(
+        &mut self,
+        node: &mut ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) {
+        if self.enabled {
+            <V as VisitMutAstPath>::visit_mut_content_tag_expression(
+                &mut self.visitor,
+                node,
+                __ast_path,
+            )
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_member(
+        &mut self,
+        node: &mut ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) {
+        if self.enabled {
+            <V as VisitMutAstPath>::visit_mut_content_tag_member(
+                &mut self.visitor,
+                node,
+                __ast_path,
+            )
+        } else {
+        }
+    }
+
+    #[inline]
+    fn visit_mut_content_tag_start(
+        &mut self,
+        node: &mut ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) {
+        if self.enabled {
+            <V as VisitMutAstPath>::visit_mut_content_tag_start(&mut self.visitor, node, __ast_path)
         } else {
         }
     }
@@ -81572,6 +83039,16 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ClassMember {
                     &mut *__ast_path,
                 );
             }
+            ClassMember::ContentTagMember { 0: _field_0 } => {
+                let mut __ast_path = __ast_path.with_guard(AstParentKind::ClassMember(
+                    self::fields::ClassMemberField::ContentTagMember,
+                ));
+                <ContentTagMember as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                    _field_0,
+                    visitor,
+                    &mut *__ast_path,
+                );
+            }
             #[cfg(swc_ast_unknown)]
             _ => (),
         }
@@ -81905,6 +83382,215 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Constructor {
                     ));
                     <Option<Accessibility> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
                         accessibility,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ContentTagContent {
+    #[doc = "Calls [VisitMutAstPath`::visit_mut_content_tag_content`] with `self`."]
+    fn visit_mut_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_content(visitor, self, __ast_path)
+    }
+
+    fn visit_mut_children_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        match self {
+            ContentTagContent { span, value } => {
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagContent(
+                        self::fields::ContentTagContentField::Span,
+                    ));
+                    <swc_common::Span as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagContent(
+                        self::fields::ContentTagContentField::Value,
+                    ));
+                    <swc_atoms::Atom as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        value,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ContentTagEnd {
+    #[doc = "Calls [VisitMutAstPath`::visit_mut_content_tag_end`] with `self`."]
+    fn visit_mut_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_end(visitor, self, __ast_path)
+    }
+
+    fn visit_mut_children_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        match self {
+            ContentTagEnd { span } => {
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagEnd(
+                        self::fields::ContentTagEndField::Span,
+                    ));
+                    <swc_common::Span as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ContentTagExpression {
+    #[doc = "Calls [VisitMutAstPath`::visit_mut_content_tag_expression`] with `self`."]
+    fn visit_mut_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_expression(visitor, self, __ast_path)
+    }
+
+    fn visit_mut_children_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        match self {
+            ContentTagExpression {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentKind::ContentTagExpression(
+                            self::fields::ContentTagExpressionField::Span,
+                        ));
+                    <swc_common::Span as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentKind::ContentTagExpression(
+                            self::fields::ContentTagExpressionField::Opening,
+                        ));
+                    <Box<ContentTagStart> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        opening,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentKind::ContentTagExpression(
+                            self::fields::ContentTagExpressionField::Contents,
+                        ));
+                    <Box<ContentTagContent> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        contents,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentKind::ContentTagExpression(
+                            self::fields::ContentTagExpressionField::Closing,
+                        ));
+                    <Box<ContentTagEnd> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        closing,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ContentTagMember {
+    #[doc = "Calls [VisitMutAstPath`::visit_mut_content_tag_member`] with `self`."]
+    fn visit_mut_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_member(visitor, self, __ast_path)
+    }
+
+    fn visit_mut_children_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        match self {
+            ContentTagMember {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagMember(
+                        self::fields::ContentTagMemberField::Span,
+                    ));
+                    <swc_common::Span as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagMember(
+                        self::fields::ContentTagMemberField::Opening,
+                    ));
+                    <Box<ContentTagStart> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        opening,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagMember(
+                        self::fields::ContentTagMemberField::Contents,
+                    ));
+                    <Box<ContentTagContent> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        contents,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagMember(
+                        self::fields::ContentTagMemberField::Closing,
+                    ));
+                    <Box<ContentTagEnd> as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        closing,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for ContentTagStart {
+    #[doc = "Calls [VisitMutAstPath`::visit_mut_content_tag_start`] with `self`."]
+    fn visit_mut_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        <V as VisitMutAstPath>::visit_mut_content_tag_start(visitor, self, __ast_path)
+    }
+
+    fn visit_mut_children_with_ast_path(&mut self, visitor: &mut V, __ast_path: &mut AstKindPath) {
+        match self {
+            ContentTagStart { span } => {
+                {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagStart(
+                        self::fields::ContentTagStartField::Span,
+                    ));
+                    <swc_common::Span as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                        span,
                         visitor,
                         &mut *__ast_path,
                     )
@@ -82787,6 +84473,16 @@ impl<V: ?Sized + VisitMutAstPath> VisitMutWithAstPath<V> for Expr {
                 let mut __ast_path = __ast_path
                     .with_guard(AstParentKind::Expr(self::fields::ExprField::Jsxfragment));
                 <JSXFragment as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
+                    _field_0,
+                    visitor,
+                    &mut *__ast_path,
+                );
+            }
+            Expr::ContentTagExpression { 0: _field_0 } => {
+                let mut __ast_path = __ast_path.with_guard(AstParentKind::Expr(
+                    self::fields::ExprField::ContentTagExpression,
+                ));
+                <ContentTagExpression as VisitMutWithAstPath<V>>::visit_mut_with_ast_path(
                     _field_0,
                     visitor,
                     &mut *__ast_path,
@@ -92956,6 +94652,41 @@ pub trait Fold {
     fn fold_constructor(&mut self, node: Constructor) -> Constructor {
         <Constructor as FoldWith<Self>>::fold_children_with(node, self)
     }
+    #[doc = "Visit a node of type `ContentTagContent`.\n\nBy default, this method calls \
+             [`ContentTagContent::fold_children_with`]. If you want to recurse, you need to call \
+             it manually."]
+    #[inline]
+    fn fold_content_tag_content(&mut self, node: ContentTagContent) -> ContentTagContent {
+        <ContentTagContent as FoldWith<Self>>::fold_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagEnd`.\n\nBy default, this method calls \
+             [`ContentTagEnd::fold_children_with`]. If you want to recurse, you need to call it \
+             manually."]
+    #[inline]
+    fn fold_content_tag_end(&mut self, node: ContentTagEnd) -> ContentTagEnd {
+        <ContentTagEnd as FoldWith<Self>>::fold_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagExpression`.\n\nBy default, this method calls \
+             [`ContentTagExpression::fold_children_with`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn fold_content_tag_expression(&mut self, node: ContentTagExpression) -> ContentTagExpression {
+        <ContentTagExpression as FoldWith<Self>>::fold_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagMember`.\n\nBy default, this method calls \
+             [`ContentTagMember::fold_children_with`]. If you want to recurse, you need to call it \
+             manually."]
+    #[inline]
+    fn fold_content_tag_member(&mut self, node: ContentTagMember) -> ContentTagMember {
+        <ContentTagMember as FoldWith<Self>>::fold_children_with(node, self)
+    }
+    #[doc = "Visit a node of type `ContentTagStart`.\n\nBy default, this method calls \
+             [`ContentTagStart::fold_children_with`]. If you want to recurse, you need to call it \
+             manually."]
+    #[inline]
+    fn fold_content_tag_start(&mut self, node: ContentTagStart) -> ContentTagStart {
+        <ContentTagStart as FoldWith<Self>>::fold_children_with(node, self)
+    }
     #[doc = "Visit a node of type `ContinueStmt`.\n\nBy default, this method calls \
              [`ContinueStmt::fold_children_with`]. If you want to recurse, you need to call it \
              manually."]
@@ -94976,6 +96707,31 @@ where
     }
 
     #[inline]
+    fn fold_content_tag_content(&mut self, node: ContentTagContent) -> ContentTagContent {
+        <V as Fold>::fold_content_tag_content(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_end(&mut self, node: ContentTagEnd) -> ContentTagEnd {
+        <V as Fold>::fold_content_tag_end(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_expression(&mut self, node: ContentTagExpression) -> ContentTagExpression {
+        <V as Fold>::fold_content_tag_expression(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_member(&mut self, node: ContentTagMember) -> ContentTagMember {
+        <V as Fold>::fold_content_tag_member(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_start(&mut self, node: ContentTagStart) -> ContentTagStart {
+        <V as Fold>::fold_content_tag_start(&mut **self, node)
+    }
+
+    #[inline]
     fn fold_continue_stmt(&mut self, node: ContinueStmt) -> ContinueStmt {
         <V as Fold>::fold_continue_stmt(&mut **self, node)
     }
@@ -96515,6 +98271,31 @@ where
     #[inline]
     fn fold_constructor(&mut self, node: Constructor) -> Constructor {
         <V as Fold>::fold_constructor(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_content(&mut self, node: ContentTagContent) -> ContentTagContent {
+        <V as Fold>::fold_content_tag_content(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_end(&mut self, node: ContentTagEnd) -> ContentTagEnd {
+        <V as Fold>::fold_content_tag_end(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_expression(&mut self, node: ContentTagExpression) -> ContentTagExpression {
+        <V as Fold>::fold_content_tag_expression(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_member(&mut self, node: ContentTagMember) -> ContentTagMember {
+        <V as Fold>::fold_content_tag_member(&mut **self, node)
+    }
+
+    #[inline]
+    fn fold_content_tag_start(&mut self, node: ContentTagStart) -> ContentTagStart {
+        <V as Fold>::fold_content_tag_start(&mut **self, node)
     }
 
     #[inline]
@@ -98165,6 +99946,46 @@ where
         match self {
             swc_visit::Either::Left(visitor) => Fold::fold_constructor(visitor, node),
             swc_visit::Either::Right(visitor) => Fold::fold_constructor(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_content(&mut self, node: ContentTagContent) -> ContentTagContent {
+        match self {
+            swc_visit::Either::Left(visitor) => Fold::fold_content_tag_content(visitor, node),
+            swc_visit::Either::Right(visitor) => Fold::fold_content_tag_content(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_end(&mut self, node: ContentTagEnd) -> ContentTagEnd {
+        match self {
+            swc_visit::Either::Left(visitor) => Fold::fold_content_tag_end(visitor, node),
+            swc_visit::Either::Right(visitor) => Fold::fold_content_tag_end(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_expression(&mut self, node: ContentTagExpression) -> ContentTagExpression {
+        match self {
+            swc_visit::Either::Left(visitor) => Fold::fold_content_tag_expression(visitor, node),
+            swc_visit::Either::Right(visitor) => Fold::fold_content_tag_expression(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_member(&mut self, node: ContentTagMember) -> ContentTagMember {
+        match self {
+            swc_visit::Either::Left(visitor) => Fold::fold_content_tag_member(visitor, node),
+            swc_visit::Either::Right(visitor) => Fold::fold_content_tag_member(visitor, node),
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_start(&mut self, node: ContentTagStart) -> ContentTagStart {
+        match self {
+            swc_visit::Either::Left(visitor) => Fold::fold_content_tag_start(visitor, node),
+            swc_visit::Either::Right(visitor) => Fold::fold_content_tag_start(visitor, node),
         }
     }
 
@@ -100652,6 +102473,51 @@ where
     fn fold_constructor(&mut self, node: Constructor) -> Constructor {
         if self.enabled {
             <V as Fold>::fold_constructor(&mut self.visitor, node)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_content(&mut self, node: ContentTagContent) -> ContentTagContent {
+        if self.enabled {
+            <V as Fold>::fold_content_tag_content(&mut self.visitor, node)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_end(&mut self, node: ContentTagEnd) -> ContentTagEnd {
+        if self.enabled {
+            <V as Fold>::fold_content_tag_end(&mut self.visitor, node)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_expression(&mut self, node: ContentTagExpression) -> ContentTagExpression {
+        if self.enabled {
+            <V as Fold>::fold_content_tag_expression(&mut self.visitor, node)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_member(&mut self, node: ContentTagMember) -> ContentTagMember {
+        if self.enabled {
+            <V as Fold>::fold_content_tag_member(&mut self.visitor, node)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_start(&mut self, node: ContentTagStart) -> ContentTagStart {
+        if self.enabled {
+            <V as Fold>::fold_content_tag_start(&mut self.visitor, node)
         } else {
             node
         }
@@ -103757,6 +105623,10 @@ impl<V: ?Sized + Fold> FoldWith<V> for ClassMember {
                 let _field_0 = <AutoAccessor as FoldWith<V>>::fold_with(_field_0, visitor);
                 ClassMember::AutoAccessor { 0: _field_0 }
             }
+            ClassMember::ContentTagMember { 0: _field_0 } => {
+                let _field_0 = <ContentTagMember as FoldWith<V>>::fold_with(_field_0, visitor);
+                ClassMember::ContentTagMember { 0: _field_0 }
+            }
             #[cfg(swc_ast_unknown)]
             _ => self,
         }
@@ -103931,6 +105801,112 @@ impl<V: ?Sized + Fold> FoldWith<V> for Constructor {
                     accessibility,
                     is_optional,
                 }
+            }
+        }
+    }
+}
+impl<V: ?Sized + Fold> FoldWith<V> for ContentTagContent {
+    #[doc = "Calls [Fold`::fold_content_tag_content`] with `self`."]
+    fn fold_with(self, visitor: &mut V) -> Self {
+        <V as Fold>::fold_content_tag_content(visitor, self)
+    }
+
+    fn fold_children_with(self, visitor: &mut V) -> Self {
+        match self {
+            ContentTagContent { span, value } => {
+                let span = { <swc_common::Span as FoldWith<V>>::fold_with(span, visitor) };
+                let value = { <swc_atoms::Atom as FoldWith<V>>::fold_with(value, visitor) };
+                ContentTagContent { span, value }
+            }
+        }
+    }
+}
+impl<V: ?Sized + Fold> FoldWith<V> for ContentTagEnd {
+    #[doc = "Calls [Fold`::fold_content_tag_end`] with `self`."]
+    fn fold_with(self, visitor: &mut V) -> Self {
+        <V as Fold>::fold_content_tag_end(visitor, self)
+    }
+
+    fn fold_children_with(self, visitor: &mut V) -> Self {
+        match self {
+            ContentTagEnd { span } => {
+                let span = { <swc_common::Span as FoldWith<V>>::fold_with(span, visitor) };
+                ContentTagEnd { span }
+            }
+        }
+    }
+}
+impl<V: ?Sized + Fold> FoldWith<V> for ContentTagExpression {
+    #[doc = "Calls [Fold`::fold_content_tag_expression`] with `self`."]
+    fn fold_with(self, visitor: &mut V) -> Self {
+        <V as Fold>::fold_content_tag_expression(visitor, self)
+    }
+
+    fn fold_children_with(self, visitor: &mut V) -> Self {
+        match self {
+            ContentTagExpression {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                let span = { <swc_common::Span as FoldWith<V>>::fold_with(span, visitor) };
+                let opening =
+                    { <Box<ContentTagStart> as FoldWith<V>>::fold_with(opening, visitor) };
+                let contents =
+                    { <Box<ContentTagContent> as FoldWith<V>>::fold_with(contents, visitor) };
+                let closing = { <Box<ContentTagEnd> as FoldWith<V>>::fold_with(closing, visitor) };
+                ContentTagExpression {
+                    span,
+                    opening,
+                    contents,
+                    closing,
+                }
+            }
+        }
+    }
+}
+impl<V: ?Sized + Fold> FoldWith<V> for ContentTagMember {
+    #[doc = "Calls [Fold`::fold_content_tag_member`] with `self`."]
+    fn fold_with(self, visitor: &mut V) -> Self {
+        <V as Fold>::fold_content_tag_member(visitor, self)
+    }
+
+    fn fold_children_with(self, visitor: &mut V) -> Self {
+        match self {
+            ContentTagMember {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                let span = { <swc_common::Span as FoldWith<V>>::fold_with(span, visitor) };
+                let opening =
+                    { <Box<ContentTagStart> as FoldWith<V>>::fold_with(opening, visitor) };
+                let contents =
+                    { <Box<ContentTagContent> as FoldWith<V>>::fold_with(contents, visitor) };
+                let closing = { <Box<ContentTagEnd> as FoldWith<V>>::fold_with(closing, visitor) };
+                ContentTagMember {
+                    span,
+                    opening,
+                    contents,
+                    closing,
+                }
+            }
+        }
+    }
+}
+impl<V: ?Sized + Fold> FoldWith<V> for ContentTagStart {
+    #[doc = "Calls [Fold`::fold_content_tag_start`] with `self`."]
+    fn fold_with(self, visitor: &mut V) -> Self {
+        <V as Fold>::fold_content_tag_start(visitor, self)
+    }
+
+    fn fold_children_with(self, visitor: &mut V) -> Self {
+        match self {
+            ContentTagStart { span } => {
+                let span = { <swc_common::Span as FoldWith<V>>::fold_with(span, visitor) };
+                ContentTagStart { span }
             }
         }
     }
@@ -104368,6 +106344,10 @@ impl<V: ?Sized + Fold> FoldWith<V> for Expr {
             Expr::JSXFragment { 0: _field_0 } => {
                 let _field_0 = <JSXFragment as FoldWith<V>>::fold_with(_field_0, visitor);
                 Expr::JSXFragment { 0: _field_0 }
+            }
+            Expr::ContentTagExpression { 0: _field_0 } => {
+                let _field_0 = <ContentTagExpression as FoldWith<V>>::fold_with(_field_0, visitor);
+                Expr::ContentTagExpression { 0: _field_0 }
             }
             Expr::TsTypeAssertion { 0: _field_0 } => {
                 let _field_0 = <TsTypeAssertion as FoldWith<V>>::fold_with(_field_0, visitor);
@@ -110021,6 +112001,71 @@ pub trait FoldAstPath {
     fn fold_constructor(&mut self, node: Constructor, __ast_path: &mut AstKindPath) -> Constructor {
         <Constructor as FoldWithAstPath<Self>>::fold_children_with_ast_path(node, self, __ast_path)
     }
+    #[doc = "Visit a node of type `ContentTagContent`.\n\nBy default, this method calls \
+             [`ContentTagContent::fold_children_with_ast_path`]. If you want to recurse, you need \
+             to call it manually."]
+    #[inline]
+    fn fold_content_tag_content(
+        &mut self,
+        node: ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagContent {
+        <ContentTagContent as FoldWithAstPath<Self>>::fold_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagEnd`.\n\nBy default, this method calls \
+             [`ContentTagEnd::fold_children_with_ast_path`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn fold_content_tag_end(
+        &mut self,
+        node: ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagEnd {
+        <ContentTagEnd as FoldWithAstPath<Self>>::fold_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagExpression`.\n\nBy default, this method calls \
+             [`ContentTagExpression::fold_children_with_ast_path`]. If you want to recurse, you \
+             need to call it manually."]
+    #[inline]
+    fn fold_content_tag_expression(
+        &mut self,
+        node: ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagExpression {
+        <ContentTagExpression as FoldWithAstPath<Self>>::fold_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagMember`.\n\nBy default, this method calls \
+             [`ContentTagMember::fold_children_with_ast_path`]. If you want to recurse, you need \
+             to call it manually."]
+    #[inline]
+    fn fold_content_tag_member(
+        &mut self,
+        node: ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagMember {
+        <ContentTagMember as FoldWithAstPath<Self>>::fold_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
+    #[doc = "Visit a node of type `ContentTagStart`.\n\nBy default, this method calls \
+             [`ContentTagStart::fold_children_with_ast_path`]. If you want to recurse, you need to \
+             call it manually."]
+    #[inline]
+    fn fold_content_tag_start(
+        &mut self,
+        node: ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagStart {
+        <ContentTagStart as FoldWithAstPath<Self>>::fold_children_with_ast_path(
+            node, self, __ast_path,
+        )
+    }
     #[doc = "Visit a node of type `ContinueStmt`.\n\nBy default, this method calls \
              [`ContinueStmt::fold_children_with_ast_path`]. If you want to recurse, you need to \
              call it manually."]
@@ -113007,6 +115052,51 @@ where
     }
 
     #[inline]
+    fn fold_content_tag_content(
+        &mut self,
+        node: ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagContent {
+        <V as FoldAstPath>::fold_content_tag_content(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_end(
+        &mut self,
+        node: ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagEnd {
+        <V as FoldAstPath>::fold_content_tag_end(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_expression(
+        &mut self,
+        node: ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagExpression {
+        <V as FoldAstPath>::fold_content_tag_expression(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_member(
+        &mut self,
+        node: ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagMember {
+        <V as FoldAstPath>::fold_content_tag_member(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_start(
+        &mut self,
+        node: ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagStart {
+        <V as FoldAstPath>::fold_content_tag_start(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
     fn fold_continue_stmt(
         &mut self,
         node: ContinueStmt,
@@ -115209,6 +117299,51 @@ where
     #[inline]
     fn fold_constructor(&mut self, node: Constructor, __ast_path: &mut AstKindPath) -> Constructor {
         <V as FoldAstPath>::fold_constructor(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_content(
+        &mut self,
+        node: ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagContent {
+        <V as FoldAstPath>::fold_content_tag_content(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_end(
+        &mut self,
+        node: ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagEnd {
+        <V as FoldAstPath>::fold_content_tag_end(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_expression(
+        &mut self,
+        node: ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagExpression {
+        <V as FoldAstPath>::fold_content_tag_expression(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_member(
+        &mut self,
+        node: ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagMember {
+        <V as FoldAstPath>::fold_content_tag_member(&mut **self, node, __ast_path)
+    }
+
+    #[inline]
+    fn fold_content_tag_start(
+        &mut self,
+        node: ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagStart {
+        <V as FoldAstPath>::fold_content_tag_start(&mut **self, node, __ast_path)
     }
 
     #[inline]
@@ -117651,6 +119786,86 @@ where
             }
             swc_visit::Either::Right(visitor) => {
                 FoldAstPath::fold_constructor(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_content(
+        &mut self,
+        node: ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagContent {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                FoldAstPath::fold_content_tag_content(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                FoldAstPath::fold_content_tag_content(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_end(
+        &mut self,
+        node: ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagEnd {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                FoldAstPath::fold_content_tag_end(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                FoldAstPath::fold_content_tag_end(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_expression(
+        &mut self,
+        node: ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagExpression {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                FoldAstPath::fold_content_tag_expression(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                FoldAstPath::fold_content_tag_expression(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_member(
+        &mut self,
+        node: ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagMember {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                FoldAstPath::fold_content_tag_member(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                FoldAstPath::fold_content_tag_member(visitor, node, __ast_path)
+            }
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_start(
+        &mut self,
+        node: ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagStart {
+        match self {
+            swc_visit::Either::Left(visitor) => {
+                FoldAstPath::fold_content_tag_start(visitor, node, __ast_path)
+            }
+            swc_visit::Either::Right(visitor) => {
+                FoldAstPath::fold_content_tag_start(visitor, node, __ast_path)
             }
         }
     }
@@ -121728,6 +123943,71 @@ where
     fn fold_constructor(&mut self, node: Constructor, __ast_path: &mut AstKindPath) -> Constructor {
         if self.enabled {
             <V as FoldAstPath>::fold_constructor(&mut self.visitor, node, __ast_path)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_content(
+        &mut self,
+        node: ContentTagContent,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagContent {
+        if self.enabled {
+            <V as FoldAstPath>::fold_content_tag_content(&mut self.visitor, node, __ast_path)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_end(
+        &mut self,
+        node: ContentTagEnd,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagEnd {
+        if self.enabled {
+            <V as FoldAstPath>::fold_content_tag_end(&mut self.visitor, node, __ast_path)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_expression(
+        &mut self,
+        node: ContentTagExpression,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagExpression {
+        if self.enabled {
+            <V as FoldAstPath>::fold_content_tag_expression(&mut self.visitor, node, __ast_path)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_member(
+        &mut self,
+        node: ContentTagMember,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagMember {
+        if self.enabled {
+            <V as FoldAstPath>::fold_content_tag_member(&mut self.visitor, node, __ast_path)
+        } else {
+            node
+        }
+    }
+
+    #[inline]
+    fn fold_content_tag_start(
+        &mut self,
+        node: ContentTagStart,
+        __ast_path: &mut AstKindPath,
+    ) -> ContentTagStart {
+        if self.enabled {
+            <V as FoldAstPath>::fold_content_tag_start(&mut self.visitor, node, __ast_path)
         } else {
             node
         }
@@ -126178,6 +128458,17 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ClassMember {
                 );
                 ClassMember::AutoAccessor { 0: _field_0 }
             }
+            ClassMember::ContentTagMember { 0: _field_0 } => {
+                let mut __ast_path = __ast_path.with_guard(AstParentKind::ClassMember(
+                    self::fields::ClassMemberField::ContentTagMember,
+                ));
+                let _field_0 = <ContentTagMember as FoldWithAstPath<V>>::fold_with_ast_path(
+                    _field_0,
+                    visitor,
+                    &mut *__ast_path,
+                );
+                ClassMember::ContentTagMember { 0: _field_0 }
+            }
             #[cfg(swc_ast_unknown)]
             _ => self,
         }
@@ -126557,6 +128848,230 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Constructor {
                     accessibility,
                     is_optional,
                 }
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ContentTagContent {
+    #[doc = "Calls [FoldAstPath`::fold_content_tag_content`] with `self`."]
+    fn fold_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        <V as FoldAstPath>::fold_content_tag_content(visitor, self, __ast_path)
+    }
+
+    fn fold_children_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        match self {
+            ContentTagContent { span, value } => {
+                let span = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagContent(
+                        self::fields::ContentTagContentField::Span,
+                    ));
+                    <swc_common::Span as FoldWithAstPath<V>>::fold_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                let value = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagContent(
+                        self::fields::ContentTagContentField::Value,
+                    ));
+                    <swc_atoms::Atom as FoldWithAstPath<V>>::fold_with_ast_path(
+                        value,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                ContentTagContent { span, value }
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ContentTagEnd {
+    #[doc = "Calls [FoldAstPath`::fold_content_tag_end`] with `self`."]
+    fn fold_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        <V as FoldAstPath>::fold_content_tag_end(visitor, self, __ast_path)
+    }
+
+    fn fold_children_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        match self {
+            ContentTagEnd { span } => {
+                let span = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagEnd(
+                        self::fields::ContentTagEndField::Span,
+                    ));
+                    <swc_common::Span as FoldWithAstPath<V>>::fold_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                ContentTagEnd { span }
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ContentTagExpression {
+    #[doc = "Calls [FoldAstPath`::fold_content_tag_expression`] with `self`."]
+    fn fold_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        <V as FoldAstPath>::fold_content_tag_expression(visitor, self, __ast_path)
+    }
+
+    fn fold_children_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        match self {
+            ContentTagExpression {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                let span = {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentKind::ContentTagExpression(
+                            self::fields::ContentTagExpressionField::Span,
+                        ));
+                    <swc_common::Span as FoldWithAstPath<V>>::fold_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                let opening = {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentKind::ContentTagExpression(
+                            self::fields::ContentTagExpressionField::Opening,
+                        ));
+                    <Box<ContentTagStart> as FoldWithAstPath<V>>::fold_with_ast_path(
+                        opening,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                let contents = {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentKind::ContentTagExpression(
+                            self::fields::ContentTagExpressionField::Contents,
+                        ));
+                    <Box<ContentTagContent> as FoldWithAstPath<V>>::fold_with_ast_path(
+                        contents,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                let closing = {
+                    let mut __ast_path =
+                        __ast_path.with_guard(AstParentKind::ContentTagExpression(
+                            self::fields::ContentTagExpressionField::Closing,
+                        ));
+                    <Box<ContentTagEnd> as FoldWithAstPath<V>>::fold_with_ast_path(
+                        closing,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                ContentTagExpression {
+                    span,
+                    opening,
+                    contents,
+                    closing,
+                }
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ContentTagMember {
+    #[doc = "Calls [FoldAstPath`::fold_content_tag_member`] with `self`."]
+    fn fold_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        <V as FoldAstPath>::fold_content_tag_member(visitor, self, __ast_path)
+    }
+
+    fn fold_children_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        match self {
+            ContentTagMember {
+                span,
+                opening,
+                contents,
+                closing,
+            } => {
+                let span = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagMember(
+                        self::fields::ContentTagMemberField::Span,
+                    ));
+                    <swc_common::Span as FoldWithAstPath<V>>::fold_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                let opening = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagMember(
+                        self::fields::ContentTagMemberField::Opening,
+                    ));
+                    <Box<ContentTagStart> as FoldWithAstPath<V>>::fold_with_ast_path(
+                        opening,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                let contents = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagMember(
+                        self::fields::ContentTagMemberField::Contents,
+                    ));
+                    <Box<ContentTagContent> as FoldWithAstPath<V>>::fold_with_ast_path(
+                        contents,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                let closing = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagMember(
+                        self::fields::ContentTagMemberField::Closing,
+                    ));
+                    <Box<ContentTagEnd> as FoldWithAstPath<V>>::fold_with_ast_path(
+                        closing,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                ContentTagMember {
+                    span,
+                    opening,
+                    contents,
+                    closing,
+                }
+            }
+        }
+    }
+}
+#[cfg(any(docsrs, feature = "path"))]
+#[cfg_attr(docsrs, doc(cfg(feature = "path")))]
+impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for ContentTagStart {
+    #[doc = "Calls [FoldAstPath`::fold_content_tag_start`] with `self`."]
+    fn fold_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        <V as FoldAstPath>::fold_content_tag_start(visitor, self, __ast_path)
+    }
+
+    fn fold_children_with_ast_path(self, visitor: &mut V, __ast_path: &mut AstKindPath) -> Self {
+        match self {
+            ContentTagStart { span } => {
+                let span = {
+                    let mut __ast_path = __ast_path.with_guard(AstParentKind::ContentTagStart(
+                        self::fields::ContentTagStartField::Span,
+                    ));
+                    <swc_common::Span as FoldWithAstPath<V>>::fold_with_ast_path(
+                        span,
+                        visitor,
+                        &mut *__ast_path,
+                    )
+                };
+                ContentTagStart { span }
             }
         }
     }
@@ -127504,6 +130019,17 @@ impl<V: ?Sized + FoldAstPath> FoldWithAstPath<V> for Expr {
                     &mut *__ast_path,
                 );
                 Expr::JSXFragment { 0: _field_0 }
+            }
+            Expr::ContentTagExpression { 0: _field_0 } => {
+                let mut __ast_path = __ast_path.with_guard(AstParentKind::Expr(
+                    self::fields::ExprField::ContentTagExpression,
+                ));
+                let _field_0 = <ContentTagExpression as FoldWithAstPath<V>>::fold_with_ast_path(
+                    _field_0,
+                    visitor,
+                    &mut *__ast_path,
+                );
+                Expr::ContentTagExpression { 0: _field_0 }
             }
             Expr::TsTypeAssertion { 0: _field_0 } => {
                 let mut __ast_path = __ast_path.with_guard(AstParentKind::Expr(
@@ -138715,6 +141241,8 @@ pub mod fields {
         StaticBlock,
         #[doc = "Represents [`ClassMember::AutoAccessor`]"]
         AutoAccessor,
+        #[doc = "Represents [`ClassMember::ContentTagMember`]"]
+        ContentTagMember,
     }
     impl ClassMethodField {
         pub(crate) fn set_index(&mut self, index: usize) {
@@ -138848,6 +141376,85 @@ pub mod fields {
         Accessibility,
         #[doc = "Represents [`Constructor::is_optional`]"]
         IsOptional,
+    }
+    impl ContentTagContentField {
+        pub(crate) fn set_index(&mut self, index: usize) {
+            match self {
+                _ => swc_visit::wrong_ast_path(),
+            }
+        }
+    }
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
+    pub enum ContentTagContentField {
+        #[doc = "Represents [`ContentTagContent::span`]"]
+        Span,
+        #[doc = "Represents [`ContentTagContent::value`]"]
+        Value,
+    }
+    impl ContentTagEndField {
+        pub(crate) fn set_index(&mut self, index: usize) {
+            match self {
+                _ => swc_visit::wrong_ast_path(),
+            }
+        }
+    }
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
+    pub enum ContentTagEndField {
+        #[doc = "Represents [`ContentTagEnd::span`]"]
+        Span,
+    }
+    impl ContentTagExpressionField {
+        pub(crate) fn set_index(&mut self, index: usize) {
+            match self {
+                _ => swc_visit::wrong_ast_path(),
+            }
+        }
+    }
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
+    pub enum ContentTagExpressionField {
+        #[doc = "Represents [`ContentTagExpression::span`]"]
+        Span,
+        #[doc = "Represents [`ContentTagExpression::opening`]"]
+        Opening,
+        #[doc = "Represents [`ContentTagExpression::contents`]"]
+        Contents,
+        #[doc = "Represents [`ContentTagExpression::closing`]"]
+        Closing,
+    }
+    impl ContentTagMemberField {
+        pub(crate) fn set_index(&mut self, index: usize) {
+            match self {
+                _ => swc_visit::wrong_ast_path(),
+            }
+        }
+    }
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
+    pub enum ContentTagMemberField {
+        #[doc = "Represents [`ContentTagMember::span`]"]
+        Span,
+        #[doc = "Represents [`ContentTagMember::opening`]"]
+        Opening,
+        #[doc = "Represents [`ContentTagMember::contents`]"]
+        Contents,
+        #[doc = "Represents [`ContentTagMember::closing`]"]
+        Closing,
+    }
+    impl ContentTagStartField {
+        pub(crate) fn set_index(&mut self, index: usize) {
+            match self {
+                _ => swc_visit::wrong_ast_path(),
+            }
+        }
+    }
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    #[cfg_attr(feature = "serde-impl", derive(serde::Serialize, serde::Deserialize))]
+    pub enum ContentTagStartField {
+        #[doc = "Represents [`ContentTagStart::span`]"]
+        Span,
     }
     impl ContinueStmtField {
         pub(crate) fn set_index(&mut self, index: usize) {
@@ -139158,6 +141765,8 @@ pub mod fields {
         Jsxelement,
         #[doc = "Represents [`Expr::JSXFragment`]"]
         Jsxfragment,
+        #[doc = "Represents [`Expr::ContentTagExpression`]"]
+        ContentTagExpression,
         #[doc = "Represents [`Expr::TsTypeAssertion`]"]
         TsTypeAssertion,
         #[doc = "Represents [`Expr::TsConstAssertion`]"]
@@ -142706,6 +145315,11 @@ pub mod fields {
         ComputedPropName(ComputedPropNameField),
         CondExpr(CondExprField),
         Constructor(ConstructorField),
+        ContentTagContent(ContentTagContentField),
+        ContentTagEnd(ContentTagEndField),
+        ContentTagExpression(ContentTagExpressionField),
+        ContentTagMember(ContentTagMemberField),
+        ContentTagStart(ContentTagStartField),
         ContinueStmt(ContinueStmtField),
         DebuggerStmt(DebuggerStmtField),
         Decl(DeclField),
@@ -142947,6 +145561,11 @@ pub mod fields {
                 Self::ComputedPropName(v) => v.set_index(index),
                 Self::CondExpr(v) => v.set_index(index),
                 Self::Constructor(v) => v.set_index(index),
+                Self::ContentTagContent(v) => v.set_index(index),
+                Self::ContentTagEnd(v) => v.set_index(index),
+                Self::ContentTagExpression(v) => v.set_index(index),
+                Self::ContentTagMember(v) => v.set_index(index),
+                Self::ContentTagStart(v) => v.set_index(index),
                 Self::ContinueStmt(v) => v.set_index(index),
                 Self::DebuggerStmt(v) => v.set_index(index),
                 Self::Decl(v) => v.set_index(index),
@@ -143188,6 +145807,11 @@ pub mod fields {
         ComputedPropName(&'ast ComputedPropName, ComputedPropNameField),
         CondExpr(&'ast CondExpr, CondExprField),
         Constructor(&'ast Constructor, ConstructorField),
+        ContentTagContent(&'ast ContentTagContent, ContentTagContentField),
+        ContentTagEnd(&'ast ContentTagEnd, ContentTagEndField),
+        ContentTagExpression(&'ast ContentTagExpression, ContentTagExpressionField),
+        ContentTagMember(&'ast ContentTagMember, ContentTagMemberField),
+        ContentTagStart(&'ast ContentTagStart, ContentTagStartField),
         ContinueStmt(&'ast ContinueStmt, ContinueStmtField),
         DebuggerStmt(&'ast DebuggerStmt, DebuggerStmtField),
         Decl(&'ast Decl, DeclField),
@@ -143447,6 +146071,11 @@ pub mod fields {
                 Self::ComputedPropName(_, __field_kind) => __field_kind.set_index(index),
                 Self::CondExpr(_, __field_kind) => __field_kind.set_index(index),
                 Self::Constructor(_, __field_kind) => __field_kind.set_index(index),
+                Self::ContentTagContent(_, __field_kind) => __field_kind.set_index(index),
+                Self::ContentTagEnd(_, __field_kind) => __field_kind.set_index(index),
+                Self::ContentTagExpression(_, __field_kind) => __field_kind.set_index(index),
+                Self::ContentTagMember(_, __field_kind) => __field_kind.set_index(index),
+                Self::ContentTagStart(_, __field_kind) => __field_kind.set_index(index),
                 Self::ContinueStmt(_, __field_kind) => __field_kind.set_index(index),
                 Self::DebuggerStmt(_, __field_kind) => __field_kind.set_index(index),
                 Self::Decl(_, __field_kind) => __field_kind.set_index(index),
@@ -143697,6 +146326,19 @@ pub mod fields {
                 }
                 Self::CondExpr(_, __field_kind) => AstParentKind::CondExpr(*__field_kind),
                 Self::Constructor(_, __field_kind) => AstParentKind::Constructor(*__field_kind),
+                Self::ContentTagContent(_, __field_kind) => {
+                    AstParentKind::ContentTagContent(*__field_kind)
+                }
+                Self::ContentTagEnd(_, __field_kind) => AstParentKind::ContentTagEnd(*__field_kind),
+                Self::ContentTagExpression(_, __field_kind) => {
+                    AstParentKind::ContentTagExpression(*__field_kind)
+                }
+                Self::ContentTagMember(_, __field_kind) => {
+                    AstParentKind::ContentTagMember(*__field_kind)
+                }
+                Self::ContentTagStart(_, __field_kind) => {
+                    AstParentKind::ContentTagStart(*__field_kind)
+                }
                 Self::ContinueStmt(_, __field_kind) => AstParentKind::ContinueStmt(*__field_kind),
                 Self::DebuggerStmt(_, __field_kind) => AstParentKind::DebuggerStmt(*__field_kind),
                 Self::Decl(_, __field_kind) => AstParentKind::Decl(*__field_kind),
@@ -144201,6 +146843,31 @@ impl<'ast> From<&'ast CondExpr> for NodeRef<'ast> {
 impl<'ast> From<&'ast Constructor> for NodeRef<'ast> {
     fn from(node: &'ast Constructor) -> Self {
         NodeRef::Constructor(node)
+    }
+}
+impl<'ast> From<&'ast ContentTagContent> for NodeRef<'ast> {
+    fn from(node: &'ast ContentTagContent) -> Self {
+        NodeRef::ContentTagContent(node)
+    }
+}
+impl<'ast> From<&'ast ContentTagEnd> for NodeRef<'ast> {
+    fn from(node: &'ast ContentTagEnd) -> Self {
+        NodeRef::ContentTagEnd(node)
+    }
+}
+impl<'ast> From<&'ast ContentTagExpression> for NodeRef<'ast> {
+    fn from(node: &'ast ContentTagExpression) -> Self {
+        NodeRef::ContentTagExpression(node)
+    }
+}
+impl<'ast> From<&'ast ContentTagMember> for NodeRef<'ast> {
+    fn from(node: &'ast ContentTagMember) -> Self {
+        NodeRef::ContentTagMember(node)
+    }
+}
+impl<'ast> From<&'ast ContentTagStart> for NodeRef<'ast> {
+    fn from(node: &'ast ContentTagStart) -> Self {
+        NodeRef::ContentTagStart(node)
     }
 }
 impl<'ast> From<&'ast ContinueStmt> for NodeRef<'ast> {
@@ -145253,6 +147920,11 @@ pub enum NodeRef<'ast> {
     ComputedPropName(&'ast ComputedPropName),
     CondExpr(&'ast CondExpr),
     Constructor(&'ast Constructor),
+    ContentTagContent(&'ast ContentTagContent),
+    ContentTagEnd(&'ast ContentTagEnd),
+    ContentTagExpression(&'ast ContentTagExpression),
+    ContentTagMember(&'ast ContentTagMember),
+    ContentTagStart(&'ast ContentTagStart),
     ContinueStmt(&'ast ContinueStmt),
     DebuggerStmt(&'ast DebuggerStmt),
     Decl(&'ast Decl),
@@ -145753,6 +148425,9 @@ impl<'ast> NodeRef<'ast> {
                 ClassMember::AutoAccessor(v0) => {
                     Box::new(::std::iter::once(NodeRef::AutoAccessor(v0)))
                 }
+                ClassMember::ContentTagMember(v0) => {
+                    Box::new(::std::iter::once(NodeRef::ContentTagMember(v0)))
+                }
                 _ => Box::new(::std::iter::empty::<NodeRef<'ast>>()),
             },
             NodeRef::ClassMethod(node) => {
@@ -145834,6 +148509,50 @@ impl<'ast> NodeRef<'ast> {
                             .iter()
                             .flat_map(|item| ::std::iter::once(NodeRef::Accessibility(&item))),
                     );
+                Box::new(iterator)
+            }
+            NodeRef::ContentTagContent(node) => {
+                let iterator = ::std::iter::empty::<NodeRef<'ast>>();
+                Box::new(iterator)
+            }
+            NodeRef::ContentTagEnd(node) => {
+                let iterator = ::std::iter::empty::<NodeRef<'ast>>();
+                Box::new(iterator)
+            }
+            NodeRef::ContentTagExpression(node) => {
+                let iterator = ::std::iter::empty::<NodeRef<'ast>>()
+                    .chain({
+                        let item = &*node.opening;
+                        ::std::iter::once(NodeRef::ContentTagStart(&item))
+                    })
+                    .chain({
+                        let item = &*node.contents;
+                        ::std::iter::once(NodeRef::ContentTagContent(&item))
+                    })
+                    .chain({
+                        let item = &*node.closing;
+                        ::std::iter::once(NodeRef::ContentTagEnd(&item))
+                    });
+                Box::new(iterator)
+            }
+            NodeRef::ContentTagMember(node) => {
+                let iterator = ::std::iter::empty::<NodeRef<'ast>>()
+                    .chain({
+                        let item = &*node.opening;
+                        ::std::iter::once(NodeRef::ContentTagStart(&item))
+                    })
+                    .chain({
+                        let item = &*node.contents;
+                        ::std::iter::once(NodeRef::ContentTagContent(&item))
+                    })
+                    .chain({
+                        let item = &*node.closing;
+                        ::std::iter::once(NodeRef::ContentTagEnd(&item))
+                    });
+                Box::new(iterator)
+            }
+            NodeRef::ContentTagStart(node) => {
+                let iterator = ::std::iter::empty::<NodeRef<'ast>>();
                 Box::new(iterator)
             }
             NodeRef::ContinueStmt(node) => {
@@ -145983,6 +148702,9 @@ impl<'ast> NodeRef<'ast> {
                 Expr::JSXEmpty(v0) => Box::new(::std::iter::once(NodeRef::JSXEmptyExpr(v0))),
                 Expr::JSXElement(v0) => Box::new(::std::iter::once(NodeRef::JSXElement(v0))),
                 Expr::JSXFragment(v0) => Box::new(::std::iter::once(NodeRef::JSXFragment(v0))),
+                Expr::ContentTagExpression(v0) => {
+                    Box::new(::std::iter::once(NodeRef::ContentTagExpression(v0)))
+                }
                 Expr::TsTypeAssertion(v0) => {
                     Box::new(::std::iter::once(NodeRef::TsTypeAssertion(v0)))
                 }

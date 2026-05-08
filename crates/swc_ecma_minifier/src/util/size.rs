@@ -140,6 +140,8 @@ impl SizeWithCtxt for Expr {
                     - 1
             }
 
+            Expr::ContentTagExpression(e) => e.contents.value.len(),
+
             Expr::This(_) => 4,
             Expr::Array(a) => 2 + a.elems.size(unresolved),
             Expr::Object(o) => 2 + o.props.size(unresolved),

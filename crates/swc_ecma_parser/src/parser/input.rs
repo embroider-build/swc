@@ -158,6 +158,15 @@ impl<I: Tokens> Buffer<I> {
         error
     }
 
+    pub fn expect_content_tag_content_token_value(&mut self) -> Atom {
+        let Some(crate::lexer::TokenValue::ContentTagContent(value)) =
+            self.iter.take_token_value()
+        else {
+            unreachable!()
+        };
+        value
+    }
+
     pub fn get_token_value(&self) -> Option<&TokenValue> {
         self.iter.get_token_value()
     }

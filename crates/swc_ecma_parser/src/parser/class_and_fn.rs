@@ -1491,6 +1491,20 @@ impl<I: Tokens> Parser<I> {
         trace_cur!(self, parse_class_member);
 
         let start = self.cur_pos();
+
+        if self.input.is(Token::ContentTagStart) {
+            return self
+                .parse_content_tag_template()
+                .map(|content_tag_template| {
+                    ClassMember::ContentTagMember(ContentTagMember {
+                        span: content_tag_template.span,
+                        opening: content_tag_template.opening,
+                        contents: content_tag_template.contents,
+                        closing: content_tag_template.closing,
+                    })
+                });
+        }
+
         let decorators = self.parse_decorators(false)?;
         let declare = self.syntax().typescript() && self.input_mut().eat(Token::Declare);
         let accessibility = if self.input().syntax().typescript() {

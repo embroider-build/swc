@@ -27,7 +27,7 @@ use crate::{
         jsx::xhtml,
         number::{parse_integer, LazyInteger},
         search::SafeByteMatchTable,
-        state::State,
+        state::{ContentTagState, State},
     },
     safe_byte_match_table,
     syntax::SyntaxFlags,
@@ -418,10 +418,52 @@ impl<'a> Lexer<'a> {
 }
 
 impl Lexer<'_> {
+    fn read_content_tag_template(&mut self) -> LexResult<Token> {
+        let start = self.cur_pos();
+        loop {
+            if !self.cur().is_some() {
+                return self.error(start, SyntaxError::Eof);
+            }
+            if self.is_str("</template>") {
+                self.state.content_tag_template = ContentTagState::Ending;
+                let slice_end = self.cur_pos();
+                let value: Atom = unsafe {
+                    // safety: we know start and slice_end are valid cursor
+                    // positions because that's where we got them from
+                    self.input.slice(start, slice_end)
+                }
+                .into();
+                return Ok(Token::content_tag_content(value, self));
+            }
+            self.bump(1);
+        }
+    }
+
+    fn end_content_tag_template(&mut self) -> LexResult<Token> {
+        let start = self.cur_pos();
+        if !self.cur().is_some() || !self.is_str("</template>") {
+            return self.error(start, SyntaxError::Eof);
+        }
+        for _ in 0..11 {
+            self.bump(1);
+        }
+        self.state.content_tag_template = ContentTagState::None;
+        Ok(Token::ContentTagEnd)
+    }
+
     fn read_token_lt_gt<const C: u8>(&mut self) -> LexResult<Token> {
         let had_line_break_before_last = self.state.had_line_break;
         let start = self.cur_pos();
         self.bump(1); // first `<` or `>`
+
+        if C == b'<' && self.is_str("template>") {
+            // consume the rest of the opening <template> tag
+            for _ in 0..9 {
+                self.bump(1);
+            }
+            self.state.content_tag_template = ContentTagState::Reading;
+            return Ok(Token::ContentTagStart);
+        }
 
         if self.syntax.typescript()
             && self.ctx.contains(Context::InType)

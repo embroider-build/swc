@@ -143,6 +143,8 @@ impl MacroNode for ClassMember {
             ClassMember::Empty(ref n) => emit!(n),
             ClassMember::StaticBlock(ref n) => emit!(n),
             ClassMember::AutoAccessor(ref n) => emit!(n),
+            ClassMember::ContentTagMember(ref n) => emit!(n),
+
             #[cfg(swc_ast_unknown)]
             _ => return Err(unknown_error()),
         }

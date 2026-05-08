@@ -162,6 +162,9 @@ pub enum TokenKind {
     Num,
     BigInt,
     Keyword(Keyword),
+    ContentTagStart,
+    ContentTagContent,
+    ContentTagEnd,
 }
 
 /// Token with source metadata.

@@ -1658,6 +1658,7 @@ impl MacroNode for Expr {
             Expr::TsConstAssertion(n) => emit!(n),
             Expr::TsInstantiation(n) => emit!(n),
             Expr::OptChain(n) => emit!(n),
+            Expr::ContentTagExpression(n) => emit!(n),
             Expr::Invalid(n) => emit!(n),
             Expr::TsSatisfies(n) => {
                 emit!(n)
@@ -2451,6 +2452,26 @@ impl MacroNode for IdentName {
     fn emit(&mut self, emitter: &mut Macro) -> Result {
         emitter.emit_ident_like(self.span, &self.sym, false)?;
 
+        Ok(())
+    }
+}
+
+#[node_impl]
+impl MacroNode for ContentTagExpression {
+    fn emit(&mut self, emitter: &mut Macro) -> Result {
+        emitter.wr.write_str_lit(self.span, "<template>")?;
+        emitter.emit_atom(self.span, &self.contents.value)?;
+        emitter.wr.write_str_lit(self.span, "</template>")?;
+        Ok(())
+    }
+}
+
+#[node_impl]
+impl MacroNode for ContentTagMember {
+    fn emit(&mut self, emitter: &mut Macro) -> Result {
+        emitter.wr.write_str_lit(self.span, "<template>")?;
+        emitter.emit_atom(self.span, &self.contents.value)?;
+        emitter.wr.write_str_lit(self.span, "</template>")?;
         Ok(())
     }
 }

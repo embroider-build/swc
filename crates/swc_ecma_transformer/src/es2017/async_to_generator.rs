@@ -1220,6 +1220,7 @@ fn replace_this_in_expr(expr: &mut Expr, this_var: &Ident) {
         | Expr::TsInstantiation(_)
         | Expr::TsSatisfies(_)
         | Expr::MetaProp(_)
+        | Expr::ContentTagExpression(_)
         | Expr::Invalid(_) => {}
         #[cfg(swc_ast_unknown)]
         _ => {}

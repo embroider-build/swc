@@ -358,6 +358,41 @@ impl<I: Tokens> Parser<I> {
         Ok(expr)
     }
 
+    fn parse_content_tag_contents(&mut self) -> PResult<ContentTagContent> {
+        let start = self.input().cur_pos();
+        self.bump();
+        match self.input().cur() {
+            Token::ContentTagContent => {
+                let value = Token::ContentTagContent.take_content_tag_content(&mut self.input);
+                let span = self.span(start);
+                Ok(ContentTagContent { span, value })
+            }
+            _ => {
+                unexpected!(self, "content tag");
+            }
+        }
+    }
+
+    pub fn parse_content_tag_template(&mut self) -> PResult<ContentTagExpression> {
+        let opening_start = self.input().cur_pos();
+        self.assert_and_bump(Token::ContentTagStart);
+        let opening = ContentTagStart {
+            span: self.span(opening_start),
+        };
+        let contents = self.parse_content_tag_contents()?;
+        let closing_start = self.input.cur_pos();
+        self.assert_and_bump(Token::ContentTagEnd);
+        let closing = ContentTagEnd {
+            span: self.span(closing_start),
+        };
+        Ok(ContentTagExpression {
+            span: self.span(opening_start),
+            opening: opening.into(),
+            contents: contents.into(),
+            closing: closing.into(),
+        })
+    }
+
     #[inline(always)]
     pub(super) fn parse_primary_expr(&mut self) -> PResult<Box<Expr>> {
         trace_cur!(self, parse_primary_expr);
@@ -405,6 +440,13 @@ impl<I: Tokens> Parser<I> {
                 return Ok(self
                     .do_outside_of_context(Context::WillExpectColonForCond, |p| p.parse_tpl(false))?
                     .into());
+            }
+            Token::ContentTagStart => {
+                return self
+                    .parse_content_tag_template()
+                    .map(|content_tag_template| {
+                        Box::new(Expr::ContentTagExpression(content_tag_template))
+                    })
             }
             _ => {}
         }

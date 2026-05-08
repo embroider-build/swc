@@ -522,6 +522,7 @@ impl Classes {
                 | ClassMember::PrivateProp(..)
                 | ClassMember::TsIndexSignature(..)
                 | ClassMember::StaticBlock(..)
+                | ClassMember::ContentTagMember(..)
                 | ClassMember::AutoAccessor(..) => {}
                 ClassMember::Empty(..) => {}
 

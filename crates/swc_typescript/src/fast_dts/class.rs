@@ -250,6 +250,8 @@ impl FastDts {
                     class.body.push(member);
                 }
                 ClassMember::Empty(_) | ClassMember::StaticBlock(_) => {}
+                ClassMember::ContentTagMember(_) => {}
+
                 #[cfg(swc_ast_unknown)]
                 _ => panic!("unable to access unknown nodes"),
             }
