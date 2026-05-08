@@ -1294,6 +1294,7 @@ fn can_be_null(e: &Expr) -> bool {
         | Expr::Object(..)
         | Expr::Fn(..)
         | Expr::Class(..)
+        | Expr::ContentTagExpression(..)
         | Expr::Tpl(..) => false,
 
         Expr::TaggedTpl(..) => true,

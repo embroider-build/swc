@@ -1160,6 +1160,42 @@ impl VisitMut for TreeShaker {
             Decl::Class(c)
                 if self.can_drop_binding(c.ident.to_id(), false)
                     && class_def_is_side_effect_free(&c.class, self.expr_ctx) =>
+                    && c.class
+                        .super_class
+                        .as_deref()
+                        .map_or(true, |e| !e.may_have_side_effects(self.expr_ctx))
+                    && c.class.body.iter().all(|m| match m {
+                        ClassMember::Method(m) => !matches!(m.key, PropName::Computed(..)),
+                        ClassMember::ClassProp(m) => {
+                            !matches!(m.key, PropName::Computed(..))
+                                && !m
+                                    .value
+                                    .as_deref()
+                                    .is_some_and(|e| e.may_have_side_effects(self.expr_ctx))
+                        }
+                        ClassMember::AutoAccessor(m) => {
+                            !matches!(m.key, Key::Public(PropName::Computed(..)))
+                                && !m
+                                    .value
+                                    .as_deref()
+                                    .is_some_and(|e| e.may_have_side_effects(self.expr_ctx))
+                        }
+
+                        ClassMember::PrivateProp(m) => !m
+                            .value
+                            .as_deref()
+                            .is_some_and(|e| e.may_have_side_effects(self.expr_ctx)),
+
+                        ClassMember::StaticBlock(_) => false,
+                        ClassMember::ContentTagMember(_) => false,
+
+                        ClassMember::TsIndexSignature(_)
+                        | ClassMember::Empty(_)
+                        | ClassMember::Constructor(_)
+                        | ClassMember::PrivateMethod(_) => true,
+                        #[cfg(swc_ast_unknown)]
+                        _ => panic!("unable to access unknown nodes"),
+                    }) =>
             {
                 #[cfg(debug_assertions)]
                 debug!("Dropping class `{}` as it's not used", c.ident);

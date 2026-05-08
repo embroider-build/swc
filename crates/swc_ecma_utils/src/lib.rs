@@ -1960,7 +1960,7 @@ impl ExprCtx {
             | Expr::Fn(..)
             | Expr::Arrow(..)
             | Expr::PrivateName(..) => {}
-
+            Expr::ContentTagExpression(..) => {}
             Expr::Ident(..) => {
                 if expr.may_have_side_effects(self) {
                     to.push(Box::new(expr));
@@ -3863,6 +3863,8 @@ fn may_have_side_effects(expr: &Expr, ctx: ExprCtx) -> bool {
         | Expr::SuperProp(_)
         | Expr::Update(_)
         | Expr::Assign(_) => true,
+
+        Expr::ContentTagExpression(..) => false,
 
         Expr::OptChain(OptChainExpr { base, .. }) if matches!(&**base, OptChainBase::Member(_)) => {
             true
