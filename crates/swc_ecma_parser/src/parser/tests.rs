@@ -1039,6 +1039,105 @@ fn bench_new_expr_ts(b: &mut Bencher) {
     );
 }
 
+fn content_tag_expr_value(src: &'static str) -> String {
+    test_parser(src, Default::default(), |p| {
+        let expr = p.parse_expr()?;
+        match *expr {
+            Expr::ContentTagExpression(e) => Ok(e.contents.value.to_string()),
+            other => panic!("expected a content tag expression, got {other:?}"),
+        }
+    })
+}
+
+#[test]
+fn content_tag_simple() {
+    assert_eq!(
+        content_tag_expr_value("<template>hello</template>"),
+        "hello"
+    );
+}
+
+#[test]
+fn content_tag_nested_template_with_attributes() {
+    assert_eq!(
+        content_tag_expr_value(
+            "<template><template shadowrootmode=\"open\">hi</template></template>"
+        ),
+        "<template shadowrootmode=\"open\">hi</template>"
+    );
+}
+
+#[test]
+fn content_tag_nested_bare_template() {
+    assert_eq!(
+        content_tag_expr_value("<template><template>hi</template></template>"),
+        "<template>hi</template>"
+    );
+}
+
+#[test]
+fn content_tag_nested_template_multiline() {
+    assert_eq!(
+        content_tag_expr_value(
+            "<template>\n  <template\n    shadowrootmode=\"open\"\n  >hi</template>\n</template>"
+        ),
+        "\n  <template\n    shadowrootmode=\"open\"\n  >hi</template>\n"
+    );
+}
+
+#[test]
+fn content_tag_nested_sibling_templates() {
+    assert_eq!(
+        content_tag_expr_value(
+            "<template><template>a</template><div><template>b</template></div></template>"
+        ),
+        "<template>a</template><div><template>b</template></div>"
+    );
+}
+
+#[test]
+fn content_tag_deeply_nested_templates() {
+    assert_eq!(
+        content_tag_expr_value("<template><template><template>a</template></template></template>"),
+        "<template><template>a</template></template>"
+    );
+}
+
+#[test]
+fn content_tag_element_with_template_prefix_is_not_nested() {
+    assert_eq!(
+        content_tag_expr_value("<template><templates>a</templates></template>"),
+        "<templates>a</templates>"
+    );
+}
+
+#[test]
+fn content_tag_nested_in_class_member() {
+    let class = test_parser(
+        "class X { <template><template shadowrootmode=\"open\">hi</template></template> }",
+        Default::default(),
+        |p| p.parse_expr(),
+    );
+    let members = match *class {
+        Expr::Class(c) => c.class.body,
+        other => panic!("expected a class expression, got {other:?}"),
+    };
+    assert_eq!(members.len(), 1);
+    match &members[0] {
+        ClassMember::ContentTagMember(m) => assert_eq!(
+            m.contents.value.to_string(),
+            "<template shadowrootmode=\"open\">hi</template>"
+        ),
+        other => panic!("expected a content tag member, got {other:?}"),
+    }
+}
+
+#[test]
+#[should_panic(expected = "failed to parse")]
+fn content_tag_unclosed_nested_template() {
+    content_tag_expr_value("<template><template shadowrootmode=\"open\">hi</template>");
+}
+
 #[bench]
 fn bench_new_expr_es(b: &mut Bencher) {
     bench_parser(b, "new Foo()", Syntax::Es(Default::default()), |p| {
