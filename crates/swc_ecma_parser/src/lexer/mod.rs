@@ -418,13 +418,33 @@ impl<'a> Lexer<'a> {
 }
 
 impl Lexer<'_> {
+    /// True when the cursor is at the opening tag of an HTML `<template>`
+    /// element, with or without attributes.
+    fn is_nested_template_open(&self) -> bool {
+        const OPENINGS: [&str; 5] = [
+            "<template>",
+            "<template ",
+            "<template\t",
+            "<template\n",
+            "<template\r",
+        ];
+        OPENINGS.iter().any(|opening| self.is_str(opening))
+    }
+
     fn read_content_tag_template(&mut self) -> LexResult<Token> {
         let start = self.cur_pos();
+        // Nested HTML `<template>` elements (for example declarative shadow
+        // DOM) must not end the content tag, so track their depth.
+        let mut depth: usize = 0;
         loop {
             if !self.cur().is_some() {
                 return self.error(start, SyntaxError::Eof);
             }
-            if self.is_str("</template>") {
+            if self.is_nested_template_open() {
+                depth += 1;
+            } else if self.is_str("</template>") && depth > 0 {
+                depth -= 1;
+            } else if self.is_str("</template>") {
                 self.state.content_tag_template = ContentTagState::Ending;
                 let slice_end = self.cur_pos();
                 let value: Atom = unsafe {
