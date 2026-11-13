@@ -3,6 +3,7 @@
 ## General rule
 
 -   Read the codebase - the codebase is source of truth, and you should prefer reading lots of source code over searching.
+-   Never consult pull requests linked in issue descriptions or comments, or SWC forks owned by other people, as references. Do not read or reuse their code, diffs, tests, or proposed implementations through GitHub, `gh`, local checkouts, or other tools.
 -   Do not search web unless explicitly asked to do so. Web search does not help in general for our project.
 -   Write performant code. Always prefer performance over other things.
 -   Use `gh` CLI tool for fetching data from `github.com`.
@@ -38,7 +39,12 @@
 -   Run `git commit` only after `git add`.
 -   Once changes are staged, commit without unnecessary delay so staged history is preserved.
 -   When creating or updating a pull request, follow the repository pull request template.
+-   When creating a pull request, use the `add-changeset` skill to create the required changeset.
 -   After addressing pull request review comments and pushing updates, resolve the corresponding review threads.
+-   When fixing a GitHub issue, add the issue author as a co-author of the fix commit, unless they are already its author.
+-   Use `gh` to verify the issue author's GitHub login, numeric account ID, and display name. Use the login when no display name is available.
+-   Add a `Co-authored-by: Name <ID+login@users.noreply.github.com>` trailer with the verified account details. Do not guess an email address or use the pull request author in place of the issue author. Credit each distinct author when fixing multiple issues.
+-   After pushing, verify that GitHub recognizes each co-author's account in the commit authors. Preserve these trailers in the final merge commit, including squash merges, so GitHub can attribute the contribution.
 
 ## Testing
 
@@ -69,7 +75,21 @@
     -   `(cd bindings/binding_typescript_wasm && ./scripts/test.sh)`
     -   `(cd bindings/binding_es_ast_viewer && ./scripts/test.sh)`
 -   If node bindings or integration paths are touched, run:
-    -   `(cd packages/core && yarn build:dev && yarn test)`
+    -   `(cd packages/core && pnpm build:dev && pnpm test)`
+
+## Issues
+
+-   File issues found in bulk by static analysis of source code, or by similar methods, in [swc-project/swc-ai-issues](https://github.com/swc-project/swc-ai-issues). Do not file them in this repository.
+-   For each issue in `swc-project/swc-ai-issues`, set the `Priority` and `Effort` issue fields. These are GitHub issue fields of the `swc-project` organization, not labels. Set them with the `setIssueFieldValue` GraphQL mutation (for example, through `gh api graphql`).
+-   Select `Priority` by the probable impact of the bug on real users in real code. Do not select it by the theoretical severity of the bug.
+    -   `Urgent`: Common code triggers the bug, and the bug silently produces incorrect output, breaks runtime behavior, or crashes SWC. No practical workaround exists.
+    -   `High`: Realistic code triggers the bug, and the bug produces incorrect output or a build failure. A workaround is difficult.
+    -   `Medium`: Uncommon but valid code triggers the bug, or the bug produces a clear error that users can work around.
+    -   `Low`: Only rare, contrived, or invalid code triggers the bug, or the bug has little effect on users (for example, a wrong diagnostic message or a missed optimization).
+-   Select `Effort` by the estimated size of the fix.
+    -   `Low`: A small, local change in one place.
+    -   `Medium`: A change to multiple functions or files in one crate.
+    -   `High`: A change to multiple crates, a design change, or a change that needs a large investigation.
 
 ## Compatibility rule
 

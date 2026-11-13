@@ -26,7 +26,10 @@ use self::{
 };
 use crate::{
     scope_helpers::{for_each_param_binding, for_each_pat_binding},
-    util::EndsWithAlphaNum,
+    util::{
+        leading_regex, starts_with_lt, starts_with_regex, type_starts_with_lt, EndsWithAlphaNum,
+        EndsWithTypeScriptToken, TrailingToken,
+    },
 };
 
 #[macro_use]
@@ -43,6 +46,7 @@ mod object;
 mod pat;
 mod scope_helpers;
 mod stmt;
+mod template;
 #[cfg(test)]
 mod tests;
 pub mod text_writer;
@@ -119,6 +123,41 @@ where
     pub wr: W,
 }
 
+/// The minimum precedence required by an expression's parent.
+///
+/// Most expressions are already parenthesized by the fixer, but non-finite
+/// numeric literals can expand into division expressions while being emitted.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct ExprPrecedence(u8);
+
+impl ExprPrecedence {
+    const EXPONENTIATION: Self = Self(11);
+    const LOWEST: Self = Self(0);
+    const MULTIPLICATIVE: Self = Self(10);
+    const POSTFIX: Self = Self(13);
+    const PREFIX: Self = Self(12);
+
+    #[inline]
+    fn for_binary_left(op: BinaryOp) -> Self {
+        if op == op!("**") {
+            // Exponentiation cannot have an unparenthesized unary expression on
+            // the left-hand side.
+            Self::PREFIX
+        } else {
+            Self(op.precedence() - 1)
+        }
+    }
+
+    #[inline]
+    fn for_binary_right(op: BinaryOp) -> Self {
+        if op == op!("**") {
+            Self::MULTIPLICATIVE
+        } else {
+            Self(op.precedence())
+        }
+    }
+}
+
 enum CowStr<'a> {
     Borrowed(&'a str),
     Owned(CompactString),
@@ -135,7 +174,9 @@ impl Deref for CowStr<'_> {
     }
 }
 
-static NEW_LINE_TPL_REGEX: Lazy<regex::Regex> = Lazy::new(|| regex::Regex::new(r"\\n|\n").unwrap());
+// Consume other escapes too, so an escaped backslash cannot start a newline.
+static NEW_LINE_TPL_REGEX: Lazy<regex::Regex> =
+    Lazy::new(|| regex::Regex::new(r"(\\(?:n|x0[aA]|u000[aA]|u\{0*[aA]\}|\n)|\n)|\\.").unwrap());
 
 impl<W, S: SourceMapper> Emitter<'_, W, S>
 where
@@ -152,6 +193,43 @@ where
 
     pub fn emit_script(&mut self, node: &Script) -> Result {
         node.emit_with(self)
+    }
+
+    /// Emits an expression with the precedence required by its parent.
+    ///
+    /// This only changes non-finite numeric literals. All other expressions
+    /// continue through their existing emitters.
+    #[inline]
+    fn emit_expr_with_precedence(&mut self, expr: &Expr, precedence: ExprPrecedence) -> Result {
+        if let Expr::Lit(Lit::Num(num)) = expr {
+            if !num.value.is_finite() {
+                self.emit_num_lit_expr(num, precedence, false)?;
+
+                if self.comments.is_some() {
+                    self.emit_trailing_comments_of_pos(expr.span().hi, true, true)?;
+                }
+
+                return Ok(());
+            }
+        }
+
+        expr.emit_with(self)
+    }
+
+    /// Returns whether an expression starts with an alphanumeric token after
+    /// applying code-generation-only rewrites.
+    #[inline]
+    fn expr_starts_with_alpha_num_after_codegen(
+        &self,
+        expr: &Expr,
+        precedence: ExprPrecedence,
+    ) -> bool {
+        match expr {
+            Expr::Lit(Lit::Num(num)) if !num.value.is_finite() => {
+                self.non_finite_expr_starts_with_alpha_num(num, precedence)
+            }
+            _ => expr.starts_with_alpha_num(),
+        }
     }
 
     #[inline(always)]
@@ -208,24 +286,29 @@ where
 
         keyword!(self, "new");
 
-        let starts_with_alpha_num = node.callee.starts_with_alpha_num();
+        let starts_with_alpha_num =
+            self.expr_starts_with_alpha_num_after_codegen(&node.callee, ExprPrecedence::POSTFIX);
 
         if starts_with_alpha_num {
             space!(self);
         } else {
             formatting_space!(self);
         }
-        emit!(self, node.callee);
+        self.emit_expr_with_precedence(&node.callee, ExprPrecedence::POSTFIX)?;
 
         if let Some(type_args) = &node.type_args {
             emit!(self, type_args);
         }
 
         if let Some(ref args) = node.args {
-            if !(self.cfg.minify && args.is_empty() && should_ignore_empty_args) {
-                punct!(self, "(");
-                self.emit_expr_or_spreads(node.span(), args, ListFormat::NewExpressionArguments)?;
-                punct!(self, ")");
+            // A generic constructor needs `()` to keep its type arguments distinct
+            // from following relational, shift, or unary operators.
+            let omit_args = self.cfg.minify
+                && args.is_empty()
+                && should_ignore_empty_args
+                && node.type_args.is_none();
+            if !omit_args {
+                self.emit_arguments(node.span(), args, ListFormat::NewExpressionArguments)?;
             }
         }
 
@@ -285,17 +368,23 @@ where
         let need_pre_space = if self.cfg.minify {
             if is_kwd_op {
                 node.left.ends_with_alpha_num()
-            } else {
+            } else if matches!(node.op, op!("==") | op!("===")) {
+                // Keep postfix `!` and type argument `>` from becoming `!=` or `>=`.
+                node.left.trailing_token().is_some()
+            } else if matches!(node.op, op!(">") | op!(">>") | op!(">>>") | op!(">=")) {
+                // Inspect the suffix only when the operator can merge with it.
                 // space is mandatory to avoid outputting -->
                 match *node.left {
                     Expr::Update(UpdateExpr {
                         prefix: false, op, ..
-                    }) => matches!(
-                        (op, node.op),
-                        (op!("--"), op!(">") | op!(">>") | op!(">>>") | op!(">="))
+                    }) => op == op!("--"),
+                    _ => matches!(
+                        node.left.trailing_token(),
+                        Some(TrailingToken::TypeArgumentClose)
                     ),
-                    _ => false,
                 }
+            } else {
+                false
             }
         } else {
             is_kwd_op
@@ -317,10 +406,25 @@ where
             } else if node.op == op!("/") {
                 let span = node.right.span();
 
+                // A leading comment or a regular expression literal right after
+                // `/` would start a comment.
                 span.is_pure()
                     || self
                         .comments
-                        .is_some_and(|comments| comments.has_leading(node.right.span().lo))
+                        .is_some_and(|comments| comments.has_leading(span.lo))
+                    || starts_with_regex(&node.right)
+            } else if self.cfg.inline_script
+                && matches!(node.op, op!("<") | op!("<<"))
+                && leading_regex(&node.right).is_some_and(|regex| {
+                    regex
+                        .exp
+                        .as_bytes()
+                        .get(..6)
+                        .is_some_and(|prefix| prefix.eq_ignore_ascii_case(b"script"))
+                })
+            {
+                // The operator and the opening slash must not form `</script`.
+                true
             } else {
                 require_space_before_rhs(&node.right, &node.op)
             }
@@ -336,7 +440,52 @@ where
         } else {
             formatting_space!(self);
         }
-        emit!(self, node.right);
+        self.emit_expr_with_precedence(&node.right, ExprPrecedence::for_binary_right(node.op))?;
+
+        Ok(())
+    }
+
+    /// Emits a type parameter declaration with the caller's comma rules.
+    fn emit_ts_type_param_decl(&mut self, node: &TsTypeParamDecl, format: ListFormat) -> Result {
+        self.emit_leading_comments_of_span(node.span(), false)?;
+        punct!(self, "<");
+        self.emit_list(node.span, Some(&node.params), format)?;
+        punct!(self, ">");
+        Ok(())
+    }
+
+    /// Keep adjacent type argument and generic function openers from becoming
+    /// `<<`.
+    #[inline]
+    fn emit_ts_type_arguments(
+        &mut self,
+        node: &TsTypeParamInstantiation,
+        format: ListFormat,
+    ) -> Result {
+        punct!(self, "<");
+        if node
+            .params
+            .first()
+            .is_some_and(|ty| type_starts_with_lt(ty))
+        {
+            space!(self);
+        }
+        self.emit_list(node.span, Some(&node.params), format)?;
+        punct!(self, ">");
+        Ok(())
+    }
+
+    fn emit_fn_params(&mut self, node: &Function) -> Result {
+        punct!(self, "(");
+        if let Some(this_param) = &node.this_param {
+            emit!(self, this_param);
+            if !node.params.is_empty() {
+                punct!(self, ",");
+                formatting_space!(self);
+            }
+        }
+        self.emit_list(node.span, Some(&node.params), ListFormat::CommaListElements)?;
+        punct!(self, ")");
 
         Ok(())
     }
@@ -347,9 +496,7 @@ where
             emit!(self, type_params);
         }
 
-        punct!(self, "(");
-        self.emit_list(node.span, Some(&node.params), ListFormat::CommaListElements)?;
-        punct!(self, ")");
+        self.emit_fn_params(node)?;
 
         if let Some(ty) = &node.return_type {
             punct!(self, ":");
@@ -359,7 +506,7 @@ where
 
         if let Some(body) = &node.body {
             formatting_space!(self);
-            self.emit_block_stmt_inner(body, true)?;
+            self.emit_function_body_inner(body, true)?;
         } else {
             semi!(self);
         }
@@ -379,13 +526,25 @@ where
         Ok(())
     }
 
-    fn emit_expr_or_spreads(
+    /// Emits a parenthesized argument list, batching an empty pair without
+    /// invoking the list printer.
+    #[inline]
+    fn emit_arguments(
         &mut self,
         parent_node: Span,
         nodes: &[ExprOrSpread],
         format: ListFormat,
     ) -> Result {
-        self.emit_list(parent_node, Some(nodes), format)
+        if nodes.is_empty() {
+            // The opening parenthesis commits pending semicolons for the pair.
+            self.wr.write_punct(None, "()", true)?;
+            return Ok(());
+        }
+
+        punct!(self, "(");
+        self.emit_list(parent_node, Some(nodes), format)?;
+        punct!(self, ")");
+        Ok(())
     }
 
     fn emit_ident_like(&mut self, span: Span, sym: &Atom, optional: bool) -> Result {
@@ -774,14 +933,34 @@ where
         self.emit_leading_comments_of_span(node.span(), false)?;
 
         self.start_scope(None, ScopeKind::Block, false, false, Some(node.span))?;
+        self.emit_braced_stmts(node.span, &node.stmts, skip_first_src_map)?;
+        self.end_scope()?;
 
+        Ok(())
+    }
+
+    fn emit_function_body_inner(
+        &mut self,
+        node: &FunctionBody,
+        skip_first_src_map: bool,
+    ) -> Result {
+        self.emit_leading_comments_of_span(node.span(), false)?;
+        self.emit_braced_stmts(node.span, &node.stmts, skip_first_src_map)
+    }
+
+    fn emit_braced_stmts(
+        &mut self,
+        span: Span,
+        stmts: &[Stmt],
+        skip_first_src_map: bool,
+    ) -> Result {
         if !skip_first_src_map {
-            srcmap!(self, node, true);
+            srcmap!(self, span, true);
         }
         punct!(self, "{");
 
-        let emit_new_line = !self.cfg.minify
-            && !(node.stmts.is_empty() && is_empty_comments(&node.span(), &self.comments));
+        let emit_new_line =
+            !self.cfg.minify && !(stmts.is_empty() && is_empty_comments(&span, &self.comments));
 
         let mut list_format = ListFormat::MultiLineBlockStatements;
 
@@ -789,13 +968,12 @@ where
             list_format -= ListFormat::MultiLine | ListFormat::Indented;
         }
 
-        self.emit_list(node.span(), Some(&node.stmts), list_format)?;
+        self.emit_list(span, Some(stmts), list_format)?;
 
-        self.emit_leading_comments_of_span(node.span(), true)?;
+        self.emit_leading_comments_of_span(span, true)?;
 
-        srcmap!(self, node, false, true);
+        srcmap!(self, span, false, true);
         punct!(self, "}");
-        self.end_scope()?;
 
         Ok(())
     }
@@ -1039,73 +1217,9 @@ fn get_template_element_from_raw(
     ascii_only: bool,
     reduce_escaped_newline: bool,
 ) -> String {
-    fn read_escaped(
-        radix: u32,
-        len: Option<usize>,
-        buf: &mut String,
-        iter: impl Iterator<Item = char>,
-    ) {
-        let mut v = 0;
-        let mut pending = None;
-
-        for (i, c) in iter.enumerate() {
-            if let Some(len) = len {
-                if i == len {
-                    pending = Some(c);
-                    break;
-                }
-            }
-
-            match c.to_digit(radix) {
-                None => {
-                    pending = Some(c);
-                    break;
-                }
-                Some(d) => {
-                    v = v * radix + d;
-                }
-            }
-        }
-
-        match radix {
-            16 => {
-                match v {
-                    0 => match pending {
-                        Some('1'..='9') => write!(buf, "\\x00").unwrap(),
-                        _ => write!(buf, "\\0").unwrap(),
-                    },
-                    1..=15 => write!(buf, "\\x0{v:x}").unwrap(),
-                    // '\x20'..='\x7e'
-                    32..=126 => {
-                        let c = char::from_u32(v);
-
-                        match c {
-                            Some(c) => write!(buf, "{c}").unwrap(),
-                            _ => {
-                                unreachable!()
-                            }
-                        }
-                    }
-                    // '\x10'..='\x1f'
-                    // '\u{7f}'..='\u{ff}'
-                    _ => {
-                        write!(buf, "\\x{v:x}").unwrap();
-                    }
-                }
-            }
-
-            _ => unreachable!(),
-        }
-
-        if let Some(pending) = pending {
-            buf.push(pending);
-        }
-    }
-
     let mut buf = String::with_capacity(s.len());
     let mut iter = s.chars().peekable();
-
-    let mut is_dollar_prev = false;
+    let mut null_escape_end = None;
 
     while let Some(c) = iter.next() {
         let unescape = match c {
@@ -1122,33 +1236,33 @@ fn get_template_element_from_raw(
                         }
                     }
                     't' => Some('\t'),
-                    'x' => {
-                        read_escaped(16, Some(2), &mut buf, &mut iter);
-
-                        None
-                    }
-                    // TODO handle `\u1111` and `\u{1111}` too
+                    'x' | 'u' => match if c == 'x' {
+                        template::decode_hex_escape(&mut iter)
+                    } else {
+                        template::decode_unicode_escape(&mut iter, ascii_only)
+                    } {
+                        Some(c @ ('\\' | '`')) => {
+                            // Decoded delimiters must not become template syntax or escapes.
+                            buf.push('\\');
+                            Some(c)
+                        }
+                        Some('\n') if !reduce_escaped_newline => {
+                            buf.push_str("\\n");
+                            None
+                        }
+                        Some(c) => Some(c),
+                        None => {
+                            buf.push('\\');
+                            buf.push(c);
+                            None
+                        }
+                    },
                     // Source - https://github.com/eslint/eslint/blob/main/lib/rules/no-useless-escape.js
                     '\u{2028}' | '\u{2029}' => None,
-                    // `\t` and `\h` are special cases, because they can be replaced on real
-                    // characters `\xXX` can be replaced on character
-                    '\\' | 'r' | 'v' | 'b' | 'f' | 'u' | '\r' | '\n' | '`' | '0'..='7' => {
+                    '0' => Some('\0'),
+                    '\\' | 'r' | 'v' | 'b' | 'f' | '\r' | '\n' | '`' | '1'..='7' => {
                         buf.push('\\');
                         buf.push(c);
-
-                        None
-                    }
-                    '$' if iter.peek() == Some(&'{') => {
-                        buf.push('\\');
-                        buf.push('$');
-
-                        None
-                    }
-                    '{' if is_dollar_prev => {
-                        buf.push('\\');
-                        buf.push('{');
-
-                        is_dollar_prev = false;
 
                         None
                     }
@@ -1160,27 +1274,33 @@ fn get_template_element_from_raw(
         };
 
         match unescape {
-            Some(c @ '$') => {
-                is_dollar_prev = true;
-
-                buf.push(c);
+            Some('{') if buf.ends_with('$') => {
+                // Adjacent decoded characters must not introduce an interpolation.
+                buf.push_str("\\{");
             }
             Some('\x00') => {
-                let next = iter.peek();
-
-                match next {
-                    Some('1'..='9') => buf.push_str("\\x00"),
-                    _ => buf.push_str("\\0"),
-                }
+                buf.push_str("\\0");
+                null_escape_end = Some(buf.len());
+            }
+            Some(c @ '0'..='9') if null_escape_end == Some(buf.len()) => {
+                // Decide after decoding the next character: an escaped digit or a
+                // removed line continuation can otherwise turn \0 into an octal escape.
+                buf.truncate(buf.len() - 2);
+                buf.push_str("\\x00");
+                buf.push(c);
             }
             // Octal doesn't supported in template literals, except in tagged templates, but
             // we don't use this for tagged templates, they are printing as is
             Some('\u{0008}') => buf.push_str("\\b"),
             Some('\u{000c}') => buf.push_str("\\f"),
             Some('\n') => buf.push('\n'),
-            // `\r` is impossible here, because it was removed on parser stage
+            // A decoded carriage return must not be normalized to a line feed.
+            Some('\r') => buf.push_str("\\r"),
             Some('\u{000b}') => buf.push_str("\\v"),
             Some('\t') => buf.push('\t'),
+            Some(c @ '\x01'..='\x1f') => {
+                let _ = write!(buf, "\\x{:02x}", c as u8);
+            }
             // Print `"` and `'` without quotes
             Some(c @ '\x20'..='\x7e') => {
                 buf.push(c);
@@ -1197,7 +1317,6 @@ fn get_template_element_from_raw(
             Some('\u{FEFF}') => {
                 buf.push_str("\\uFEFF");
             }
-            // TODO(kdy1): Surrogate pairs
             Some(c) => {
                 if !ascii_only || c.is_ascii() {
                     buf.push(c);
@@ -1401,7 +1520,27 @@ fn handle_invalid_unicodes(s: &str) -> Cow<'_, str> {
     Cow::Owned(s.replace("\\\0", "\\"))
 }
 
-fn require_space_before_rhs(rhs: &Expr, op: &BinaryOp) -> bool {
+fn require_space_before_rhs(mut rhs: &Expr, op: &BinaryOp) -> bool {
+    // A word token cannot merge with a symbolic operator.
+    if matches!(rhs, Expr::Ident(..)) {
+        return false;
+    }
+
+    // Only these operators can merge with an expression's first token. Avoid
+    // walking the left edge when the operator already provides a boundary.
+    if !matches!(*op, op!(bin, "+") | op!(bin, "-") | op!("<") | op!("<<")) {
+        return false;
+    }
+
+    while let Expr::Bin(BinExpr { left, .. }) = rhs {
+        rhs = left;
+    }
+
+    // `<` followed by a type assertion or JSX would become a shift operator.
+    if *op == op!("<") && starts_with_lt(rhs) {
+        return true;
+    }
+
     match rhs {
         Expr::Lit(Lit::Num(v)) if v.value.is_sign_negative() && *op == op!(bin, "-") => true,
 
@@ -1429,8 +1568,6 @@ fn require_space_before_rhs(rhs: &Expr, op: &BinaryOp) -> bool {
             (op, unary),
             (op!(bin, "-"), op!(unary, "-")) | (op!(bin, "+"), op!(unary, "+"))
         ),
-
-        Expr::Bin(BinExpr { left, .. }) => require_space_before_rhs(left, op),
 
         _ => false,
     }
@@ -1482,7 +1619,7 @@ impl MacroNode for Program {
 
 #[node_impl]
 impl MacroNode for Module {
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[cfg_attr(debug_assertions, tracing::instrument(level = "debug", skip_all))]
     fn emit(&mut self, emitter: &mut Macro) -> Result {
         let should_skip_leading_comments = self.body.iter().any(|s| s.span().lo == self.span.lo);
 
@@ -1517,7 +1654,7 @@ impl MacroNode for Module {
 
 #[node_impl]
 impl MacroNode for Script {
-    #[tracing::instrument(level = "debug", skip_all)]
+    #[cfg_attr(debug_assertions, tracing::instrument(level = "debug", skip_all))]
     fn emit(&mut self, emitter: &mut Macro) -> Result {
         let should_skip_leading_comments = self.body.iter().any(|s| s.span().lo == self.span.lo);
 
@@ -1574,7 +1711,7 @@ impl MacroNode for Callee {
                 if let Expr::New(new) = &**e {
                     emitter.emit_new(new, false)?;
                 } else {
-                    emit!(e);
+                    emitter.emit_expr_with_precedence(e, ExprPrecedence::POSTFIX)?;
                 }
             }
             Callee::Super(n) => emit!(n),
@@ -1685,7 +1822,7 @@ impl MacroNode for OptChainExpr {
                 if let Expr::New(new) = &*e.obj {
                     emitter.emit_new(new, false)?;
                 } else {
-                    emit!(e.obj);
+                    emitter.emit_expr_with_precedence(&e.obj, ExprPrecedence::POSTFIX)?;
                 }
                 if self.optional {
                     punct!(emitter, "?.");
@@ -1703,19 +1840,21 @@ impl MacroNode for OptChainExpr {
             }
             OptChainBase::Call(e) => {
                 debug_assert!(!e.callee.is_new());
-                emit!(e.callee);
+                emitter.emit_expr_with_precedence(&e.callee, ExprPrecedence::POSTFIX)?;
 
                 if self.optional {
                     punct!(emitter, "?.");
                 }
 
-                punct!(emitter, "(");
-                emitter.emit_expr_or_spreads(
+                if let Some(type_args) = &e.type_args {
+                    emit!(type_args);
+                }
+
+                emitter.emit_arguments(
                     self.span(),
                     &e.args,
                     ListFormat::CallExpressionArguments,
                 )?;
-                punct!(emitter, ")");
             }
             #[cfg(swc_ast_unknown)]
             _ => return Err(unknown_error()),
@@ -1751,13 +1890,7 @@ impl MacroNode for CallExpr {
             emit!(type_args);
         }
 
-        punct!(emitter, "(");
-        emitter.emit_expr_or_spreads(
-            self.span(),
-            &self.args,
-            ListFormat::CallExpressionArguments,
-        )?;
-        punct!(emitter, ")");
+        emitter.emit_arguments(self.span(), &self.args, ListFormat::CallExpressionArguments)?;
 
         // srcmap!(emitter, self, false);
 
@@ -1788,7 +1921,8 @@ impl MacroNode for MemberExpr {
                 emitter.emit_new(new, false)?;
             }
             Expr::Lit(Lit::Num(num)) => {
-                needs_2dots_for_property_access = emitter.emit_num_lit_internal(num, true)?;
+                needs_2dots_for_property_access =
+                    emitter.emit_num_lit_expr(num, ExprPrecedence::POSTFIX, true)?;
             }
             _ => {
                 emit!(self.obj);
@@ -1895,13 +2029,32 @@ impl MacroNode for ArrowExpr {
             punct!(emitter, "*")
         }
 
+        // TypeScript annotations, optional parameters, and generic arrows require
+        // a parenthesized parameter list even with a single identifier.
         let parens = !emitter.cfg.minify
+            || self.type_params.is_some()
+            || self.return_type.is_some()
             || match self.params.as_slice() {
-                [Pat::Ident(i)] => emitter.has_trailing_comment(i.span),
+                [Pat::Ident(i)] => {
+                    i.type_ann.is_some() || i.id.optional || emitter.has_trailing_comment(i.span)
+                }
                 _ => true,
             };
 
-        emit!(self.type_params);
+        if let Some(type_params) = &self.type_params {
+            // The emitter has no TSX mode. Disambiguate single unconstrained
+            // generic arrows in both TypeScript and TSX instead of emitting JSX.
+            let needs_comma = matches!(
+                type_params.params.as_slice(),
+                [param] if param.constraint.is_none() && param.default.is_none()
+            );
+            let format = if needs_comma {
+                ListFormat::TypeParameters | ListFormat::ForceTrailingComma
+            } else {
+                ListFormat::TypeParameters
+            };
+            emitter.emit_ts_type_param_decl(type_params, format)?;
+        }
 
         if parens {
             punct!(emitter, "(");
@@ -1979,7 +2132,12 @@ impl MacroNode for AssignExpr {
         emitter.emit_leading_comments_of_span(self.span(), false)?;
 
         emit!(self.left);
-        formatting_space!(emitter);
+        if emitter.cfg.minify && self.op == op!("=") && self.left.trailing_token().is_some() {
+            // Keep postfix `!` and type argument `>` from becoming `!=` or `>=`.
+            space!(emitter);
+        } else {
+            formatting_space!(emitter);
+        }
         operator!(emitter, self.op.as_str());
         formatting_space!(emitter);
         emit!(self.right);
@@ -2013,7 +2171,10 @@ impl MacroNode for BinExpr {
 
             for (i, left) in lefts.into_iter().rev().enumerate() {
                 if i == 0 {
-                    emit!(left.left);
+                    emitter.emit_expr_with_precedence(
+                        &left.left,
+                        ExprPrecedence::for_binary_left(left.op),
+                    )?;
                 }
                 // Check if it's last
                 if i + 1 != len {
@@ -2115,13 +2276,13 @@ impl MacroNode for FnExpr {
 }
 
 #[node_impl]
-impl MacroNode for BlockStmtOrExpr {
+impl MacroNode for ArrowFunctionBody {
     fn emit(&mut self, emitter: &mut Macro) -> Result {
         match self {
-            BlockStmtOrExpr::BlockStmt(block) => {
-                emitter.emit_block_stmt_inner(block, true)?;
+            ArrowFunctionBody::FunctionBody(body) => {
+                emitter.emit_function_body_inner(body, true)?;
             }
-            BlockStmtOrExpr::Expr(expr) => {
+            ArrowFunctionBody::Expr(expr) => {
                 emitter.wr.increase_indent()?;
                 emit!(expr);
                 emitter.wr.decrease_indent()?;
@@ -2184,14 +2345,24 @@ impl MacroNode for TplElement {
                 emitter.cfg.ascii_only,
                 emitter.cfg.reduce_escaped_newline,
             );
+            // Decoding escapes can introduce HTML script terminators or comment
+            // markers, so protect the emitted text after the transformation.
+            let v = if emitter.cfg.inline_script {
+                lit::escape_inline_script(&v)
+            } else {
+                CowStr::Borrowed(&v)
+            };
             let span = self.span();
 
             let mut last_offset_gen = 0;
             let mut last_offset_origin = 0;
-            for ((offset_gen, _), mat) in v
-                .match_indices('\n')
-                .zip(NEW_LINE_TPL_REGEX.find_iter(&raw))
-            {
+            let reduce_escaped_newline = emitter.cfg.reduce_escaped_newline;
+            for ((offset_gen, _), mat) in v.match_indices('\n').zip(
+                NEW_LINE_TPL_REGEX
+                    .captures_iter(&raw)
+                    .filter_map(|c| c.get(1))
+                    .filter(|m| reduce_escaped_newline || m.as_str().ends_with('\n')),
+            ) {
                 // If the string starts with a newline char, then adding a mark is redundant.
                 // This catches both "no newlines" and "newline after several chars".
                 if offset_gen != 0 {
@@ -2229,7 +2400,7 @@ impl MacroNode for TaggedTpl {
         if let Expr::New(new) = &*self.tag {
             emitter.emit_new(new, false)?;
         } else {
-            emit!(self.tag);
+            emitter.emit_expr_with_precedence(&self.tag, ExprPrecedence::POSTFIX)?;
         }
 
         emit!(self.type_params);
@@ -2268,7 +2439,7 @@ impl MacroNode for UnaryExpr {
             formatting_space!(emitter);
         }
 
-        emit!(self.arg);
+        emitter.emit_expr_with_precedence(&self.arg, ExprPrecedence::EXPONENTIATION)?;
 
         Ok(())
     }
@@ -2355,7 +2526,7 @@ impl MacroNode for AwaitExpr {
         keyword!(emitter, "await");
         space!(emitter);
 
-        emit!(self.arg);
+        emitter.emit_expr_with_precedence(&self.arg, ExprPrecedence::EXPONENTIATION)?;
 
         Ok(())
     }

@@ -5,7 +5,7 @@ use super::*;
 use crate::parser::{pat::PatType, Parser};
 
 #[allow(clippy::enum_variant_names)]
-enum TempForHead {
+pub(super) enum TempForHead {
     For {
         init: Option<VarDeclOrExpr>,
         test: Option<Box<Expr>>,
@@ -67,7 +67,8 @@ impl<I: Tokens> Parser<I> {
         let test = if self.input_mut().eat(Token::Semi) {
             None
         } else {
-            let test = self.allow_in_expr(|p| p.parse_expr()).map(Some)?;
+            let test =
+                with_grammar_context!(self, [+In, ?Yield, ?Await], |p| p.parse_expr()).map(Some)?;
             self.input_mut().eat(Token::Semi);
             test
         };
@@ -75,7 +76,7 @@ impl<I: Tokens> Parser<I> {
         let update = if self.input().is(Token::RParen) {
             None
         } else {
-            self.allow_in_expr(|p| p.parse_expr()).map(Some)?
+            with_grammar_context!(self, [+In, ?Yield, ?Await], |p| p.parse_expr()).map(Some)?
         };
 
         Ok(TempForHead::For { init, test, update })
@@ -83,28 +84,30 @@ impl<I: Tokens> Parser<I> {
 
     fn parse_for_each_head(&mut self, left: ForHead) -> PResult<TempForHead> {
         let is_of = self.input().cur() == Token::Of;
+        // The separator is a keyword even when its name is contextual.
+        self.check_current_keyword_escape()?;
         self.bump();
         if is_of {
-            let right = self.allow_in_expr(Self::parse_assignment_expr)?;
+            let right =
+                with_grammar_context!(self, [+In, ?Yield, ?Await], Self::parse_assignment_expr)?;
             Ok(TempForHead::ForOf { left, right })
         } else {
             if let ForHead::UsingDecl(d) = &left {
                 self.emit_err(d.span, SyntaxError::UsingDeclNotAllowedForForInLoop)
             }
-            let right = self.allow_in_expr(|p| p.parse_expr())?;
+            let right = with_grammar_context!(self, [+In, ?Yield, ?Await], |p| p.parse_expr())?;
             Ok(TempForHead::ForIn { left, right })
         }
     }
 
     fn parse_return_stmt(&mut self) -> PResult<Stmt> {
-        let start = self.cur_pos();
-
         self.assert_and_bump(Token::Return);
+        let start = self.input().prev_span().lo;
 
         let arg = if self.is_general_semi() {
             None
         } else {
-            self.allow_in_expr(|p| p.parse_expr()).map(Some)?
+            with_grammar_context!(self, [+In, ?Yield, ?Await], |p| p.parse_expr()).map(Some)?
         };
         self.expect_general_semi()?;
         let stmt = Ok(ReturnStmt {
@@ -113,9 +116,7 @@ impl<I: Tokens> Parser<I> {
         }
         .into());
 
-        if !self.ctx().contains(Context::InFunction)
-            && !self.input().syntax().allow_return_outside_function()
-        {
+        if !self.allows_return_stmt() && !self.input().syntax().allow_return_outside_function() {
             self.emit_err(self.span(start), SyntaxError::ReturnNotAllowed);
         }
 
@@ -132,8 +133,12 @@ impl<I: Tokens> Parser<I> {
         let is_let_or_const = matches!(kind, VarDeclKind::Let | VarDeclKind::Const);
 
         let mut name = self.parse_binding_pat_or_ident(is_let_or_const)?;
+        let cur = self.input().cur();
+        let is_typescript =
+            matches!(cur, Token::Bang | Token::Colon) && self.input().syntax().typescript();
 
-        let definite = if self.input().syntax().typescript() {
+        // `!` cannot be a definite assignment assertion after a line break.
+        let definite = if is_typescript && !self.input().had_line_break_before_cur() {
             match name {
                 Pat::Ident(..) => self.input_mut().eat(Token::Bang),
                 _ => false,
@@ -143,7 +148,7 @@ impl<I: Tokens> Parser<I> {
         };
 
         // Typescript extension
-        if self.input().syntax().typescript() && self.input().is(Token::Colon) {
+        if is_typescript && self.input().is(Token::Colon) {
             let type_annotation = self.try_parse_ts_type_ann()?;
             match name {
                 Pat::Array(ArrayPat {
@@ -175,11 +180,11 @@ impl<I: Tokens> Parser<I> {
             } else {
                 // Destructuring bindings require initializers, but
                 // typescript allows `declare` vars not to have initializers.
-                if self.ctx().contains(Context::InDeclare) {
+                if self.type_ctx().contains(TypeContext::InDeclare) {
                     None
                 } else if kind == VarDeclKind::Const
                     && !for_loop
-                    && !self.ctx().contains(Context::InDeclare)
+                    && !self.type_ctx().contains(TypeContext::InDeclare)
                 {
                     self.emit_err(
                         self.span(start),
@@ -280,9 +285,7 @@ impl<I: Tokens> Parser<I> {
             }
 
             let decl = if should_include_in {
-                self.do_inside_of_context(Context::IncludeInExpr, |p| {
-                    p.parse_var_declarator(for_loop, kind)
-                })
+                with_grammar_context!(self, [+In, ?Yield, ?Await], |p| p.parse_var_declarator(for_loop, kind))
             } else {
                 self.parse_var_declarator(for_loop, kind)
             }?;
@@ -358,7 +361,10 @@ impl<I: Tokens> Parser<I> {
             self.emit_err(self.span(start), SyntaxError::UsingDeclNotEnabled);
         }
 
-        if !self.ctx().contains(Context::AllowUsingDecl) {
+        if !self
+            .statement_ctx()
+            .contains(StatementContext::AllowUsingDecl)
+        {
             self.emit_err(self.span(start), SyntaxError::UsingDeclNotAllowed);
         }
 
@@ -384,13 +390,29 @@ impl<I: Tokens> Parser<I> {
         })))
     }
 
-    fn parse_for_head(&mut self) -> PResult<TempForHead> {
-        // let strict = self.ctx().contains(Context::Strict);
+    pub(super) fn parse_for_head(&mut self) -> PResult<TempForHead> {
+        self.parse_for_head_with_await(false)
+    }
 
+    /// Keeps the iteration kind local to the loop head, not its nested
+    /// expressions.
+    pub(super) fn parse_for_head_with_await(&mut self, is_await: bool) -> PResult<TempForHead> {
         let cur = self.input().cur();
+        #[cfg(feature = "typescript")]
+        if self.type_ctx().contains(TypeContext::TsContainerBody)
+            && ((cur == Token::Await && !self.includes_await_expr())
+                || (cur == Token::Yield && !self.includes_yield_expr()))
+            && self.input_mut().peek() == Some(Token::Of)
+        {
+            if let Some(head) = self.try_parse_ts_container_for_of_head() {
+                return Ok(head);
+            }
+        }
+
         if cur == Token::Const
             || cur == Token::Var
             || (self.input().is(Token::Let)
+                && !self.input().has_escaped_keyword()
                 && peek!(self).map_or(false, |v| v.follows_keyword_let()))
         {
             let decl = self.parse_var_stmt(true)?;
@@ -450,7 +472,7 @@ impl<I: Tokens> Parser<I> {
         }
 
         let start = self.cur_pos();
-        let init = self.disallow_in_expr(Self::parse_for_head_prefix)?;
+        let init = with_grammar_context!(self, [~In, ?Yield, ?Await], Self::parse_for_head_prefix)?;
 
         let mut is_using_decl = false;
         let mut is_await_using_decl = false;
@@ -472,7 +494,8 @@ impl<I: Tokens> Parser<I> {
             }
 
             if maybe_using_decl
-                && !self.input().is(Token::Of)
+                // Only synchronous `using` forbids `of` as a for-of binding name.
+                && (maybe_await_using_decl || !self.input().is(Token::Of))
                 && (peek!(self).is_some_and(|peek| peek == Token::Of || peek == Token::In))
             {
                 is_using_decl = maybe_using_decl;
@@ -511,6 +534,16 @@ impl<I: Tokens> Parser<I> {
         if cur == Token::Of || cur == Token::In {
             let is_in = self.input().is(Token::In);
 
+            // The lookahead restriction matches the literal `async of` tokens,
+            // not an escaped identifier with the same decoded name.
+            if !is_in
+                && !is_await
+                && init.is_ident_ref_to("async")
+                && self.input.iter.read_string(init.span()) == "async"
+            {
+                self.emit_err(init.span(), SyntaxError::TS1106);
+            }
+
             let pat = self.reparse_expr_as_pat(PatType::AssignPat, init)?;
 
             // for ({} in foo) is invalid
@@ -531,32 +564,71 @@ impl<I: Tokens> Parser<I> {
         self.parse_normal_for_head(Some(VarDeclOrExpr::Expr(init)))
     }
 
+    /// Resolve the identifier/keyword ambiguity at the loop head itself.
+    /// A complete for-of head keeps the parsed RHS and its diagnostics; an
+    /// ordinary for initializer or nested expression can recover `await of`
+    /// and `yield of` with `of` as the operand.
+    #[cfg(feature = "typescript")]
+    #[cold]
+    #[inline(never)]
+    fn try_parse_ts_container_for_of_head(&mut self) -> Option<TempForHead> {
+        let checkpoint = self.checkpoint_save();
+        let result = (|| {
+            let ident = self.parse_ident(true, true)?;
+            let left = ForHead::Pat(Box::new(Pat::Ident(ident.into())));
+            self.parse_for_each_head(left)
+        })();
+        match result {
+            Ok(head) if self.input().is(Token::RParen) => Some(head),
+            _ => {
+                self.checkpoint_load(checkpoint);
+                None
+            }
+        }
+    }
+
     fn parse_for_stmt(&mut self) -> PResult<Stmt> {
         let start = self.cur_pos();
 
         self.assert_and_bump(Token::For);
         let await_start = self.cur_pos();
-        let await_token = if self.input_mut().eat(Token::Await) {
-            Some(self.span(await_start))
+        let await_token = if self.input().is(Token::Await) {
+            self.check_current_keyword_escape()?;
+            // For-await-of is only available with the Await grammar parameter.
+            // Program entry may still be selecting or recovering module grammar.
+            let at_module_entry = self.syntax_context == SyntaxContext::Program
+                && (self.ctx().contains(Context::Module)
+                    || self.program_parse_mode == ProgramParseMode::None);
+            let allows_for_await =
+                self.includes_await_expr() || self.can_classify_module() || at_module_entry;
+            if allows_for_await {
+                self.bump();
+                Some(self.span(await_start))
+            } else {
+                None
+            }
         } else {
             None
         };
+        if await_token.is_some() && self.can_classify_module() {
+            self.mark_found_module_item();
+        }
         expect!(self, Token::LParen);
 
-        let head = self.do_inside_of_context(Context::ForLoopInit, |p| {
-            if await_token.is_some() {
-                p.do_inside_of_context(Context::ForAwaitLoopInit, Self::parse_for_head)
-            } else {
-                p.do_outside_of_context(Context::ForAwaitLoopInit, Self::parse_for_head)
-            }
-        })?;
+        let head = if await_token.is_some() {
+            with_grammar_context!(self, [?Yield, +Await], |p| {
+                p.parse_for_head_with_await(true)
+            })?
+        } else {
+            self.parse_for_head()?
+        };
 
         expect!(self, Token::RParen);
 
         let body = self
-            .do_inside_of_context(
-                Context::IsBreakAllowed.union(Context::IsContinueAllowed),
-                |p| p.do_outside_of_context(Context::TopLevel, Self::parse_stmt),
+            .do_inside_of_statement_context(
+                StatementContext::IsBreakAllowed.union(StatementContext::IsContinueAllowed),
+                |p| p.do_outside_of_boundary_context(BoundaryContext::TopLevel, Self::parse_stmt),
             )
             .map(Box::new)?;
 
@@ -590,11 +662,16 @@ impl<I: Tokens> Parser<I> {
                 .into()
             }
             TempForHead::ForOf { left, right } => {
-                if await_token.is_some()
-                    && self.syntax().flow()
-                    && !self.ctx().contains(Context::InAsync)
-                {
-                    self.emit_err(self.span(start), SyntaxError::AwaitForStmt);
+                if let Some(await_token) = await_token {
+                    if self.is_await_forbidden_in_initializer() {
+                        self.emit_err(await_token, SyntaxError::ExpectedIdent);
+                    } else if self.syntax().flow()
+                        && !self.includes_await_expr()
+                        // Top-level await makes `for await` valid at the top level of a module.
+                        && !self.ctx().contains(Context::Module)
+                    {
+                        self.emit_err(self.span(start), SyntaxError::AwaitForStmt);
+                    }
                 }
 
                 ForOfStmt {
@@ -611,7 +688,7 @@ impl<I: Tokens> Parser<I> {
 
     pub fn parse_stmt(&mut self) -> PResult<Stmt> {
         trace_cur!(self, parse_stmt);
-        self.parse_stmt_like(false, handle_import_export)
+        self.parse_stmt_like(StatementGrammar::Statement, handle_import_export)
     }
 
     /// Utility function used to parse large if else statements iteratively.
@@ -638,9 +715,10 @@ impl<I: Tokens> Parser<I> {
         expect!(self, Token::LParen);
 
         let test = self
-            .do_outside_of_context(Context::IgnoreElseClause, |p| {
-                p.allow_in_expr(|p| p.parse_expr())
-            })
+            .do_outside_of_statement_context(
+                StatementContext::IgnoreElseClause,
+                |p| with_grammar_context!(p, [+In, ?Yield, ?Await], |p| p.parse_expr()),
+            )
             .map_err(|err| {
                 Error::new(
                     err.span(),
@@ -661,10 +739,9 @@ impl<I: Tokens> Parser<I> {
                 // if !self.ctx().contains(Context::Strict) && self.input().is(Token::FUNCTION)
                 // {     // TODO: report error?
                 // }
-                self.do_outside_of_context(
-                    Context::IgnoreElseClause.union(Context::TopLevel),
-                    Self::parse_stmt,
-                )
+                self.do_outside_of_statement_context(StatementContext::IgnoreElseClause, |p| {
+                    p.do_outside_of_boundary_context(BoundaryContext::TopLevel, Self::parse_stmt)
+                })
                 .map(Box::new)
             })?
         };
@@ -672,7 +749,10 @@ impl<I: Tokens> Parser<I> {
         // We parse `else` branch iteratively, to avoid stack overflow
         // See https://github.com/swc-project/swc/pull/3961
 
-        let alt = if self.ctx().contains(Context::IgnoreElseClause) {
+        let alt = if self
+            .statement_ctx()
+            .contains(StatementContext::IgnoreElseClause)
+        {
             None
         } else {
             let mut cur = None;
@@ -684,17 +764,24 @@ impl<I: Tokens> Parser<I> {
 
                 if !self.input().is(Token::If) {
                     // As we eat `else` above, we need to parse statement once.
-                    let last = self.do_outside_of_context(
-                        Context::IgnoreElseClause.union(Context::TopLevel),
-                        Self::parse_stmt,
+                    let last = self.do_outside_of_statement_context(
+                        StatementContext::IgnoreElseClause,
+                        |p| {
+                            p.do_outside_of_boundary_context(
+                                BoundaryContext::TopLevel,
+                                Self::parse_stmt,
+                            )
+                        },
                     )?;
                     break Some(last);
                 }
 
                 // We encountered `else if`
 
-                let alt =
-                    self.do_inside_of_context(Context::IgnoreElseClause, Self::parse_if_stmt)?;
+                let alt = self.do_inside_of_statement_context(
+                    StatementContext::IgnoreElseClause,
+                    Self::parse_if_stmt,
+                )?;
 
                 match &mut cur {
                     Some(cur) => {
@@ -737,7 +824,7 @@ impl<I: Tokens> Parser<I> {
             syntax_error!(self, SyntaxError::LineBreakInThrow);
         }
 
-        let arg = self.allow_in_expr(|p| p.parse_expr())?;
+        let arg = with_grammar_context!(self, [+In, ?Yield, ?Await], |p| p.parse_expr())?;
         self.expect_general_semi()?;
 
         let span = self.span(start);
@@ -760,13 +847,11 @@ impl<I: Tokens> Parser<I> {
         self.assert_and_bump(Token::With);
 
         expect!(self, Token::LParen);
-        let obj = self.allow_in_expr(|p| p.parse_expr())?;
+        let obj = with_grammar_context!(self, [+In, ?Yield, ?Await], |p| p.parse_expr())?;
         expect!(self, Token::RParen);
 
         let body = self
-            .do_inside_of_context(Context::InFunction, |p| {
-                p.do_outside_of_context(Context::TopLevel, Self::parse_stmt)
-            })
+            .do_outside_of_boundary_context(BoundaryContext::TopLevel, Self::parse_stmt)
             .map(Box::new)?;
 
         let span = self.span(start);
@@ -779,13 +864,13 @@ impl<I: Tokens> Parser<I> {
         self.assert_and_bump(Token::While);
 
         expect!(self, Token::LParen);
-        let test = self.allow_in_expr(|p| p.parse_expr())?;
+        let test = with_grammar_context!(self, [+In, ?Yield, ?Await], |p| p.parse_expr())?;
         expect!(self, Token::RParen);
 
         let body = self
-            .do_inside_of_context(
-                Context::IsBreakAllowed.union(Context::IsContinueAllowed),
-                |p| p.do_outside_of_context(Context::TopLevel, Self::parse_stmt),
+            .do_inside_of_statement_context(
+                StatementContext::IsBreakAllowed.union(StatementContext::IsContinueAllowed),
+                |p| p.do_outside_of_boundary_context(BoundaryContext::TopLevel, Self::parse_stmt),
             )
             .map(Box::new)?;
 
@@ -801,7 +886,7 @@ impl<I: Tokens> Parser<I> {
             let type_ann_start = self.cur_pos();
 
             if self.syntax().typescript() && self.input_mut().eat(Token::Colon) {
-                let ty = self.do_inside_of_context(Context::InType, Self::parse_ts_type)?;
+                let ty = self.in_type(Self::parse_ts_type)?;
                 // self.emit_err(ty.span(), SyntaxError::TS1196);
 
                 match &mut pat {
@@ -834,16 +919,16 @@ impl<I: Tokens> Parser<I> {
         self.assert_and_bump(Token::Do);
 
         let body = self
-            .do_inside_of_context(
-                Context::IsBreakAllowed.union(Context::IsContinueAllowed),
-                |p| p.do_outside_of_context(Context::TopLevel, Self::parse_stmt),
+            .do_inside_of_statement_context(
+                StatementContext::IsBreakAllowed.union(StatementContext::IsContinueAllowed),
+                |p| p.do_outside_of_boundary_context(BoundaryContext::TopLevel, Self::parse_stmt),
             )
             .map(Box::new)?;
 
         expect!(self, Token::While);
         expect!(self, Token::LParen);
 
-        let test = self.allow_in_expr(|p| p.parse_expr())?;
+        let test = with_grammar_context!(self, [+In, ?Yield, ?Await], |p| p.parse_expr())?;
 
         expect!(self, Token::RParen);
 
@@ -856,8 +941,8 @@ impl<I: Tokens> Parser<I> {
     }
 
     fn parse_labelled_stmt(&mut self, l: Ident) -> PResult<Stmt> {
-        self.do_inside_of_context(Context::IsBreakAllowed, |p| {
-            p.do_outside_of_context(Context::AllowUsingDecl, |p| {
+        self.do_inside_of_statement_context(StatementContext::IsBreakAllowed, |p| {
+            p.do_outside_of_statement_context(StatementContext::AllowUsingDecl, |p| {
                 let start = l.span.lo();
 
                 let mut errors = Vec::new();
@@ -884,7 +969,7 @@ impl<I: Tokens> Parser<I> {
 
                     f.into()
                 } else {
-                    p.do_outside_of_context(Context::TopLevel, Self::parse_stmt)?
+                    p.do_outside_of_boundary_context(BoundaryContext::TopLevel, Self::parse_stmt)?
                 });
 
                 for err in errors {
@@ -913,7 +998,7 @@ impl<I: Tokens> Parser<I> {
 
         expect!(self, Token::LBrace);
 
-        let stmts = self.do_outside_of_context(Context::TopLevel, |p| {
+        let stmts = self.do_outside_of_boundary_context(BoundaryContext::TopLevel, |p| {
             p.parse_stmt_block_body(allow_directives, Some(Token::RBrace))
         })?;
 
@@ -982,7 +1067,7 @@ impl<I: Tokens> Parser<I> {
         self.assert_and_bump(Token::Switch);
 
         expect!(self, Token::LParen);
-        let discriminant = self.allow_in_expr(|p| p.parse_expr())?;
+        let discriminant = with_grammar_context!(self, [+In, ?Yield, ?Await], |p| p.parse_expr())?;
         expect!(self, Token::RParen);
 
         let mut cases = Vec::new();
@@ -990,7 +1075,7 @@ impl<I: Tokens> Parser<I> {
 
         expect!(self, Token::LBrace);
 
-        self.do_inside_of_context(Context::IsBreakAllowed, |p| {
+        self.do_inside_of_statement_context(StatementContext::IsBreakAllowed, |p| {
             while {
                 let cur = p.input().cur();
                 cur == Token::Case || cur == Token::Default
@@ -1000,7 +1085,7 @@ impl<I: Tokens> Parser<I> {
                 let case_start = p.cur_pos();
                 p.bump();
                 let test = if is_case {
-                    p.allow_in_expr(|p| p.parse_expr()).map(Some)?
+                    with_grammar_context!(p, [+In, ?Yield, ?Await], |p| p.parse_expr()).map(Some)?
                 } else {
                     if let Some(previous) = span_of_previous_default {
                         syntax_error!(p, SyntaxError::MultipleDefault { previous });
@@ -1015,9 +1100,10 @@ impl<I: Tokens> Parser<I> {
                     let cur = p.input().cur();
                     !(cur == Token::Case || cur == Token::Default || cur == Token::RBrace)
                 } {
-                    cons.push(
-                        p.do_outside_of_context(Context::TopLevel, Self::parse_stmt_list_item)?,
-                    );
+                    cons.push(p.do_outside_of_boundary_context(
+                        BoundaryContext::TopLevel,
+                        Self::parse_stmt_list_item,
+                    )?);
                 }
 
                 cases.push(SwitchCase {
@@ -1035,6 +1121,7 @@ impl<I: Tokens> Parser<I> {
 
         Ok(SwitchStmt {
             span: self.span(switch_start),
+            body_ctxt: Default::default(),
             discriminant,
             cases,
         }
@@ -1380,7 +1467,7 @@ impl<I: Tokens> Parser<I> {
             }
 
             if self.input_mut().eat(Token::LBracket) {
-                let prop_expr = self.allow_in_expr(Self::parse_assignment_expr)?;
+                let prop_expr = with_grammar_context!(self, [+In, ?Yield, ?Await], Self::parse_assignment_expr)?;
                 expect!(self, Token::RBracket);
                 expr = Box::new(Expr::Member(MemberExpr {
                     span: self.span(start),
@@ -1572,6 +1659,8 @@ impl<I: Tokens> Parser<I> {
     }
 
     fn flow_match_parse_pattern(&mut self) -> PResult<FlowMatchPattern> {
+        // Flow allows one optional leading pipe, including in nested patterns.
+        self.input_mut().eat(Token::Pipe);
         let mut pat = self.flow_match_parse_primary_pattern()?;
 
         while self.input_mut().eat(Token::Pipe) {
@@ -1685,13 +1774,10 @@ impl<I: Tokens> Parser<I> {
             ident: None,
             function: Box::new(Function {
                 span,
+                this_param: None,
                 params: Vec::new(),
                 decorators: Vec::new(),
-                body: Some(BlockStmt {
-                    span,
-                    stmts,
-                    ctxt: Default::default(),
-                }),
+                body: Some(FunctionBody { span, stmts }),
                 is_async: false,
                 is_generator: false,
                 type_params: None,
@@ -1721,13 +1807,14 @@ impl<I: Tokens> Parser<I> {
         while !self.input().is(Token::RBrace) {
             let pattern = self.flow_match_parse_pattern()?;
             let guard = if self.input_mut().eat(Token::If) {
-                Some(self.allow_in_expr(|p| p.parse_expr())?)
+                Some(with_grammar_context!(self, [+In, ?Yield, ?Await], |p| p.parse_expr())?)
             } else {
                 None
             };
             self.flow_match_expect_case_separator()?;
 
-            let body = self.allow_in_expr(Self::parse_assignment_expr)?;
+            let body =
+                with_grammar_context!(self, [+In, ?Yield, ?Await], Self::parse_assignment_expr)?;
             let lowered = self.flow_match_lower_pattern(span, temp_expr.clone(), &pattern);
             let mut test = lowered.predicate;
             if let Some(guard) = guard {
@@ -1775,7 +1862,7 @@ impl<I: Tokens> Parser<I> {
         while !self.input().is(Token::RBrace) {
             let pattern = self.flow_match_parse_pattern()?;
             let guard = if self.input_mut().eat(Token::If) {
-                Some(self.allow_in_expr(|p| p.parse_expr())?)
+                Some(with_grammar_context!(self, [+In, ?Yield, ?Await], |p| p.parse_expr())?)
             } else {
                 None
             };
@@ -1785,7 +1872,7 @@ impl<I: Tokens> Parser<I> {
                 self.parse_block(false)?
             } else {
                 self.emit_err(self.input().cur_span(), SyntaxError::TS1003);
-                let expr = self.allow_in_expr(Self::parse_assignment_expr)?;
+                let expr = with_grammar_context!(self, [+In, ?Yield, ?Await], Self::parse_assignment_expr)?;
                 BlockStmt {
                     span,
                     stmts: vec![Stmt::Expr(ExprStmt { span, expr })],
@@ -1843,14 +1930,14 @@ impl<I: Tokens> Parser<I> {
     /// Parse a statement and maybe a declaration.
     pub fn parse_stmt_list_item(&mut self) -> PResult<Stmt> {
         trace_cur!(self, parse_stmt_list_item);
-        self.parse_stmt_like(true, handle_import_export)
+        self.parse_stmt_like(StatementGrammar::StatementListItem, handle_import_export)
     }
 
     /// Parse a statement, declaration or module item.
     #[inline(always)]
-    pub(crate) fn parse_stmt_like<Type: From<Stmt>>(
+    pub(super) fn parse_stmt_like<Type: From<Stmt>>(
         &mut self,
-        include_decl: bool,
+        grammar: StatementGrammar,
         handle_import_export: impl Fn(&mut Self, Vec<Decorator>) -> PResult<Type>,
     ) -> PResult<Type> {
         trace_cur!(self, parse_stmt_like);
@@ -1869,9 +1956,9 @@ impl<I: Tokens> Parser<I> {
             return handle_import_export(self, decorators);
         }
 
-        self.do_outside_of_context(Context::WillExpectColonForCond, |p| {
-            p.do_inside_of_context(Context::AllowUsingDecl, |p| {
-                p.parse_stmt_internal(start, include_decl, decorators)
+        self.do_outside_of_type_context(TypeContext::WillExpectColonForCond, |p| {
+            p.do_inside_of_statement_context(StatementContext::AllowUsingDecl, |p| {
+                p.parse_stmt_internal(start, grammar, decorators)
             })
         })
         .map(From::from)
@@ -1881,10 +1968,12 @@ impl<I: Tokens> Parser<I> {
     fn parse_stmt_internal(
         &mut self,
         start: BytePos,
-        include_decl: bool,
+        grammar: StatementGrammar,
         decorators: Vec<Decorator>,
     ) -> PResult<Stmt> {
         trace_cur!(self, parse_stmt_internal);
+
+        let include_decl = grammar.permits_declaration();
 
         let is_typescript = self.input().syntax().typescript();
 
@@ -1904,7 +1993,7 @@ impl<I: Tokens> Parser<I> {
                 .map(Stmt::from);
         }
 
-        let top_level = self.ctx().contains(Context::TopLevel);
+        let top_level = self.boundary_ctx().contains(BoundaryContext::TopLevel);
 
         let cur = self.input().cur();
         if self.is_flow_match_keyword() {
@@ -1912,23 +2001,54 @@ impl<I: Tokens> Parser<I> {
         }
 
         if cur == Token::Await && (include_decl || top_level) {
-            if top_level {
+            let is_await_using = peek!(self).is_some_and(|peek| peek == Token::Using)
+                && !self.input_mut().has_linebreak_between_cur_and_peeked();
+
+            // In Script grammar, `await` can start an expression or a label.
+            // Only `await using` needs a statement-level context error.
+            let handled_by_explicit_program = top_level
+                && self.program_parse_mode == ProgramParseMode::None
+                && (self.ctx().contains(Context::Module)
+                    || self.boundary_ctx().contains(BoundaryContext::CanBeModule)
+                    || is_await_using);
+            if handled_by_explicit_program {
                 self.mark_found_module_item();
-                if !self.ctx().contains(Context::CanBeModule) {
+                if !self.boundary_ctx().contains(BoundaryContext::CanBeModule) {
                     self.emit_err(self.input().cur_span(), SyntaxError::TopLevelAwaitInScript);
                 }
             }
 
-            if peek!(self).is_some_and(|peek| peek == Token::Using) {
+            if is_await_using {
                 let eaten_await = Some(self.input().cur_pos());
+                let await_token = self.input().cur_span();
+                self.check_current_token_escape()?;
+                if self.can_classify_module() {
+                    self.mark_found_module_item();
+                } else if !self.includes_await_expr()
+                    && !self.ctx().contains(Context::Module)
+                    && !handled_by_explicit_program
+                {
+                    let error = if self.syntax_context == SyntaxContext::FunctionBody {
+                        SyntaxError::AwaitInFunction
+                    } else {
+                        SyntaxError::TopLevelAwaitInScript
+                    };
+                    self.emit_err(self.input().cur_span(), error);
+                }
                 self.assert_and_bump(Token::Await);
                 let v = self.parse_using_decl(start, true)?;
                 if let Some(v) = v {
+                    // Static blocks use +Await, but Contains `await` is an early
+                    // error. Check declarations here; the expression fallback
+                    // below performs its own check in parse_await_expr.
+                    if self.is_await_forbidden_in_initializer() {
+                        self.emit_err(await_token, SyntaxError::ExpectedIdent);
+                    }
                     return Ok(v.into());
                 }
 
                 let expr = self.parse_await_expr(eaten_await)?;
-                let expr = self.allow_in_expr(|p| p.parse_bin_op_recursively(expr, 0))?;
+                let expr = with_grammar_context!(self, [+In, ?Yield, ?Await], |p| p.parse_bin_op_recursively(expr, 0))?;
                 self.eat_general_semi();
 
                 let span = self.span(start);
@@ -1948,10 +2068,16 @@ impl<I: Tokens> Parser<I> {
             if is_break {
                 if label.is_some() && !self.state().labels.contains(&label.as_ref().unwrap().sym) {
                     self.emit_err(span, SyntaxError::TS1116);
-                } else if !self.ctx().contains(Context::IsBreakAllowed) {
+                } else if !self
+                    .statement_ctx()
+                    .contains(StatementContext::IsBreakAllowed)
+                {
                     self.emit_err(span, SyntaxError::TS1105);
                 }
-            } else if !self.ctx().contains(Context::IsContinueAllowed) {
+            } else if !self
+                .statement_ctx()
+                .contains(StatementContext::IsContinueAllowed)
+            {
                 self.emit_err(span, SyntaxError::TS1115);
             } else if label.is_some() && !self.state().labels.contains(&label.as_ref().unwrap().sym)
             {
@@ -2027,8 +2153,8 @@ impl<I: Tokens> Parser<I> {
         } else if cur == Token::Var || (cur == Token::Const && include_decl) {
             let v = self.parse_var_stmt(false)?;
             return Ok(v.into());
-        } else if cur == Token::Let && include_decl {
-            // 'let' can start an identifier reference.
+        } else if cur == Token::Let && include_decl && !self.input().has_escaped_keyword() {
+            // Only an unescaped 'let' can introduce a lexical declaration.
             let is_keyword = match peek!(self) {
                 Some(t) => t.follows_keyword_let(),
                 _ => false,
@@ -2063,14 +2189,16 @@ impl<I: Tokens> Parser<I> {
             && is_typescript
             && self.input().syntax().typescript_allows_enum()
             && peek!(self).is_some_and(|peek| peek.is_word())
-            && !self.input_mut().has_linebreak_between_cur_and_peeked()
         {
+            // A line break before an enum name does not terminate the declaration.
             let start = self.input().cur_pos();
             self.bump();
             return Ok(self.parse_ts_enum_decl(start, false)?.into());
         } else if cur == Token::LBrace {
             return self
-                .do_inside_of_context(Context::AllowUsingDecl, |p| p.parse_block(false))
+                .do_inside_of_statement_context(StatementContext::AllowUsingDecl, |p| {
+                    p.parse_block(false)
+                })
                 .map(Stmt::Block);
         } else if cur == Token::Semi {
             self.bump();
@@ -2094,7 +2222,7 @@ impl<I: Tokens> Parser<I> {
         // next token is a colon and the expression was a simple
         // Identifier node, we switch to interpreting it as a label.
         let expr_token = self.input().cur();
-        let expr = self.allow_in_expr(|p| p.parse_expr())?;
+        let expr = with_grammar_context!(self, [+In, ?Yield, ?Await], |p| p.parse_expr())?;
 
         let expr = match *expr {
             Expr::Ident(ident) => {
@@ -2170,10 +2298,17 @@ impl<I: Tokens> Parser<I> {
         allow_directives: bool,
         end: Option<Token>,
     ) -> PResult<Vec<Stmt>> {
-        self.parse_block_body(allow_directives, end, handle_import_export)
+        let stmts = self.parse_block_body(allow_directives, end, handle_import_export)?;
+        if self.input().cur() != Token::Eof && end.is_some() {
+            self.bump();
+        }
+        Ok(stmts)
     }
 
-    pub(crate) fn parse_block_body<Type: From<Stmt>>(
+    /// Parses a body without consuming its closing delimiter. The caller can
+    /// restore the enclosing lexical context before reading the following
+    /// token.
+    pub(super) fn parse_block_body<Type: super::context::BlockBodyItem>(
         &mut self,
         allow_directives: bool,
         end: Option<Token>,
@@ -2194,28 +2329,31 @@ impl<I: Tokens> Parser<I> {
         };
 
         let parse_stmts = |p: &mut Self, stmts: &mut Vec<Type>| -> PResult<()> {
-            let is_stmt_start = |p: &mut Self| {
-                let cur = p.input().cur();
-                match end {
-                    Some(end) => {
-                        if cur == Token::Eof {
-                            let eof_text = p.input_mut().dump_cur();
-                            p.emit_err(
-                                p.input().cur_span(),
-                                SyntaxError::Expected(format!("{end:?}"), eof_text),
-                            );
-                            false
-                        } else {
-                            cur != end
-                        }
+            if let Some(end) = end {
+                loop {
+                    let cur = p.input().cur();
+                    if cur == Token::Eof {
+                        let eof_text = p.input_mut().dump_cur();
+                        p.emit_err(
+                            p.input().cur_span(),
+                            SyntaxError::Expected(format!("{end:?}"), eof_text),
+                        );
+                        break;
                     }
-                    None => cur != Token::Eof,
+                    if cur == end {
+                        break;
+                    }
+
+                    let stmt = p.parse_stmt_like(Type::GRAMMAR, &handle_import_export)?;
+                    stmts.push(stmt);
                 }
-            };
-            while is_stmt_start(p) {
-                let stmt = p.parse_stmt_like(true, &handle_import_export)?;
-                stmts.push(stmt);
+            } else {
+                while p.input().cur() != Token::Eof {
+                    let stmt = p.parse_stmt_like(Type::GRAMMAR, &handle_import_export)?;
+                    stmts.push(stmt);
+                }
             }
+
             Ok(())
         };
 
@@ -2224,10 +2362,6 @@ impl<I: Tokens> Parser<I> {
         } else {
             parse_stmts(self, &mut stmts)?;
         };
-
-        if self.input().cur() != Token::Eof && end.is_some() {
-            self.bump();
-        }
 
         Ok(stmts)
     }
@@ -2915,7 +3049,7 @@ export default function waitUntil(callback, options = {}) {
     }
 
     #[test]
-    #[should_panic(expected = "top level await is only allowed in module")]
+    #[should_panic(expected = "Expected ';', '}' or <eof>")]
     fn top_level_await_in_script() {
         let src = "await promise";
         test_parser(src, Syntax::Es(Default::default()), |p| p.parse_script());
@@ -2947,7 +3081,7 @@ export default function waitUntil(callback, options = {}) {
     }
 
     #[test]
-    #[should_panic(expected = "await isn't allowed in non-async function")]
+    #[should_panic(expected = "Expected ';', '}' or <eof>")]
     fn await_in_function_in_script() {
         let src = "function foo (p) { await p; }";
         test_parser(src, Syntax::Es(Default::default()), |p| p.parse_script());

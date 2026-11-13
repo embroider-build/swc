@@ -3058,7 +3058,7 @@
                     if (-1 !== value.indexOf(options.infinity)) return 1 / 0;
                     value = ParserBase.convertValueParts(value, options.symbolRegex, numOptions.symbolMatch), 0 === (value = -1 !== (value = ParserBase.convertValueParts(value, numOptions.numberParseRegex, numOptions.numericPair)).indexOf('-') ? value.replace('-.', '-0.') : value).indexOf('.') && (value = '0' + value);
                     var isNegative, isPercent, tempValue, lead, end, ret, matches = value.match(parseRegex);
-                    if (util_isNullOrUndefined(matches)) return NaN;
+                    if (util_isNullOrUndefined(matches)) return 0 / 0;
                     lead = matches[1], tempValue = matches[2];
                     var exponent = matches[5];
                     return end = matches[6], isPercent = (isNegative = options.custom ? lead === options.nData.nlead && end === options.nData.nend : -1 !== lead.indexOf(options.nData.nlead) && -1 !== end.indexOf(options.nData.nend)) ? options.nData.isPercent : options.pData.isPercent, tempValue = tempValue.replace(groupRegex, ''), exponent && (tempValue += exponent), ret = +tempValue, ('percent' === options.type || isPercent) && (ret /= 100), (options.custom || options.fractionDigits) && (ret = parseFloat(ret.toFixed(options.custom ? isNegative ? options.nData.maximumFractionDigits : options.pData.maximumFractionDigits : options.fractionDigits))), options.maximumFractionDigits && (ret = this.convertMaxFracDigits(tempValue, options, ret, isNegative)), isNegative && (ret *= -1), ret;
@@ -9726,10 +9726,10 @@
  * @private
  */ function getZindexPartial(element) {
                 for(// upto body traversal
-                var parent = element.parentElement, parentZindex = []; parent;)if ('BODY' !== parent.tagName) {
+                var parent = element.parentElement, parentZindex = []; parent && 'BODY' !== parent.tagName;){
                     var index = document.defaultView.getComputedStyle(parent, null).getPropertyValue('z-index'), position = document.defaultView.getComputedStyle(parent, null).getPropertyValue('position');
                     'auto' !== index && 'static' !== position && parentZindex.push(index), parent = parent.parentElement;
-                } else break;
+                }
                 for(var childrenZindex = [], i = 0; i < document.body.children.length; i++)if (!element.isEqualNode(document.body.children[i])) {
                     var index = document.defaultView.getComputedStyle(document.body.children[i], null).getPropertyValue('z-index'), position = document.defaultView.getComputedStyle(document.body.children[i], null).getPropertyValue('position');
                     'auto' !== index && 'static' !== position && childrenZindex.push(index);
@@ -19102,8 +19102,7 @@
                     return element.lastElementChild ? 'BR' === element.lastElementChild.tagName ? element.lastElementChild.previousElementSibling ? element.lastElementChild.previousElementSibling : element : element.lastElementChild : element;
                 }, HtmlEditor.prototype.getRootBlockNode = function(rangeBlockNode) {
                     // eslint-disable-next-line
-                    for(; rangeBlockNode && this.parent && this.parent.inputElement !== rangeBlockNode;)if (rangeBlockNode.parentElement === this.parent.inputElement) break;
-                    else rangeBlockNode = rangeBlockNode.parentElement;
+                    for(; rangeBlockNode && this.parent && this.parent.inputElement !== rangeBlockNode && rangeBlockNode.parentElement !== this.parent.inputElement;)rangeBlockNode = rangeBlockNode.parentElement;
                     return rangeBlockNode;
                 }, HtmlEditor.prototype.getRangeLiNode = function(rangeLiNode) {
                     for(var node = rangeLiNode.parentElement; node !== this.parent.inputElement && (1 !== node.nodeType || 'LI' !== node.tagName);)node = node.parentElement;
@@ -25765,7 +25764,7 @@
                     var start = parseFloat(this.min.toString());
                     'v' === orien && (start = parseFloat(this.max.toString()));
                     var left = 0, tickWidth = 100 / count;
-                    tickWidth === 1 / 0 && (tickWidth = 5);
+                    1 / 0 === tickWidth && (tickWidth = 5);
                     for(var i = 0, y = !(0, ej2_base /* isNullOrUndefined */ .le)(this.customValues) && this.customValues.length > 0 ? this.customValues.length - 1 : 0, k = 0; i <= count; i++){
                         if (li = this.createElement('li', {
                             attrs: {

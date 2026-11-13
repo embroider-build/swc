@@ -295,7 +295,7 @@ impl Visit for InfectionCollector {
 
         match e {
             Expr::Ident(i) => {
-                if self.ctx.contains(Ctx::TrackExprIdent) {
+                if self.ctx.contains(Ctx::TrackExprIdent) || self.config.need_all {
                     self.add_usage(i.to_id());
                 }
             }
@@ -340,14 +340,12 @@ impl Visit for InfectionCollector {
 
     fn visit_member_expr(&mut self, n: &MemberExpr) {
         {
-            let mut ctx = self.ctx;
-            ctx.set(Ctx::TrackExprIdent, self.config.need_all);
+            let ctx = self.ctx - Ctx::TrackExprIdent;
             n.obj.visit_with(&mut *self.with_ctx(ctx));
         }
 
         {
-            let mut ctx = self.ctx;
-            ctx.set(Ctx::TrackExprIdent, self.config.need_all);
+            let ctx = self.ctx - Ctx::TrackExprIdent;
             n.prop.visit_with(&mut *self.with_ctx(ctx));
         }
     }
@@ -366,13 +364,16 @@ impl Visit for InfectionCollector {
     }
 
     fn visit_pat(&mut self, node: &Pat) {
-        node.visit_children_with(self);
-
-        if self.ctx.contains(Ctx::IsPatDecl) {
-            if let Pat::Ident(i) = node {
-                self.add_binding(i)
+        if let Pat::Ident(i) = node {
+            if self.ctx.contains(Ctx::IsPatDecl) {
+                self.add_binding(i);
+            } else {
+                self.add_usage(i.to_id());
             }
+            return;
         }
+
+        node.visit_children_with(self);
     }
 
     fn visit_prop_name(&mut self, n: &PropName) {

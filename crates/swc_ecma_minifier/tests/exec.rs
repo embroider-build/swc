@@ -293,6 +293,125 @@ fn run_default_exec_test(input_src: &str) {
 }
 
 #[test]
+fn concat_tpl_keeps_delimiter_after_interpolation() {
+    run_default_exec_test(
+        r#"
+        console.log(`<b>${1}</b>` + `<i>${2}</i>`);
+        console.log(`width:${1}px;` + `height:${2}px;`);
+        console.log(`a${0}]` + `${0}b`);
+        console.log(`<a>${1}</a>` + `<b>${2}</b>` + `<c>${3}</c>`);
+        console.log(`x${1}|` + "mid" + `z${2}|`);
+        "#,
+    );
+}
+
+#[test]
+fn issue_11684_named_constructor_arguments() {
+    let src = r#"
+        const effects = [];
+        const effect = value => {
+            effects.push(value);
+            return value;
+        };
+
+        function FunctionCtor(value) {
+            this.value = value;
+        }
+
+        class ClassCtor {
+            constructor(value) {
+                this.value = value;
+            }
+        }
+
+        function ArgumentsCtor() {
+            this.values = Array.from(arguments);
+        }
+
+        class RestCtor {
+            constructor(...values) {
+                this.values = values;
+            }
+        }
+
+        const functionValue = new FunctionCtor(
+            effect("function-used"),
+            0,
+            effect("function-extra-a"),
+            1,
+            effect("function-extra-b")
+        );
+        const classValue = new ClassCtor(
+            effect("class-used"),
+            0,
+            effect("class-extra-a"),
+            1,
+            effect("class-extra-b")
+        );
+        const argumentsValue = new ArgumentsCtor(1, 2, 3);
+        const restValue = new RestCtor(1, 2, 3);
+
+        console.log(JSON.stringify({
+            effects,
+            functionValue: functionValue.value,
+            classValue: classValue.value,
+            argumentsValue: argumentsValue.values,
+            restValue: restValue.values,
+        }));
+        "#;
+    let config = r#"{
+        "defaults": true,
+        "toplevel": false
+    }"#;
+
+    run_exec_test(src, config, false);
+}
+
+#[test]
+fn issue_11684_nested_eval_preserves_constructor_arguments() {
+    let src = r#"
+        class ReplacementClass {
+            constructor(value) {
+                this.value = value;
+            }
+        }
+
+        function ReplacementFunction(value) {
+            this.value = value;
+        }
+
+        class OuterClass {}
+
+        function constructOuterClassAfterEval() {
+            // Direct eval in a child scope can replace an outer constructor binding.
+            eval("OuterClass = ReplacementClass");
+            return new OuterClass("class-eval", "extra");
+        }
+
+        function OuterFunction() {}
+
+        function constructOuterFunctionAfterEval() {
+            eval("OuterFunction = ReplacementFunction");
+            return new OuterFunction("function-eval", "extra");
+        }
+
+        const classValue = constructOuterClassAfterEval();
+        const functionValue = constructOuterFunctionAfterEval();
+
+        console.log(JSON.stringify({
+            classValue: classValue.value,
+            functionValue: functionValue.value,
+        }));
+        "#;
+    let config = r#"{
+        "defaults": true,
+        "toplevel": false
+    }"#;
+
+    run_exec_test(src, config, false);
+}
+
+#[test]
 fn next_feedback_1_capture_1() {
     let src = r###"
 const arr = [];
@@ -12265,6 +12384,51 @@ console.log(getStatusMessage(999).message);
 }
 
 #[test]
+fn issue_11871() {
+    let src = r#"
+var window = {};
+var foo = { min: (items) => items[0] };
+var bar = {};
+var bucketFactory = () => ({
+    utc: (input) => ({
+        diff: () => 0
+    })
+});
+var min = foo;
+var moment = bucketFactory(bar);
+const defaultSpec = {
+    granularities: [
+        {
+            maxDays: 1,
+            displayFormatString: "[Q]Q"
+        }
+    ],
+    other: 1
+};
+
+window.x = {
+    f: (start, end) => ((inputStartDate, inputEndDate, spec = defaultSpec) => {
+        let startDate = moment.utc(inputStartDate);
+        let dayCount = moment.utc(inputEndDate).diff(startDate, "days") + 1;
+        let granularity = spec.granularities
+            .sort((left, right) => left.maxDays - right.maxDays)
+            .find((item) => dayCount <= item.maxDays);
+        return granularity == null ? "" : granularity.displayFormatString;
+    })(start, end) + String(min.min([1, 2]))
+};
+
+console.log(window.x.f(0, 0));
+"#;
+    let config = r#"{
+        "defaults": true,
+        "toplevel": true,
+        "passes": 2
+    }"#;
+
+    run_exec_test(src, config, false);
+}
+
+#[test]
 fn object_freeze_spread_computed_registration() {
     let src = r#"
 const Inner = /*#__PURE__*/ Object.freeze({
@@ -12303,4 +12467,368 @@ console.log(out.poisoned);
 "#;
 
     run_default_exec_test(src);
+}
+
+#[test]
+fn issue_11294_eval_mangle_no_collision() {
+    // Regression test for #11294.
+    //
+    // The compressor's scalar replacement rewrites `var x = { ids: [] }; x.ids`
+    // into a synthetic `var x_ids = []` whose binding isn't covered by the
+    // mangler's `eval` bypass. With `eval` present, the top-level map and the
+    // eval-free callback's per-unit map were built with independent reverse
+    // maps, so both reused the same Base54 names and collided. This input both
+    // triggers the scalar replacement (vars inside the `if` block) and contains
+    // `eval`, so a regression reintroduces the collision and breaks runtime.
+    let src = r#"
+var out = function (chart) {
+    var result = "";
+    if (chart.series) {
+        var first = { ids: [] };
+        var second = { ids: [] };
+        chart.series.forEach(function (item) {
+            var id = item.split("-")[2];
+            first.ids.push(id);
+            second.ids.push(id);
+        });
+        result = first.ids.join(",") + "|" + second.ids.join(",");
+    }
+    eval("");
+    return result;
+}({ series: ["a-b-1", "a-b-2", "a-b-3"] });
+console.log(out);
+"#;
+    let config = r#"{
+        "defaults": true,
+        "toplevel": true
+    }"#;
+
+    let expected_output = stdout_of(src).unwrap();
+
+    testing::run_test2(false, |cm, handler| {
+        let _tracing = span!(Level::ERROR, "compress-and-mangle").entered();
+
+        let output = run(
+            cm.clone(),
+            &handler,
+            src,
+            Some(config),
+            Some(MangleOptions {
+                top_level: Some(true),
+                ..Default::default()
+            }),
+        );
+
+        let output = output.expect("Parsing in base test should not fail");
+        let output = print(cm, &[&output], true, false);
+
+        eprintln!(
+            "---- {} -----\n{}",
+            Color::Green.paint("Optimized code"),
+            output
+        );
+
+        let actual_output = stdout_of(&output).expect("failed to execute the optimized code");
+        assert_ne!(actual_output, "");
+
+        assert_eq!(
+            DebugUsingDisplay(&actual_output),
+            DebugUsingDisplay(&expected_output)
+        );
+
+        Ok(())
+    })
+    .unwrap();
+}
+
+#[test]
+fn issue_11294_eval_mangle_no_collision_nested() {
+    // Same root cause as `issue_11294_eval_mangle_no_collision`, but with
+    // nested callbacks (a `forEach` inside another `forEach`), exercising
+    // several levels of per-unit maps that all must avoid the names assigned
+    // by the top-level map under `eval`.
+    let src = r#"
+var out = function (data) {
+    var result = "";
+    if (data.rows) {
+        var collected = { ids: [] };
+        var mirror = { ids: [] };
+        data.rows.forEach(function (row) {
+            row.forEach(function (cell) {
+                var doubled = cell * 2;
+                collected.ids.push(doubled);
+                mirror.ids.push(doubled);
+            });
+        });
+        result = collected.ids.join(",") + "|" + mirror.ids.join(",");
+    }
+    eval("");
+    return result;
+}({ rows: [[1, 2], [3, 4]] });
+console.log(out);
+"#;
+    let config = r#"{
+        "defaults": true,
+        "toplevel": true
+    }"#;
+
+    let expected_output = stdout_of(src).unwrap();
+
+    testing::run_test2(false, |cm, handler| {
+        let _tracing = span!(Level::ERROR, "compress-and-mangle").entered();
+
+        let output = run(
+            cm.clone(),
+            &handler,
+            src,
+            Some(config),
+            Some(MangleOptions {
+                top_level: Some(true),
+                ..Default::default()
+            }),
+        );
+
+        let output = output.expect("Parsing in base test should not fail");
+        let output = print(cm, &[&output], true, false);
+
+        eprintln!(
+            "---- {} -----\n{}",
+            Color::Green.paint("Optimized code"),
+            output
+        );
+
+        let actual_output = stdout_of(&output).expect("failed to execute the optimized code");
+        assert_ne!(actual_output, "");
+
+        assert_eq!(
+            DebugUsingDisplay(&actual_output),
+            DebugUsingDisplay(&expected_output)
+        );
+
+        Ok(())
+    })
+    .unwrap();
+}
+
+#[test]
+fn issue_11970_switch_default_before_empty_case() {
+    let src = r#"
+async function classify(code) {
+    switch (code) {
+        case "66":
+            return 1;
+        case "0":
+            break;
+        default:
+            return 1;
+    }
+
+    return 2;
+}
+
+(async () => {
+    console.log(await classify("66"));
+    console.log(await classify("0"));
+    console.log(await classify("x"));
+})();
+"#;
+    let config = r#"{
+        "defaults": true,
+        "toplevel": true
+    }"#;
+
+    run_exec_test(src, config, false);
+}
+
+#[test]
+fn issue_11078_math_constant_folding() {
+    run_default_exec_test(
+        r#"
+        console.log(Math.floor(3.7), Math.floor(-3.2), Math.floor(0));
+        console.log(Math.ceil(3.2), Math.ceil(-3.7), Math.ceil(0));
+        console.log(Math.round(2.5), Math.round(-1.5), Math.round(-2.5));
+        console.log(Math.round(0.49999999999999994), Math.round(-0.6));
+        console.log(Math.sqrt(4), Math.sqrt(9), Math.sqrt(-1));
+        console.log(Math.floor(NaN), Math.ceil(Infinity), Math.sqrt(-Infinity));
+        console.log(Math.ceil(Math.sqrt(4)), Math.floor(Math.sqrt(9) + 1));
+        "#,
+    );
+}
+
+#[test]
+fn issue_11078_math_negative_zero_is_preserved() {
+    run_default_exec_test(
+        r#"
+        console.log(1 / Math.round(-0.5));
+        console.log(1 / Math.ceil(-0.5));
+        console.log(1 / Math.round(-0.4));
+        console.log(Object.is(Math.round(-0.5), -0));
+        console.log(Object.is(Math.ceil(-0.5), -0));
+        "#,
+    );
+}
+
+#[test]
+fn issue_11078_math_negative_results_in_member_position() {
+    run_default_exec_test(
+        r#"
+        console.log(Math.round(-1.5).toString());
+        console.log(Math.ceil(-0.5).toString());
+        console.log(Math.floor(-3.2).toString());
+        console.log(Math.round(-2.5).toFixed(1));
+        console.log(Math.round(-1.5) ** 2);
+        console.log(typeof Math.round(-1.5).toString());
+        "#,
+    );
+}
+
+#[test]
+fn issue_12213_object_keys_with_modified_globals() {
+    let src = r#"
+        Object.keys = () => ["patched"];
+        console.log(Object.keys({ 1: 0 }));
+    "#;
+    let config = r#"{
+        "defaults": false,
+        "evaluate": true,
+        "pristine_globals": false
+    }"#;
+
+    run_exec_test(src, config, false);
+}
+
+#[test]
+fn issue_12397_hoist_props_destructuring_member_targets() {
+    run_default_exec_test(
+        r#"
+        const a = { n: 1 };
+        [a.n] = [2];
+        console.log(a.n);
+
+        var b = { n: 1 };
+        [b.n] = [2];
+        console.log(b.n);
+
+        (function () {
+            const c = { n: 1 };
+            [c.n] = [2];
+            console.log(c.n);
+        })();
+
+        const d = { n: 1 };
+        ({ x: d.n } = { x: 2 });
+        console.log(d.n);
+
+        const e = { a: { x: 0 }, b: { y: 0 } };
+        [e.a.x, e.b.y] = [10, 20];
+        console.log(e.a.x, e.b.y);
+
+        const f = { flag: false };
+        [f.flag] = [true];
+        console.log(f.flag);
+
+        const g = { n: 1 };
+        [g.n = 3] = [];
+        console.log(g.n);
+
+        const h = { n: 1 };
+        [...h.n] = [4, 5];
+        console.log(h.n);
+
+        const i = { n: 1 };
+        for ([i.n] of [[6]]);
+        console.log(i.n);
+        "#,
+    );
+}
+
+#[test]
+fn issue_12400_fn_decl_self_ref_in_unused_local() {
+    run_default_exec_test(
+        r#"
+        (function () {
+            function handler() {
+                var self = handler;
+                console.log("called");
+            }
+            setTimeout(handler, 0);
+        })();
+        "#,
+    );
+}
+
+#[test]
+fn issue_12400_class_decl_self_ref_in_unused_local() {
+    run_default_exec_test(
+        r#"
+        (function () {
+            class Widget {
+                render() {
+                    var self = Widget;
+                    console.log("rendered");
+                }
+            }
+            setTimeout(function () { new Widget().render(); }, 0);
+        })();
+        "#,
+    );
+}
+
+#[test]
+fn issue_12529_array_assigned_then_mutated_through_member() {
+    run_default_exec_test(
+        r#"
+        (function () {
+            function fill(a) {
+                a[0] = 1;
+                console.log(a[0]);
+            }
+            fill([]);
+        })();
+
+        (function () {
+            function fill(a) {
+                a[0] = (console.log("x"), 1);
+                console.log(a[0]);
+            }
+            fill([]);
+        })();
+
+        (function () {
+            function fill(a) {
+                a[0] = String(1);
+                console.log(a[0]);
+            }
+            fill([]);
+        })();
+
+        function push() {
+            var r;
+            r = [];
+            r.push(3);
+            return r[0];
+        }
+        console.log(push());
+
+        (function () {
+            let e;
+            e = [1, 2];
+            e.reverse();
+            console.log(e[0]);
+        })();
+
+        (function () {
+            var t;
+            t = [1];
+            t.length = 0;
+            console.log(t[0]);
+        })();
+
+        (function () {
+            var d;
+            [(d = [])[0]] = [5];
+            console.log(d[0]);
+        })();
+        "#,
+    );
 }

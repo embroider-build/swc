@@ -41,6 +41,14 @@ pub trait VisitHook<C> {
     #[inline]
     #[allow(unused_variables)]
     fn exit_arrow_expr(&mut self, node: &ArrowExpr, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `ArrowFunctionBody` before visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_arrow_function_body(&mut self, node: &ArrowFunctionBody, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `ArrowFunctionBody` after visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_arrow_function_body(&mut self, node: &ArrowFunctionBody, ctx: &mut C) {}
     #[doc = "Called when entering a node of type `AssignExpr` before visiting its children."]
     #[inline]
     #[allow(unused_variables)]
@@ -169,14 +177,6 @@ pub trait VisitHook<C> {
     #[inline]
     #[allow(unused_variables)]
     fn exit_block_stmt(&mut self, node: &BlockStmt, ctx: &mut C) {}
-    #[doc = "Called when entering a node of type `BlockStmtOrExpr` before visiting its children."]
-    #[inline]
-    #[allow(unused_variables)]
-    fn enter_block_stmt_or_expr(&mut self, node: &BlockStmtOrExpr, ctx: &mut C) {}
-    #[doc = "Called when exiting a node of type `BlockStmtOrExpr` after visiting its children."]
-    #[inline]
-    #[allow(unused_variables)]
-    fn exit_block_stmt_or_expr(&mut self, node: &BlockStmtOrExpr, ctx: &mut C) {}
     #[doc = "Called when entering a node of type `Bool` before visiting its children."]
     #[inline]
     #[allow(unused_variables)]
@@ -580,6 +580,14 @@ pub trait VisitHook<C> {
     #[inline]
     #[allow(unused_variables)]
     fn exit_function(&mut self, node: &Function, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `FunctionBody` before visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_function_body(&mut self, node: &FunctionBody, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `FunctionBody` after visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_function_body(&mut self, node: &FunctionBody, ctx: &mut C) {}
     #[doc = "Called when entering a node of type `GetterProp` before visiting its children."]
     #[inline]
     #[allow(unused_variables)]
@@ -1184,6 +1192,16 @@ pub trait VisitHook<C> {
     #[inline]
     #[allow(unused_variables)]
     fn exit_opt_expr_or_spreads(&mut self, node: &Option<Vec<ExprOrSpread>>, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `Option < FunctionBody >` before visiting its \
+             children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_opt_function_body(&mut self, node: &Option<FunctionBody>, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `Option < FunctionBody >` after visiting its \
+             children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_opt_function_body(&mut self, node: &Option<FunctionBody>, ctx: &mut C) {}
     #[doc = "Called when entering a node of type `Option < Ident >` before visiting its children."]
     #[inline]
     #[allow(unused_variables)]
@@ -1316,6 +1334,16 @@ pub trait VisitHook<C> {
     #[inline]
     #[allow(unused_variables)]
     fn exit_opt_ts_namespace_body(&mut self, node: &Option<TsNamespaceBody>, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `Option < Box < TsThisParam > >` before visiting \
+             its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_opt_ts_this_param(&mut self, node: &Option<Box<TsThisParam>>, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `Option < Box < TsThisParam > >` after visiting \
+             its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_opt_ts_this_param(&mut self, node: &Option<Box<TsThisParam>>, ctx: &mut C) {}
     #[doc = "Called when entering a node of type `Option < Box < TsType > >` before visiting its \
              children."]
     #[inline]
@@ -2202,6 +2230,14 @@ pub trait VisitHook<C> {
     #[inline]
     #[allow(unused_variables)]
     fn exit_ts_setter_signature(&mut self, node: &TsSetterSignature, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `TsThisParam` before visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_ts_this_param(&mut self, node: &TsThisParam, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `TsThisParam` after visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_ts_this_param(&mut self, node: &TsThisParam, ctx: &mut C) {}
     #[doc = "Called when entering a node of type `TsThisType` before visiting its children."]
     #[inline]
     #[allow(unused_variables)]
@@ -2611,6 +2647,18 @@ where
     }
 
     #[inline]
+    fn enter_arrow_function_body(&mut self, node: &ArrowFunctionBody, ctx: &mut C) {
+        self.first.enter_arrow_function_body(node, ctx);
+        self.second.enter_arrow_function_body(node, ctx);
+    }
+
+    #[inline]
+    fn exit_arrow_function_body(&mut self, node: &ArrowFunctionBody, ctx: &mut C) {
+        self.second.exit_arrow_function_body(node, ctx);
+        self.first.exit_arrow_function_body(node, ctx);
+    }
+
+    #[inline]
     fn enter_assign_expr(&mut self, node: &AssignExpr, ctx: &mut C) {
         self.first.enter_assign_expr(node, ctx);
         self.second.enter_assign_expr(node, ctx);
@@ -2800,18 +2848,6 @@ where
     fn exit_block_stmt(&mut self, node: &BlockStmt, ctx: &mut C) {
         self.second.exit_block_stmt(node, ctx);
         self.first.exit_block_stmt(node, ctx);
-    }
-
-    #[inline]
-    fn enter_block_stmt_or_expr(&mut self, node: &BlockStmtOrExpr, ctx: &mut C) {
-        self.first.enter_block_stmt_or_expr(node, ctx);
-        self.second.enter_block_stmt_or_expr(node, ctx);
-    }
-
-    #[inline]
-    fn exit_block_stmt_or_expr(&mut self, node: &BlockStmtOrExpr, ctx: &mut C) {
-        self.second.exit_block_stmt_or_expr(node, ctx);
-        self.first.exit_block_stmt_or_expr(node, ctx);
     }
 
     #[inline]
@@ -3400,6 +3436,18 @@ where
     fn exit_function(&mut self, node: &Function, ctx: &mut C) {
         self.second.exit_function(node, ctx);
         self.first.exit_function(node, ctx);
+    }
+
+    #[inline]
+    fn enter_function_body(&mut self, node: &FunctionBody, ctx: &mut C) {
+        self.first.enter_function_body(node, ctx);
+        self.second.enter_function_body(node, ctx);
+    }
+
+    #[inline]
+    fn exit_function_body(&mut self, node: &FunctionBody, ctx: &mut C) {
+        self.second.exit_function_body(node, ctx);
+        self.first.exit_function_body(node, ctx);
     }
 
     #[inline]
@@ -4267,6 +4315,18 @@ where
     }
 
     #[inline]
+    fn enter_opt_function_body(&mut self, node: &Option<FunctionBody>, ctx: &mut C) {
+        self.first.enter_opt_function_body(node, ctx);
+        self.second.enter_opt_function_body(node, ctx);
+    }
+
+    #[inline]
+    fn exit_opt_function_body(&mut self, node: &Option<FunctionBody>, ctx: &mut C) {
+        self.second.exit_opt_function_body(node, ctx);
+        self.first.exit_opt_function_body(node, ctx);
+    }
+
+    #[inline]
     fn enter_opt_ident(&mut self, node: &Option<Ident>, ctx: &mut C) {
         self.first.enter_opt_ident(node, ctx);
         self.second.enter_opt_ident(node, ctx);
@@ -4424,6 +4484,18 @@ where
     fn exit_opt_ts_namespace_body(&mut self, node: &Option<TsNamespaceBody>, ctx: &mut C) {
         self.second.exit_opt_ts_namespace_body(node, ctx);
         self.first.exit_opt_ts_namespace_body(node, ctx);
+    }
+
+    #[inline]
+    fn enter_opt_ts_this_param(&mut self, node: &Option<Box<TsThisParam>>, ctx: &mut C) {
+        self.first.enter_opt_ts_this_param(node, ctx);
+        self.second.enter_opt_ts_this_param(node, ctx);
+    }
+
+    #[inline]
+    fn exit_opt_ts_this_param(&mut self, node: &Option<Box<TsThisParam>>, ctx: &mut C) {
+        self.second.exit_opt_ts_this_param(node, ctx);
+        self.first.exit_opt_ts_this_param(node, ctx);
     }
 
     #[inline]
@@ -5695,6 +5767,18 @@ where
     }
 
     #[inline]
+    fn enter_ts_this_param(&mut self, node: &TsThisParam, ctx: &mut C) {
+        self.first.enter_ts_this_param(node, ctx);
+        self.second.enter_ts_this_param(node, ctx);
+    }
+
+    #[inline]
+    fn exit_ts_this_param(&mut self, node: &TsThisParam, ctx: &mut C) {
+        self.second.exit_ts_this_param(node, ctx);
+        self.first.exit_ts_this_param(node, ctx);
+    }
+
+    #[inline]
     fn enter_ts_this_type(&mut self, node: &TsThisType, ctx: &mut C) {
         self.first.enter_ts_this_type(node, ctx);
         self.second.enter_ts_this_type(node, ctx);
@@ -6252,6 +6336,22 @@ where
     }
 
     #[inline]
+    fn enter_arrow_function_body(&mut self, node: &ArrowFunctionBody, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_arrow_function_body(node, ctx),
+            Self::Right(hook) => hook.enter_arrow_function_body(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_arrow_function_body(&mut self, node: &ArrowFunctionBody, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_arrow_function_body(node, ctx),
+            Self::Right(hook) => hook.exit_arrow_function_body(node, ctx),
+        }
+    }
+
+    #[inline]
     fn enter_assign_expr(&mut self, node: &AssignExpr, ctx: &mut C) {
         match self {
             Self::Left(hook) => hook.enter_assign_expr(node, ctx),
@@ -6504,22 +6604,6 @@ where
         match self {
             Self::Left(hook) => hook.exit_block_stmt(node, ctx),
             Self::Right(hook) => hook.exit_block_stmt(node, ctx),
-        }
-    }
-
-    #[inline]
-    fn enter_block_stmt_or_expr(&mut self, node: &BlockStmtOrExpr, ctx: &mut C) {
-        match self {
-            Self::Left(hook) => hook.enter_block_stmt_or_expr(node, ctx),
-            Self::Right(hook) => hook.enter_block_stmt_or_expr(node, ctx),
-        }
-    }
-
-    #[inline]
-    fn exit_block_stmt_or_expr(&mut self, node: &BlockStmtOrExpr, ctx: &mut C) {
-        match self {
-            Self::Left(hook) => hook.exit_block_stmt_or_expr(node, ctx),
-            Self::Right(hook) => hook.exit_block_stmt_or_expr(node, ctx),
         }
     }
 
@@ -7304,6 +7388,22 @@ where
         match self {
             Self::Left(hook) => hook.exit_function(node, ctx),
             Self::Right(hook) => hook.exit_function(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn enter_function_body(&mut self, node: &FunctionBody, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_function_body(node, ctx),
+            Self::Right(hook) => hook.enter_function_body(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_function_body(&mut self, node: &FunctionBody, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_function_body(node, ctx),
+            Self::Right(hook) => hook.exit_function_body(node, ctx),
         }
     }
 
@@ -8460,6 +8560,22 @@ where
     }
 
     #[inline]
+    fn enter_opt_function_body(&mut self, node: &Option<FunctionBody>, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_opt_function_body(node, ctx),
+            Self::Right(hook) => hook.enter_opt_function_body(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_opt_function_body(&mut self, node: &Option<FunctionBody>, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_opt_function_body(node, ctx),
+            Self::Right(hook) => hook.exit_opt_function_body(node, ctx),
+        }
+    }
+
+    #[inline]
     fn enter_opt_ident(&mut self, node: &Option<Ident>, ctx: &mut C) {
         match self {
             Self::Left(hook) => hook.enter_opt_ident(node, ctx),
@@ -8668,6 +8784,22 @@ where
         match self {
             Self::Left(hook) => hook.exit_opt_ts_namespace_body(node, ctx),
             Self::Right(hook) => hook.exit_opt_ts_namespace_body(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn enter_opt_ts_this_param(&mut self, node: &Option<Box<TsThisParam>>, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_opt_ts_this_param(node, ctx),
+            Self::Right(hook) => hook.enter_opt_ts_this_param(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_opt_ts_this_param(&mut self, node: &Option<Box<TsThisParam>>, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_opt_ts_this_param(node, ctx),
+            Self::Right(hook) => hook.exit_opt_ts_this_param(node, ctx),
         }
     }
 
@@ -10360,6 +10492,22 @@ where
     }
 
     #[inline]
+    fn enter_ts_this_param(&mut self, node: &TsThisParam, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_ts_this_param(node, ctx),
+            Self::Right(hook) => hook.enter_ts_this_param(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_ts_this_param(&mut self, node: &TsThisParam, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_ts_this_param(node, ctx),
+            Self::Right(hook) => hook.exit_ts_this_param(node, ctx),
+        }
+    }
+
+    #[inline]
     fn enter_ts_this_type(&mut self, node: &TsThisType, ctx: &mut C) {
         match self {
             Self::Left(hook) => hook.enter_ts_this_type(node, ctx),
@@ -11068,6 +11216,20 @@ where
     }
 
     #[inline]
+    fn enter_arrow_function_body(&mut self, node: &ArrowFunctionBody, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_arrow_function_body(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_arrow_function_body(&mut self, node: &ArrowFunctionBody, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_arrow_function_body(node, ctx);
+        }
+    }
+
+    #[inline]
     fn enter_assign_expr(&mut self, node: &AssignExpr, ctx: &mut C) {
         if let Some(hook) = self {
             hook.enter_assign_expr(node, ctx);
@@ -11288,20 +11450,6 @@ where
     fn exit_block_stmt(&mut self, node: &BlockStmt, ctx: &mut C) {
         if let Some(hook) = self {
             hook.exit_block_stmt(node, ctx);
-        }
-    }
-
-    #[inline]
-    fn enter_block_stmt_or_expr(&mut self, node: &BlockStmtOrExpr, ctx: &mut C) {
-        if let Some(hook) = self {
-            hook.enter_block_stmt_or_expr(node, ctx);
-        }
-    }
-
-    #[inline]
-    fn exit_block_stmt_or_expr(&mut self, node: &BlockStmtOrExpr, ctx: &mut C) {
-        if let Some(hook) = self {
-            hook.exit_block_stmt_or_expr(node, ctx);
         }
     }
 
@@ -11988,6 +12136,20 @@ where
     fn exit_function(&mut self, node: &Function, ctx: &mut C) {
         if let Some(hook) = self {
             hook.exit_function(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn enter_function_body(&mut self, node: &FunctionBody, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_function_body(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_function_body(&mut self, node: &FunctionBody, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_function_body(node, ctx);
         }
     }
 
@@ -13000,6 +13162,20 @@ where
     }
 
     #[inline]
+    fn enter_opt_function_body(&mut self, node: &Option<FunctionBody>, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_opt_function_body(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_opt_function_body(&mut self, node: &Option<FunctionBody>, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_opt_function_body(node, ctx);
+        }
+    }
+
+    #[inline]
     fn enter_opt_ident(&mut self, node: &Option<Ident>, ctx: &mut C) {
         if let Some(hook) = self {
             hook.enter_opt_ident(node, ctx);
@@ -13182,6 +13358,20 @@ where
     fn exit_opt_ts_namespace_body(&mut self, node: &Option<TsNamespaceBody>, ctx: &mut C) {
         if let Some(hook) = self {
             hook.exit_opt_ts_namespace_body(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn enter_opt_ts_this_param(&mut self, node: &Option<Box<TsThisParam>>, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_opt_ts_this_param(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_opt_ts_this_param(&mut self, node: &Option<Box<TsThisParam>>, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_opt_ts_this_param(node, ctx);
         }
     }
 
@@ -14664,6 +14854,20 @@ where
     }
 
     #[inline]
+    fn enter_ts_this_param(&mut self, node: &TsThisParam, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_ts_this_param(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_ts_this_param(&mut self, node: &TsThisParam, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_ts_this_param(node, ctx);
+        }
+    }
+
+    #[inline]
     fn enter_ts_this_type(&mut self, node: &TsThisType, ctx: &mut C) {
         if let Some(hook) = self {
             hook.enter_ts_this_type(node, ctx);
@@ -15273,6 +15477,14 @@ impl<H: VisitHook<C>, C> Visit for VisitWithHook<H, C> {
         self.hook.exit_arrow_expr(node, &mut self.context);
     }
 
+    #[doc = "Visits a node of type `ArrowFunctionBody` using the hook's enter and exit methods."]
+    #[inline]
+    fn visit_arrow_function_body(&mut self, node: &ArrowFunctionBody) {
+        self.hook.enter_arrow_function_body(node, &mut self.context);
+        node.visit_children_with(self);
+        self.hook.exit_arrow_function_body(node, &mut self.context);
+    }
+
     #[doc = "Visits a node of type `AssignExpr` using the hook's enter and exit methods."]
     #[inline]
     fn visit_assign_expr(&mut self, node: &AssignExpr) {
@@ -15399,14 +15611,6 @@ impl<H: VisitHook<C>, C> Visit for VisitWithHook<H, C> {
         self.hook.enter_block_stmt(node, &mut self.context);
         node.visit_children_with(self);
         self.hook.exit_block_stmt(node, &mut self.context);
-    }
-
-    #[doc = "Visits a node of type `BlockStmtOrExpr` using the hook's enter and exit methods."]
-    #[inline]
-    fn visit_block_stmt_or_expr(&mut self, node: &BlockStmtOrExpr) {
-        self.hook.enter_block_stmt_or_expr(node, &mut self.context);
-        node.visit_children_with(self);
-        self.hook.exit_block_stmt_or_expr(node, &mut self.context);
     }
 
     #[doc = "Visits a node of type `Bool` using the hook's enter and exit methods."]
@@ -15810,6 +16014,14 @@ impl<H: VisitHook<C>, C> Visit for VisitWithHook<H, C> {
         self.hook.enter_function(node, &mut self.context);
         node.visit_children_with(self);
         self.hook.exit_function(node, &mut self.context);
+    }
+
+    #[doc = "Visits a node of type `FunctionBody` using the hook's enter and exit methods."]
+    #[inline]
+    fn visit_function_body(&mut self, node: &FunctionBody) {
+        self.hook.enter_function_body(node, &mut self.context);
+        node.visit_children_with(self);
+        self.hook.exit_function_body(node, &mut self.context);
     }
 
     #[doc = "Visits a node of type `GetterProp` using the hook's enter and exit methods."]
@@ -16407,6 +16619,15 @@ impl<H: VisitHook<C>, C> Visit for VisitWithHook<H, C> {
         self.hook.exit_opt_expr_or_spreads(node, &mut self.context);
     }
 
+    #[doc = "Visits a node of type `Option < FunctionBody >` using the hook's enter and exit \
+             methods."]
+    #[inline]
+    fn visit_opt_function_body(&mut self, node: &Option<FunctionBody>) {
+        self.hook.enter_opt_function_body(node, &mut self.context);
+        node.visit_children_with(self);
+        self.hook.exit_opt_function_body(node, &mut self.context);
+    }
+
     #[doc = "Visits a node of type `Option < Ident >` using the hook's enter and exit methods."]
     #[inline]
     fn visit_opt_ident(&mut self, node: &Option<Ident>) {
@@ -16528,6 +16749,15 @@ impl<H: VisitHook<C>, C> Visit for VisitWithHook<H, C> {
         node.visit_children_with(self);
         self.hook
             .exit_opt_ts_namespace_body(node, &mut self.context);
+    }
+
+    #[doc = "Visits a node of type `Option < Box < TsThisParam > >` using the hook's enter and \
+             exit methods."]
+    #[inline]
+    fn visit_opt_ts_this_param(&mut self, node: &Option<Box<TsThisParam>>) {
+        self.hook.enter_opt_ts_this_param(node, &mut self.context);
+        node.visit_children_with(self);
+        self.hook.exit_opt_ts_this_param(node, &mut self.context);
     }
 
     #[doc = "Visits a node of type `Option < Box < TsType > >` using the hook's enter and exit \
@@ -17424,6 +17654,14 @@ impl<H: VisitHook<C>, C> Visit for VisitWithHook<H, C> {
         self.hook.exit_ts_setter_signature(node, &mut self.context);
     }
 
+    #[doc = "Visits a node of type `TsThisParam` using the hook's enter and exit methods."]
+    #[inline]
+    fn visit_ts_this_param(&mut self, node: &TsThisParam) {
+        self.hook.enter_ts_this_param(node, &mut self.context);
+        node.visit_children_with(self);
+        self.hook.exit_ts_this_param(node, &mut self.context);
+    }
+
     #[doc = "Visits a node of type `TsThisType` using the hook's enter and exit methods."]
     #[inline]
     fn visit_ts_this_type(&mut self, node: &TsThisType) {
@@ -17792,6 +18030,14 @@ pub trait VisitMutHook<C> {
     #[inline]
     #[allow(unused_variables)]
     fn exit_arrow_expr(&mut self, node: &mut ArrowExpr, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `ArrowFunctionBody` before visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_arrow_function_body(&mut self, node: &mut ArrowFunctionBody, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `ArrowFunctionBody` after visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_arrow_function_body(&mut self, node: &mut ArrowFunctionBody, ctx: &mut C) {}
     #[doc = "Called when entering a node of type `AssignExpr` before visiting its children."]
     #[inline]
     #[allow(unused_variables)]
@@ -17920,14 +18166,6 @@ pub trait VisitMutHook<C> {
     #[inline]
     #[allow(unused_variables)]
     fn exit_block_stmt(&mut self, node: &mut BlockStmt, ctx: &mut C) {}
-    #[doc = "Called when entering a node of type `BlockStmtOrExpr` before visiting its children."]
-    #[inline]
-    #[allow(unused_variables)]
-    fn enter_block_stmt_or_expr(&mut self, node: &mut BlockStmtOrExpr, ctx: &mut C) {}
-    #[doc = "Called when exiting a node of type `BlockStmtOrExpr` after visiting its children."]
-    #[inline]
-    #[allow(unused_variables)]
-    fn exit_block_stmt_or_expr(&mut self, node: &mut BlockStmtOrExpr, ctx: &mut C) {}
     #[doc = "Called when entering a node of type `Bool` before visiting its children."]
     #[inline]
     #[allow(unused_variables)]
@@ -18341,6 +18579,14 @@ pub trait VisitMutHook<C> {
     #[inline]
     #[allow(unused_variables)]
     fn exit_function(&mut self, node: &mut Function, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `FunctionBody` before visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_function_body(&mut self, node: &mut FunctionBody, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `FunctionBody` after visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_function_body(&mut self, node: &mut FunctionBody, ctx: &mut C) {}
     #[doc = "Called when entering a node of type `GetterProp` before visiting its children."]
     #[inline]
     #[allow(unused_variables)]
@@ -18945,6 +19191,16 @@ pub trait VisitMutHook<C> {
     #[inline]
     #[allow(unused_variables)]
     fn exit_opt_expr_or_spreads(&mut self, node: &mut Option<Vec<ExprOrSpread>>, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `Option < FunctionBody >` before visiting its \
+             children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_opt_function_body(&mut self, node: &mut Option<FunctionBody>, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `Option < FunctionBody >` after visiting its \
+             children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_opt_function_body(&mut self, node: &mut Option<FunctionBody>, ctx: &mut C) {}
     #[doc = "Called when entering a node of type `Option < Ident >` before visiting its children."]
     #[inline]
     #[allow(unused_variables)]
@@ -19082,6 +19338,16 @@ pub trait VisitMutHook<C> {
     #[inline]
     #[allow(unused_variables)]
     fn exit_opt_ts_namespace_body(&mut self, node: &mut Option<TsNamespaceBody>, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `Option < Box < TsThisParam > >` before visiting \
+             its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_opt_ts_this_param(&mut self, node: &mut Option<Box<TsThisParam>>, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `Option < Box < TsThisParam > >` after visiting \
+             its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_opt_ts_this_param(&mut self, node: &mut Option<Box<TsThisParam>>, ctx: &mut C) {}
     #[doc = "Called when entering a node of type `Option < Box < TsType > >` before visiting its \
              children."]
     #[inline]
@@ -19989,6 +20255,14 @@ pub trait VisitMutHook<C> {
     #[inline]
     #[allow(unused_variables)]
     fn exit_ts_setter_signature(&mut self, node: &mut TsSetterSignature, ctx: &mut C) {}
+    #[doc = "Called when entering a node of type `TsThisParam` before visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn enter_ts_this_param(&mut self, node: &mut TsThisParam, ctx: &mut C) {}
+    #[doc = "Called when exiting a node of type `TsThisParam` after visiting its children."]
+    #[inline]
+    #[allow(unused_variables)]
+    fn exit_ts_this_param(&mut self, node: &mut TsThisParam, ctx: &mut C) {}
     #[doc = "Called when entering a node of type `TsThisType` before visiting its children."]
     #[inline]
     #[allow(unused_variables)]
@@ -20408,6 +20682,18 @@ where
     }
 
     #[inline]
+    fn enter_arrow_function_body(&mut self, node: &mut ArrowFunctionBody, ctx: &mut C) {
+        self.first.enter_arrow_function_body(node, ctx);
+        self.second.enter_arrow_function_body(node, ctx);
+    }
+
+    #[inline]
+    fn exit_arrow_function_body(&mut self, node: &mut ArrowFunctionBody, ctx: &mut C) {
+        self.second.exit_arrow_function_body(node, ctx);
+        self.first.exit_arrow_function_body(node, ctx);
+    }
+
+    #[inline]
     fn enter_assign_expr(&mut self, node: &mut AssignExpr, ctx: &mut C) {
         self.first.enter_assign_expr(node, ctx);
         self.second.enter_assign_expr(node, ctx);
@@ -20597,18 +20883,6 @@ where
     fn exit_block_stmt(&mut self, node: &mut BlockStmt, ctx: &mut C) {
         self.second.exit_block_stmt(node, ctx);
         self.first.exit_block_stmt(node, ctx);
-    }
-
-    #[inline]
-    fn enter_block_stmt_or_expr(&mut self, node: &mut BlockStmtOrExpr, ctx: &mut C) {
-        self.first.enter_block_stmt_or_expr(node, ctx);
-        self.second.enter_block_stmt_or_expr(node, ctx);
-    }
-
-    #[inline]
-    fn exit_block_stmt_or_expr(&mut self, node: &mut BlockStmtOrExpr, ctx: &mut C) {
-        self.second.exit_block_stmt_or_expr(node, ctx);
-        self.first.exit_block_stmt_or_expr(node, ctx);
     }
 
     #[inline]
@@ -21205,6 +21479,18 @@ where
     fn exit_function(&mut self, node: &mut Function, ctx: &mut C) {
         self.second.exit_function(node, ctx);
         self.first.exit_function(node, ctx);
+    }
+
+    #[inline]
+    fn enter_function_body(&mut self, node: &mut FunctionBody, ctx: &mut C) {
+        self.first.enter_function_body(node, ctx);
+        self.second.enter_function_body(node, ctx);
+    }
+
+    #[inline]
+    fn exit_function_body(&mut self, node: &mut FunctionBody, ctx: &mut C) {
+        self.second.exit_function_body(node, ctx);
+        self.first.exit_function_body(node, ctx);
     }
 
     #[inline]
@@ -22072,6 +22358,18 @@ where
     }
 
     #[inline]
+    fn enter_opt_function_body(&mut self, node: &mut Option<FunctionBody>, ctx: &mut C) {
+        self.first.enter_opt_function_body(node, ctx);
+        self.second.enter_opt_function_body(node, ctx);
+    }
+
+    #[inline]
+    fn exit_opt_function_body(&mut self, node: &mut Option<FunctionBody>, ctx: &mut C) {
+        self.second.exit_opt_function_body(node, ctx);
+        self.first.exit_opt_function_body(node, ctx);
+    }
+
+    #[inline]
     fn enter_opt_ident(&mut self, node: &mut Option<Ident>, ctx: &mut C) {
         self.first.enter_opt_ident(node, ctx);
         self.second.enter_opt_ident(node, ctx);
@@ -22233,6 +22531,18 @@ where
     fn exit_opt_ts_namespace_body(&mut self, node: &mut Option<TsNamespaceBody>, ctx: &mut C) {
         self.second.exit_opt_ts_namespace_body(node, ctx);
         self.first.exit_opt_ts_namespace_body(node, ctx);
+    }
+
+    #[inline]
+    fn enter_opt_ts_this_param(&mut self, node: &mut Option<Box<TsThisParam>>, ctx: &mut C) {
+        self.first.enter_opt_ts_this_param(node, ctx);
+        self.second.enter_opt_ts_this_param(node, ctx);
+    }
+
+    #[inline]
+    fn exit_opt_ts_this_param(&mut self, node: &mut Option<Box<TsThisParam>>, ctx: &mut C) {
+        self.second.exit_opt_ts_this_param(node, ctx);
+        self.first.exit_opt_ts_this_param(node, ctx);
     }
 
     #[inline]
@@ -23520,6 +23830,18 @@ where
     }
 
     #[inline]
+    fn enter_ts_this_param(&mut self, node: &mut TsThisParam, ctx: &mut C) {
+        self.first.enter_ts_this_param(node, ctx);
+        self.second.enter_ts_this_param(node, ctx);
+    }
+
+    #[inline]
+    fn exit_ts_this_param(&mut self, node: &mut TsThisParam, ctx: &mut C) {
+        self.second.exit_ts_this_param(node, ctx);
+        self.first.exit_ts_this_param(node, ctx);
+    }
+
+    #[inline]
     fn enter_ts_this_type(&mut self, node: &mut TsThisType, ctx: &mut C) {
         self.first.enter_ts_this_type(node, ctx);
         self.second.enter_ts_this_type(node, ctx);
@@ -24085,6 +24407,22 @@ where
     }
 
     #[inline]
+    fn enter_arrow_function_body(&mut self, node: &mut ArrowFunctionBody, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_arrow_function_body(node, ctx),
+            Self::Right(hook) => hook.enter_arrow_function_body(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_arrow_function_body(&mut self, node: &mut ArrowFunctionBody, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_arrow_function_body(node, ctx),
+            Self::Right(hook) => hook.exit_arrow_function_body(node, ctx),
+        }
+    }
+
+    #[inline]
     fn enter_assign_expr(&mut self, node: &mut AssignExpr, ctx: &mut C) {
         match self {
             Self::Left(hook) => hook.enter_assign_expr(node, ctx),
@@ -24337,22 +24675,6 @@ where
         match self {
             Self::Left(hook) => hook.exit_block_stmt(node, ctx),
             Self::Right(hook) => hook.exit_block_stmt(node, ctx),
-        }
-    }
-
-    #[inline]
-    fn enter_block_stmt_or_expr(&mut self, node: &mut BlockStmtOrExpr, ctx: &mut C) {
-        match self {
-            Self::Left(hook) => hook.enter_block_stmt_or_expr(node, ctx),
-            Self::Right(hook) => hook.enter_block_stmt_or_expr(node, ctx),
-        }
-    }
-
-    #[inline]
-    fn exit_block_stmt_or_expr(&mut self, node: &mut BlockStmtOrExpr, ctx: &mut C) {
-        match self {
-            Self::Left(hook) => hook.exit_block_stmt_or_expr(node, ctx),
-            Self::Right(hook) => hook.exit_block_stmt_or_expr(node, ctx),
         }
     }
 
@@ -25145,6 +25467,22 @@ where
         match self {
             Self::Left(hook) => hook.exit_function(node, ctx),
             Self::Right(hook) => hook.exit_function(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn enter_function_body(&mut self, node: &mut FunctionBody, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_function_body(node, ctx),
+            Self::Right(hook) => hook.enter_function_body(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_function_body(&mut self, node: &mut FunctionBody, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_function_body(node, ctx),
+            Self::Right(hook) => hook.exit_function_body(node, ctx),
         }
     }
 
@@ -26301,6 +26639,22 @@ where
     }
 
     #[inline]
+    fn enter_opt_function_body(&mut self, node: &mut Option<FunctionBody>, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_opt_function_body(node, ctx),
+            Self::Right(hook) => hook.enter_opt_function_body(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_opt_function_body(&mut self, node: &mut Option<FunctionBody>, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_opt_function_body(node, ctx),
+            Self::Right(hook) => hook.exit_opt_function_body(node, ctx),
+        }
+    }
+
+    #[inline]
     fn enter_opt_ident(&mut self, node: &mut Option<Ident>, ctx: &mut C) {
         match self {
             Self::Left(hook) => hook.enter_opt_ident(node, ctx),
@@ -26513,6 +26867,22 @@ where
         match self {
             Self::Left(hook) => hook.exit_opt_ts_namespace_body(node, ctx),
             Self::Right(hook) => hook.exit_opt_ts_namespace_body(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn enter_opt_ts_this_param(&mut self, node: &mut Option<Box<TsThisParam>>, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_opt_ts_this_param(node, ctx),
+            Self::Right(hook) => hook.enter_opt_ts_this_param(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_opt_ts_this_param(&mut self, node: &mut Option<Box<TsThisParam>>, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_opt_ts_this_param(node, ctx),
+            Self::Right(hook) => hook.exit_opt_ts_this_param(node, ctx),
         }
     }
 
@@ -28221,6 +28591,22 @@ where
     }
 
     #[inline]
+    fn enter_ts_this_param(&mut self, node: &mut TsThisParam, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.enter_ts_this_param(node, ctx),
+            Self::Right(hook) => hook.enter_ts_this_param(node, ctx),
+        }
+    }
+
+    #[inline]
+    fn exit_ts_this_param(&mut self, node: &mut TsThisParam, ctx: &mut C) {
+        match self {
+            Self::Left(hook) => hook.exit_ts_this_param(node, ctx),
+            Self::Right(hook) => hook.exit_ts_this_param(node, ctx),
+        }
+    }
+
+    #[inline]
     fn enter_ts_this_type(&mut self, node: &mut TsThisType, ctx: &mut C) {
         match self {
             Self::Left(hook) => hook.enter_ts_this_type(node, ctx),
@@ -28937,6 +29323,20 @@ where
     }
 
     #[inline]
+    fn enter_arrow_function_body(&mut self, node: &mut ArrowFunctionBody, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_arrow_function_body(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_arrow_function_body(&mut self, node: &mut ArrowFunctionBody, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_arrow_function_body(node, ctx);
+        }
+    }
+
+    #[inline]
     fn enter_assign_expr(&mut self, node: &mut AssignExpr, ctx: &mut C) {
         if let Some(hook) = self {
             hook.enter_assign_expr(node, ctx);
@@ -29157,20 +29557,6 @@ where
     fn exit_block_stmt(&mut self, node: &mut BlockStmt, ctx: &mut C) {
         if let Some(hook) = self {
             hook.exit_block_stmt(node, ctx);
-        }
-    }
-
-    #[inline]
-    fn enter_block_stmt_or_expr(&mut self, node: &mut BlockStmtOrExpr, ctx: &mut C) {
-        if let Some(hook) = self {
-            hook.enter_block_stmt_or_expr(node, ctx);
-        }
-    }
-
-    #[inline]
-    fn exit_block_stmt_or_expr(&mut self, node: &mut BlockStmtOrExpr, ctx: &mut C) {
-        if let Some(hook) = self {
-            hook.exit_block_stmt_or_expr(node, ctx);
         }
     }
 
@@ -29865,6 +30251,20 @@ where
     fn exit_function(&mut self, node: &mut Function, ctx: &mut C) {
         if let Some(hook) = self {
             hook.exit_function(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn enter_function_body(&mut self, node: &mut FunctionBody, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_function_body(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_function_body(&mut self, node: &mut FunctionBody, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_function_body(node, ctx);
         }
     }
 
@@ -30877,6 +31277,20 @@ where
     }
 
     #[inline]
+    fn enter_opt_function_body(&mut self, node: &mut Option<FunctionBody>, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_opt_function_body(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_opt_function_body(&mut self, node: &mut Option<FunctionBody>, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_opt_function_body(node, ctx);
+        }
+    }
+
+    #[inline]
     fn enter_opt_ident(&mut self, node: &mut Option<Ident>, ctx: &mut C) {
         if let Some(hook) = self {
             hook.enter_opt_ident(node, ctx);
@@ -31063,6 +31477,20 @@ where
     fn exit_opt_ts_namespace_body(&mut self, node: &mut Option<TsNamespaceBody>, ctx: &mut C) {
         if let Some(hook) = self {
             hook.exit_opt_ts_namespace_body(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn enter_opt_ts_this_param(&mut self, node: &mut Option<Box<TsThisParam>>, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_opt_ts_this_param(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_opt_ts_this_param(&mut self, node: &mut Option<Box<TsThisParam>>, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_opt_ts_this_param(node, ctx);
         }
     }
 
@@ -32561,6 +32989,20 @@ where
     }
 
     #[inline]
+    fn enter_ts_this_param(&mut self, node: &mut TsThisParam, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.enter_ts_this_param(node, ctx);
+        }
+    }
+
+    #[inline]
+    fn exit_ts_this_param(&mut self, node: &mut TsThisParam, ctx: &mut C) {
+        if let Some(hook) = self {
+            hook.exit_ts_this_param(node, ctx);
+        }
+    }
+
+    #[inline]
     fn enter_ts_this_type(&mut self, node: &mut TsThisType, ctx: &mut C) {
         if let Some(hook) = self {
             hook.enter_ts_this_type(node, ctx);
@@ -33178,6 +33620,14 @@ impl<H: VisitMutHook<C>, C> VisitMut for VisitMutWithHook<H, C> {
         self.hook.exit_arrow_expr(node, &mut self.context);
     }
 
+    #[doc = "Visits a node of type `ArrowFunctionBody` using the hook's enter and exit methods."]
+    #[inline]
+    fn visit_mut_arrow_function_body(&mut self, node: &mut ArrowFunctionBody) {
+        self.hook.enter_arrow_function_body(node, &mut self.context);
+        node.visit_mut_children_with(self);
+        self.hook.exit_arrow_function_body(node, &mut self.context);
+    }
+
     #[doc = "Visits a node of type `AssignExpr` using the hook's enter and exit methods."]
     #[inline]
     fn visit_mut_assign_expr(&mut self, node: &mut AssignExpr) {
@@ -33304,14 +33754,6 @@ impl<H: VisitMutHook<C>, C> VisitMut for VisitMutWithHook<H, C> {
         self.hook.enter_block_stmt(node, &mut self.context);
         node.visit_mut_children_with(self);
         self.hook.exit_block_stmt(node, &mut self.context);
-    }
-
-    #[doc = "Visits a node of type `BlockStmtOrExpr` using the hook's enter and exit methods."]
-    #[inline]
-    fn visit_mut_block_stmt_or_expr(&mut self, node: &mut BlockStmtOrExpr) {
-        self.hook.enter_block_stmt_or_expr(node, &mut self.context);
-        node.visit_mut_children_with(self);
-        self.hook.exit_block_stmt_or_expr(node, &mut self.context);
     }
 
     #[doc = "Visits a node of type `Bool` using the hook's enter and exit methods."]
@@ -33715,6 +34157,14 @@ impl<H: VisitMutHook<C>, C> VisitMut for VisitMutWithHook<H, C> {
         self.hook.enter_function(node, &mut self.context);
         node.visit_mut_children_with(self);
         self.hook.exit_function(node, &mut self.context);
+    }
+
+    #[doc = "Visits a node of type `FunctionBody` using the hook's enter and exit methods."]
+    #[inline]
+    fn visit_mut_function_body(&mut self, node: &mut FunctionBody) {
+        self.hook.enter_function_body(node, &mut self.context);
+        node.visit_mut_children_with(self);
+        self.hook.exit_function_body(node, &mut self.context);
     }
 
     #[doc = "Visits a node of type `GetterProp` using the hook's enter and exit methods."]
@@ -34312,6 +34762,15 @@ impl<H: VisitMutHook<C>, C> VisitMut for VisitMutWithHook<H, C> {
         self.hook.exit_opt_expr_or_spreads(node, &mut self.context);
     }
 
+    #[doc = "Visits a node of type `Option < FunctionBody >` using the hook's enter and exit \
+             methods."]
+    #[inline]
+    fn visit_mut_opt_function_body(&mut self, node: &mut Option<FunctionBody>) {
+        self.hook.enter_opt_function_body(node, &mut self.context);
+        node.visit_mut_children_with(self);
+        self.hook.exit_opt_function_body(node, &mut self.context);
+    }
+
     #[doc = "Visits a node of type `Option < Ident >` using the hook's enter and exit methods."]
     #[inline]
     fn visit_mut_opt_ident(&mut self, node: &mut Option<Ident>) {
@@ -34433,6 +34892,15 @@ impl<H: VisitMutHook<C>, C> VisitMut for VisitMutWithHook<H, C> {
         node.visit_mut_children_with(self);
         self.hook
             .exit_opt_ts_namespace_body(node, &mut self.context);
+    }
+
+    #[doc = "Visits a node of type `Option < Box < TsThisParam > >` using the hook's enter and \
+             exit methods."]
+    #[inline]
+    fn visit_mut_opt_ts_this_param(&mut self, node: &mut Option<Box<TsThisParam>>) {
+        self.hook.enter_opt_ts_this_param(node, &mut self.context);
+        node.visit_mut_children_with(self);
+        self.hook.exit_opt_ts_this_param(node, &mut self.context);
     }
 
     #[doc = "Visits a node of type `Option < Box < TsType > >` using the hook's enter and exit \
@@ -35327,6 +35795,14 @@ impl<H: VisitMutHook<C>, C> VisitMut for VisitMutWithHook<H, C> {
         self.hook.enter_ts_setter_signature(node, &mut self.context);
         node.visit_mut_children_with(self);
         self.hook.exit_ts_setter_signature(node, &mut self.context);
+    }
+
+    #[doc = "Visits a node of type `TsThisParam` using the hook's enter and exit methods."]
+    #[inline]
+    fn visit_mut_ts_this_param(&mut self, node: &mut TsThisParam) {
+        self.hook.enter_ts_this_param(node, &mut self.context);
+        node.visit_mut_children_with(self);
+        self.hook.exit_ts_this_param(node, &mut self.context);
     }
 
     #[doc = "Visits a node of type `TsThisType` using the hook's enter and exit methods."]

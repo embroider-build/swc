@@ -5,7 +5,9 @@ use swc_common::{util::take::Take, Spanned, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_hooks::VisitMutHook;
 use swc_ecma_transforms_base::{assumptions::Assumptions, helper, helper_expr};
-use swc_ecma_utils::{alias_if_required, private_ident, quote_ident, ExprFactory};
+use swc_ecma_utils::{
+    alias_if_required, number::ToJsString, private_ident, quote_ident, ExprFactory,
+};
 
 use crate::TraverseCtx;
 
@@ -163,33 +165,11 @@ impl VisitMutHook<TraverseCtx> for ObjectRestSpreadPass {
             return;
         }
 
-        // Has rest - create temp for RHS if needed
-        let (ref_ident, aliased) = alias_if_required(right, "_ref");
-
-        // Build sequence expression
+        // Preserve the RHS value for every extraction and the assignment result.
+        // Even an identifier may be overwritten by the pattern or its side effects.
         let mut out = ExprOutput::new(ctx);
-
-        if aliased {
-            // Declare the temp var
-            out.ctx
-                .var_declarations
-                .insert_var_declarator(VarDeclarator {
-                    span: DUMMY_SP,
-                    name: ref_ident.clone().into(),
-                    init: None,
-                    definite: false,
-                });
-            // _ref = source
-            out.exprs.push(
-                AssignExpr {
-                    span: DUMMY_SP,
-                    left: ref_ident.clone().into(),
-                    op: op!("="),
-                    right: right.take(),
-                }
-                .into(),
-            );
-        }
+        let ref_ident = out.declare_temp("_ref");
+        out.assign(ref_ident.clone().into(), right.take());
 
         let mut lowerer = RestLowerer::new(self.config, out);
         lowerer.visit(inner_pat, Box::new(ref_ident.clone().into()));
@@ -302,10 +282,10 @@ impl VisitMutHook<TraverseCtx> for ObjectRestSpreadPass {
             if !stmts.is_empty() {
                 // Insert into body
                 match &mut *arrow.body {
-                    BlockStmtOrExpr::BlockStmt(block) => {
+                    ArrowFunctionBody::FunctionBody(block) => {
                         prepend_stmts_to_front(&mut block.stmts, stmts);
                     }
-                    BlockStmtOrExpr::Expr(expr) => {
+                    ArrowFunctionBody::Expr(expr) => {
                         let mut body_stmts = stmts;
                         body_stmts.push(
                             ReturnStmt {
@@ -314,9 +294,9 @@ impl VisitMutHook<TraverseCtx> for ObjectRestSpreadPass {
                             }
                             .into(),
                         );
-                        *arrow.body = BlockStmtOrExpr::BlockStmt(BlockStmt {
+                        *arrow.body = ArrowFunctionBody::FunctionBody(FunctionBody {
+                            span: DUMMY_SP,
                             stmts: body_stmts,
-                            ..Default::default()
                         });
                     }
                     #[cfg(swc_ast_unknown)]
@@ -517,6 +497,10 @@ impl ObjectRestSpreadPass {
 
         match left {
             ForHead::VarDecl(var_decl) => {
+                // Keep the original declaration kind: `var` bindings are
+                // function-scoped, while `let` and `const` need per-iteration
+                // lexical bindings.
+                let kind = var_decl.kind;
                 let ref_ident = private_ident!("_ref");
                 let pat = var_decl.decls[0].name.take();
                 var_decl.decls[0].name = ref_ident.clone().into();
@@ -525,7 +509,7 @@ impl ObjectRestSpreadPass {
                 lowerer.visit(pat, Box::new(ref_ident.into()));
 
                 let stmt: Stmt = VarDecl {
-                    kind: VarDeclKind::Let,
+                    kind,
                     decls: lowerer.out.into_decls(),
                     ..Default::default()
                 }
@@ -851,6 +835,11 @@ impl<O: RestOutput> RestLowerer<O> {
 
         // Extract nested pattern and replace with temp
         let nested_pat: Pat = match arr.elems[split_idx].as_mut() {
+            Some(Pat::Rest(rest)) => {
+                let nested = rest.arg.take();
+                *rest.arg = split_ref.clone().into();
+                *nested
+            }
             Some(Pat::Assign(assign)) => {
                 let nested = assign.left.take();
                 *assign.left = split_ref.clone().into();
@@ -1053,7 +1042,7 @@ fn make_rest_call(config: Config, source: Ident, excluded: Vec<PropName>) -> Exp
                 PropName::Str(s) => Expr::Lit(Lit::Str(s)),
                 PropName::Num(n) => Expr::Lit(Lit::Str(Str {
                     span: n.span,
-                    value: n.value.to_string().into(),
+                    value: n.value.to_js_string().into(),
                     raw: None,
                 })),
                 PropName::Computed(c) if impure_count == 1 && !is_lit_str(&c.expr) => CallExpr {

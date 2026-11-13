@@ -15,7 +15,7 @@ use glob::Pattern;
 use par_iter::prelude::*;
 use path_absolutize::Absolutize;
 use pathdiff::diff_paths;
-use paths::resolve_output_path;
+use paths::{resolve_declaration_path, resolve_output_path, resolve_source_file_name};
 use swc_core::{
     base::{
         config::{
@@ -24,7 +24,6 @@ use swc_core::{
         try_with_handler, Compiler, HandlerOpts, TransformOutput,
     },
     common::{errors::ColorConfig, FileName, FilePathMapping, SourceFile, SourceMap, GLOBALS},
-    trace_macro::swc_trace,
 };
 use walkdir::WalkDir;
 use watch::FileWatcher;
@@ -112,14 +111,12 @@ pub struct CompileOptions {
     #[clap(long, default_value_t = String::from("js"))]
     out_file_extension: String,
 
-    /// Enable experimental trace profiling
-    /// generates trace compatible with trace event format.
-    #[clap(group = "experimental_trace", long)]
+    /// Deprecated no-op. Trace profiling is disabled in production builds.
+    #[clap(group = "trace_options", long)]
     experimental_trace: bool,
 
-    /// Set file name for the trace output. If not specified,
-    /// `trace-{unix epoch time}.json` will be used by default.
-    #[clap(group = "experimental_trace", long)]
+    /// Deprecated no-op. No trace output file will be generated.
+    #[clap(group = "trace_options", long)]
     trace_out_file: Option<String>,
 }
 
@@ -278,7 +275,7 @@ fn collect_absolute_paths(paths: &[PathBuf]) -> BTreeSet<PathBuf> {
 }
 
 /// Infer list of files from cli arguments.
-#[tracing::instrument(level = "info", skip_all)]
+#[cfg_attr(debug_assertions, tracing::instrument(level = "info", skip_all))]
 fn collect_input_files(
     raw_files_input: &[PathBuf],
     ignore_pattern: Option<&Pattern>,
@@ -380,10 +377,6 @@ fn resolve_source_map_path(output_file_path: &Path) -> PathBuf {
     output_file_path.with_extension(extension)
 }
 
-fn resolve_declaration_path(output_file_path: &Path) -> PathBuf {
-    output_file_path.with_extension("d.ts")
-}
-
 fn remove_file_if_exists(path: &Path) -> anyhow::Result<()> {
     match fs::remove_file(path) {
         Ok(()) => Ok(()),
@@ -445,7 +438,6 @@ fn emit_stdout_output(file_path: &Path, output: TransformOutput) {
     println!("{}\n{}", output.code, source_map);
 }
 
-#[swc_trace]
 impl CompileOptions {
     fn build_transform_options(&self, file_path: &Option<&Path>) -> anyhow::Result<Options> {
         let config_file = self.config_file.as_ref().map(|config_file_path| {
@@ -689,8 +681,16 @@ impl CompileOptions {
         &self,
         compiler: Arc<Compiler>,
         file_path: &Path,
+        output_file_path: &Path,
     ) -> anyhow::Result<TransformOutput> {
-        let options = self.build_transform_options(&Some(file_path))?;
+        let mut options = self.build_transform_options(&Some(file_path))?;
+        options.output_path = Some(output_file_path.to_path_buf());
+        if options.source_file_name.is_none() {
+            // Output paths are absolute, but source filenames may be relative.
+            // Normalize only the source-map name: loading an absolute input
+            // would also change JSX development filenames and plugin metadata.
+            options.source_file_name = Some(resolve_source_file_name(file_path, output_file_path)?);
+        }
         let fm = compiler
             .cm
             .load_file(file_path)
@@ -707,7 +707,6 @@ impl CompileOptions {
     ) -> anyhow::Result<()> {
         match entry.kind {
             OutputEntryKind::Compile => {
-                let output = self.transform_path(compiler, &entry.path)?;
                 let output_file_path = resolve_output_path(
                     out_dir,
                     &self.files,
@@ -715,6 +714,7 @@ impl CompileOptions {
                     Some(&self.out_file_extension),
                     self.strip_leading_paths,
                 )?;
+                let output = self.transform_path(compiler, &entry.path, &output_file_path)?;
 
                 emit_directory_output(output, &output_file_path)
             }
@@ -840,7 +840,7 @@ impl CompileOptions {
 
                 if let Some(dts_code) = extra.remove("__swc_isolated_declarations__") {
                     if buf_dts.is_none() {
-                        let dts_file_path = single_out_file.with_extension("d.ts");
+                        let dts_file_path = resolve_declaration_path(single_out_file);
                         buf_dts = Some(File::create(dts_file_path)?);
                     }
 
@@ -968,6 +968,7 @@ impl CompileOptions {
         let cwd = match std::env::current_dir() {
             Ok(cwd) => cwd,
             Err(error) => {
+                #[cfg(debug_assertions)]
                 tracing::warn!(error = %error, "failed to read current directory for watch batch");
                 return;
             }
@@ -975,6 +976,7 @@ impl CompileOptions {
         let output_dir = match absolutize_path(out_dir) {
             Ok(output_dir) => output_dir,
             Err(error) => {
+                #[cfg(debug_assertions)]
                 tracing::warn!(error = %error, "failed to resolve output directory for watch batch");
                 return;
             }
@@ -1080,7 +1082,7 @@ impl CompileOptions {
     fn out_file_output_paths(&self, single_out_file: &Path) -> Vec<PathBuf> {
         let mut paths = vec![
             single_out_file.to_path_buf(),
-            single_out_file.with_extension("d.ts"),
+            resolve_declaration_path(single_out_file),
         ];
 
         if let Some(source_map_target) = &self.source_map_target {
@@ -1098,7 +1100,7 @@ impl CompileOptions {
         if let Some(source_map_target) = &self.source_map_target {
             remove_file_if_exists(Path::new(source_map_target))?;
         }
-        remove_file_if_exists(&single_out_file.with_extension("d.ts"))?;
+        remove_file_if_exists(&resolve_declaration_path(single_out_file))?;
         Ok(())
     }
 
@@ -1142,6 +1144,7 @@ impl CompileOptions {
             let cwd = match std::env::current_dir() {
                 Ok(cwd) => cwd,
                 Err(error) => {
+                    #[cfg(debug_assertions)]
                     tracing::warn!(error = %error, "failed to read current directory for watch batch");
                     continue;
                 }
@@ -1191,16 +1194,13 @@ impl CompileOptions {
     }
 }
 
-#[swc_trace]
 impl super::CommandRunner for CompileOptions {
     fn execute(&self) -> anyhow::Result<()> {
         self.validate()?;
 
-        let guard = if self.experimental_trace {
-            init_trace(&self.trace_out_file)
-        } else {
-            None
-        };
+        if self.experimental_trace {
+            init_trace(&self.trace_out_file);
+        }
 
         let result = if self.watch {
             if let Some(out_dir) = self.out_dir.as_ref() {
@@ -1213,11 +1213,6 @@ impl super::CommandRunner for CompileOptions {
         } else {
             self.execute_once()
         };
-
-        if let Some(guard) = guard {
-            guard.flush();
-            drop(guard);
-        }
 
         result
     }

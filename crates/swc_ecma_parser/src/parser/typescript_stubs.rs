@@ -1,16 +1,23 @@
 //! Stub implementations for TypeScript parsing methods when the `typescript`
 //! feature is disabled.
 //!
-//! These methods are never called at runtime (the calls are guarded by
-//! `syntax().typescript()` which returns `false` when the feature is disabled),
-//! but Rust needs them to exist for compilation to succeed.
+//! Shared parser modules call these methods even when the `typescript` feature
+//! is disabled. Runtime syntax checks make TypeScript and Flow behavior
+//! unavailable in this configuration, but Rust still needs matching method
+//! definitions for compilation to succeed.
 
-use swc_common::BytePos;
+use swc_common::{BytePos, Span};
 use swc_ecma_ast::*;
 
 use crate::{input::Tokens, lexer::Token, PResult, Parser};
 
 impl<I: Tokens> Parser<I> {
+    pub(super) fn is_flow_reserved_type_name(_name: &str) -> bool {
+        false
+    }
+
+    pub(super) fn emit_flow_reserved_type_name_error(&mut self, _span: Span, _name: &str) {}
+
     pub(crate) fn try_parse_ts<T, F>(&mut self, _op: F) -> Option<T>
     where
         F: FnOnce(&mut Self) -> PResult<Option<T>>,
@@ -30,6 +37,10 @@ impl<I: Tokens> Parser<I> {
         unreachable!("parse_ts_modifier should not be called without typescript feature")
     }
 
+    pub(super) fn ts_type_can_start(&mut self) -> bool {
+        unreachable!("ts_type_can_start should not be called without typescript feature")
+    }
+
     pub(crate) fn ts_look_ahead<T, F>(&mut self, _op: F) -> T
     where
         F: FnOnce(&mut Self) -> T,
@@ -39,6 +50,14 @@ impl<I: Tokens> Parser<I> {
 
     pub(crate) fn parse_ts_type_args(&mut self) -> PResult<Box<TsTypeParamInstantiation>> {
         unreachable!("parse_ts_type_args should not be called without typescript feature")
+    }
+
+    pub(crate) fn parse_ts_type_args_in_expr(&mut self) -> PResult<Box<TsTypeParamInstantiation>> {
+        unreachable!("parse_ts_type_args_in_expr should not be called without typescript feature")
+    }
+
+    pub(super) fn expect_ts_type_gt(&mut self) -> PResult<()> {
+        unreachable!("expect_ts_type_gt should not be called without typescript feature")
     }
 
     pub(crate) fn parse_ts_type_ann(
@@ -79,6 +98,13 @@ impl<I: Tokens> Parser<I> {
     }
 
     pub(crate) fn try_parse_ts_type_ann(&mut self) -> PResult<Option<Box<TsTypeAnn>>> {
+        Ok(None)
+    }
+
+    pub(crate) fn try_parse_flow_anon_formal_param(
+        &mut self,
+        _index: usize,
+    ) -> PResult<Option<Pat>> {
         Ok(None)
     }
 

@@ -10,15 +10,20 @@ use swc_common::{util::take::Take, Mark, SyntaxContext, DUMMY_SP};
 use swc_ecma_ast::*;
 use swc_ecma_transforms_base::perf::{Parallel, ParallelExt};
 use swc_ecma_utils::{
-    collect_decls, prop_name_from_ident, ExprCtx, ExprExt, IdentUsageFinder, Remapper,
+    collect_decls, contains_this_expr, prop_name_from_ident, ExprCtx, ExprExt, IdentUsageFinder,
+    Remapper,
 };
 use swc_ecma_visit::{
     noop_visit_mut_type, noop_visit_type, Visit, VisitMut, VisitMutWith, VisitWith,
 };
+#[cfg(debug_assertions)]
 use tracing::debug;
 
 use super::{Ctx, Optimizer};
-use crate::HEAVY_TASK_PARALLELS;
+use crate::{compress::util::contains_super, HEAVY_TASK_PARALLELS};
+
+#[cfg(test)]
+mod tests;
 
 impl<'b> Optimizer<'b> {
     pub(super) fn normalize_expr(&mut self, e: &mut Expr) {
@@ -182,11 +187,16 @@ pub(crate) fn extract_class_side_effect<'a>(
     let mut visitor = ClassEffectVisitor {
         found: false,
         private_ident: FxHashSet::default(),
+        nested_class_depth: 0,
     };
 
     for m in &mut c.body {
         if let ClassMember::PrivateProp(PrivateProp { key, .. })
-        | ClassMember::PrivateMethod(PrivateMethod { key, .. }) = m
+        | ClassMember::PrivateMethod(PrivateMethod { key, .. })
+        | ClassMember::AutoAccessor(AutoAccessor {
+            key: Key::Private(key),
+            ..
+        }) = m
         {
             visitor.private_ident.insert(key.name.clone());
         }
@@ -286,6 +296,7 @@ pub(crate) fn extract_class_side_effect<'a>(
 struct ClassEffectVisitor {
     found: bool,
     private_ident: FxHashSet<Atom>,
+    nested_class_depth: usize,
 }
 
 impl Visit for ClassEffectVisitor {
@@ -294,30 +305,32 @@ impl Visit for ClassEffectVisitor {
     /// Don't recurse into constructor
     fn visit_constructor(&mut self, _: &Constructor) {}
 
-    /// Don't recurse into fn
-    fn visit_fn_decl(&mut self, _: &FnDecl) {}
+    fn visit_function(&mut self, n: &Function) {
+        if self.found {
+            return;
+        }
 
-    /// Don't recurse into fn
-    fn visit_fn_expr(&mut self, _: &FnExpr) {}
+        // Ordinary functions inherit strict mode from the containing class.
+        // Extracting an outer class's static initializer would relocate those
+        // functions into the surrounding scope and can change their semantics.
+        // Functions inside a nested class stay within that class when the
+        // initializer is relocated, so their strictness is preserved.
+        if self.nested_class_depth == 0 {
+            self.found = true;
+            return;
+        }
 
-    /// Don't recurse into fn
-    fn visit_function(&mut self, _: &Function) {}
+        // Function bodies are normally evaluated after the class, but private
+        // names resolve in the surrounding class environment. Moving a static
+        // initializer containing such a function outside the class would make
+        // the emitted private-name reference invalid.
+        let mut visitor = PrivateNameUsageVisitor {
+            found: false,
+            private_ident: self.private_ident.clone(),
+        };
+        n.visit_children_with(&mut visitor);
 
-    /// Don't recurse into fn
-    fn visit_getter_prop(&mut self, n: &GetterProp) {
-        n.key.visit_with(self);
-    }
-
-    /// Don't recurse into fn
-    fn visit_method_prop(&mut self, n: &MethodProp) {
-        n.key.visit_with(self);
-        n.function.visit_with(self);
-    }
-
-    /// Don't recurse into fn
-    fn visit_setter_prop(&mut self, n: &SetterProp) {
-        n.key.visit_with(self);
-        n.param.visit_with(self);
+        self.found |= visitor.found;
     }
 
     fn visit_this_expr(&mut self, _: &ThisExpr) {
@@ -345,19 +358,69 @@ impl Visit for ClassEffectVisitor {
     }
 
     fn visit_class(&mut self, n: &Class) {
-        let mut new_set = FxHashSet::default();
+        // Private declarations belong to the class body, not its heritage or
+        // decorators. Those expressions can still reference an enclosing
+        // class's private names even if this class redeclares the same name.
+        self.nested_class_depth += 1;
+        n.decorators.visit_with(self);
+        n.super_class.visit_with(self);
+
+        let mut private_ident = self.private_ident.clone();
 
         for m in &n.body {
             if let ClassMember::PrivateProp(PrivateProp { key, .. })
-            | ClassMember::PrivateMethod(PrivateMethod { key, .. }) = m
+            | ClassMember::PrivateMethod(PrivateMethod { key, .. })
+            | ClassMember::AutoAccessor(AutoAccessor {
+                key: Key::Private(key),
+                ..
+            }) = m
             {
-                new_set.insert(key.name.clone());
+                private_ident.remove(&key.name);
             }
         }
 
-        let old_set = mem::replace(&mut self.private_ident, new_set);
-        n.visit_children_with(self);
+        let old_set = mem::replace(&mut self.private_ident, private_ident);
+        n.body.visit_with(self);
+        self.nested_class_depth -= 1;
         self.private_ident = old_set;
+    }
+}
+
+/// Finds uses of the current class's private names, respecting nested class
+/// private-name scopes.
+struct PrivateNameUsageVisitor {
+    found: bool,
+    private_ident: FxHashSet<Atom>,
+}
+
+impl Visit for PrivateNameUsageVisitor {
+    noop_visit_type!();
+
+    fn visit_private_name(&mut self, n: &PrivateName) {
+        self.found |= self.private_ident.contains(&n.name);
+    }
+
+    fn visit_class(&mut self, n: &Class) {
+        n.decorators.visit_with(self);
+        n.super_class.visit_with(self);
+
+        let mut private_ident = self.private_ident.clone();
+
+        for member in &n.body {
+            if let ClassMember::PrivateProp(PrivateProp { key, .. })
+            | ClassMember::PrivateMethod(PrivateMethod { key, .. })
+            | ClassMember::AutoAccessor(AutoAccessor {
+                key: Key::Private(key),
+                ..
+            }) = member
+            {
+                private_ident.remove(&key.name);
+            }
+        }
+
+        let old_private_ident = mem::replace(&mut self.private_ident, private_ident);
+        n.body.visit_with(self);
+        self.private_ident = old_private_ident;
     }
 }
 
@@ -391,33 +454,57 @@ impl Parallel for Finalizer<'_> {
     }
 }
 
+/// Gives bindings in a cloned expression fresh contexts so each copy remains
+/// distinct to the renamer.
+fn freshen_cloned_bindings(mut value: Box<Expr>) -> Box<Expr> {
+    let bindings: FxHashSet<Id> = collect_decls(&*value);
+    if bindings.is_empty() {
+        return value;
+    }
+
+    let new_mark = Mark::new();
+    let mut cache = FxHashMap::default();
+    let mut remap = FxHashMap::default();
+
+    // Finalizer consumes these copies after usage analysis, so the fresh IDs do
+    // not need new ProgramData entries.
+    for id in bindings {
+        let new_ctxt = *cache
+            .entry(id.1)
+            .or_insert_with(|| id.1.apply_mark(new_mark));
+
+        remap.insert(id, new_ctxt);
+    }
+
+    if !remap.is_empty() {
+        let mut remapper = Remapper::new(&remap);
+        value.visit_mut_with(&mut remapper);
+    }
+
+    value
+}
+
+/// Clones an inline value while keeping binding-bearing cheap arrows hygienic.
+fn clone_lit_for_inlining(value: &Expr) -> Box<Expr> {
+    let value = Box::new(value.clone());
+
+    // Cheap arrows are the only binding-bearing expressions stored in `lits`.
+    if !matches!(&*value, Expr::Arrow(..)) {
+        debug_assert!(
+            collect_decls::<Id, _>(&*value).is_empty(),
+            "`Finalizer::lits` contains an unhandled binding-bearing expression"
+        );
+        return value;
+    }
+
+    freshen_cloned_bindings(value)
+}
+
 impl Finalizer<'_> {
     fn var(&mut self, i: &Id, mode: FinalizerMode) -> Option<Box<Expr>> {
         let mut e = match mode {
             FinalizerMode::Callee => {
-                let mut value = self.simple_functions.get(i).cloned()?;
-                let mut cache = FxHashMap::default();
-                let mut remap = FxHashMap::default();
-                let bindings: FxHashSet<Id> = collect_decls(&*value);
-                let new_mark = Mark::new();
-
-                // at this point, var usage no longer matter
-                for id in bindings {
-                    let new_ctxt = cache
-                        .entry(id.1)
-                        .or_insert_with(|| id.1.apply_mark(new_mark));
-
-                    let new_ctxt = *new_ctxt;
-
-                    remap.insert(id, new_ctxt);
-                }
-
-                if !remap.is_empty() {
-                    let mut remapper = Remapper::new(&remap);
-                    value.visit_mut_with(&mut remapper);
-                }
-
-                value
+                freshen_cloned_bindings(self.simple_functions.get(i).cloned()?)
             }
             FinalizerMode::ComparisonWithLit => self.lits_for_cmp.get(i).cloned()?,
             FinalizerMode::MemberAccess => self.lits_for_array_access.get(i).cloned()?,
@@ -440,6 +527,7 @@ impl Finalizer<'_> {
     fn check(&mut self, e: &mut Expr, mode: FinalizerMode) {
         if let Expr::Ident(i) = e {
             if let Some(new) = self.var(&i.to_id(), mode) {
+                #[cfg(debug_assertions)]
                 debug!("multi-replacer: Replaced `{}`", i);
                 self.changed = true;
 
@@ -462,6 +550,10 @@ impl VisitMut for Finalizer<'_> {
     fn visit_mut_bin_expr(&mut self, e: &mut BinExpr) {
         e.visit_mut_children_with(self);
 
+        if self.lits_for_cmp.is_empty() {
+            return;
+        }
+
         match e.op {
             op!("===") | op!("!==") | op!("==") | op!("!=") => {
                 //
@@ -478,6 +570,10 @@ impl VisitMut for Finalizer<'_> {
     fn visit_mut_callee(&mut self, e: &mut Callee) {
         e.visit_mut_children_with(self);
 
+        if self.simple_functions.is_empty() {
+            return;
+        }
+
         if let Callee::Expr(e) = e {
             self.check(e, FinalizerMode::Callee);
         }
@@ -490,14 +586,27 @@ impl VisitMut for Finalizer<'_> {
     }
 
     fn visit_mut_expr(&mut self, n: &mut Expr) {
+        let can_replace_lit = !self.lits.is_empty();
+        let can_replace_hoisted_prop = !self.hoisted_props.is_empty();
+
+        if !can_replace_lit && !can_replace_hoisted_prop {
+            if !matches!(n, Expr::Ident(..)) {
+                n.visit_mut_children_with(self);
+            }
+            return;
+        }
+
         match n {
             Expr::Ident(i) => {
-                if let Some(expr) = self.lits.get(&i.to_id()) {
-                    *n = *expr.clone();
-                    return;
+                if can_replace_lit {
+                    if let Some(expr) = self.lits.get(&i.to_id()) {
+                        *n = *clone_lit_for_inlining(expr);
+                    }
                 }
+
+                return;
             }
-            Expr::Member(e) => 'a: {
+            Expr::Member(e) if can_replace_hoisted_prop => 'a: {
                 if let Expr::Ident(obj) = &*e.obj {
                     let sym = match &e.prop {
                         MemberProp::Ident(i) => i.sym.borrow(),
@@ -507,6 +616,8 @@ impl VisitMut for Finalizer<'_> {
                             _ => break 'a,
                         },
                         MemberProp::PrivateName(_) => break 'a,
+                        #[cfg(swc_ast_unknown)]
+                        _ => break 'a,
                     };
 
                     if let Some(ident) = self.hoisted_props.get(&(obj.to_id(), sym.clone())) {
@@ -536,6 +647,10 @@ impl VisitMut for Finalizer<'_> {
 
     fn visit_mut_member_expr(&mut self, e: &mut MemberExpr) {
         e.visit_mut_children_with(self);
+
+        if self.lits_for_array_access.is_empty() {
+            return;
+        }
 
         if let MemberProp::Computed(prop) = &mut e.prop {
             if let Expr::Lit(Lit::Num(..)) = &*prop.expr {
@@ -591,6 +706,10 @@ impl VisitMut for Finalizer<'_> {
     fn visit_mut_var_declarator(&mut self, n: &mut VarDeclarator) {
         n.visit_mut_children_with(self);
 
+        if self.vars_to_remove.is_empty() {
+            return;
+        }
+
         if n.init.is_none() {
             if let Pat::Ident(i) = &n.name {
                 if self.vars_to_remove.contains(&i.to_id()) {
@@ -609,12 +728,16 @@ impl VisitMut for Finalizer<'_> {
     fn visit_mut_prop(&mut self, n: &mut Prop) {
         n.visit_mut_children_with(self);
 
+        if self.lits.is_empty() {
+            return;
+        }
+
         if let Prop::Shorthand(i) = n {
             if let Some(expr) = self.lits.get(&i.to_id()) {
                 let key = prop_name_from_ident(i.take());
                 *n = Prop::KeyValue(KeyValueProp {
                     key,
-                    value: expr.clone(),
+                    value: clone_lit_for_inlining(expr),
                 });
                 self.changed = true;
             }
@@ -672,20 +795,20 @@ impl VisitMut for NormalMultiReplacer<'_> {
         if self.vars.is_empty() {
             return;
         }
-        e.visit_mut_children_with(self);
-
-        if self.vars.is_empty() {
-            return;
-        }
 
         if let Expr::Ident(i) = e {
             if let Some(new) = self.var(&i.to_id()) {
+                #[cfg(debug_assertions)]
                 debug!("multi-replacer: Replaced `{}`", i);
                 self.changed = true;
 
                 *e = *new;
             }
+
+            return;
         }
+
+        e.visit_mut_children_with(self);
     }
 
     fn visit_mut_module_items(&mut self, items: &mut Vec<ModuleItem>) {
@@ -697,6 +820,7 @@ impl VisitMut for NormalMultiReplacer<'_> {
         #[cfg(feature = "debug")]
         if !self.vars.is_empty() {
             let keys = self.vars.iter().map(|(k, _)| k.clone()).collect::<Vec<_>>();
+            #[cfg(debug_assertions)]
             debug!("Dropping {:?}", keys);
         }
     }
@@ -706,6 +830,7 @@ impl VisitMut for NormalMultiReplacer<'_> {
 
         if let Prop::Shorthand(i) = p {
             if let Some(value) = self.var(&i.to_id()) {
+                #[cfg(debug_assertions)]
                 debug!("multi-replacer: Replaced `{}` as shorthand", i);
                 self.changed = true;
 
@@ -962,4 +1087,8 @@ pub fn get_ids_of_pat(pat: &Pat) -> Vec<Id> {
     let mut idents = vec![];
     append(pat, &mut idents);
     idents
+}
+
+pub(crate) fn may_inline_arrow(a: &ArrowExpr) -> bool {
+    !(contains_super(&a.body) || contains_this_expr(&a.body))
 }

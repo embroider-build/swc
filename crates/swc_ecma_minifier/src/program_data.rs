@@ -42,8 +42,6 @@ pub(crate) struct ProgramData {
 
     initialized_vars: IndexSet<Id, FxBuildHasher>,
 
-    pub(crate) top: ScopeData,
-
     scopes: Vec<ScopeData>,
 
     pub(crate) property_atoms: Option<Vec<Wtf8Atom>>,
@@ -60,7 +58,7 @@ bitflags::bitflags! {
         const DECLARED_AS_FN_DECL       = 1 << 3;
         const DECLARED_AS_FN_EXPR       = 1 << 4;
         const DECLARED_AS_FOR_INIT      = 1 << 5;
-        /// The variable itself is assigned after reference.
+        /// The variable itself is reassigned in the current module.
         const REASSIGNED                = 1 << 6;
         const HAS_PROPERTY_ACCESS       = 1 << 7;
         const EXPORTED                  = 1 << 8;
@@ -92,6 +90,9 @@ bitflags::bitflags! {
 
         /// The variable is declared without initializer.
         const LAZY_INIT                 = 1 << 25;
+
+        /// The binding's value may be changed by another module.
+        const EXTERNALLY_MUTABLE        = 1 << 26;
     }
 
     #[derive(Debug, Default, Clone, Copy)]
@@ -161,12 +162,26 @@ impl VarUsageInfo {
         !self.infects_to.is_empty()
     }
 
+    /// Whether the binding's value may change after initialization.
+    pub(crate) fn may_change(&self) -> bool {
+        self.flags
+            .intersects(VarUsageInfoFlags::REASSIGNED | VarUsageInfoFlags::EXTERNALLY_MUTABLE)
+    }
+
     /// The variable itself or a property of it is modified.
     pub(crate) fn mutated(&self) -> bool {
         self.assign_count > 1 || self.property_mutation_count > 0
     }
 
-    pub(crate) fn can_inline_fn_once(&self) -> bool {
+    pub(crate) fn can_inline_fn_once(&self, is_generator: bool) -> bool {
+        if is_generator
+            && self
+                .flags
+                .contains(VarUsageInfoFlags::EXECUTED_MULTIPLE_TIME)
+        {
+            return false;
+        }
+
         (self.callee_count > 0
             || !self
                 .flags
@@ -214,10 +229,6 @@ impl Storage for ProgramData {
         &self.scopes
     }
 
-    fn top_scope(&mut self) -> &mut Self::ScopeData {
-        &mut self.top
-    }
-
     fn var_or_default(&mut self, id: Id) -> &mut Self::VarData {
         self.vars.entry(id).or_default()
     }
@@ -234,56 +245,52 @@ impl Storage for ProgramData {
             let inited = self.initialized_vars.contains(&id);
             match self.vars.entry(id) {
                 Entry::Occupied(mut e) => {
+                    let e = e.get_mut();
+
                     if var_info.flags.contains(VarUsageInfoFlags::INLINE_PREVENTED) {
-                        e.get_mut()
-                            .flags
-                            .insert(VarUsageInfoFlags::INLINE_PREVENTED);
+                        e.flags.insert(VarUsageInfoFlags::INLINE_PREVENTED);
                     }
                     let var_assigned = var_info.assign_count > 0
                         || (var_info.flags.contains(VarUsageInfoFlags::VAR_INITIALIZED)
-                            && !e.get().flags.contains(VarUsageInfoFlags::VAR_INITIALIZED));
+                            && !e.flags.contains(VarUsageInfoFlags::VAR_INITIALIZED));
 
-                    if var_info.assign_count > 0 {
-                        if e.get().initialized() {
-                            e.get_mut().flags.insert(VarUsageInfoFlags::REASSIGNED);
-                        }
+                    if var_info.assign_count > 0 && e.initialized() {
+                        e.flags.insert(VarUsageInfoFlags::REASSIGNED);
                     }
 
                     if var_info.flags.contains(VarUsageInfoFlags::VAR_INITIALIZED) {
                         // If it is inited in some other child scope and also inited in current
                         // scope
-                        if e.get().flags.contains(VarUsageInfoFlags::VAR_INITIALIZED)
-                            || e.get().ref_count > 0
-                        {
-                            e.get_mut().flags.insert(VarUsageInfoFlags::REASSIGNED);
+                        if e.flags.contains(VarUsageInfoFlags::VAR_INITIALIZED) || e.ref_count > 0 {
+                            e.flags.insert(VarUsageInfoFlags::REASSIGNED);
                         } else {
                             // If it is referred outside child scope, it will
                             // be marked as var_initialized false
-                            e.get_mut().flags.insert(VarUsageInfoFlags::VAR_INITIALIZED);
+                            e.flags.insert(VarUsageInfoFlags::VAR_INITIALIZED);
                         }
                     } else {
                         // If it is inited in some other child scope, but referenced in
                         // current child scope
                         if !inited
-                            && e.get().flags.contains(VarUsageInfoFlags::VAR_INITIALIZED)
+                            && e.flags.contains(VarUsageInfoFlags::VAR_INITIALIZED)
                             && var_info.ref_count > 0
                         {
-                            e.get_mut().flags.remove(VarUsageInfoFlags::VAR_INITIALIZED);
-                            e.get_mut().flags.insert(VarUsageInfoFlags::REASSIGNED);
+                            e.flags.remove(VarUsageInfoFlags::VAR_INITIALIZED);
+                            e.flags.insert(VarUsageInfoFlags::REASSIGNED);
                         }
                     }
 
-                    e.get_mut().merged_var_type.merge(var_info.merged_var_type);
+                    e.merged_var_type.merge(var_info.merged_var_type);
 
-                    e.get_mut().ref_count += var_info.ref_count;
-                    e.get_mut().property_mutation_count |= var_info.property_mutation_count;
-                    e.get_mut().declared_count += var_info.declared_count;
-                    e.get_mut().assign_count += var_info.assign_count;
-                    e.get_mut().usage_count += var_info.usage_count;
-                    e.get_mut().infects_to.extend(var_info.infects_to);
-                    e.get_mut().callee_count += var_info.callee_count;
+                    e.ref_count += var_info.ref_count;
+                    e.property_mutation_count |= var_info.property_mutation_count;
+                    e.declared_count += var_info.declared_count;
+                    e.assign_count += var_info.assign_count;
+                    e.usage_count += var_info.usage_count;
+                    e.infects_to.extend(var_info.infects_to);
+                    e.callee_count += var_info.callee_count;
 
-                    e.get_mut().param_count = match (e.get().param_count, var_info.param_count) {
+                    e.param_count = match (e.param_count, var_info.param_count) {
                         (Some(Value::Known(v1)), Some(Value::Known(v2))) if v1 == v2 => {
                             Some(Value::Known(v1))
                         }
@@ -297,12 +304,13 @@ impl Storage for ProgramData {
                     };
 
                     for (k, v) in var_info.accessed_props {
-                        *e.get_mut().accessed_props.entry(k).or_default() += v;
+                        *e.accessed_props.entry(k).or_default() += v;
                     }
 
                     let var_info_flags = var_info.flags;
-                    let e_flags = &mut e.get_mut().flags;
+                    let e_flags = &mut e.flags;
                     *e_flags |= var_info_flags & VarUsageInfoFlags::REASSIGNED;
+                    *e_flags |= var_info_flags & VarUsageInfoFlags::EXTERNALLY_MUTABLE;
                     *e_flags |= var_info_flags & VarUsageInfoFlags::HAS_PROPERTY_ACCESS;
                     *e_flags |= var_info_flags & VarUsageInfoFlags::EXPORTED;
                     *e_flags |= var_info_flags & VarUsageInfoFlags::DECLARED;
@@ -310,6 +318,7 @@ impl Storage for ProgramData {
                     *e_flags |= var_info_flags & VarUsageInfoFlags::DECLARED_AS_FN_DECL;
                     *e_flags |= var_info_flags & VarUsageInfoFlags::DECLARED_AS_FN_EXPR;
                     *e_flags |= var_info_flags & VarUsageInfoFlags::DECLARED_AS_CATCH_PARAM;
+                    *e_flags |= var_info_flags & VarUsageInfoFlags::DECLARED_AS_FOR_INIT;
                     *e_flags |= var_info_flags & VarUsageInfoFlags::EXECUTED_MULTIPLE_TIME;
                     *e_flags |= var_info_flags & VarUsageInfoFlags::USED_IN_COND;
                     *e_flags |= var_info_flags & VarUsageInfoFlags::USED_AS_ARG;
@@ -427,8 +436,12 @@ impl Storage for ProgramData {
             e.usage_count = e.usage_count.saturating_sub(1);
         }
 
+        if e.infects_to.is_empty() {
+            return;
+        }
+
         let mut to_visit: IndexSet<Id, FxBuildHasher> =
-            IndexSet::from_iter(e.infects_to.iter().cloned().map(|i| i.0));
+            IndexSet::from_iter(e.infects_to.iter().map(|(id, _)| id.clone()));
 
         let mut idx = 0;
 
@@ -452,7 +465,7 @@ impl Storage for ProgramData {
                     usage.usage_count += 1;
                 }
 
-                to_visit.extend(usage.infects_to.iter().cloned().map(|i| i.0))
+                to_visit.extend(usage.infects_to.iter().map(|(id, _)| id.clone()))
             }
 
             idx += 1;
@@ -475,14 +488,19 @@ impl Storage for ProgramData {
             v.flags |= VarUsageInfoFlags::IS_TOP_LEVEL;
         }
 
-        // assigned or declared before this declaration
-        if init_type.is_some() {
+        if init_type.is_some() ||
+        // it may actually not be assigned if loop is empty
+        // but that's only possible to be known at runtime
+        ctx.in_left_of_for_loop()
+        {
+            // assigned or declared before this declaration
             if v.flags
                 .intersects(VarUsageInfoFlags::DECLARED.union(VarUsageInfoFlags::VAR_INITIALIZED))
                 || v.assign_count > 0
             {
                 #[cfg(feature = "debug")]
                 {
+                    #[cfg(debug_assertions)]
                     tracing::trace!("declare_decl(`{}`): Already declared", i);
                 }
 
@@ -542,6 +560,10 @@ impl Storage for ProgramData {
     fn mark_property_mutation(&mut self, id: Id) {
         let e = self.vars.entry(id).or_default();
         e.property_mutation_count += 1;
+
+        if e.infects_to.is_empty() {
+            return;
+        }
 
         let to_mark_mutate = e
             .infects_to
@@ -676,6 +698,12 @@ impl VarDataLike for VarUsageInfo {
 
     fn mark_as_exported(&mut self) {
         self.flags.insert(VarUsageInfoFlags::EXPORTED);
+    }
+
+    fn mark_as_externally_mutable(&mut self) {
+        // External writes are invisible to assignment counts and scope analysis.
+        self.flags.insert(VarUsageInfoFlags::EXTERNALLY_MUTABLE);
+        self.flags.remove(VarUsageInfoFlags::IS_FN_LOCAL);
     }
 
     fn mark_initialized_with_safe_value(&mut self) {

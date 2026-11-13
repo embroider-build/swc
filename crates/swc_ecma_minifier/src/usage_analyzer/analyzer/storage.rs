@@ -18,8 +18,6 @@ pub trait Storage: Sized {
 
     fn scopes(&self) -> &[Self::ScopeData];
 
-    fn top_scope(&mut self) -> &mut Self::ScopeData;
-
     fn var_or_default(&mut self, id: Id) -> &mut Self::VarData;
 
     fn merge(&mut self, kind: ScopeKind, child: Self);
@@ -91,6 +89,8 @@ pub trait VarDataLike: Sized {
     fn prevent_inline(&mut self);
 
     fn mark_as_exported(&mut self);
+
+    fn mark_as_externally_mutable(&mut self);
 
     fn mark_initialized_with_safe_value(&mut self);
 

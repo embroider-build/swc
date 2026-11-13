@@ -605,16 +605,7 @@ impl Wtf8 {
     /// Returns `true` if this WTF-8 string starts with the given UTF-8 string.
     #[inline]
     pub fn starts_with(&self, pattern: &str) -> bool {
-        if pattern.len() > self.len() {
-            return false;
-        }
-
-        let pattern_wtf8 = self.slice_to(pattern.len());
-        if let Some(pattern_str) = pattern_wtf8.as_str() {
-            pattern_str == pattern
-        } else {
-            false
-        }
+        self.as_bytes().starts_with(pattern.as_bytes())
     }
 
     /// Try to convert the string to UTF-8 and return a `&str` slice.
@@ -1082,6 +1073,33 @@ mod tests {
     }
 
     #[test]
+    fn wtf8buf_push_code_points_of_each_encoded_width() {
+        fn code_point(value: u32) -> CodePoint {
+            CodePoint::from_u32(value).unwrap()
+        }
+
+        let mut string = Wtf8Buf::new();
+
+        string.push(code_point(0x7f));
+        assert_eq!(string.bytes, b"\x7f");
+
+        string.push(code_point(0x80));
+        assert_eq!(string.bytes, b"\x7f\xc2\x80");
+
+        string.push(code_point(0x800));
+        assert_eq!(string.bytes, b"\x7f\xc2\x80\xe0\xa0\x80");
+
+        string.push(code_point(0xd800));
+        assert_eq!(string.bytes, b"\x7f\xc2\x80\xe0\xa0\x80\xed\xa0\x80");
+
+        string.push(code_point(0x10000));
+        assert_eq!(
+            string.bytes,
+            b"\x7f\xc2\x80\xe0\xa0\x80\xed\xa0\x80\xf0\x90\x80\x80"
+        );
+    }
+
+    #[test]
     fn wtf8buf_push() {
         let mut string = Wtf8Buf::from_str("aé ");
         assert_eq!(string.bytes, b"a\xC3\xA9 ");
@@ -1301,6 +1319,16 @@ mod tests {
             Wtf8::from_str("aé 💩").as_bytes(),
             b"a\xC3\xA9 \xF0\x9F\x92\xA9"
         );
+    }
+
+    #[test]
+    fn wtf8_starts_with() {
+        assert!(Wtf8::from_str("aé 💩").starts_with("aé"));
+        assert!(!Wtf8::from_str("aé 💩").starts_with("a💩"));
+        assert!(!Wtf8::from_str("aé 💩").starts_with("aé 💩!"));
+
+        // The pattern length falls inside the first non-ASCII code point.
+        assert!(!Wtf8::from_str("/example/path/to/日本語").starts_with("next/dist/compiled"));
     }
 
     #[test]

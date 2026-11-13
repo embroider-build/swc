@@ -128,6 +128,11 @@
 //!
 //! Enables flow parser. This feature requires `typescript`.
 //!
+//! ### `tsrx`
+//!
+//! Enables parser-only TSRX syntax and React TSX lowering. This feature
+//! requires `typescript` and is disabled by default.
+//!
 //! ### `verify`
 //!
 //! Verify more errors, using `swc_ecma_visit`.
@@ -177,6 +182,7 @@ pub mod unstable {
     //! Also see the dicussion https://github.com/swc-project/swc/discussions/10683
     pub use crate::lexer::{
         capturing::Capturing,
+        state::TokenFlags,
         token::{NextTokenAndSpan, Token, TokenAndSpan, TokenValue},
     };
 }
@@ -187,6 +193,7 @@ use swc_ecma_ast::*;
 
 mod context;
 pub mod error;
+pub mod jsx;
 mod legacy;
 pub mod lexer;
 mod parser;
@@ -256,8 +263,7 @@ macro_rules! expose {
 
 expose!(parse_file_as_expr, Box<Expr>, |p| {
     // This allow to parse `import.meta`
-    let ctx = p.ctx();
-    p.set_ctx(ctx.union(Context::CanBeModule));
+    p.allow_module_syntax();
     p.parse_expr()
 });
 expose!(parse_file_as_module, Module, |p| { p.parse_module() });

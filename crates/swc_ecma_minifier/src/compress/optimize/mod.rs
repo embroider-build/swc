@@ -10,11 +10,11 @@ use swc_ecma_ast::*;
 use swc_ecma_transforms_base::rename::contains_eval;
 use swc_ecma_transforms_optimization::debug_assert_valid;
 use swc_ecma_utils::{
-    prepend_stmts, prop_name_from_ident, ExprCtx, ExprExt, ExprFactory, IsEmpty, ModuleItemLike,
-    StmtLike, Type, Value,
+    prepend_stmts, prop_name_eq, prop_name_from_ident, ExprCtx, ExprExt, ExprFactory, IsEmpty,
+    ModuleItemLike, StmtLike, Type, Value,
 };
 use swc_ecma_visit::{noop_visit_mut_type, VisitMut, VisitMutWith, VisitWith};
-#[cfg(feature = "debug")]
+#[cfg(all(debug_assertions, feature = "debug"))]
 use tracing::{span, Level};
 use Value::Known;
 
@@ -79,7 +79,7 @@ pub(super) fn optimizer<'a>(
             in_strict: options.module,
             remaining_depth: 6,
         },
-        scope: SyntaxContext::default(),
+        scope: marks.top_level_ctxt,
         bit_ctx: BitCtx::default(),
     };
 
@@ -192,6 +192,17 @@ bitflags! {
 
         /// `true` while we are inside a class body.
         const InClass = 1 << 27;
+
+        /// `true` only while visiting the callee of a `/*#__NOINLINE__*/` call.
+        const IsNoInlineCallee = 1 << 28;
+
+        /// `true` only while visiting [CallExpr::callee] when the call result is
+        /// not itself used as a receiver-aware callee.
+        const IsCallCallee = 1 << 29;
+
+        /// In try or catch block with finally, return may not be the actual last
+        /// statement of function
+        const InTryCatchWithFinally = 1 << 30;
     }
 }
 
@@ -276,6 +287,14 @@ struct Vars {
     simple_functions: FxHashMap<Id, Box<Expr>>,
     vars_for_inlining: FxHashMap<Id, Box<Expr>>,
 
+    /// Variables declared without an initializer and never assigned, so every
+    /// read evaluates to `undefined`.
+    ///
+    /// Unlike [Vars::lits], references are replaced with `void 0` only where
+    /// the value lets the enclosing expression fold, because a mangled name is
+    /// shorter than `void 0`.
+    undefined_vars: FxHashSet<Id>,
+
     /// Variables which should be removed by [Finalizer] because of the order of
     /// visit.
     removed: FxHashSet<Id>,
@@ -344,7 +363,7 @@ impl From<&Function> for FnMetadata {
             len: f
                 .params
                 .iter()
-                .filter(|p| matches!(&p.pat, Pat::Ident(..) | Pat::Array(..) | Pat::Object(..)))
+                .take_while(|p| !matches!(&p.pat, Pat::Assign(..) | Pat::Rest(..)))
                 .count(),
         }
     }
@@ -352,13 +371,12 @@ impl From<&Function> for FnMetadata {
 
 impl Optimizer<'_> {
     fn may_remove_ident(&self, id: &Ident) -> bool {
-        if self
-            .data
-            .vars
-            .get(&id.to_id())
-            .is_some_and(|v| v.flags.contains(VarUsageInfoFlags::EXPORTED))
-        {
-            return false;
+        if let Some(usage) = self.data.vars.get(&id.to_id()) {
+            if usage.flags.intersects(
+                VarUsageInfoFlags::EXPORTED.union(VarUsageInfoFlags::DECLARED_AS_FOR_INIT),
+            ) {
+                return false;
+            }
         }
 
         if id.ctxt != self.marks.top_level_ctxt {
@@ -373,10 +391,6 @@ impl Optimizer<'_> {
     }
 
     fn may_add_ident(&self) -> bool {
-        if self.ctx.in_top_level() && self.data.top.contains(ScopeData::HAS_EVAL_CALL) {
-            return false;
-        }
-
         // in class field
         if self.ctx.bit_ctx.contains(BitCtx::InClass)
             && !self
@@ -455,7 +469,10 @@ impl Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn handle_stmt_likes<T>(&mut self, stmts: &mut Vec<T>, will_terminate: bool)
     where
         T: StmtLike + ModuleItemLike + ModuleItemExt + VisitMutWith<Self> + VisitWith<AssertValid>,
@@ -576,8 +593,11 @@ impl Optimizer<'_> {
     ///
     /// - `undefined` => `void 0`
     fn compress_undefined(&mut self, e: &mut Expr) {
-        if let Expr::Ident(Ident { span, sym, .. }) = e {
-            if &**sym == "undefined" {
+        if let Expr::Ident(Ident {
+            span, sym, ctxt, ..
+        }) = e
+        {
+            if &**sym == "undefined" && *ctxt == self.ctx.expr_ctx.unresolved_ctxt {
                 *e = *Expr::undefined(*span);
             }
         }
@@ -629,9 +649,53 @@ impl Optimizer<'_> {
         }
     }
 
+    fn bin_has_direct_invalid_child(e: &Expr) -> bool {
+        matches!(
+            e,
+            Expr::Bin(BinExpr { left, right, .. }) if left.is_invalid() || right.is_invalid()
+        )
+    }
+
+    /// Returns true if invoking an empty-body IIFE without arguments cannot
+    /// have observable parameter-initialization effects.
+    ///
+    /// Destructuring and non-identifier rest parameters are deliberately
+    /// rejected. They can throw while binding omitted arguments, and modeling
+    /// every safe pattern here would make this otherwise local optimization
+    /// unsound. A simple rest binding only initializes an empty array.
+    fn can_drop_empty_iife(&self, callee: &Expr) -> bool {
+        match callee {
+            Expr::Fn(f) if f.function.body.is_empty() => f
+                .function
+                .params
+                .iter()
+                .all(|param| self.is_empty_iife_param_safe(&param.pat)),
+            Expr::Arrow(f) if matches!(&*f.body, ArrowFunctionBody::FunctionBody(body) if body.stmts.is_empty()) => {
+                f.params
+                    .iter()
+                    .all(|param| self.is_empty_iife_param_safe(param))
+            }
+            _ => false,
+        }
+    }
+
+    fn is_empty_iife_param_safe(&self, pat: &Pat) -> bool {
+        match pat {
+            Pat::Ident(..) => true,
+            Pat::Rest(rest) if rest.arg.is_ident() => true,
+            Pat::Assign(assign) if assign.left.is_ident() => {
+                !assign.right.may_have_side_effects(self.ctx.expr_ctx)
+            }
+            _ => false,
+        }
+    }
+
     /// Returns [None] if expression is side-effect-free.
     /// If an expression has a side effect, only side effects are returned.
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn ignore_return_value(&mut self, e: &mut Expr) -> Option<Expr> {
         self.compress_cond_to_logical_ignoring_return_value(e);
 
@@ -795,22 +859,7 @@ impl Optimizer<'_> {
                 callee: Callee::Expr(callee),
                 args,
                 ..
-            }) if match &**callee {
-                Expr::Fn(f) => f
-                    .function
-                    .body
-                    .as_ref()
-                    .map(|body| body.stmts.is_empty())
-                    .unwrap_or(false),
-                Expr::Arrow(f) => match &*f.body {
-                    BlockStmtOrExpr::BlockStmt(body) => body.stmts.is_empty(),
-                    BlockStmtOrExpr::Expr(_) => false,
-                    #[cfg(swc_ast_unknown)]
-                    _ => panic!("unable to access unknown nodes"),
-                },
-                _ => false,
-            } && args.is_empty() =>
-            {
+            }) if args.is_empty() && self.can_drop_empty_iife(callee) => {
                 report_change!("ignore_return_value: Dropping a pure call");
                 self.changed = true;
                 return None;
@@ -835,12 +884,8 @@ impl Optimizer<'_> {
                     }
                 }
 
-                if args.is_empty() {
-                    if let Expr::Fn(f) = &mut **callee {
-                        if f.function.body.is_empty() {
-                            return None;
-                        }
-                    }
+                if args.is_empty() && self.can_drop_empty_iife(callee) {
+                    return None;
                 }
 
                 if let Expr::Ident(callee) = &**callee {
@@ -1465,6 +1510,21 @@ impl Optimizer<'_> {
         }
     }
 
+    fn function_like_ctx(&self, scope: SyntaxContext) -> Ctx {
+        Ctx {
+            bit_ctx: self
+                .ctx
+                .bit_ctx
+                .with(BitCtx::InFnLike, true)
+                // The outer try/finally cannot observe termination within a nested function.
+                .with(BitCtx::InTryCatchWithFinally, false)
+                .with(BitCtx::TopLevel, false)
+                .with(BitCtx::InParam, false),
+            scope,
+            ..self.ctx.clone()
+        }
+    }
+
     fn visit_with_prepend<N>(&mut self, n: &mut N)
     where
         N: VisitMutWith<Self>,
@@ -1483,7 +1543,10 @@ impl Optimizer<'_> {
 impl VisitMut for Optimizer<'_> {
     noop_visit_mut_type!(fail);
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_arrow_expr(&mut self, n: &mut ArrowExpr) {
         self.drop_unused_arrow_params(&mut n.params);
 
@@ -1495,25 +1558,17 @@ impl VisitMut for Optimizer<'_> {
         }
 
         {
-            let ctx = Ctx {
-                bit_ctx: self
-                    .ctx
-                    .bit_ctx
-                    .with(BitCtx::InFnLike, true)
-                    .with(BitCtx::TopLevel, false),
-                scope: n.ctxt,
-                ..self.ctx.clone()
-            };
+            let ctx = self.function_like_ctx(n.ctxt);
             n.body.visit_mut_with(&mut *self.with_ctx(ctx));
         }
 
         if !self.prepend_stmts.is_empty() {
             let mut stmts = self.prepend_stmts.take().take_stmts();
             match &mut *n.body {
-                BlockStmtOrExpr::BlockStmt(v) => {
+                ArrowFunctionBody::FunctionBody(v) => {
                     prepend_stmts(&mut v.stmts, stmts.into_iter());
                 }
-                BlockStmtOrExpr::Expr(v) => {
+                ArrowFunctionBody::Expr(v) => {
                     self.changed = true;
                     report_change!("Converting a body of an arrow expression to BlockStmt");
 
@@ -1524,10 +1579,9 @@ impl VisitMut for Optimizer<'_> {
                         }
                         .into(),
                     );
-                    *n.body = BlockStmtOrExpr::BlockStmt(BlockStmt {
+                    *n.body = ArrowFunctionBody::FunctionBody(FunctionBody {
                         span: DUMMY_SP,
                         stmts,
-                        ..Default::default()
                     });
                 }
                 #[cfg(swc_ast_unknown)]
@@ -1537,12 +1591,15 @@ impl VisitMut for Optimizer<'_> {
 
         self.prepend_stmts = prepend;
 
-        if let BlockStmtOrExpr::BlockStmt(body) = &mut *n.body {
+        if let ArrowFunctionBody::FunctionBody(body) = &mut *n.body {
             drop_invalid_stmts(&mut body.stmts);
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_assign_expr(&mut self, e: &mut AssignExpr) {
         {
             let ctx = self
@@ -1555,7 +1612,10 @@ impl VisitMut for Optimizer<'_> {
         e.right.visit_mut_with(self);
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_assign_pat_prop(&mut self, n: &mut AssignPatProp) {
         n.visit_mut_children_with(self);
 
@@ -1566,7 +1626,10 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_bin_expr(&mut self, n: &mut BinExpr) {
         {
             let ctx = self.ctx.clone().with(
@@ -1575,6 +1638,8 @@ impl VisitMut for Optimizer<'_> {
             );
             n.visit_mut_children_with(&mut *self.with_ctx(ctx));
         }
+
+        self.inline_undefined_vars_in_bin_expr(n);
 
         self.compress_typeof_undefined(n);
 
@@ -1597,7 +1662,10 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_block_stmt(&mut self, n: &mut BlockStmt) {
         let ctx = Ctx {
             bit_ctx: self
@@ -1612,21 +1680,34 @@ impl VisitMut for Optimizer<'_> {
         n.visit_mut_children_with(&mut *self.with_ctx(ctx));
     }
 
-    fn visit_mut_block_stmt_or_expr(&mut self, n: &mut BlockStmtOrExpr) {
+    fn visit_mut_arrow_function_body(&mut self, n: &mut ArrowFunctionBody) {
         n.visit_mut_children_with(self);
 
         match n {
-            BlockStmtOrExpr::BlockStmt(n) => {
+            ArrowFunctionBody::FunctionBody(n) => {
                 self.merge_if_returns(&mut n.stmts, false, true);
                 self.drop_else_token(&mut n.stmts);
             }
-            BlockStmtOrExpr::Expr(_) => {}
+            ArrowFunctionBody::Expr(_) => {}
             #[cfg(swc_ast_unknown)]
             _ => panic!("unable to access unknown nodes"),
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    /// Preserve the unbound-call form when an optional call's callee is itself
+    /// a call.
+    fn visit_mut_opt_call(&mut self, n: &mut OptCall) {
+        n.callee.visit_mut_with(
+            &mut *self.with_ctx(self.ctx.clone().with(BitCtx::IsThisAwareCallee, true)),
+        );
+
+        n.args.visit_mut_with(self);
+    }
+
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_call_expr(&mut self, e: &mut CallExpr) {
         // Record static method usage for aliasing (before any transformations)
         if let Callee::Expr(callee) = &e.callee {
@@ -1643,11 +1724,19 @@ impl VisitMut for Optimizer<'_> {
             #[cfg(swc_ast_unknown)]
             _ => panic!("unable to access unknown nodes"),
         };
+        let is_noinline = self.has_noinline(e.ctxt);
+        // If this call produces the value for another receiver-aware callee, such
+        // as a template tag, keep the inner callee as a reference. Replacing its
+        // member expression can expose the returned callable to later callee
+        // rewrites and lose the required `this` form.
+        let can_replace_callee = !self.ctx.bit_ctx.contains(BitCtx::IsThisAwareCallee);
         {
             let ctx = self
                 .ctx
                 .clone()
                 .with(BitCtx::IsCallee, true)
+                .with(BitCtx::IsCallCallee, can_replace_callee)
+                .with(BitCtx::IsNoInlineCallee, is_noinline)
                 .with(
                     BitCtx::IsThisAwareCallee,
                     is_this_undefined
@@ -1714,7 +1803,10 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_class(&mut self, n: &mut Class) {
         n.decorators.visit_mut_with(self);
 
@@ -1742,7 +1834,10 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_class_member(&mut self, n: &mut ClassMember) {
         let ctx = self
             .ctx
@@ -1772,13 +1867,44 @@ impl VisitMut for Optimizer<'_> {
                 private_method.visit_mut_with(&mut *self.with_ctx(ctx));
             }
 
+            ClassMember::StaticBlock(s) => {
+                let ctx = Ctx {
+                    bit_ctx: self
+                        .ctx
+                        .bit_ctx
+                        .with(BitCtx::TopLevel, false)
+                        .with(BitCtx::InBlock, true)
+                        .with(BitCtx::InParam, false),
+                    scope: s.body.ctxt,
+                    ..self.ctx.clone()
+                };
+                n.visit_mut_children_with(&mut *self.with_ctx(ctx));
+            }
+
             _ => {
                 n.visit_mut_children_with(&mut *self.with_ctx(ctx));
             }
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
+    fn visit_mut_constructor(&mut self, n: &mut Constructor) {
+        n.key.visit_mut_with(self);
+
+        let ctx = self.function_like_ctx(n.ctxt);
+        let optimizer = &mut *self.with_ctx(ctx);
+
+        n.params.visit_mut_with(optimizer);
+        n.body.visit_mut_with(optimizer);
+    }
+
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_class_expr(&mut self, e: &mut ClassExpr) {
         if !self.options.keep_classnames {
             if e.ident.is_some() && !contains_eval(&e.class, true) {
@@ -1789,7 +1915,10 @@ impl VisitMut for Optimizer<'_> {
         e.visit_mut_children_with(self);
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_decl(&mut self, decl: &mut Decl) {
         match decl {
             Decl::Class(class_decl) => self.visit_mut_class(&mut class_decl.class),
@@ -1803,7 +1932,10 @@ impl VisitMut for Optimizer<'_> {
         self.store_decl_for_inlining(decl);
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_default_decl(&mut self, n: &mut DefaultDecl) {
         match n {
             DefaultDecl::Class(_) => {}
@@ -1819,13 +1951,14 @@ impl VisitMut for Optimizer<'_> {
     }
 
     fn visit_mut_do_while_stmt(&mut self, n: &mut DoWhileStmt) {
-        {
-            let ctx = self.ctx.clone().with(BitCtx::ExecutedMultipleTime, true);
-            n.visit_mut_children_with(&mut *self.with_ctx(ctx));
-        }
+        let ctx = self.ctx.clone().with(BitCtx::ExecutedMultipleTime, true);
+        n.visit_mut_children_with(&mut *self.with_ctx(ctx));
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_export_decl(&mut self, n: &mut ExportDecl) {
         if let Decl::Fn(f) = &mut n.decl {
             self.drop_unused_params(&mut f.function.params);
@@ -1841,7 +1974,7 @@ impl VisitMut for Optimizer<'_> {
     }
 
     fn visit_mut_expr(&mut self, e: &mut Expr) {
-        #[cfg(feature = "trace-ast")]
+        #[cfg(all(debug_assertions, feature = "trace-ast"))]
         let _tracing = {
             let s = dump(&*e, true);
             tracing::span!(
@@ -1852,121 +1985,160 @@ impl VisitMut for Optimizer<'_> {
             .entered()
         };
 
-        let ctx = self
-            .ctx
-            .clone()
-            .with(BitCtx::IsExported, false)
-            .with(BitCtx::IsCallee, false);
-        e.visit_mut_children_with(&mut *self.with_ctx(ctx));
+        let is_ident = matches!(e, Expr::Ident(..));
 
-        #[cfg(feature = "trace-ast")]
-        let _tracing = {
-            let s = dump(&*e, true);
-            tracing::span!(
-                tracing::Level::ERROR,
-                "visit_mut_expr_after_children",
-                src = tracing::field::display(&s)
-            )
-            .entered()
-        };
+        if is_ident {
+            self.inline(e);
 
-        match e {
-            Expr::Seq(seq) if seq.exprs.len() == 1 => {
-                let span = seq.span;
-                *e = *seq.exprs[0].take();
-                e.set_span(span);
+            if matches!(e, Expr::Ident(..)) {
+                self.evaluate_ident(e);
+
+                #[cfg(all(debug_assertions, feature = "trace-ast"))]
+                #[cfg(debug_assertions)]
+                tracing::debug!("Output: {}", dump(e, true));
+
+                return;
             }
+        } else {
+            let ctx = self
+                .ctx
+                .clone()
+                .with(BitCtx::IsExported, false)
+                .with(BitCtx::IsCallee, false);
+            e.visit_mut_children_with(&mut *self.with_ctx(ctx));
 
-            Expr::Assign(AssignExpr {
-                op: op!("="),
-                left,
-                right,
-                ..
-            }) => {
-                if let Some(i) = left.as_ident_mut() {
-                    let old = i.to_id();
+            self.inline_undefined_vars_in_expr(e);
 
-                    self.store_var_for_inlining(i, right, false);
+            #[cfg(all(debug_assertions, feature = "trace-ast"))]
+            let _tracing = {
+                let s = dump(&*e, true);
+                tracing::span!(
+                    tracing::Level::ERROR,
+                    "visit_mut_expr_after_children",
+                    src = tracing::field::display(&s)
+                )
+                .entered()
+            };
 
-                    if i.is_dummy() && self.options.unused {
-                        report_change!("inline: Removed variable ({}, {:?})", old.0, old.1);
-                        self.vars.removed.insert(old.clone());
-                    }
-
-                    if right.is_invalid() {
-                        if let Some(lit) = self
-                            .vars
-                            .lits
-                            .get(&old)
-                            .or_else(|| self.vars.vars_for_inlining.get(&old))
-                        {
-                            *e = (**lit).clone();
-                        }
-                    }
+            match e {
+                Expr::Seq(seq) if seq.exprs.len() == 1 => {
+                    let span = seq.span;
+                    *e = *seq.exprs[0].take();
+                    e.set_span(span);
                 }
 
-                self.lift_seqs_of_assign(e)
+                Expr::Assign(AssignExpr {
+                    op: op!("="),
+                    left,
+                    right,
+                    ..
+                }) => {
+                    if let Some(i) = left.as_ident_mut() {
+                        let old = i.to_id();
+
+                        self.store_var_for_inlining(i, right, false);
+
+                        if i.is_dummy() && self.options.unused {
+                            report_change!("inline: Removed variable ({}, {:?})", old.0, old.1);
+                            self.vars.removed.insert(old.clone());
+                        }
+
+                        if right.is_invalid() {
+                            if let Some(lit) = self
+                                .vars
+                                .lits
+                                .get(&old)
+                                .or_else(|| self.vars.vars_for_inlining.get(&old))
+                            {
+                                *e = (**lit).clone();
+                            }
+                        }
+                    }
+
+                    self.lift_seqs_of_assign(e)
+                }
+
+                _ => {}
             }
 
-            _ => {}
+            if e.is_seq() {
+                debug_assert_valid(e);
+            }
+
+            let should_remove_invalid = match e {
+                Expr::Bin(BinExpr {
+                    op, left, right, ..
+                }) => {
+                    left.is_invalid()
+                        || right.is_invalid()
+                        || self.changed
+                            && matches!(op, op!("&&") | op!("||"))
+                            && (Self::bin_has_direct_invalid_child(left)
+                                || Self::bin_has_direct_invalid_child(right))
+                }
+                _ => false,
+            };
+
+            if should_remove_invalid {
+                self.remove_invalid_bin(e);
+            }
+
+            if e.is_seq() {
+                debug_assert_valid(e);
+            }
+
+            self.optimize_str_access_to_arguments(e);
+
+            if e.is_seq() {
+                debug_assert_valid(e);
+            }
+
+            self.replace_props(e);
+
+            if e.is_seq() {
+                debug_assert_valid(e);
+            }
+
+            self.drop_unused_assignments(e);
+
+            if e.is_seq() {
+                debug_assert_valid(e);
+            }
+
+            self.compress_lits(e);
+
+            if e.is_seq() {
+                debug_assert_valid(e);
+            }
+
+            self.compress_typeofs(e);
+
+            if e.is_seq() {
+                debug_assert_valid(e);
+            }
+
+            self.drop_console(e);
+
+            if e.is_seq() {
+                debug_assert_valid(e);
+            }
+
+            if matches!(
+                &*e,
+                Expr::Bin(BinExpr {
+                    op: op!("&&") | op!("||"),
+                    ..
+                })
+            ) {
+                self.compress_logical_exprs_as_bang_bang(e, false);
+            }
+
+            if e.is_seq() {
+                debug_assert_valid(e);
+            }
+
+            self.inline(e);
         }
-
-        if e.is_seq() {
-            debug_assert_valid(e);
-        }
-
-        // This is not accurate check but avoid some trivial cases.
-        if self.changed {
-            self.remove_invalid_bin(e);
-        }
-
-        if e.is_seq() {
-            debug_assert_valid(e);
-        }
-
-        self.optimize_str_access_to_arguments(e);
-
-        if e.is_seq() {
-            debug_assert_valid(e);
-        }
-
-        self.replace_props(e);
-
-        if e.is_seq() {
-            debug_assert_valid(e);
-        }
-
-        self.drop_unused_assignments(e);
-
-        if e.is_seq() {
-            debug_assert_valid(e);
-        }
-
-        self.compress_lits(e);
-
-        if e.is_seq() {
-            debug_assert_valid(e);
-        }
-
-        self.compress_typeofs(e);
-
-        if e.is_seq() {
-            debug_assert_valid(e);
-        }
-
-        self.drop_console(e);
-
-        if e.is_seq() {
-            debug_assert_valid(e);
-        }
-
-        self.compress_logical_exprs_as_bang_bang(e, false);
-
-        if e.is_seq() {
-            debug_assert_valid(e);
-        }
-
-        self.inline(e);
 
         if e.is_seq() {
             debug_assert_valid(e);
@@ -2023,11 +2195,15 @@ impl VisitMut for Optimizer<'_> {
 
         self.reduce_escaped_newline_for_str_lit(e);
 
-        #[cfg(feature = "trace-ast")]
+        #[cfg(all(debug_assertions, feature = "trace-ast"))]
+        #[cfg(debug_assertions)]
         tracing::debug!("Output: {}", dump(e, true));
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_expr_stmt(&mut self, n: &mut ExprStmt) {
         let was_directive = matches!(&*n.expr, Expr::Lit(Lit::Str(..)));
 
@@ -2117,7 +2293,8 @@ impl VisitMut for Optimizer<'_> {
     }
 
     fn visit_mut_fn_decl(&mut self, f: &mut FnDecl) {
-        #[cfg(feature = "debug")]
+        #[cfg(all(debug_assertions, feature = "debug"))]
+        #[cfg(debug_assertions)]
         let _tracing = tracing::span!(
             Level::ERROR,
             "visit_mut_fn_decl",
@@ -2141,7 +2318,10 @@ impl VisitMut for Optimizer<'_> {
         f.visit_mut_children_with(&mut *self.with_ctx(ctx));
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_fn_expr(&mut self, e: &mut FnExpr) {
         if let Some(ident) = &e.ident {
             self.functions
@@ -2165,7 +2345,10 @@ impl VisitMut for Optimizer<'_> {
         e.visit_mut_children_with(&mut *self.with_ctx(ctx));
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_for_in_stmt(&mut self, n: &mut ForInStmt) {
         n.right.visit_mut_with(self);
 
@@ -2174,7 +2357,8 @@ impl VisitMut for Optimizer<'_> {
                 .ctx
                 .clone()
                 .with(BitCtx::InVarDeclOfForInOrOfLoop, true)
-                .with(BitCtx::IsExactLhsOfAssign, n.left.is_pat());
+                .with(BitCtx::IsExactLhsOfAssign, n.left.is_pat())
+                .with(BitCtx::ExecutedMultipleTime, true);
             self.with_ctx(ctx).visit_with_prepend(&mut n.left);
         }
 
@@ -2184,7 +2368,10 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_for_of_stmt(&mut self, n: &mut ForOfStmt) {
         n.right.visit_mut_with(self);
 
@@ -2193,7 +2380,8 @@ impl VisitMut for Optimizer<'_> {
                 .ctx
                 .clone()
                 .with(BitCtx::InVarDeclOfForInOrOfLoop, true)
-                .with(BitCtx::IsExactLhsOfAssign, n.left.is_pat());
+                .with(BitCtx::IsExactLhsOfAssign, n.left.is_pat())
+                .with(BitCtx::ExecutedMultipleTime, true);
             self.with_ctx(ctx).visit_with_prepend(&mut n.left);
         }
 
@@ -2203,35 +2391,35 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_for_stmt(&mut self, s: &mut ForStmt) {
         self.visit_with_prepend(&mut s.init);
 
         debug_assert_valid(&s.init);
 
-        s.test.visit_mut_with(self);
-        s.update.visit_mut_with(self);
-
         let ctx = self.ctx.clone().with(BitCtx::ExecutedMultipleTime, true);
-        s.body.visit_mut_with(&mut *self.with_ctx(ctx.clone()));
+        let mut child = self.with_ctx(ctx.clone());
+
+        s.test.visit_mut_with(&mut *child);
+        s.update.visit_mut_with(&mut *child);
+
+        s.body.visit_mut_with(&mut *child);
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_function(&mut self, n: &mut Function) {
         n.decorators.visit_mut_with(self);
 
         let old_in_asm = self.ctx.bit_ctx.contains(BitCtx::InAsm);
 
         {
-            let ctx = Ctx {
-                bit_ctx: self
-                    .ctx
-                    .bit_ctx
-                    .with(BitCtx::InFnLike, true)
-                    .with(BitCtx::TopLevel, false),
-                scope: n.ctxt,
-                ..self.ctx.clone()
-            };
+            let ctx = self.function_like_ctx(n.ctxt);
             let optimizer = &mut *self.with_ctx(ctx);
 
             n.params.visit_mut_with(optimizer);
@@ -2286,9 +2474,14 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_if_stmt(&mut self, n: &mut IfStmt) {
         n.test.visit_mut_with(self);
+
+        self.inline_undefined_var(&mut n.test);
 
         let ctx = self.ctx.clone().with(BitCtx::InCond, true);
 
@@ -2299,7 +2492,10 @@ impl VisitMut for Optimizer<'_> {
         self.negate_if_stmt(n);
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_labeled_stmt(&mut self, n: &mut LabeledStmt) {
         let ctx = self.ctx.clone().with(
             BitCtx::DontUsePrependNorAppend,
@@ -2311,7 +2507,10 @@ impl VisitMut for Optimizer<'_> {
         self.try_remove_label(n);
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_member_expr(&mut self, n: &mut MemberExpr) {
         {
             let ctx = self
@@ -2339,7 +2538,10 @@ impl VisitMut for Optimizer<'_> {
         m.visit_mut_children_with(self);
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_module_item(&mut self, s: &mut ModuleItem) {
         s.visit_mut_children_with(self);
 
@@ -2354,7 +2556,10 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_module_items(&mut self, stmts: &mut Vec<ModuleItem>) {
         let ctx = self.ctx.clone().with(BitCtx::TopLevel, true);
         self.with_ctx(ctx).handle_stmt_likes(stmts, true);
@@ -2388,7 +2593,10 @@ impl VisitMut for Optimizer<'_> {
         drop_invalid_stmts(stmts);
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_new_expr(&mut self, n: &mut NewExpr) {
         // Record global object usage for aliasing (before any transformations)
         self.static_alias_state.try_record_global_object(
@@ -2416,6 +2624,8 @@ impl VisitMut for Optimizer<'_> {
             n.args.visit_mut_with(&mut *self.with_ctx(ctx));
         }
 
+        self.ignore_unused_args_of_new(n);
+
         // Try to replace global object with alias (after other transformations)
         if self
             .static_alias_state
@@ -2426,7 +2636,10 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_opt_stmt(&mut self, s: &mut Option<Box<Stmt>>) {
         s.visit_mut_children_with(self);
 
@@ -2437,7 +2650,10 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_opt_var_decl_or_expr(&mut self, n: &mut Option<VarDeclOrExpr>) {
         n.visit_mut_children_with(self);
 
@@ -2460,7 +2676,10 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_param(&mut self, n: &mut Param) {
         let ctx = Ctx {
             bit_ctx: self.ctx.bit_ctx.with(BitCtx::InParam, true),
@@ -2490,7 +2709,10 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_return_stmt(&mut self, n: &mut ReturnStmt) {
         n.visit_mut_children_with(self);
 
@@ -2499,7 +2721,10 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_script(&mut self, s: &mut Script) {
         let ctx = self.ctx.clone().with(BitCtx::TopLevel, true);
         s.visit_mut_children_with(&mut *self.with_ctx(ctx));
@@ -2533,7 +2758,10 @@ impl VisitMut for Optimizer<'_> {
         drop_invalid_stmts(&mut s.body);
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_seq_expr(&mut self, n: &mut SeqExpr) {
         n.visit_mut_children_with(self);
 
@@ -2541,14 +2769,59 @@ impl VisitMut for Optimizer<'_> {
         self.invoke_iife_in_seq_expr(n);
 
         self.merge_sequences_in_seq_expr(n);
+
+        if !self.options.reduce_vars || !self.options.side_effects {
+            return;
+        }
+
+        let Some((last, exprs)) = n.exprs.split_last_mut() else {
+            return;
+        };
+
+        // Do not expose an unresolved name as the direct operand of `typeof`.
+        // The local sequence cleanup cannot yet preserve that distinction.
+        if matches!(&**last, Expr::Ident(i) if i.ctxt == self.ctx.expr_ctx.unresolved_ctxt) {
+            return;
+        }
+
+        for expr in exprs {
+            let Expr::Call(CallExpr {
+                callee: Callee::Expr(callee),
+                args,
+                ..
+            }) = &**expr
+            else {
+                continue;
+            };
+
+            // Resolve known empty functions, but only for trivially effect-free
+            // arguments. Do not broaden recursive argument-effect extraction.
+            if !callee.is_ident()
+                || args.iter().any(|arg| {
+                    arg.spread.is_some()
+                        || !matches!(&*arg.expr, Expr::Fn(_) | Expr::Arrow(_) | Expr::Lit(_))
+                })
+            {
+                continue;
+            }
+
+            // Keep a placeholder for the pure pass to preserve indirect calls
+            // and other reference-sensitive sequence contexts during cleanup.
+            **expr = self
+                .ignore_return_value(expr)
+                .unwrap_or_else(|| make_number(DUMMY_SP, 0.0));
+        }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_stmt(&mut self, s: &mut Stmt) {
         let old_prepend = self.prepend_stmts.take();
         let old_append = self.append_stmts.take();
 
-        #[cfg(feature = "debug")]
+        #[cfg(all(debug_assertions, feature = "debug"))]
         let _tracing = {
             let text = dump(&*s, false);
 
@@ -2773,7 +3046,10 @@ impl VisitMut for Optimizer<'_> {
         debug_assert_valid(s);
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_stmts(&mut self, stmts: &mut Vec<Stmt>) {
         // Skip if `use asm` exists.
         if maybe_par!(
@@ -2812,7 +3088,10 @@ impl VisitMut for Optimizer<'_> {
         s.visit_mut_children_with(self);
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_super_prop_expr(&mut self, n: &mut SuperPropExpr) {
         if let SuperProp::Computed(c) = &mut n.prop {
             let ctx = self
@@ -2824,15 +3103,26 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_switch_stmt(&mut self, n: &mut SwitchStmt) {
         n.discriminant.visit_mut_with(self);
 
-        n.cases.visit_mut_with(self);
+        let ctx = Ctx {
+            bit_ctx: self.ctx.bit_ctx.with(BitCtx::InBlock, true),
+            scope: n.body_ctxt,
+            ..self.ctx
+        };
+        n.cases.visit_mut_with(&mut *self.with_ctx(ctx));
     }
 
     /// We don't optimize [Tpl] contained in [TaggedTpl].
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_tagged_tpl(&mut self, n: &mut TaggedTpl) {
         n.tag.visit_mut_with(
             &mut *self.with_ctx(self.ctx.clone().with(BitCtx::IsThisAwareCallee, true)),
@@ -2841,14 +3131,20 @@ impl VisitMut for Optimizer<'_> {
         n.tpl.exprs.visit_mut_with(self);
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_throw_stmt(&mut self, n: &mut ThrowStmt) {
         n.visit_mut_children_with(self);
 
         self.optimize_last_expr_before_termination(&mut n.arg);
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_tpl(&mut self, n: &mut Tpl) {
         debug_assert_eq!(n.exprs.len() + 1, n.quasis.len());
 
@@ -2863,12 +3159,22 @@ impl VisitMut for Optimizer<'_> {
             .for_each(|expr| self.optimize_expr_in_str_ctx(expr));
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_try_stmt(&mut self, n: &mut TryStmt) {
-        let ctx = self.ctx.clone().with(BitCtx::InTryBlock, true);
-        n.block.visit_mut_with(&mut *self.with_ctx(ctx));
+        let ctx = self.ctx.clone().with(
+            BitCtx::InTryCatchWithFinally,
+            n.finalizer.is_some() || self.ctx.bit_ctx.contains(BitCtx::InTryCatchWithFinally),
+        );
 
-        n.handler.visit_mut_with(self);
+        {
+            let ctx = self.ctx.clone().with(BitCtx::InTryBlock, true);
+            n.block.visit_mut_with(&mut *self.with_ctx(ctx.clone()));
+        }
+
+        n.handler.visit_mut_with(&mut *self.with_ctx(ctx));
 
         n.finalizer.visit_mut_with(self);
     }
@@ -2888,7 +3194,10 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_unary_expr(&mut self, n: &mut UnaryExpr) {
         let ctx = self
             .ctx
@@ -2897,6 +3206,10 @@ impl VisitMut for Optimizer<'_> {
             .with(BitCtx::IsDeleteArg, n.op == op!("delete"));
 
         n.visit_mut_children_with(&mut *self.with_ctx(ctx));
+
+        if matches!(n.op, op!("!") | op!("typeof")) {
+            self.inline_undefined_var(&mut n.arg);
+        }
 
         // infinite loop
         if n.op == op!("void") {
@@ -2916,14 +3229,20 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_update_expr(&mut self, n: &mut UpdateExpr) {
         let ctx = self.ctx.clone().with(BitCtx::IsUpdateArg, true);
 
         n.visit_mut_children_with(&mut *self.with_ctx(ctx));
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_using_decl(&mut self, n: &mut UsingDecl) {
         let ctx = Ctx {
             bit_ctx: self
@@ -2941,7 +3260,10 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_var_decl(&mut self, n: &mut VarDecl) {
         {
             let ctx = Ctx {
@@ -3006,7 +3328,10 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_var_declarator(&mut self, var: &mut VarDeclarator) {
         var.name.visit_mut_with(self);
 
@@ -3035,14 +3360,25 @@ impl VisitMut for Optimizer<'_> {
             if id.sym.is_empty() {
                 var.name = Pat::dummy();
             }
-        };
+        } else if let VarDeclarator {
+            name: Pat::Ident(id),
+            init: None,
+            definite: false,
+            ..
+        } = var
+        {
+            self.store_uninitialized_var_for_inlining(&id.id);
+        }
 
         self.drop_unused_properties(var);
 
         debug_assert_valid(&var.init);
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_var_declarators(&mut self, vars: &mut Vec<VarDeclarator>) {
         vars.retain_mut(|var| {
             if var.name.is_invalid() {
@@ -3124,9 +3460,13 @@ impl VisitMut for Optimizer<'_> {
                     continue;
                 }
 
-                // If initializer is none, we can check next item without thinking about side
-                // effects.
                 if v.init.is_none() {
+                    // Even without an initializer, `let` ends the binding's TDZ here.
+                    // Later initializers may assign to it, so their side effects must
+                    // not be moved before the declaration. `var` is already initialized.
+                    if self.ctx.bit_ctx.contains(BitCtx::IsLet) {
+                        can_prepend = false;
+                    }
                     continue;
                 }
 
@@ -3218,15 +3558,19 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_while_stmt(&mut self, n: &mut WhileStmt) {
-        {
-            let ctx = self.ctx.clone().with(BitCtx::ExecutedMultipleTime, true);
-            n.visit_mut_children_with(&mut *self.with_ctx(ctx));
-        }
+        let ctx = self.ctx.clone().with(BitCtx::ExecutedMultipleTime, true);
+        n.visit_mut_children_with(&mut *self.with_ctx(ctx));
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_with_stmt(&mut self, n: &mut WithStmt) {
         n.obj.visit_mut_with(self);
 
@@ -3236,7 +3580,10 @@ impl VisitMut for Optimizer<'_> {
         }
     }
 
-    #[cfg_attr(feature = "debug", tracing::instrument(level = "debug", skip_all))]
+    #[cfg_attr(
+        all(debug_assertions, feature = "debug"),
+        tracing::instrument(level = "debug", skip_all)
+    )]
     fn visit_mut_yield_expr(&mut self, n: &mut YieldExpr) {
         n.visit_mut_children_with(self);
 
@@ -3255,7 +3602,26 @@ fn is_callee_this_aware(callee: &Expr) -> bool {
     match callee {
         Expr::Arrow(..) => return false,
         Expr::Seq(..) => return true,
-        Expr::Member(MemberExpr { obj, .. }) => {
+        Expr::Member(MemberExpr { obj, prop, .. }) => {
+            // An object-literal arrow property has no receiver-sensitive `this`.
+            // Treating it like a normal member would unnecessarily block safe
+            // call reduction after property inlining.
+            if let (Expr::Object(obj), MemberProp::Ident(prop)) = (&**obj, prop) {
+                let mut matching_props = obj.props.iter().filter(|item| match item {
+                    PropOrSpread::Prop(item) => match &**item {
+                        Prop::KeyValue(item) => prop_name_eq(&item.key, &prop.sym),
+                        _ => false,
+                    },
+                    _ => false,
+                });
+                if let Some(PropOrSpread::Prop(item)) = matching_props.next() {
+                    if matching_props.next().is_none()
+                        && matches!(&**item, Prop::KeyValue(item) if matches!(&*item.value, Expr::Arrow(..)))
+                    {
+                        return false;
+                    }
+                }
+            }
             if let Expr::Ident(obj) = &**obj {
                 if &*obj.sym == "console" {
                     return false;
