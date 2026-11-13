@@ -8,6 +8,8 @@ permissions: {}
 jobs:
   changeset:
     name: Require changeset for crate changes
+    # Only swc-project/swc publishes crates.
+    if: github.repository == 'swc-project/swc'
     runs-on: ubuntu-latest
     permissions:
       contents: read
