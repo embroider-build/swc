@@ -484,17 +484,6 @@ impl Lexer<'_> {
             return Ok(Token::ContentTagStart);
         }
 
-        if self.syntax.typescript()
-            && self.ctx.contains(Context::InType)
-            && !self.ctx.contains(Context::ShouldNotLexLtOrGtAsType)
-        {
-            if C == b'<' {
-                return Ok(Token::Lt);
-            } else if C == b'>' {
-                return Ok(Token::Gt);
-            }
-        }
-
         // XML style comment. `<!--`
         if C == b'<'
             && self.is(b'!')

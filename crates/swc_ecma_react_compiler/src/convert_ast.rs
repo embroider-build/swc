@@ -756,6 +756,12 @@ impl<'a> ConvertCtx<'a> {
             swc::Expr::Invalid(i) => {
                 unreachable!("SWC invalid expressions should not be converted: {:?}", i)
             }
+            swc::Expr::ContentTagExpression(e) => {
+                unreachable!(
+                    "content tags must be transformed before conversion: {:?}",
+                    e.span
+                )
+            }
         }
     }
 

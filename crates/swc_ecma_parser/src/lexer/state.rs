@@ -50,7 +50,6 @@ pub struct State {
 
     pub(super) token_value: Option<TokenValue>,
     token_type: Token,
-    token_type: Option<Token>,
     pub content_tag_template: ContentTagState,
 }
 
@@ -481,12 +480,15 @@ impl Lexer<'_> {
     }
 
     fn read_next_token(&mut self, start: &mut BytePos) -> Result<Token, Error> {
+        // Content tag tokens start at the cursor, with no whitespace skipped.
         if self.state.content_tag_template == ContentTagState::Reading {
-            return Ok(self.read_content_tag_template()?);
+            *start = self.input.cur_pos();
+            return self.read_content_tag_template();
         }
 
         if self.state.content_tag_template == ContentTagState::Ending {
-            return Ok(self.end_content_tag_template()?);
+            *start = self.input.cur_pos();
+            return self.end_content_tag_template();
         }
 
         if let Some(next_regexp) = self.state.next_regexp {
@@ -785,7 +787,6 @@ impl State {
             prev_hi: start_pos,
             token_value: None,
             token_type: Token::Eof,
-            token_type: None,
             content_tag_template: ContentTagState::None,
         }
     }
